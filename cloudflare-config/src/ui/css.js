@@ -263,7 +263,13 @@ details>.drop{margin-top:var(--sp-3);padding-top:4px;flex-basis:100%}
 #t-jf:checked~.seg label[for=t-jf],#t-emby:checked~.seg label[for=t-emby],#t-plex:checked~.seg label[for=t-plex],#t-nas:checked~.seg label[for=t-nas]{background:var(--acc);color:var(--on-acc)}
 #t-jf:focus-visible~.seg label[for=t-jf],#t-emby:focus-visible~.seg label[for=t-emby],#t-plex:focus-visible~.seg label[for=t-plex],#t-nas:focus-visible~.seg label[for=t-nas]{outline:3px solid var(--ring);outline-offset:2px}
 #t-jf:checked~#form-jf,#t-emby:checked~#form-emby,#t-plex:checked~#form-plex,#t-nas:checked~#form-nas{display:block}
-.plex-servers label{display:flex;gap:10px;align-items:center;margin:6px 0}
+.plex-servers{border:1px solid var(--bd);border-radius:var(--r-md);padding:4px 12px;margin:10px 0;min-width:0}
+.plex-servers legend{padding:0 6px}
+.plex-servers label{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:0;padding:10px 2px;min-height:0;cursor:pointer}
+.plex-servers label+label{border-top:1px solid var(--bd)}
+.plex-servers input[type=radio]{width:18px;height:18px;min-width:18px;min-height:0;padding:0;margin:0;flex:none;accent-color:var(--acc)}
+.plex-servers .nm{flex:1 1 auto;min-width:0;overflow-wrap:anywhere;font-weight:600}
+.plex-servers .chip{flex:none}
 .danger-zone{border-color:color-mix(in srgb,var(--dng) 45%,var(--bd))}
 .danger-zone h2{color:var(--dng)}
 /* ---- Chiffres clés ---- */

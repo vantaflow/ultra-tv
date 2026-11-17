@@ -49,3 +49,6 @@ val DesignStrings.mlibNasAuto get() = tx(R.string.mlib_nas_auto)
 fun DesignStrings.mlibPlexExpires(left: String) = tx(R.string.mlib_plex_expires, left)
 fun DesignStrings.mlibStatusOffline(ago: String) = tx(R.string.mlib_status_offline, ago)
 fun DesignStrings.mlibCounts(movies: Int, series: Int) = tx(R.string.mlib_counts, movies, series)
+
+/** Serveur multimédia ajouté depuis le site mais non connecté par l'appareil (affiché en toast, réessayé à la synchro suivante). */
+fun cloudMediaFailedText(lang: AppLang, names: String): String = I18n.string(lang, R.string.mlib_cloud_failed, names)

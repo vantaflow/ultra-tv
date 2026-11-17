@@ -197,7 +197,15 @@ class CatalogGridViewModel @Inject constructor(
     /** Synchro en cours : compteurs et rangées lus une seule fois au lieu d'être relancés à chaque lot inséré. */
     private val syncing = syncBus.status.map { it != null }.distinctUntilChanged()
 
-    private val pid = providerRepo.observeProviders().map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }.distinctUntilChanged()
+    private val providersFlow = providerRepo.observeProviders()
+    private val pid = combine(providersFlow, CatalogSourceChoice.id) { ps, choice -> CatalogSourceChoice.resolve(ps.map { it.id to it.active }, choice) }.distinctUntilChanged()
+
+    /** Sources proposées en filtre dans Films / Séries : la source IPTV active + chaque serveur multimédia / NAS (null = un seul choix, rien à afficher). */
+    val sourceChoices: StateFlow<List<Pair<Long, String>>> = combine(providersFlow, pid) { ps, _ ->
+        CatalogSourceChoice.choices(ps.map { Triple(it.id, it.name, it.kind to it.active) })
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val currentSource: StateFlow<Long?> = pid.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    fun pickSource(id: Long) { _selected.value = null; CatalogSourceChoice.id.value = id }
 
     init {
         // Genres automatiques : calcul lancé (sans bloquer) quand la source de catégories l'utilise, et relancé à la fin de
@@ -372,6 +380,9 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
             Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (touch) 28.sp else 48.spx, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.design)) {
                 if (detecting) progress?.let { GenreProgressBanner(it, touch) }
+                val srcChoices by vm.sourceChoices.collectAsState()
+                val curSrc by vm.currentSource.collectAsState()
+                if (srcChoices.size > 1) srcChoices.forEach { c -> Chip(c.second, curSrc == c.first) { vm.pickSource(c.first) } }
                 // Recherche limitée à la rubrique (plus rapide que la recherche générale) : loupe en tactile, pastille en TV.
                 val openSearch = rememberScopedSearch(kind)
                 if (touch) com.ultratv.tv.nativeapp.ui.mobile.SearchAction(onClick = openSearch) else SearchChip(openSearch)
@@ -460,11 +471,15 @@ private fun CatalogHeroHost(
         chips.forEach { add(CatalogTabUi(it.remoteId, if (it.isGenre) D.genreName(it.remoteId) else it.name)) }
     }
     val openSearch = rememberScopedSearch(kind)
+    val sourceChoices by vm.sourceChoices.collectAsState()
+    val currentSource by vm.currentSource.collectAsState()
     CatalogRowsTv(
         tabs = tabs, selectedKey = null, onTab = { vm.select(it) }, onSearch = openSearch,
         filters = {
             // Tri · note minimale · période (mêmes pastilles qu'avant) et, pendant la détection, son avancement.
             LazyRow(horizontalArrangement = Arrangement.spacedBy(14.design), verticalAlignment = Alignment.CenterVertically) {
+                // Plusieurs sources (IPTV + Plex / Jellyfin / Emby / NAS) : choix de la source affichée, en tête.
+                items(sourceChoices, key = { "src-${it.first}" }, contentType = { "chip" }) { c -> Chip(c.second, currentSource == c.first) { vm.pickSource(c.first) } }
                 items(CatalogFilter.Sort.entries, key = { "s-${it.name}" }, contentType = { "chip" }) { o -> Chip(D.catalogSortName(o), filter.sort == o) { vm.setFilter(filter.copy(sort = o)) } }
                 items(CatalogFilter.RATINGS, key = { "r-$it" }, contentType = { "chip" }) { r -> Chip(if (r == 0) D.anyRating else "★ $r+", filter.minRating == r) { vm.setFilter(filter.copy(minRating = r)) } }
                 items(CatalogFilter.Period.entries, key = { "p-${it.name}" }, contentType = { "chip" }) { o -> Chip(D.periodName(o), filter.period == o) { vm.setFilter(filter.copy(period = o)) } }

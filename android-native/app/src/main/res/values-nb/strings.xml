@@ -1883,4 +1883,5 @@
     <string name="sport_ok_hint">OK på en kamp: kampark eller avspilling</string>
     <string name="sport_no_events">Ingen høydepunkter ennå.</string>
     <string name="sport_table_hidden">Tabellen er skjult i modus uten spoilere.</string>
+    <string name="mlib_cloud_failed">Biblioteket «%1$s» som ble lagt til fra nettstedet, kunne ikke kobles til. TV-en prøver igjen ved neste synkronisering. Sjekk at serveren er tilgjengelig.</string>
 </resources>

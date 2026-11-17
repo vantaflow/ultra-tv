@@ -226,6 +226,46 @@ class CloudSyncLogicTest {
         assertEquals(3, actions.count { it is SyncAction.Add })
     }
 
+    @Test fun plexPartage_distantOuRelais_garde_jetonDuServeur_etSesAdresses() {
+        // Serveur partagé par un autre compte : aucune connexion locale, distante puis relais.
+        val cfg = CloudSyncLogic.parseConfig("""{"version":1,"providers":[
+          {"id":"p1","kind":"PLEX","name":"JDM Plex Server (shared with you)","url":"https://1-2-3-4.abc.plex.direct:32400","username":"mach","password":"tok-serveur",
+           "plex":{"owned":false,"conns":[{"uri":"https://1-2-3-4.abc.plex.direct:32400","local":false,"relay":false},{"uri":"https://5-6-7-8.abc.plex.direct:8443","local":false,"relay":true}]}}]}""")
+        val s = CloudSyncLogic.plexServerOf(cfg.providers.single())!!
+        assertEquals("tok-serveur", s.accessToken)
+        assertFalse(s.owned)
+        assertEquals(listOf("https://1-2-3-4.abc.plex.direct:32400", "https://5-6-7-8.abc.plex.direct:8443"), s.connections.map { it.uri })
+    }
+
+    @Test fun plexSansMachineOuSansJeton_pasDeServeur_maisLaSourceEstPlanifiee() {
+        assertNull(CloudSyncLogic.plexServerOf(cloud("p1", kind = "PLEX", url = "https://h:32400", user = "", pass = "tok")))
+        assertNull(CloudSyncLogic.plexServerOf(cloud("p1", kind = "PLEX", url = "https://h:32400", user = "m", pass = "")))
+        // Plan : Add dans tous les cas (l'échec est signalé par l'appelant, jamais ignoré en silence).
+        assertTrue(plan(emptyList(), listOf(cloud("p1", kind = "PLEX", url = "https://h:32400", user = "", pass = ""))).single() is SyncAction.Add)
+    }
+
+    @Test fun plexSansConnexionListee_replieSurLUrlDeLaSource() {
+        val s = CloudSyncLogic.plexServerOf(cloud("p1", kind = "PLEX", url = "https://h:32400", user = "m", pass = "tok"))!!
+        assertEquals(listOf("https://h:32400"), s.connections.map { it.uri })
+    }
+
+    @Test fun plexLieSurLaTvEtSurLeSite_uneSeuleSource() {
+        // TV : connexion locale ; site : connexion distante du MÊME serveur (même identifiant de machine).
+        val tv = local(5, null, name = "JDM Plex Server", url = "http://192.168.0.9:32400", user = "machine-1", pass = "tok-tv", kind = "PLEX")
+        val web = cloud("w1", name = "JDM Plex Server", url = "https://1-2-3-4.abc.plex.direct:32400", user = "machine-1", pass = "tok-web", kind = "PLEX")
+        val a = plan(listOf(tv), listOf(web))
+        assertEquals(listOf(SyncAction.Link(5, web)), a)          // fusion : ni Add ni Update (jeton local conservé)
+        // Autre serveur Plex : pas de fusion.
+        assertTrue(plan(listOf(tv), listOf(web.copy(username = "machine-2"))).single() is SyncAction.Add)
+        // Déjà liée : plus aucune action.
+        assertTrue(plan(listOf(tv.copy(cloudId = "w1")), listOf(web)).isEmpty())
+    }
+
+    @Test fun nasIdentique_pasDeDoublon_etJellyfinSurAutreAdresse_resteDistinct() {
+        val nas = local(1, null, name = "NAS", url = "smb://nas/films", user = "u", pass = "p", kind = "NAS")
+        assertEquals(1, plan(listOf(nas), listOf(cloud("n1", url = "smb://nas/films/", user = "u", pass = "p", kind = "NAS"))).count { it is SyncAction.Link })
+    }
+
     @Test fun serveurAJeton_jamaisReecrit_seulLeNomSuit() {
         val c = CloudProvider("a1", "JELLYFIN", "Maison", "http://jf:8096", "anna", "pw", "", null, "dashboard", 0L)
         // Localement : identifiant utilisateur + jeton (différents des identifiants du site, par nature).

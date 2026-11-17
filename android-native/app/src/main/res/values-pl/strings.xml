@@ -1839,4 +1839,5 @@
     <string name="sport_ok_hint">OK na meczu: karta meczu lub odtwarzanie</string>
     <string name="sport_no_events">Na razie brak najważniejszych momentów.</string>
     <string name="sport_table_hidden">Tabela ukryta w trybie bez spoilerów.</string>
+    <string name="mlib_cloud_failed">Nie udało się połączyć z biblioteką „%1$s” dodaną ze strony. Telewizor ponowi próbę przy następnej synchronizacji. Sprawdź, czy serwer jest osiągalny.</string>
 </resources>

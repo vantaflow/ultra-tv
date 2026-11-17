@@ -1883,4 +1883,5 @@
     <string name="sport_ok_hint">OK på en kamp: kampside eller afspilning</string>
     <string name="sport_no_events">Ingen højdepunkter endnu.</string>
     <string name="sport_table_hidden">Stillingen er skjult i tilstanden uden spoilere.</string>
+    <string name="mlib_cloud_failed">Biblioteket “%1$s”, der blev tilføjet fra webstedet, kunne ikke tilsluttes. TV\'et prøver igen ved næste synkronisering. Kontrollér, at serveren kan nås.</string>
 </resources>

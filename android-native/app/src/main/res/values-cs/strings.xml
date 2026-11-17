@@ -1866,4 +1866,5 @@
     <string name="sport_ok_hint">OK na zápase: karta zápasu nebo přehrávání</string>
     <string name="sport_no_events">Zatím žádné klíčové momenty.</string>
     <string name="sport_table_hidden">Tabulka skryta v režimu bez spoilerů.</string>
+    <string name="mlib_cloud_failed">Knihovnu „%1$s“ přidanou z webu se nepodařilo připojit. Televize to zkusí znovu při další synchronizaci. Zkontrolujte dostupnost serveru.</string>
 </resources>

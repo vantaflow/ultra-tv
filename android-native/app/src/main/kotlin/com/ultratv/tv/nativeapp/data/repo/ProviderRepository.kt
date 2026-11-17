@@ -802,6 +802,10 @@ class ProviderRepository @Inject constructor(
         )
     }
 
+    /** Nombre de films et de séries indexés pour une source (ligne de la source dans Réglages › Sources). */
+    suspend fun mediaCounts(providerId: Long): Pair<Int, Int> =
+        movieDao.observeCount(providerId).first() to seriesDao.observeCount(providerId).first()
+
     // ───────────── Plex : connexion par code PIN ─────────────
 
     /** Demande un code à saisir sur plex.tv/link. */

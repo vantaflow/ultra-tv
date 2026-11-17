@@ -106,4 +106,19 @@ class SyncPolicyTest {
     fun epgNeedsRefresh_horlogeQuiARecule_recharge() {
         assertEquals(true, SyncPolicy.epgNeedsRefresh(lastSyncAt = now + h, lastEndMs = now + 20 * h, now = now))
     }
+
+    @Test fun plex_premiereSynchro_films_et_series_sans_direct_ni_guide() {
+        val plex = ProviderEntity(id = 7, name = "Plex", kind = "PLEX", baseUrl = "https://h:32400", username = "m", password = "t", active = false)
+        val parts = SyncPolicy.dueParts(plex, now = 1_000_000L, ttl = SyncPolicy.ttl(0), liveCount = 0, force = true)
+        assertEquals(listOf(SyncPart.VOD, SyncPart.SERIES), parts)
+    }
+
+    @Test fun plex_indexeMemeSiFilmsEtSeriesIptvSontDesactivesOuReseauFacture() {
+        val plex = ProviderEntity(id = 7, name = "Plex", kind = "PLEX", baseUrl = "https://h:32400", username = "m", password = "t", active = false)
+        val parts = SyncPolicy.dueParts(plex, 1_000_000L, SyncPolicy.ttl(0), 0, force = false, enabled = setOf(SyncPart.LIVE), heavyAllowed = false)
+        assertEquals(listOf(SyncPart.VOD, SyncPart.SERIES), parts)
+        // Une source IPTV reste soumise à ces réglages.
+        val xt = ProviderEntity(id = 1, name = "X", kind = "XTREAM", baseUrl = "u", username = "", password = "", active = true)
+        assertEquals(listOf(SyncPart.LIVE), SyncPolicy.dueParts(xt, 1_000_000L, SyncPolicy.ttl(0), 0, force = false, enabled = setOf(SyncPart.LIVE), heavyAllowed = false))
+    }
 }

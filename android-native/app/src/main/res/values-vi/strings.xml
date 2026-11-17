@@ -1863,4 +1863,5 @@
     <string name="sport_ok_hint">OK trên một trận: thẻ trận hoặc phát</string>
     <string name="sport_no_events">Chưa có diễn biến chính.</string>
     <string name="sport_table_hidden">Bảng xếp hạng bị ẩn ở chế độ không spoiler.</string>
+    <string name="mlib_cloud_failed">Không kết nối được thư viện “%1$s” đã thêm từ trang web. TV sẽ thử lại ở lần đồng bộ tiếp theo. Hãy kiểm tra máy chủ có truy cập được không.</string>
 </resources>

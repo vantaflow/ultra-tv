@@ -5,6 +5,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ## [Non publié]
 
 ### Corrigé
+- Plex, Jellyfin, Emby et NAS : « Mes bibliothèques » dans le menu latéral, rangées courtes par serveur avec « Tout voir », serveurs choisissables dans Films et Séries, indexation toujours faite (même si Films/Séries IPTV sont désactivés), serveur ajouté sur le site réessayé à chaque synchro avec message d'erreur, un même serveur Plex lié sur la TV et le site n'est plus dupliqué, liste des serveurs Plex du site mieux présentée
 - Bureau : la lecture n'affichait aucune image quand la vidéo est en MPEG-2, en HEVC sans décodeur matériel ou en H.264 10 bits / 4:2:2 ; avec ffmpeg, la vidéo est maintenant convertie en H.264 (1080p maximum) et le son AAC reste converti à part. Une seule conversion ffmpeg reste vivante par hôte
 - Bureau : le message d'échec de lecture indique la vraie cause (code HTTP du fournisseur, codec vidéo non pris en charge, serveur injoignable) au lieu de toujours évoquer la limite de connexions ; en cas de refus 403 / 458 / 509, l'autre format (m3u8 ou ts) est essayé avant de conclure
 - Bureau : sans User-Agent choisi dans la source, les flux sont demandés avec celui de VLC (les fournisseurs refusent souvent celui d'Electron et de ffmpeg)

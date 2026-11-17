@@ -1863,4 +1863,5 @@
     <string name="sport_ok_hint">ตกลงที่แมตช์: ข้อมูลแมตช์หรือเล่น</string>
     <string name="sport_no_events">ยังไม่มีช่วงเด็ด</string>
     <string name="sport_table_hidden">ซ่อนตารางคะแนนในโหมดไม่สปอยล์</string>
+    <string name="mlib_cloud_failed">เชื่อมต่อคลัง “%1$s” ที่เพิ่มจากเว็บไซต์ไม่สำเร็จ ทีวีจะลองใหม่เมื่อซิงก์ครั้งถัดไป โปรดตรวจสอบว่าเซิร์ฟเวอร์เข้าถึงได้</string>
 </resources>
