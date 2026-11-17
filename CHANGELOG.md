@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.55] — 2026-11-17 (Android) · Bureau 1.2.71 · Worker
+
 ## Bureau 1.2.70 — 2026-11-17
 
 ### Corrigé
