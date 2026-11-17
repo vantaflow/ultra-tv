@@ -7,10 +7,21 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Corrigé
 - Direct (TV) : un titre de programme contenant un retour à la ligne (données du guide) restait sur deux lignes et poussait le programme suivant hors de la carte.
 - Réglages (TV) : espace vide supprimé entre le menu de gauche et la liste des rubriques.
+- Sport : le nombre de matchs s'accorde correctement (« 1 match », « 2 matchs ») dans les 14 langues, sur Android et sur le bureau.
 
 ### Modifié
 - Tableau de bord : une seule carte « Service de suivi » (service actuel et son état, Trakt et Simkl avec Connecter / Déconnecter, choix du service actif) ; nouvelle section « Profils » pour choisir les sources visibles de chaque profil, synchronisée avec les appareils.
 - Site et tableau de bord : mise en page revue (plus de vide en fin de rangée, cartes côte à côte à la même hauteur avec boutons alignés, appairage sur deux colonnes, pages à carte unique centrées, mobile en pleine largeur).
+
+### Ajouté
+- Jellyfin et Emby : ajoute un serveur Jellyfin ou Emby comme source de bibliothèque (films, séries, reprise), sur Android et sur le bureau.
+- Plex : liaison d'un compte Plex et lecture des bibliothèques du serveur (Android et bureau).
+- NAS : parcours d'un partage réseau (dossiers, films et séries) comme source de bibliothèque, avec noms de fichiers nettoyés pour retrouver les affiches.
+- Assistant d'ajout de bibliothèque en 3 étapes (trouver le serveur, se connecter, choisir les bibliothèques) avec détection des serveurs sur le réseau local.
+- Écran « Mes bibliothèques » : état de chaque serveur (en ligne, relais, hors ligne), affiches avec progression et vue par dossiers pour le NAS.
+- Sport multi-fournisseurs côté Worker : football-data, API-Football, Jolpica-F1 et TheSportsDB, avec repli d'un fournisseur à l'autre.
+- Écran Sport unifié selon la maquette (Android et bureau) : feuille de match, classement complet, « Mes ligues » et mode sans spoiler.
+- Bureau : « Depuis le début » sur le direct (Xtream avec archive), bouton « Retour au direct » pendant le rattrapage et « Regarder depuis le début » dans le guide (#176).
 
 ## [1.3.40] — 2026-11-16 (Android) · Bureau 1.2.65 · Worker
 
