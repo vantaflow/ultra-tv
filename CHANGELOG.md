@@ -4,6 +4,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Bureau : la lecture n'affichait aucune image quand la vidéo est en MPEG-2, en HEVC sans décodeur matériel ou en H.264 10 bits / 4:2:2 ; avec ffmpeg, la vidéo est maintenant convertie en H.264 (1080p maximum) et le son AAC reste converti à part. Une seule conversion ffmpeg reste vivante par hôte
+- Bureau : le message d'échec de lecture indique la vraie cause (code HTTP du fournisseur, codec vidéo non pris en charge, serveur injoignable) au lieu de toujours évoquer la limite de connexions ; en cas de refus 403 / 458 / 509, l'autre format (m3u8 ou ts) est essayé avant de conclure
+- Bureau : sans User-Agent choisi dans la source, les flux sont demandés avec celui de VLC (les fournisseurs refusent souvent celui d'Electron et de ffmpeg)
+- Bureau : sans ffmpeg complet (Linux : encodeur H.264 absent du ffmpeg embarqué), le message dit comment l'installer (apt / dnf install ffmpeg, brew install ffmpeg sous macOS)
+
+### Ajouté
+- Bureau : « Ouvrir dans VLC » pour le direct, les films et les séries (panneau Lecteur et message d'échec), avec le User-Agent et le Referer de la source ; VLC est détecté dans Program Files et le registre (Windows), /Applications (macOS), le PATH, flatpak et snap (Linux)
+
 ## [1.3.48] — 2026-11-17 (Android)
 
 ### Ajouté
