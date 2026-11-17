@@ -209,12 +209,12 @@ async function read(cache, k) {
  * Réponse mémorisée [ttl] ; sinon [produce] (qui renvoie un objet, ou null en cas d'échec amont ; `__ttl` y impose un
  * cache plus long). Un échec resert la copie ancienne (24 h, marquée stale) et, à défaut, mémorise l'échec 30 s.
  */
-async function through(cache, k, ttl, produce) {
+async function through(cache, k, ttl, produce, ctx = null) {
   const fresh = await read(cache, k);
   if (fresh && fresh.err !== true) return json(fresh, 200, ttl);
-  if (fresh && fresh.err === true) return json({ error: "upstream" }, 502);
+  if (fresh && fresh.err === true) { ctx?.log("cache", k, null, "échec récent mémorisé (30 s), aucun appel amont"); return json({ error: "upstream" }, 502); }
   let body = null;
-  try { body = await produce(); } catch { body = null; }
+  try { body = await produce(); } catch (e) { ctx?.log("sports", k, null, `exception : ${String(e?.message || e).slice(0, 120)}`); body = null; }
   if (body) {
     const t = body.__ttl || ttl;
     delete body.__ttl;
@@ -223,7 +223,8 @@ async function through(cache, k, ttl, produce) {
     return json(body, 200, t);
   }
   const old = await read(cache, `stale/${k}`);
-  if (old) return json({ ...old, stale: true }, 200, TTL.fail);
+  if (old) { ctx?.log("sports", k, null, "amont en échec : dernière réponse connue resservie (stale)"); return json({ ...old, stale: true }, 200, TTL.fail); }
+  ctx?.log("sports", k, null, "502 : aucun fournisseur n'a répondu et aucune copie ancienne");
   await put(cache, k, TTL.fail, { err: true });
   return json({ error: "upstream" }, 502);
 }
@@ -235,9 +236,9 @@ async function through(cache, k, ttl, produce) {
 async function viaProviders(ctx, key, cap, run, isEmpty = () => false) {
   let emptyBest = null;
   for (const p of candidates(key, cap, ctx.env)) {
-    if (!(await ctx.canUse(p.id, cap))) continue;
+    if (!(await ctx.canUse(p.id, cap))) { ctx.log(p.id, cap, null, `ignoré pour ${key} : budget épuisé ou fournisseur en pause`); continue; }
     let r = null;
-    try { r = await run(p, p.leagues[key].code); } catch { r = null; }
+    try { r = await run(p, p.leagues[key].code); } catch (e) { ctx.log(p.id, cap, null, `exception pour ${key} : ${String(e?.message || e).slice(0, 120)}`); r = null; }
     if (!r) continue;
     if (isEmpty(r)) { emptyBest ||= { prov: p.id, r }; continue; }
     return { prov: p.id, r };
@@ -266,14 +267,14 @@ async function liveAll(ctx, key, now) {
   const res = await through(ctx.cache, "live/all", TTL.live, async () => {
     const lists = [];
     for (const id of ["fd", "sdb"]) {
-      if (!(await ctx.canUse(id, "live"))) continue;
+      if (!(await ctx.canUse(id, "live"))) { if (PROVIDERS[id].hasKey(ctx.env)) ctx.log(id, "live", null, "ignoré : budget épuisé ou fournisseur en pause"); continue; }
       let l = null;
-      try { l = await PROVIDERS[id].adapter.live(ctx); } catch { l = null; }
+      try { l = await PROVIDERS[id].adapter.live(ctx); } catch (e) { ctx.log(id, "live", null, `exception : ${String(e?.message || e).slice(0, 120)}`); l = null; }
       if (l) lists.push(l);
     }
     if (!lists.length) return null;
     return { events: mergeLive(lists) };
-  });
+  }, ctx);
   if (res.status !== 200) return null;
   return (await res.json()).events || [];
 }
@@ -289,7 +290,7 @@ async function liveReserved(ctx, key, league, now) {
     if (!(await ctx.canUse("af", "live"))) return null;
     const l = await af.adapter.live(ctx, key, league, af.leagues[key].code);
     return l ? { events: l.map((x) => x.ev) } : null;
-  });
+  }, ctx);
   return res.status === 200 ? (await res.json()).events || [] : [];
 }
 
@@ -322,7 +323,7 @@ export async function sportsLeagueProxy(searchParams, env, opts = {}) {
     if (view === "live") {
       const all = await liveAll(ctx, key, now);
       const extra = await liveReserved(ctx, key, league, now);
-      if (all === null && !extra.length) return json({ error: "upstream" }, 502);
+      if (all === null && !extra.length) { ctx.log("sports", `live/${key}`, null, "502 : aucune source de direct n'a répondu"); return json({ error: "upstream" }, 502); }
       let events = (all || []).filter((x) => x.league === key).map((x) => x.ev);
       if (extra.length) events = mergeEvents(events, extra, { addUnmatched: true });
       return json({ league: key, events }, 200, TTL.live);
@@ -335,7 +336,7 @@ export async function sportsLeagueProxy(searchParams, env, opts = {}) {
         const body = { league: key, season: got.r.season || seasonOf(league, now), events: windowed(dedupe(got.r.events), now), src: got.prov };
         if (LONG_TTL[got.prov]) body.__ttl = LONG_TTL[got.prov].schedule;
         return body;
-      });
+      }, ctx);
       return await overlayLive(ctx, key, res);
     }
 
@@ -345,7 +346,7 @@ export async function sportsLeagueProxy(searchParams, env, opts = {}) {
       const body = { league: key, season: got.r.season || seasonOf(league, now), rows: got.r.rows.slice(0, 40), src: got.prov };
       if (LONG_TTL[got.prov]) body.__ttl = LONG_TTL[got.prov].table;
       return body;
-    });
+    }, ctx);
   } finally {
     await ctx.flush();
   }
@@ -414,7 +415,7 @@ export async function sportsMatchProxy(searchParams, env, opts = {}) {
     const prov = PROVIDERS[parsed.prov];
     if (!(await ctx.canUse(prov.id, "match"))) return await staleOrFail();
     let body = null;
-    try { body = await prov.adapter.match(ctx, parsed.raw, now); } catch { body = null; }
+    try { body = await prov.adapter.match(ctx, parsed.raw, now); } catch (e) { ctx.log(prov.id, "match", null, `exception : ${String(e?.message || e).slice(0, 120)}`); body = null; }
     if (!body) return await staleOrFail();
     if (parsed.prov === "fd") {
       // la ligue se déduit du code de compétition football-data ; l'enrichissement est facultatif

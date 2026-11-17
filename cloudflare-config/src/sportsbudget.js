@@ -5,15 +5,34 @@
 //     réel) ou, si le stockage Turso est actif, dans le KV Turso (compteur global) ;
 //   - un 429 met le fournisseur en pause (« cooldown ») pour que le suivant prenne le relais ;
 //   - chaque fetch, lecture ou écriture de cache compte pour une sous-requête : plafond de 50 par appel.
-// Aucune clé ni URL n'est jamais journalisée ; les adaptateurs n'émettent aucun log.
+// Les échecs amont sont journalisés (console.error) : fournisseur, capacité, statut, point d'accès — jamais une clé (en-tête
+// ou segment d'URL de TheSportsDB) ni un paramètre secret. Les adaptateurs eux-mêmes n'émettent aucun log.
 
 export const MAX_SUBREQUESTS = 50;
+// Les Workers n'envoient AUCUN User-Agent par défaut (seulement `Cf-Worker`) : certains amonts derrière Cloudflare
+// (TheSportsDB, Jolpica) refusent ou limitent plus sévèrement ces requêtes. Identification explicite de l'application.
+export const UPSTREAM_UA = "Mozilla/5.0 (compatible; UltraTV-Worker/1.0; +https://ultratv.dpdns.org)";
 const STATE_KEY = "sportsdata/budget-state";
 const MIN = 60000;
 const DAY = 86400000;
 
+/** URL sans secret : la clé TheSportsDB est un segment de chemin (/json/<clé>/…), les autres passent en en-tête. */
+export function safeUrl(url) {
+  try {
+    const u = new URL(url);
+    for (const k of [...u.searchParams.keys()]) if (/key|token|secret|auth/i.test(k)) u.searchParams.set(k, "…");
+    return `${u.host}${u.pathname.replace(/\/json\/[^/]+\//, "/json/…/")}${u.search}`;
+  } catch { return "url-invalide"; }
+}
+
 export function createCtx(env, { fetchFn = fetch, cache = null, now = Date.now(), registry = {} } = {}) {
   let subs = 0;
+  const trace = [];
+  const logFail = (id, cap, url, why) => {
+    const line = `${id}/${cap} ${why}${url ? ` ${safeUrl(url)}` : ""}`;
+    trace.push(line);
+    console.error(`[sports] ${line}`);
+  };
   const bump = () => { if (subs >= MAX_SUBREQUESTS) return false; subs++; return true; };
   const wrapped = cache ? {
     async match(req) { return bump() ? cache.match(req) : undefined; },
@@ -90,17 +109,38 @@ export function createCtx(env, { fetchFn = fetch, cache = null, now = Date.now()
     async cooldown(id, ms) { await load(); entry(id).cool = now + ms; dirty = true; },
     /** JSON de l'amont (budgeté) ou null : refus de budget, 429, erreur HTTP, corps illisible ou erreur applicative. */
     async fetchJson(id, cap, url, headers = {}) {
-      if (!(await ctx.take(id, cap))) return null;
+      if (!(await ctx.take(id, cap))) { logFail(id, cap, null, "refusé : budget, pause ou plafond de sous-requêtes"); return null; }
       let r;
-      try { r = await fetchFn(url, { headers: { accept: "application/json", ...headers } }); } catch { return null; }
-      if (r.status === 429) { await ctx.cooldown(id, MIN); return null; }
-      if (r.status !== 200) return null;
+      try { r = await fetchFn(url, { headers: { accept: "application/json", "user-agent": UPSTREAM_UA, ...headers } }); }
+      catch (e) { logFail(id, cap, url, `exception réseau (${String(e?.message || e).slice(0, 80)})`); return null; }
+      if (r.status === 429) {
+        // Retry-After (secondes) si l'amont le donne : 15 s à 10 min ; sinon 1 min
+        const ra = Number.parseInt(r.headers?.get?.("retry-after") || "", 10);
+        const pause = Number.isFinite(ra) ? Math.min(10 * MIN, Math.max(15000, ra * 1000)) : MIN;
+        logFail(id, cap, url, `HTTP 429 (pause ${Math.round(pause / 1000)} s)`);
+        await ctx.cooldown(id, pause);
+        return null;
+      }
+      if (r.status !== 200) { logFail(id, cap, url, `HTTP ${r.status}`); return null; }
       let body;
-      try { body = await r.json(); } catch { return null; }
+      try {
+        const txt = await r.text();
+        // TheSportsDB répond « 200 » avec un corps VIDE (et non {"table":null}) quand il n'a rien : classement NBA, UCL, NFL…
+        // C'est « aucune donnée », pas une panne : on ne doit ni mettre le fournisseur en échec ni répondre 502.
+        body = txt.trim() === "" ? {} : JSON.parse(txt);
+      } catch { logFail(id, cap, url, "corps illisible (JSON invalide)"); return null; }
+      if (body === null || typeof body !== "object") { logFail(id, cap, url, "corps inattendu (ni objet ni tableau)"); return null; }
       const verdict = registry[id]?.failed?.(body);
-      if (verdict) { await ctx.cooldown(id, verdict === "quota" ? DAY / 4 : MIN); return null; }
+      if (verdict) {
+        logFail(id, cap, url, `erreur applicative (${verdict})`);
+        await ctx.cooldown(id, verdict === "quota" ? DAY / 4 : MIN);
+        return null;
+      }
       return body;
     },
+    /** Journal : lignes déjà émises pour cet appel du Worker (tests, résumé d'un 502). */
+    trace,
+    log: logFail,
     /** Écriture groupée des compteurs : au plus une par appel du Worker. */
     async flush() {
       if (!dirty || !state) return;
