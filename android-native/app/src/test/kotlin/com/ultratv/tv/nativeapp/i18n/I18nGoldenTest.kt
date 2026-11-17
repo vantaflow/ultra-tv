@@ -64,7 +64,7 @@ class I18nGoldenTest {
 
     private companion object {
         /** Noms des langues communautaires (hors golden : liste susceptible de grandir sans toucher les 4 langues officielles). */
-        val COMMUNITY_LANG_NAMES = listOf("Polish", "PortugueseBr", "Romanian", "NorwegianBokmal", "Czech", "Finnish", "Danish", "Greek", "Thai", "Vietnamese")
+        val COMMUNITY_LANG_NAMES = listOf("Polish", "PortugueseBr", "Romanian", "NorwegianBokmal", "Czech", "Finnish", "Danish", "Greek", "Thai", "Vietnamese", "Turkish")
             .map { "DesignStrings.langName($it)" }.toSet()
     }
 }

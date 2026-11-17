@@ -21,7 +21,7 @@ class StringsXmlCompletenessTest {
         val OFFICIAL = listOf("fr", "es", "ar")
 
         /** Langues proposées par la communauté, éventuellement partielles (« pl » : premier jet). */
-        val COMMUNITY: List<String> = listOf("pl", "pt-rBR", "ro", "nb", "cs", "fi", "da", "el", "th", "vi")
+        val COMMUNITY: List<String> = listOf("pl", "pt-rBR", "ro", "nb", "cs", "fi", "da", "el", "th", "vi", "tr")
 
         /** Quantités de pluriel CLDR valides par langue (sans « other » : il est toujours exigé). */
         val QUANTITIES = mapOf(
@@ -39,6 +39,7 @@ class StringsXmlCompletenessTest {
             "el" to setOf("one", "other"),
             "th" to setOf("other"),
             "vi" to setOf("other"),
+            "tr" to setOf("one", "other"),
         )
     }
 

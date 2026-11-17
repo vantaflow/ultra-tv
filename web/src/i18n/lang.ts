@@ -14,12 +14,13 @@ export const LANGS = [
   { code: "el", label: "Ελληνικά", dir: "ltr", locale: "el-GR" },
   { code: "th", label: "ไทย", dir: "ltr", locale: "th-TH" },
   { code: "vi", label: "Tiếng Việt", dir: "ltr", locale: "vi-VN" },
+  { code: "tr", label: "Türkçe", dir: "ltr", locale: "tr-TR" },
 ] as const;
 
 export type Lang = (typeof LANGS)[number]["code"];
 
 /** Langues communautaires : traductions incomplètes tolérées (repli sur l'anglais). Polonais, portugais du Brésil : premier jet, à relire via Weblate. */
-export const COMMUNITY_LANGS: readonly Lang[] = ["pl", "pt-BR", "ro", "nb", "cs", "fi", "da", "el", "th", "vi"];
+export const COMMUNITY_LANGS: readonly Lang[] = ["pl", "pt-BR", "ro", "nb", "cs", "fi", "da", "el", "th", "vi", "tr"];
 
 /** Langue source : référence des clés, et repli quand une clé manque. */
 export const SOURCE_LANG: Lang = "en";

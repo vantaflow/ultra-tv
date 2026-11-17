@@ -29,7 +29,8 @@ enum class AppLang(val code: String, val displayName: String, val rtl: Boolean =
     Danish("da", "Dansk"),
     Greek("el", "Ελληνικά"),
     Thai("th", "ไทย"),
-    Vietnamese("vi", "Tiếng Việt");
+    Vietnamese("vi", "Tiếng Việt"),
+    Turkish("tr", "Türkçe");
 
     /** Langue de l'appareil (« pt » pour pt-BR) : sert à reconnaître la langue du système. */
     val baseLanguage: String get() = code.substringBefore('-')
