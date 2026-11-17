@@ -10,6 +10,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Modifié
 - Tableau de bord : une seule carte « Service de suivi » (service actuel et son état, Trakt et Simkl avec Connecter / Déconnecter, choix du service actif) ; nouvelle section « Profils » pour choisir les sources visibles de chaque profil, synchronisée avec les appareils.
+- Site et tableau de bord : mise en page revue (plus de vide en fin de rangée, cartes côte à côte à la même hauteur avec boutons alignés, appairage sur deux colonnes, pages à carte unique centrées, mobile en pleine largeur).
 
 ## [1.3.40] — 2026-11-16 (Android) · Bureau 1.2.65 · Worker
 
