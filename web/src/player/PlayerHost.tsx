@@ -39,7 +39,7 @@ import { LiveReconnect } from "./reconnect";
 import { effectivePreferred, trackLabel } from "./trackChoice";
 import { PlayerEngine, type PlayState, type Stats, type Tracks } from "./engine";
 import { stalkerCandidate, candidates, mediaClientFor, mediaItemIdOf, mediaPlayback, type Candidate } from "./resolve";
-import { isMediaType, type MediaClient, type ReportKind } from "@/net/mediaServer";
+import { isMediaType, type MediaApi, type ReportKind } from "@/net/mediaServer";
 import { isTv } from "@/lib/tv";
 import { STALKER_UA } from "@/net/stalker";
 import { AudioWatcher, nextAudioFallback, readAudioSample, revertToSilent } from "./audio";
@@ -421,7 +421,7 @@ export function PlayerHost() {
     if (!target || !source || !isMediaType(source.type) || target.kind === "live") return;
     let dead = false;
     let itemId: string | null = null;
-    let client: MediaClient | null = null;
+    let client: MediaApi | null = null;
     const send = (k: ReportKind, paused: boolean) => {
       if (!client || !itemId) return;
       void client.report(k, itemId, videoRef.current?.currentTime ?? 0, paused);

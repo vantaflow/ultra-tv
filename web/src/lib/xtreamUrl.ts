@@ -74,7 +74,7 @@ export function missingRequired(kind: string, s: Source): boolean {
   // Portail Stalker : adresse du portail et MAC complète ; identifiant / mot de passe facultatifs.
   if (s.type === "stalker") return !s.server.trim() || s.username.replace(/[^0-9a-f]/gi, "").length !== 12;
   // Serveur Jellyfin / Emby : adresse et mot de passe (ou clé API, identifiant vide).
-  if (s.type === "jellyfin" || s.type === "emby") return !s.server.trim() || !s.password;
+  if (s.type === "jellyfin" || s.type === "emby" || s.type === "plex") return !s.server.trim() || !s.password;
   if (kind === "m3u-link") return !s.m3uUrl.trim();
   return false;
 }

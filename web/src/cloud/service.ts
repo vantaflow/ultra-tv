@@ -372,7 +372,7 @@ export async function shareSource(source: Source, target: ShareTarget): Promise<
   const token = await getToken();
   if (!token) return { ok: false, reason: "error" };
   // Serveur Jellyfin / Emby : jamais partagé avec le compte (identifiants personnels, bibliothèque sur le réseau de l'utilisateur).
-  if (source.type === "jellyfin" || source.type === "emby") return { ok: false, reason: "unsupported" };
+  if (source.type === "jellyfin" || source.type === "emby" || source.type === "plex") return { ok: false, reason: "unsupported" };
   const st = source.type === "stalker" ? unpackCreds(source.password) : null;
   const input: ProviderInput = {
     id: source.cloudId,

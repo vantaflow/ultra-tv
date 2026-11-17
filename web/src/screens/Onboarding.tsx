@@ -86,7 +86,7 @@ export function Onboarding() {
   const pickType = (k: SourceKind) => {
     setKind(k);
     if (k === "cloud") { setStep("cloud"); return; }
-    setSrc({ ...emptySource(), type: k === "xtream" ? "xtream" : k === "stalker" ? "stalker" : k === "jellyfin" || k === "emby" ? k : "m3u", username: k === "stalker" ? MAC_PREFIX : "" });
+    setSrc({ ...emptySource(), type: k === "xtream" ? "xtream" : k === "stalker" ? "stalker" : k === "jellyfin" || k === "emby" || k === "plex" ? k : "m3u", username: k === "stalker" ? MAC_PREFIX : "" });
     setFileText(null); setFileInfo(""); setErr(null);
     setStep("form");
   };
@@ -95,7 +95,7 @@ export function Onboarding() {
     setErr(null);
     // Adresse get.php / player_api.php collée en M3U : c'est une source Xtream Codes (get.php est souvent bloqué).
     const xt = kind === "m3u-link" ? convertToXtream(src) : null;
-    const s = { ...(xt ?? src), name: src.name.trim() || (kind === "xtream" || kind === "stalker" || kind === "jellyfin" || kind === "emby" || xt ? (xt ?? src).server.replace(/^https?:\/\//, "").split(/[:/]/)[0]! : t("src.m3uLink")) };
+    const s = { ...(xt ?? src), name: src.name.trim() || (kind === "xtream" || kind === "stalker" || kind === "jellyfin" || kind === "emby" || kind === "plex" || xt ? (xt ?? src).server.replace(/^https?:\/\//, "").split(/[:/]/)[0]! : t("src.m3uLink")) };
     // On valide la source EFFECTIVE (après conversion) : une adresse get.php devient Xtream, m3uUrl est alors vide.
     if (missingRequired(kind, s)) { setErr(t("src.err.required")); return; }
     if (kind === "m3u-file" && fileText == null) { setErr(t("src.err.required")); return; }
@@ -167,7 +167,7 @@ export function Onboarding() {
             <p className="lead" style={{ marginTop: 12 }}>{t("src.whichLead")}</p>
           </div>
           <div className="choice-grid">
-            {([...(cloudAvailable() ? [["cloud", "globe", "src.cloud", "src.cloudD"]] : []), ["xtream", "source", "src.xtream", "src.xtreamD"], ["stalker", "tv", "src.stalker", "src.stalkerD"], ["jellyfin", "source", "src.jellyfin", "src.jellyfinD"], ["emby", "source", "src.emby", "src.embyD"], ["m3u-link", "link", "src.m3uLink", "src.m3uLinkD"], ["m3u-file", "file", "src.m3uFile", "src.m3uFileD"]] as [SourceKind, IconName, "src.xtream", "src.xtreamD"][]).map(([k, ic, l, d], i) => (
+            {([...(cloudAvailable() ? [["cloud", "globe", "src.cloud", "src.cloudD"]] : []), ["xtream", "source", "src.xtream", "src.xtreamD"], ["stalker", "tv", "src.stalker", "src.stalkerD"], ["jellyfin", "source", "src.jellyfin", "src.jellyfinD"], ["emby", "source", "src.emby", "src.embyD"], ["plex", "source", "src.plex", "src.plexD"], ["m3u-link", "link", "src.m3uLink", "src.m3uLinkD"], ["m3u-file", "file", "src.m3uFile", "src.m3uFileD"]] as [SourceKind, IconName, "src.xtream", "src.xtreamD"][]).map(([k, ic, l, d], i) => (
               <button key={k} className={`choice${i === 0 ? " first" : ""}`} onClick={() => pickType(k)}>
                 <span className="ico"><Icon name={ic} size={30} /></span>
                 <span><b>{t(l)}</b><span className="s">{t(d)}</span></span>
@@ -195,7 +195,7 @@ export function Onboarding() {
         <main onKeyDown={(e) => { if (e.key === "Enter" && !busy && (e.target as HTMLElement).tagName === "INPUT") void submit(); }}>
           <div>
             <div className="eyebrow">{t("src.step", { a: 2, b: 3 })}</div>
-            <h1 style={{ marginTop: 8 }}>{t(kind === "xtream" ? "src.xtream" : kind === "stalker" ? "src.stalker" : kind === "jellyfin" ? "src.jellyfin" : kind === "emby" ? "src.emby" : kind === "m3u-link" ? "src.m3uLink" : "src.m3uFile")}</h1>
+            <h1 style={{ marginTop: 8 }}>{t(kind === "xtream" ? "src.xtream" : kind === "stalker" ? "src.stalker" : kind === "jellyfin" ? "src.jellyfin" : kind === "emby" ? "src.emby" : kind === "plex" ? "src.plex" : kind === "m3u-link" ? "src.m3uLink" : "src.m3uFile")}</h1>
           </div>
           <SourceForm kind={kind as FormKind} value={src} onChange={setSrc} fileInfo={fileInfo}
             onPickFile={async (f) => { setFileText(await f.text()); setFileInfo(t("src.fileChosen", { n: f.name, k: Math.round(f.size / 1024) })); setSrc((s) => ({ ...s, m3uUrl: `file:${f.name}`, name: s.name || f.name.replace(/\.[^.]+$/, "") })); }} />
@@ -231,7 +231,7 @@ export function Onboarding() {
         </main>
       )}
 
-      {step === "sync" && <FirstSync name={src.name} kindLabel={src.type === "xtream" ? "Xtream Codes" : src.type === "stalker" ? "Stalker" : src.type === "jellyfin" ? "Jellyfin" : src.type === "emby" ? "Emby" : "M3U"} onRetry={() => { started.current = false; setStep("form"); }} onOpen={() => nav("/", { replace: true })} />}
+      {step === "sync" && <FirstSync name={src.name} kindLabel={src.type === "xtream" ? "Xtream Codes" : src.type === "stalker" ? "Stalker" : src.type === "jellyfin" ? "Jellyfin" : src.type === "emby" ? "Emby" : src.type === "plex" ? "Plex" : "M3U"} onRetry={() => { started.current = false; setStep("form"); }} onOpen={() => nav("/", { replace: true })} />}
     </div>
   );
 }

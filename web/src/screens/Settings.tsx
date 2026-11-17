@@ -126,10 +126,10 @@ function SourcesPane() {
         const isActive = active?.id === s.id;
         return (
           <div key={s.id} className={`src-card${isActive ? " active" : ""}`}>
-            <span className="ico"><Icon name={s.type === "xtream" || s.type === "jellyfin" || s.type === "emby" ? "source" : s.type === "stalker" ? "tv" : "list"} size={26} /></span>
+            <span className="ico"><Icon name={s.type === "xtream" || isMediaType(s.type) ? "source" : s.type === "stalker" ? "tv" : "list"} size={26} /></span>
             <span className="grow">
               <b className="ellipsis" style={{ display: "block" }}>{s.name}</b>
-              <div className="meta">{t("set.sourceMeta", { type: s.type === "xtream" ? "Xtream Codes" : s.type === "stalker" ? "Stalker" : s.type === "jellyfin" ? "Jellyfin" : s.type === "emby" ? "Emby" : "M3U", n: s.counts.live.toLocaleString(), m: s.counts.movie.toLocaleString(), s: s.counts.series.toLocaleString() })}{isActive ? ` · ${t("set.active")}` : ""}</div>
+              <div className="meta">{t("set.sourceMeta", { type: s.type === "xtream" ? "Xtream Codes" : s.type === "stalker" ? "Stalker" : s.type === "jellyfin" ? "Jellyfin" : s.type === "emby" ? "Emby" : s.type === "plex" ? "Plex" : "M3U", n: s.counts.live.toLocaleString(), m: s.counts.movie.toLocaleString(), s: s.counts.series.toLocaleString() })}{isActive ? ` · ${t("set.active")}` : ""}</div>
               {(s.cloudId || cloud.paired) && <div className="meta" style={{ fontWeight: 700 }}>{cloudBadge(s, t)}</div>}
             </span>
             {!isActive && <button className="btn sm" onClick={() => {
@@ -258,7 +258,7 @@ function EditSource({ source, onClose }: { source: Source; onClose: () => void }
   const [s, setS] = useState(source);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const kind: SourceKind = s.type === "xtream" ? "xtream" : s.type === "stalker" ? "stalker" : s.type === "jellyfin" || s.type === "emby" ? s.type : s.m3uUrl.startsWith("file:") ? "m3u-file" : "m3u-link";
+  const kind: SourceKind = s.type === "xtream" ? "xtream" : s.type === "stalker" ? "stalker" : isMediaType(s.type) ? s.type : s.m3uUrl.startsWith("file:") ? "m3u-file" : "m3u-link";
   return (
     <Modal wide title={t("common.edit")} onClose={onClose} foot={
       <>

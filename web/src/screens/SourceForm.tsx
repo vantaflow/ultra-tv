@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PlexLinkField } from "./PlexLink";
 import { useT } from "@/i18n";
 import type { Source } from "@/db/types";
 import { Icon } from "@/ui/Icon";
@@ -8,7 +9,7 @@ import { currentTransport } from "@/net/transport";
 import { parseXtreamUrl } from "@/lib/xtreamUrl";
 import { formatMacTyping, packCreds, unpackCreds } from "@/net/stalker";
 
-export type SourceKind = "xtream" | "m3u-link" | "m3u-file" | "stalker" | "jellyfin" | "emby";
+export type SourceKind = "xtream" | "m3u-link" | "m3u-file" | "stalker" | "jellyfin" | "emby" | "plex";
 
 export function SourceForm({ kind, value, onChange, fileInfo, onPickFile }: {
   kind: SourceKind; value: Source; onChange: (s: Source) => void; fileInfo?: string; onPickFile?: (f: File) => void;
@@ -57,6 +58,7 @@ export function SourceForm({ kind, value, onChange, fileInfo, onPickFile }: {
           <span className="muted full">{t("src.mediaHint")}</span>
         </>
       )}
+      {kind === "plex" && <PlexLinkField value={value} onChange={onChange} />}
       {kind === "stalker" && (() => {
         // Identifiant / mot de passe facultatifs du portail : rangés ensemble dans `password` (voir net/stalker.ts).
         const creds = unpackCreds(value.password);

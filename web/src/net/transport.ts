@@ -125,6 +125,8 @@ export interface ReqOptions {
   headers?: Record<string, string>;
   /** POST JSON (serveurs Jellyfin / Emby : connexion, rapports de lecture) ; GET par défaut. Relayé par le proxy Electron et le mode direct. */
   post?: string;
+  /** En-tête `Accept` (Plex répond en XML sans `application/json`). Relayé tel quel par le proxy Electron et le mode direct. */
+  accept?: string;
 }
 
 /** En-têtes supplémentaires relayés par le proxy Electron / Cloudflare (liste fermée). */
@@ -180,6 +182,7 @@ export async function transportFetch(t: Transport, url: string, o: ReqOptions = 
   try {
     const headers = requestHeaders(t, o);
     if (o.post !== undefined) headers["Content-Type"] = "application/json";
+    if (o.accept) headers["Accept"] = o.accept;
     const res = await fetch(wrapUrl(t, url), { signal: idle.signal, headers, ...(o.post !== undefined ? { method: "POST", body: o.post } : {}) });
     if (!res.ok) { idle.stop(); throw new HttpError(res.status); }
     if (!res.body) { idle.stop(); return res; }

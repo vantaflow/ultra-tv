@@ -3,7 +3,8 @@ import type { Source } from "@/db/types";
 import { credsOf, stalkerOf } from "@/sync/core";
 import { db } from "@/db/db";
 import { isStalkerLink, parseStalkerLink, stalkerLink, type StalkerClient } from "@/net/stalker";
-import { MediaClient, isMediaLink, numericId, parseMediaLink, resumeSeconds } from "@/net/mediaServer";
+import { MediaClient, isMediaLink, isMediaType, numericId, parseMediaLink, resumeSeconds, type MediaApi } from "@/net/mediaServer";
+import { PlexClient } from "@/net/plex";
 import { currentTransport } from "@/net/transport";
 import { episodeUrl, liveUrl, movieUrl, timeshiftUrl } from "@/net/xtream";
 import type { Format } from "./engine";
@@ -39,7 +40,7 @@ export interface Candidate { url: string; format: Format; label: string }
 
 export function candidates(source: Source, t: PlayTarget, opts: { liveFormat: "m3u8" | "ts"; preferMp4: boolean; nativeHls?: boolean }): Candidate[] {
   // Portail Stalker : le lien n'existe qu'au moment de jouer (voir stalkerCandidate, asynchrone).
-  if (source.type === "stalker" || source.type === "jellyfin" || source.type === "emby") return [];
+  if (source.type === "stalker" || isMediaType(source.type)) return [];
   if (t.protectedStream) return [];
   const c = credsOf(source);
   const out: Candidate[] = [];
@@ -118,13 +119,18 @@ export function stalkerFormat(url: string, kind: PlayKind): Format {
 
 // ---------------------------------------------------------------- serveur Jellyfin / Emby
 
-const mediaClients = new Map<string, MediaClient>();
+const mediaClients = new Map<string, MediaApi>();
 
 /** Client gardé par source (la connexion est réutilisée d'un titre à l'autre). */
-export async function mediaClientFor(source: Source): Promise<MediaClient> {
+export async function mediaClientFor(source: Source): Promise<MediaApi> {
   const key = `${source.id}|${source.server}|${source.username}|${source.password}`;
   let c = mediaClients.get(key);
-  if (!c) { c = new MediaClient(await currentTransport(), { server: source.server, username: source.username, password: source.password }); mediaClients.set(key, c); }
+  if (!c) {
+    const creds = { server: source.server, username: source.username, password: source.password };
+    const t = await currentTransport();
+    c = source.type === "plex" ? new PlexClient(t, creds) : new MediaClient(t, creds);
+    mediaClients.set(key, c);
+  }
   return c;
 }
 

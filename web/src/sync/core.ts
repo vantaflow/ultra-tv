@@ -16,7 +16,8 @@ import { transportFetch, type Transport } from "@/net/transport";
 import type { Table } from "dexie";
 import { StalkerClient, absoluteUrl, normalizeMac, stalkerLink, unpackCreds, type StalkerCategory, type StalkerItem } from "@/net/stalker";
 import { StalkerSyncLog, type SyncType } from "@/net/stalkerLog";
-import { MediaClient, imageUrl, isMediaType, mediaLink, numericId } from "@/net/mediaServer";
+import { MediaClient, isMediaType, mediaLink, numericId, type MediaApi } from "@/net/mediaServer";
+import { PlexClient } from "@/net/plex";
 import {
   handshake, xtreamArray, xtreamStream,
   type XtreamCategory, type XtreamCreds, type XtreamLive, type XtreamSeries, type XtreamVod,
@@ -45,7 +46,9 @@ export function stalkerOf(t: Transport, s: Source, signal?: AbortSignal, log?: S
 }
 
 /** Client d'un serveur Jellyfin / Emby (connexion paresseuse : identifiant + mot de passe, ou clé API si l'identifiant est vide). */
-export function mediaOf(t: Transport, s: Source, signal?: AbortSignal): MediaClient {
+export function mediaOf(t: Transport, s: Source, signal?: AbortSignal): MediaApi {
+  // Plex : adresse = connexion choisie du serveur, mot de passe = jeton du serveur ; pas de connexion préalable.
+  if (s.type === "plex") return new PlexClient(t, { server: s.server, username: s.username, password: s.password }, signal);
   return new MediaClient(t, { server: s.server, username: s.username, password: s.password }, signal);
 }
 
@@ -688,9 +691,9 @@ async function syncMedia(ctx: Ctx, t: Transport, signal?: AbortSignal) {
     const series: SeriesRow[] = [];
     for (const it of items) {
       const ct = cleanTitle(it.name);
-      const common = { sourceId, catExt: cat.extId, name: it.name, title: ct.title, norm: normText(ct.title), words: wordKeys(sourceId, normText(ct.title)), year: it.year ?? ct.year, poster: it.primaryTag ? imageUrl(mc.base, it.id, "Primary", it.primaryTag) : null, rating: Math.min(10, it.rating ?? 0), added: it.added, url: mediaLink(it.id) };
+      const common = { sourceId, catExt: cat.extId, name: it.name, title: ct.title, norm: normText(ct.title), words: wordKeys(sourceId, normText(ct.title)), year: it.year ?? ct.year, poster: mc.image(it, "Primary") ?? null, rating: Math.min(10, it.rating ?? 0), added: it.added, url: mediaLink(it.id) };
       if (isMovie) movies.push({ ...common, ord: movieOrd++, streamId: numericId(it.id), ext: it.container ?? "" });
-      else series.push({ ...common, ord: serOrd++, seriesId: numericId(it.id), portalId: it.id, backdrop: it.backdropTag ? imageUrl(mc.base, it.id, "Backdrop", it.backdropTag, 1280) : null, plot: it.overview?.slice(0, 600) ?? null });
+      else series.push({ ...common, ord: serOrd++, seriesId: numericId(it.id), portalId: it.id, backdrop: mc.image(it, "Backdrop", 1280) ?? null, plot: it.overview?.slice(0, 600) ?? null });
       const k = `${cat.kind}:${cat.extId}`;
       catCount[k] = (catCount[k] ?? 0) + 1;
     }

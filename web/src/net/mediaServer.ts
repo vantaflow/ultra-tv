@@ -14,7 +14,7 @@ export const CLIENT_NAME = "Ultra TV";
 export const PAGE_SIZE = 300;
 const TICKS_PER_SEC = 10_000_000;
 
-export const isMediaType = (t: string | undefined): t is "jellyfin" | "emby" => t === "jellyfin" || t === "emby";
+export const isMediaType = (t: string | undefined): t is "jellyfin" | "emby" | "plex" => t === "jellyfin" || t === "emby" || t === "plex";
 
 /** Adresse saisie → adresse de base : schéma ajouté (http par défaut), « / » final et page web retirés ; null si inexploitable. */
 export function normalizeServerUrl(input: string): string | null {
@@ -206,7 +206,9 @@ export function vodInfoOf(it: Item) {
 }
 
 /** Épisodes d'une série présentés comme `get_series_info` (par saison) + lien interne de chaque épisode (`media`, voir resolve.ts). */
-export function seriesInfoOf(eps: Item[], base: string) {
+export function seriesInfoOf(eps: Item[], imageOf: string | ((e: Item) => string | undefined)) {
+  // [imageOf] : adresse du serveur (Jellyfin / Emby) ou fonction qui donne l'image d'un épisode (Plex).
+  const img = typeof imageOf === "function" ? imageOf : (e: Item) => (e.primaryTag ? imageUrl(imageOf, e.id, "Primary", e.primaryTag, 640) : undefined);
   const episodes: Record<string, Array<{ id: number; title: string; episode_num: number; container_extension: string; info: { plot?: string; movie_image?: string; duration_secs?: number } }>> = {};
   const media: Array<{ id: number; url: string }> = [];
   for (const e of eps) {
@@ -215,7 +217,7 @@ export function seriesInfoOf(eps: Item[], base: string) {
     const id = numericId(e.id);
     list.push({
       id, title: e.name, episode_num: e.episode ?? list.length + 1, container_extension: e.container ?? "",
-      info: { plot: e.overview ?? undefined, movie_image: e.primaryTag ? imageUrl(base, e.id, "Primary", e.primaryTag, 640) : undefined, duration_secs: durationSecs(e.runtimeTicks) || undefined },
+      info: { plot: e.overview ?? undefined, movie_image: img(e), duration_secs: durationSecs(e.runtimeTicks) || undefined },
     });
     media.push({ id, url: mediaLink(e.id) });
   }
@@ -225,10 +227,24 @@ export function seriesInfoOf(eps: Item[], base: string) {
 // ---------------------------------------------------------------- client réseau
 
 export interface MediaCreds { server: string; username: string; password: string }
+
+/** Ce que synchro, fiches et lecteur attendent d'un serveur multimédia (Jellyfin / Emby : [MediaClient] ; Plex : PlexClient). */
+export interface MediaApi {
+  readonly base: string;
+  probe(): Promise<void>;
+  libraries(): Promise<Library[]>;
+  items(libraryId: string, type: "Movie" | "Series"): Promise<Item[]>;
+  episodes(seriesId: string): Promise<Item[]>;
+  item(id: string): Promise<Item | null>;
+  /** Image de l'élément (affiche ou fond), sans jeton quand le serveur en exige un à l'affichage. */
+  image(it: Item, type: "Primary" | "Backdrop", maxWidth?: number): string | undefined;
+  playback(id: string): Promise<{ urls: { direct: string; hls: string }; item: Item | null }>;
+  report(kind: ReportKind, id: string, positionSec: number, paused: boolean): Promise<void>;
+}
 interface Session { token: string; userId: string }
 
 /** Client d'un serveur : connexion paresseuse (mémorisée, refaite une fois sur 401), listes, fiche, rapports. Jamais de journal d'adresse. */
-export class MediaClient {
+export class MediaClient implements MediaApi {
   private sess: Promise<Session> | null = null;
   readonly base: string;
   constructor(private t: Transport, private c: MediaCreds, private signal?: AbortSignal) {
@@ -307,6 +323,11 @@ export class MediaClient {
   }
 
   item = async (id: string): Promise<Item | null> => parseItem(await this.get((s) => itemUrl(this.base, s.userId, id)));
+
+  image(it: Item, type: "Primary" | "Backdrop", maxWidth = 480): string | undefined {
+    const tag = type === "Primary" ? it.primaryTag : it.backdropTag;
+    return tag ? imageUrl(this.base, it.id, type, tag, maxWidth) : undefined;
+  }
 
   /** Adresses de lecture d'un élément : directe d'abord, HLS (serveur) ensuite ; fiche (reprise) jointe si lisible. */
   async playback(id: string): Promise<{ urls: { direct: string; hls: string }; item: Item | null }> {

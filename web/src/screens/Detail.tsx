@@ -60,7 +60,7 @@ function useInfo<T>(source: Source, kind: "vod" | "series", id: number): { info:
             if (it) json = vodInfoOf(it);
           } else {
             const portalId = (await db.series.where("[sourceId+seriesId]").equals([source.cid, id]).first())?.portalId;
-            if (portalId) json = seriesInfoOf(await mc.episodes(portalId), mc.base);
+            if (portalId) json = seriesInfoOf(await mc.episodes(portalId), source.type === "plex" ? (e) => mc.image(e, "Primary", 640) : mc.base);
           }
           await db.details.put({ key, json, fetchedAt: Date.now() });
           if (!dead) setState({ info: json as T, error: false });
