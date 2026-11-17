@@ -221,6 +221,7 @@
   "player.reconnecting": "Reconnexion…",
   "player.noTracks": "Aucune piste alternative",
   "player.subtitlesFailed": "Impossible d'extraire ces sous-titres.",
+  "player.subtitlesLoading": "Extraction des sous-titres… les premiers repères arrivent dans quelques secondes.",
   "player.shortcuts": "Raccourcis",
   "player.sk.space": "Lecture / pause",
   "player.sk.arrows": "Reculer / avancer de 10 s (vidéos)",

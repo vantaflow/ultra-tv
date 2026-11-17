@@ -2,7 +2,7 @@
 const test = require("node:test");
 const { PassThrough } = require("node:stream");
 const assert = require("node:assert");
-const { ffmpegCandidates, findFfmpeg, parseTranscodePath, transcodeArgs, parseStreams, subtitleArgs, serveStreamInfo, serveTranscode } = require("../transcode.cjs");
+const { ffmpegCandidates, findFfmpeg, parseTranscodePath, transcodeArgs, parseStreams, subtitleArgs, serveStreamInfo, serveSubtitle, serveTranscode } = require("../transcode.cjs");
 
 test("parseTranscodePath : jeton, cible et position", () => {
   assert.deepStrictEqual(parseTranscodePath("/tok/tx/aGVsbG8", "?ss=754.5"), { kind: "tx", token: "tok", b64: "aGVsbG8", ss: 754.5, live: false, a: 0, s: 0 });
@@ -135,4 +135,31 @@ test("serveStreamInfo : JSON des pistes, 502 sinon", async () => {
   const bad = fakeRes();
   await serveStreamInfo({ headers: {} }, bad, { ffmpeg: "ffmpeg", target: new URL("http://h/1.mkv"), headers: {}, probe: async () => null });
   assert.strictEqual(bad.status, 502);
+});
+
+test("serveSubtitle : relaie le WebVTT au fil de l'extraction (premiers octets écrits sans attendre la fin)", async () => {
+  const child = fakeChild();
+  const res = fakeRes();
+  serveSubtitle({ headers: {} }, res, { ffmpeg: "ffmpeg", target: new URL("http://h/1.mkv"), s: 1, headers: {}, spawnFn: () => child });
+  child.stdout.write(Buffer.from("WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nBonjour\n"));
+  await new Promise((r) => setImmediate(r));
+  assert.strictEqual(res.status, 200);
+  assert.strictEqual(res.headers["Content-Type"], "text/vtt; charset=utf-8");
+  assert.ok(Buffer.concat(res.chunks).toString().startsWith("WEBVTT"));
+  child.stdout.write(Buffer.from("\n00:00:03.000 --> 00:00:04.000\nSuite\n"));
+  await new Promise((r) => setImmediate(r));
+  assert.ok(Buffer.concat(res.chunks).toString().includes("Suite"), "les morceaux suivants sont relayés");
+  child.emit("close", 0);
+  await new Promise((r) => setImmediate(r));
+  assert.ok(res.writableEnded);
+});
+
+test("serveSubtitle : échec de ffmpeg sans sortie → 502", async () => {
+  const child = fakeChild();
+  const res = fakeRes();
+  serveSubtitle({ headers: {} }, res, { ffmpeg: "ffmpeg", target: new URL("http://h/1.mkv"), s: 0, headers: {}, spawnFn: () => child });
+  child.emit("close", 1);
+  await new Promise((r) => setImmediate(r));
+  assert.strictEqual(res.status, 502);
+  assert.ok(res.writableEnded);
 });

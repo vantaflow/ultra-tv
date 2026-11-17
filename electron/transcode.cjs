@@ -138,22 +138,31 @@ function subtitleArgs(url, { s = 0, userAgent = null, referer = null } = {}) {
   return a;
 }
 
-/** GET /txs : un sous-titre en WebVTT. Le fichier est lu en entier (les sous-titres MKV sont entrelacés) : à la demande seulement. */
+/**
+ * GET /txs : un sous-titre en WebVTT, servi AU FIL de l'extraction — ffmpeg écrit petit à petit, la réponse
+ * aussi. Les sous-titres sont entrelacés dans un MKV/MP4 : l'extraction complète peut prendre plusieurs minutes
+ * (lecture du fichier entier) ; en servant au fil de l'eau, le lecteur affiche les premiers repères en quelques
+ * secondes. Le build ffmpeg n'a pas ffprobe, l'extraction coupe à 8 Mo au-delà du dernier repère utile.
+ */
 function serveSubtitle(req, res, { ffmpeg, target, s, headers, report = () => {}, spawnFn = spawn }) {
   const child = spawnFn(ffmpeg, subtitleArgs(target.toString(), { s, userAgent: req.headers["x-ut-ua"] || null, referer: req.headers["x-ut-referer"] || null }), { windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
-  const chunks = [];
+  let started = false;
   let size = 0;
   const stop = () => { try { child.kill("SIGKILL"); } catch { /* déjà terminé */ } };
   res.on("close", stop);
   child.stderr.on("data", () => { /* ignoré : peut contenir l'URL */ });
-  child.stdout.on("data", (c) => { size += c.length; if (size > 8_000_000) stop(); else chunks.push(c); });
   child.on("error", () => { report("ETRANSCODE"); if (!res.headersSent) { res.writeHead(502, headers); res.end(); } });
+  child.stdout.once("data", () => {
+    started = true;
+    if (!res.headersSent) res.writeHead(200, { ...headers, "Content-Type": "text/vtt; charset=utf-8", "Cache-Control": "no-store" });
+  });
+  child.stdout.on("data", (c) => { size += c.length; if (size > 8_000_000) stop(); else if (started && !res.writableEnded) res.write(c); });
   child.on("close", (code) => {
-    if (res.headersSent) return;
-    if (code === 0 && size > 0 && size <= 8_000_000) {
-      res.writeHead(200, { ...headers, "Content-Type": "text/vtt; charset=utf-8", "Cache-Control": "no-store" });
-      res.end(Buffer.concat(chunks));
-    } else { report("ETRANSCODE_SUB"); res.writeHead(502, headers); res.end(); }
+    if (res.writableEnded) return;
+    // Rien n'a été écrit (piste absente, ffmpeg en échec) : erreur à l'appelant.
+    report(started ? "ETRANSCODE_SUB_TRUNCATED" : code === 0 ? "ETRANSCODE_SUB_EMPTY" : "ETRANSCODE_SUB");
+    if (!res.headersSent) { res.writeHead(502, headers); res.end(); return; }
+    res.end();
   });
 }
 

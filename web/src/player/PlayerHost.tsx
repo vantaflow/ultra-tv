@@ -118,6 +118,10 @@ export function PlayerHost() {
   const [xAudio, setXAudio] = useState(0);
   const [xText, setXText] = useState(-1);
   const [subFail, setSubFail] = useState(false);
+  /** Extraction en cours (panel : « chargement… ») : la sélection reste cochée, les repères arrivent petit à petit. */
+  const [subLoading, setSubLoading] = useState(false);
+  /** Extraction en vol : jeton (la dernière sélection engagée gagne) + annulation (le proxy arrête son ffmpeg). */
+  const subReqRef = useRef<{ token: number; abort: AbortController } | null>(null);
   const subCuesRef = useRef<Cue[] | null>(null);
   const subTrackRef = useRef<TextTrack | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -305,7 +309,7 @@ export function PlayerHost() {
     setLimit(false);
     if (!target || !source) { engineRef.current?.stop(); return; }
     setTracks(NO_TRACKS);
-    setXinfo(null); xinfoKeyRef.current = ""; setXAudio(0); setXText(-1); setSubFail(false); subCuesRef.current = null; applySubs();
+    setXinfo(null); xinfoKeyRef.current = ""; setXAudio(0); setXText(-1); setSubFail(false); setSubLoading(false); subReqRef.current?.abort.abort(); subReqRef.current = null; subCuesRef.current = null; applySubs();
     setPanel(null);
     setCur({ t: 0, d: 0, buf: 0 });
     window.clearTimeout(scrubTimer.current); scrubRef.current = null; setScrub(null);
@@ -700,21 +704,50 @@ export function PlayerHost() {
     applySubs();
   }, [originUrl, startCandidate, applySubs]);
 
-  /** Choix d'un sous-titre texte du fichier (-1 = aucun) : extrait en WebVTT par ffmpeg puis posé sur la vidéo. */
+  /**
+   * Choix d'un sous-titre texte du fichier (-1 = aucun) : extrait en WebVTT par ffmpeg et servi AU FIL de
+   * l'extraction — les repères s'affichent dès qu'ils sortent (l'extraction complète lit le fichier entier :
+   * des minutes sur un gros MKV/MP4). Chaque sélection annule la précédente et seule la dernière engagée
+   * s'applique : une extraction lente ne peut pas retomber sur l'écran et écraser un choix plus récent.
+   */
   const selectSub = useCallback((i: number) => {
     const base = bridge()?.proxyBase;
     const orig = originUrl();
+    subReqRef.current?.abort.abort();
     setSubFail(false);
-    if (i < 0 || !base || !orig) { subCuesRef.current = null; setXText(-1); applySubs(); return; }
+    if (i < 0 || !base || !orig) { subReqRef.current = null; subCuesRef.current = null; setXText(-1); setSubLoading(false); applySubs(); return; }
     setXText(i);
-    void fetch(txSubUrl(base, orig, i), { headers: proxyHeaders() })
-      .then((r) => (r.ok ? r.text() : Promise.reject(new Error("sub"))))
-      .then((txt) => {
-        const cues = parseVtt(txt);
+    setSubLoading(true);
+    const req = { token: (subReqRef.current?.token ?? 0) + 1, abort: new AbortController() };
+    subReqRef.current = req;
+    fetch(txSubUrl(base, orig, i), { headers: proxyHeaders(), signal: req.abort.signal })
+      .then(async (r) => {
+        if (!r.ok || !r.body) throw new Error("sub");
+        const reader = r.body.getReader();
+        const dec = new TextDecoder();
+        let buf = "";
+        let last = 0;
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += dec.decode(value, { stream: true });
+          const now = Date.now();
+          if (now - last < 400) continue; // re-analyse au plus ~2,5 fois par seconde
+          last = now;
+          const cues = parseVtt(buf);
+          if (subReqRef.current?.token !== req.token) return; // remplaçée : on ne touche plus à rien
+          if (cues.length > 0) { subCuesRef.current = cues; applySubs(); }
+        }
+        if (subReqRef.current?.token !== req.token) return;
+        const cues = parseVtt(buf + dec.decode());
+        setSubLoading(false);
         if (cues.length === 0) throw new Error("empty");
         subCuesRef.current = cues; applySubs();
       })
-      .catch(() => { subCuesRef.current = null; setXText(-1); setSubFail(true); applySubs(); });
+      .catch(() => {
+        if (subReqRef.current?.token !== req.token) return; // remplaçée : la nouvelle sélection gère son état
+        subCuesRef.current = null; setXText(-1); setSubFail(true); setSubLoading(false); applySubs();
+      });
   }, [originUrl, applySubs, proxyHeaders]);
 
   const seekBy = useCallback((s: number) => {
@@ -1295,6 +1328,7 @@ export function PlayerHost() {
                   <div className="grp-t">{t("player.subtitles")}</div>
                   <button className="opt" role="radio" aria-checked={xText === -1} onClick={() => selectSub(-1)}>{t("player.off")}</button>
                   {xinfo.subs.map((a) => <button key={a.i} className="opt" role="radio" aria-checked={xText === a.i} onClick={() => selectSub(a.i)}>{a.title || trackLabel({ lang: a.lang }, a.i, usePrefs.getState().lang)}<span className="h">{a.lang}</span></button>)}
+                  {subLoading && <div className="muted" role="status">{t("player.subtitlesLoading")}</div>}
                   {subFail && <div className="muted" role="status">{t("player.subtitlesFailed")}</div>}
                 </>
               )}
