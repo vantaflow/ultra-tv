@@ -33,6 +33,8 @@ sealed interface ScheduleResult {
     data class Scheduled(val count: Int) : ScheduleResult
     data object NoSpace : ScheduleResult
     data object NothingToSchedule : ScheduleResult
+    /** Déjà [maxConnections] enregistrement(s) à ce moment sur cette source : l'abonnement n'en permet pas plus. */
+    data class Conflict(val maxConnections: Int) : ScheduleResult
 }
 
 /**
@@ -64,8 +66,12 @@ class RecordingScheduler @Inject constructor(
         val longest = targets.maxOf { RecordingPlan.paddedWindow(it.startMs, it.endMs).let { (s, e) -> e - s } }
         if (!RecordingPlan.hasRoom(repo.freeBytes(), longest)) return ScheduleResult.NoSpace
         var count = 0
+        var conflicts = 0
+        val maxConn = limits.maxConnections(channel.providerId)
         for (p in targets) {
             if (dao.countScheduled(channel.providerId, channel.remoteId, p.startMs) > 0) continue
+            val (ps, pe) = RecordingPlan.paddedWindow(p.startMs, p.endMs)
+            if (!RecordingPlan.canRecordAlongside(dao.countOverlapping(channel.providerId, ps, pe), maxConn)) { conflicts++; continue }
             val id = dao.upsert(
                 RecordingEntity(
                     providerId = channel.providerId, kind = "LIVE", remoteId = channel.remoteId,
@@ -76,7 +82,11 @@ class RecordingScheduler @Inject constructor(
             arm(id, p.startMs, nowMs)
             count++
         }
-        return if (count > 0) ScheduleResult.Scheduled(count) else ScheduleResult.NothingToSchedule
+        return when {
+            count > 0 -> ScheduleResult.Scheduled(count)
+            conflicts > 0 -> ScheduleResult.Conflict(maxConn)
+            else -> ScheduleResult.NothingToSchedule
+        }
     }
 
     suspend fun cancel(id: Long) {
@@ -112,12 +122,18 @@ class RecordingScheduler @Inject constructor(
             Toaster.err("Espace insuffisant pour enregistrer « ${r.title} »")
             return
         }
+        // Connexions de l'abonnement déjà prises par d'autres enregistrements (immédiats compris) : pas de flux en trop.
+        if (!RecordingPlan.canRecordAlongside(dao.countActive(r.providerId, id), limits.maxConnections(r.providerId))) {
+            dao.setStatus(id, "failed", "no_connection")
+            notify(id, r.title, "Connexions de l'abonnement déjà utilisées : enregistrement annulé")
+            return
+        }
         if (ConnectionPolicy.onRecordingStart(playing = playback.current.value != null, maxConnections = limits.maxConnections(r.providerId)) == ConnectionWarning.RECORDING_TAKES_CONNECTION) {
             val msg = "Un enregistrement démarre sur votre seule connexion : la lecture peut être interrompue"
             notify(id, r.title, msg)
             Toaster.show(msg)
         }
-        dao.upsert(r.copy(status = "queued"))
+        dao.upsert(r.copy(status = "queued", filePath = repo.newFilePath(r.title, r.sourceUrl)))
         repo.enqueueWork(id, remaining)
     }
 

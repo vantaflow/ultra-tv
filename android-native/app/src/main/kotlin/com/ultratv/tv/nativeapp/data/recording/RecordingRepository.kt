@@ -21,6 +21,9 @@ fun workName(recordingId: Long) = "rec-$recordingId"
 class RecordingRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val dao: RecordingDao,
+    private val storage: RecordingStorage,
+    private val providers: com.ultratv.tv.nativeapp.data.db.ProviderDao,
+    private val smb: com.ultratv.tv.nativeapp.data.nas.NasSmb,
 ) {
     fun observeAll(): Flow<List<RecordingEntity>> = dao.observeAll()
 
@@ -40,8 +43,7 @@ class RecordingRepository @Inject constructor(
         else url.substringAfterLast('.', "mp4")
             .substringBefore('?').lowercase()
             .takeIf { it.length in 2..5 } ?: "mp4"
-        val dir = File(context.getExternalFilesDir(null), "recordings").apply { mkdirs() }
-        val file = File(dir, "${safeTitle}-${System.currentTimeMillis()}.$ext")
+        val file = File(storage.localDir(), "${safeTitle}-${System.currentTimeMillis()}.$ext")
 
         val id = dao.upsert(
             RecordingEntity(
@@ -64,6 +66,8 @@ class RecordingRepository @Inject constructor(
                     .putLong(RecordingWorker.KEY_RECORDING_ID, id)
                     .putLong(RecordingWorker.KEY_MAX_DURATION_MS, maxDurationMs)
                     .putLong(RecordingWorker.KEY_DEADLINE_MS, deadlineMs)
+                    // Partage NAS choisi au DÉPART : le fichier y est copié à la fin (0 = rester en local).
+                    .putLong(RecordingWorker.KEY_NAS_ID, storage.nasTarget() ?: 0L)
                     .build(),
             )
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
@@ -76,14 +80,11 @@ class RecordingRepository @Inject constructor(
         val safeTitle = title.replace(Regex("[^A-Za-z0-9_.\\- ]"), "_").take(80)
         val ext = if (url.contains(".m3u8", ignoreCase = true)) "ts"
         else url.substringAfterLast('.', "ts").substringBefore('?').lowercase().takeIf { it.length in 2..5 } ?: "ts"
-        val dir = File(context.getExternalFilesDir(null), "recordings").apply { mkdirs() }
-        return File(dir, "$safeTitle-${System.currentTimeMillis()}.$ext").absolutePath
+        return File(storage.localDir(), "$safeTitle-${System.currentTimeMillis()}.$ext").absolutePath
     }
 
-    /** Octets libres sur le volume des enregistrements. */
-    fun freeBytes(): Long = runCatching {
-        android.os.StatFs((context.getExternalFilesDir(null) ?: context.filesDir).path).availableBytes
-    }.getOrDefault(Long.MAX_VALUE)
+    /** Octets libres sur le volume d'écriture des enregistrements (clé USB choisie, appareil ou mémoire interne). */
+    fun freeBytes(): Long = storage.freeBytes().takeIf { it > 0 } ?: Long.MAX_VALUE
 
     /**
      * Arrête un enregistrement en cours : le travailleur voit l'annulation, conserve ce qui est déjà
@@ -102,7 +103,11 @@ class RecordingRepository @Inject constructor(
 
     suspend fun delete(id: Long) {
         val r = dao.byId(id) ?: return
-        runCatching { File(r.filePath).delete() }
+        val link = com.ultratv.tv.nativeapp.data.nas.Nas.NasLink.parse(r.filePath)
+        // Copié sur un partage NAS : supprimé du partage aussi (sans effet si le NAS est injoignable).
+        if (link != null) kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            providers.byId(link.providerId)?.let { p -> runCatching { smb.delete(p, link.path) } }
+        } else runCatching { File(r.filePath).delete() }
         dao.delete(id)
     }
 }

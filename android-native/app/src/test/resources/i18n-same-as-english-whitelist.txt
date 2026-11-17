@@ -152,3 +152,5 @@ es|mlib_conn_local
 es|mlib_libs_series
 fr|sport_tbl_pts
 es|sport_tbl_pts
+es|rec_loc_nas
+ar|rec_loc_nas

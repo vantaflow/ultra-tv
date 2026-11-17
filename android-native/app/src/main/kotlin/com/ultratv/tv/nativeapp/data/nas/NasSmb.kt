@@ -128,6 +128,29 @@ class NasSmb @Inject constructor() {
         }
     }
 
+    /**
+     * Copie [src] sous [dir]/[name] dans le dossier de départ de la source [p] (dossiers créés au besoin, fichier existant
+     * remplacé). Retourne le chemin relatif écrit. Lève [IOException] en cas d'échec.
+     */
+    fun upload(p: ProviderEntity, dir: List<String>, name: String, src: java.io.File): List<String> = withShare(p) { share, a ->
+        val acc = mutableListOf<String>()
+        for (d in dir) {
+            acc += d
+            val sp = smbPath(a, acc)
+            if (!share.folderExists(sp)) share.mkdir(sp)
+        }
+        val target = dir + name
+        val f = share.openFile(
+            smbPath(a, target), EnumSet.of(AccessMask.GENERIC_WRITE), null, EnumSet.of(SMB2ShareAccess.FILE_SHARE_READ),
+            SMB2CreateDisposition.FILE_OVERWRITE_IF, null,
+        )
+        try { f.outputStream.use { out -> src.inputStream().use { it.copyTo(out, 1 shl 16) } } } finally { runCatching { f.close() } }
+        target
+    }
+
+    /** Supprime un fichier de la source [p] (enregistrement copié sur le partage). */
+    fun delete(p: ProviderEntity, path: List<String>) = withShare(p) { share, a -> share.rm(smbPath(a, path)) }
+
     /** Ouvre un fichier de la source [p] en lecture (à fermer par l'appelant). */
     fun openFile(p: ProviderEntity, path: List<String>): NasFile = withShare(p) { share, a ->
         val f = share.openFile(

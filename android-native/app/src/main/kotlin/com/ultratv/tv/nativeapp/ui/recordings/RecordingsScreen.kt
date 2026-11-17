@@ -147,7 +147,7 @@ fun RecordingsScreen(
             LazyVerticalGrid(GridCells.Fixed(if (touch) com.ultratv.tv.nativeapp.ui.mobile.gridColumns(widthDp - 40f - (if (widthDp >= 600f) 88f else 0f), 160f) else 4), Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(if (touch) 12.dp else 24.design), verticalArrangement = Arrangement.spacedBy(if (touch) 14.dp else 24.design)) {
                 items(done, key = { it.id }) { r ->
                     FocusSurface(
-                        onClick = { onPlayLocal("file://${r.filePath}", r.title) }, onLongClick = { vm.remove(r.id) },
+                        onClick = { onPlayLocal(if (com.ultratv.tv.nativeapp.data.nas.Nas.NasLink.isNas(r.filePath)) r.filePath else "file://${r.filePath}", r.title) }, onLongClick = { vm.remove(r.id) },
                         shape = RoundedCornerShape(18.design), bg = Color.Transparent, focusedBg = Color.Transparent, ringWidth = 5.design, focusedScale = 1f,
                     ) { _ ->
                         Column(verticalArrangement = Arrangement.spacedBy(8.design)) {

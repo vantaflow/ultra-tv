@@ -25,6 +25,12 @@ object RecordingPlan {
             .sortedBy { it.startMs }
     }
 
+    /**
+     * Un enregistrement de plus est possible tant que ceux qui occupent déjà la source ([busy]) laissent une connexion
+     * libre : deux en même temps quand l'abonnement autorise deux connexions, un seul sinon (1 tant que la limite n'est pas lue).
+     */
+    fun canRecordAlongside(busy: Int, maxConnections: Int): Boolean = busy < maxConnections.coerceAtLeast(1)
+
     /** Fenêtre réellement enregistrée : un peu avant et après pour absorber les écarts de guide. */
     fun paddedWindow(startMs: Long, endMs: Long): Pair<Long, Long> = (startMs - PAD_BEFORE_MS) to (endMs + PAD_AFTER_MS)
 }

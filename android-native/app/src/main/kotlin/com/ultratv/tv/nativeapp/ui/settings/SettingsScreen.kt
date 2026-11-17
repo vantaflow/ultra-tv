@@ -830,6 +830,7 @@ private fun PlaybackPane(panes: SettingsPanesViewModel, app: AppViewModel) {
     }
     DnsSection()   // Réseau › DNS (DnsSection.kt)
     com.ultratv.tv.nativeapp.ui.downloads.DownloadSettingsSection()   // Téléchargements hors ligne (Wi-Fi seulement, emplacement)
+    com.ultratv.tv.nativeapp.ui.recordings.RecordingSettingsSection()   // Emplacement des enregistrements (interne, USB, NAS)
     // Service de suivi (Trakt / Simkl / aucun), puis ses réglages (compte lié seulement) : marquer vu à la fin, listes à l'accueil.
     com.ultratv.tv.nativeapp.ui.trakt.TrackingServiceSection()
     com.ultratv.tv.nativeapp.ui.trakt.TraktSettingsSection()
