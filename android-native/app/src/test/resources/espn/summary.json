@@ -1,0 +1,492 @@
+{
+ "header": {
+  "id": "401916335",
+  "league": {
+   "name": "International Friendly"
+  },
+  "competitions": [
+   {
+    "date": "2026-11-17T10:00Z",
+    "status": {
+     "type": {
+      "name": "STATUS_FULL_TIME",
+      "state": "post"
+     }
+    },
+    "competitors": [
+     {
+      "homeAway": "home",
+      "score": "0",
+      "team": {
+       "id": "4384",
+       "name": "Singapore",
+       "displayName": "Singapore",
+       "shortDisplayName": "Singapore"
+      }
+     },
+     {
+      "homeAway": "away",
+      "score": "7",
+      "team": {
+       "id": "205",
+       "name": "Brazil",
+       "displayName": "Brazil",
+       "shortDisplayName": "Brazil"
+      }
+     }
+    ]
+   }
+  ]
+ },
+ "gameInfo": {
+  "venue": {
+   "fullName": "Singapore National Stadium"
+  }
+ },
+ "keyEvents": [
+  {
+   "type": {
+    "type": "kickoff",
+    "text": "Kickoff"
+   },
+   "clock": {
+    "displayValue": ""
+   },
+   "team": {
+    "id": null
+   },
+   "participants": []
+  },
+  {
+   "type": {
+    "type": "goal",
+    "text": "Goal"
+   },
+   "clock": {
+    "displayValue": "9'"
+   },
+   "team": {
+    "id": "205"
+   },
+   "participants": [
+    {
+     "athlete": {
+      "displayName": "Vinícius Júnior"
+     }
+    },
+    {
+     "athlete": {
+      "displayName": "Bruno Guimarães"
+     }
+    }
+   ]
+  },
+  {
+   "type": {
+    "type": "goal",
+    "text": "Goal"
+   },
+   "clock": {
+    "displayValue": "15'"
+   },
+   "team": {
+    "id": "205"
+   },
+   "participants": [
+    {
+     "athlete": {
+      "displayName": "Vinícius Júnior"
+     }
+    },
+    {
+     "athlete": {
+      "displayName": "Endrick"
+     }
+    }
+   ]
+  },
+  {
+   "type": {
+    "type": "goal",
+    "text": "Goal"
+   },
+   "clock": {
+    "displayValue": "21'"
+   },
+   "team": {
+    "id": "205"
+   },
+   "participants": [
+    {
+     "athlete": {
+      "displayName": "Vinícius Júnior"
+     }
+    },
+    {
+     "athlete": {
+      "displayName": "Estêvão"
+     }
+    }
+   ]
+  },
+  {
+   "type": {
+    "type": "goal",
+    "text": "Goal"
+   },
+   "clock": {
+    "displayValue": "31'"
+   },
+   "team": {
+    "id": "205"
+   },
+   "participants": [
+    {
+     "athlete": {
+      "displayName": "Endrick"
+     }
+    },
+    {
+     "athlete": {
+      "displayName": "Estêvão"
+     }
+    }
+   ]
+  },
+  {
+   "type": {
+    "type": "start-delay",
+    "text": "Start Delay"
+   },
+   "clock": {
+    "displayValue": "42'"
+   },
+   "team": {
+    "id": "4384"
+   },
+   "participants": []
+  },
+  {
+   "type": {
+    "type": "start-delay",
+    "text": "Start Delay"
+   },
+   "clock": {
+    "displayValue": "42'"
+   },
+   "team": {
+    "id": "205"
+   },
+   "participants": []
+  },
+  {
+   "type": {
+    "type": "end-delay",
+    "text": "End Delay"
+   },
+   "clock": {
+    "displayValue": "43'"
+   },
+   "team": {
+    "id": "4384"
+   },
+   "participants": []
+  },
+  {
+   "type": {
+    "type": "end-delay",
+    "text": "End Delay"
+   },
+   "clock": {
+    "displayValue": "43'"
+   },
+   "team": {
+    "id": "205"
+   },
+   "participants": []
+  },
+  {
+   "type": {
+    "type": "yellow-card",
+    "text": "Yellow Card"
+   },
+   "clock": {
+    "displayValue": "45'"
+   },
+   "team": {
+    "id": "4384"
+   },
+   "participants": [
+    {
+     "athlete": {
+      "displayName": "Safuwan Baharudin"
+     }
+    }
+   ]
+  },
+  {
+   "type": {
+    "type": "halftime",
+    "text": "Halftime"
+   },
+   "clock": {
+    "displayValue": "45'+2'"
+   },
+   "team": {
+    "id": null
+   },
+   "participants": []
+  },
+  {
+   "type": {
+    "type": "start-2nd-half",
+    "text": "Start 2nd Half"
+   },
+   "clock": {
+    "displayValue": "45'"
+   },
+   "team": {
+    "id": null
+   },
+   "participants": []
+  }
+ ],
+ "boxscore": {
+  "teams": [
+   {
+    "homeAway": "home",
+    "statistics": [
+     {
+      "label": "Fouls",
+      "displayValue": "7"
+     },
+     {
+      "label": "Yellow Cards",
+      "displayValue": "2"
+     },
+     {
+      "label": "Red Cards",
+      "displayValue": "0"
+     },
+     {
+      "label": "Offsides",
+      "displayValue": "1"
+     },
+     {
+      "label": "Corner Kicks",
+      "displayValue": "4"
+     },
+     {
+      "label": "Saves",
+      "displayValue": "5"
+     },
+     {
+      "label": "Possession",
+      "displayValue": "39.5"
+     },
+     {
+      "label": "SHOTS",
+      "displayValue": "10"
+     },
+     {
+      "label": "ON GOAL",
+      "displayValue": "1"
+     },
+     {
+      "label": "On Target %",
+      "displayValue": "0.1"
+     },
+     {
+      "label": "Penalty Goals",
+      "displayValue": "0"
+     },
+     {
+      "label": "Penalty Kicks Taken",
+      "displayValue": "0"
+     },
+     {
+      "label": "Accurate Passes",
+      "displayValue": "315"
+     },
+     {
+      "label": "Passes",
+      "displayValue": "366"
+     },
+     {
+      "label": "Pass Completion %",
+      "displayValue": "0.9"
+     },
+     {
+      "label": "Accurate Crosses",
+      "displayValue": "6"
+     },
+     {
+      "label": "Crosses",
+      "displayValue": "13"
+     },
+     {
+      "label": "Cross %",
+      "displayValue": "0.5"
+     },
+     {
+      "label": "Long Balls",
+      "displayValue": "32"
+     },
+     {
+      "label": "Accurate Long Balls",
+      "displayValue": "19"
+     },
+     {
+      "label": "Long Balls %",
+      "displayValue": "0.6"
+     },
+     {
+      "label": "Blocked Shots",
+      "displayValue": "4"
+     },
+     {
+      "label": "Effective Tackles",
+      "displayValue": "17"
+     },
+     {
+      "label": "Tackles",
+      "displayValue": "21"
+     },
+     {
+      "label": "Tackle %",
+      "displayValue": "0.8"
+     },
+     {
+      "label": "Interceptions",
+      "displayValue": "7"
+     },
+     {
+      "label": "Effective Clearances",
+      "displayValue": "17"
+     },
+     {
+      "label": "Clearances",
+      "displayValue": "17"
+     }
+    ]
+   },
+   {
+    "homeAway": "away",
+    "statistics": [
+     {
+      "label": "Fouls",
+      "displayValue": "16"
+     },
+     {
+      "label": "Yellow Cards",
+      "displayValue": "0"
+     },
+     {
+      "label": "Red Cards",
+      "displayValue": "0"
+     },
+     {
+      "label": "Offsides",
+      "displayValue": "4"
+     },
+     {
+      "label": "Corner Kicks",
+      "displayValue": "6"
+     },
+     {
+      "label": "Saves",
+      "displayValue": "1"
+     },
+     {
+      "label": "Possession",
+      "displayValue": "60.5"
+     },
+     {
+      "label": "SHOTS",
+      "displayValue": "22"
+     },
+     {
+      "label": "ON GOAL",
+      "displayValue": "11"
+     },
+     {
+      "label": "On Target %",
+      "displayValue": "0.5"
+     },
+     {
+      "label": "Penalty Goals",
+      "displayValue": "0"
+     },
+     {
+      "label": "Penalty Kicks Taken",
+      "displayValue": "0"
+     },
+     {
+      "label": "Accurate Passes",
+      "displayValue": "533"
+     },
+     {
+      "label": "Passes",
+      "displayValue": "569"
+     },
+     {
+      "label": "Pass Completion %",
+      "displayValue": "0.9"
+     },
+     {
+      "label": "Accurate Crosses",
+      "displayValue": "5"
+     },
+     {
+      "label": "Crosses",
+      "displayValue": "16"
+     },
+     {
+      "label": "Cross %",
+      "displayValue": "0.3"
+     },
+     {
+      "label": "Long Balls",
+      "displayValue": "37"
+     },
+     {
+      "label": "Accurate Long Balls",
+      "displayValue": "29"
+     },
+     {
+      "label": "Long Balls %",
+      "displayValue": "0.8"
+     },
+     {
+      "label": "Blocked Shots",
+      "displayValue": "2"
+     },
+     {
+      "label": "Effective Tackles",
+      "displayValue": "11"
+     },
+     {
+      "label": "Tackles",
+      "displayValue": "17"
+     },
+     {
+      "label": "Tackle %",
+      "displayValue": "0.6"
+     },
+     {
+      "label": "Interceptions",
+      "displayValue": "12"
+     },
+     {
+      "label": "Effective Clearances",
+      "displayValue": "8"
+     },
+     {
+      "label": "Clearances",
+      "displayValue": "8"
+     }
+    ]
+   }
+  ]
+ }
+}

@@ -1,0 +1,172 @@
+{
+ "events": [
+  {
+   "id": "401929704",
+   "date": "2026-11-17T19:00Z",
+   "name": "Sint Maarten at Belize",
+   "status": {
+    "displayClock": "53'",
+    "type": {
+     "name": "STATUS_SECOND_HALF",
+     "state": "in",
+     "shortDetail": "53'"
+    }
+   },
+   "competitions": [
+    {
+     "date": "2026-11-17T19:00Z",
+     "competitors": [
+      {
+       "homeAway": "home",
+       "score": "0",
+       "team": {
+        "id": "2641",
+        "displayName": "Belize",
+        "shortDisplayName": "Belize",
+        "name": "Belize",
+        "logo": "https://a.espncdn.com/i/teamlogos/countries/500/blz.png"
+       }
+      },
+      {
+       "homeAway": "away",
+       "score": "1",
+       "team": {
+        "id": "18243",
+        "displayName": "Sint Maarten",
+        "shortDisplayName": "Sint Maarten",
+        "name": "Sint Maarten",
+        "logo": "https://a.espncdn.com/i/teamlogos/countries/500/sma.png"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "401927138",
+   "date": "2026-11-17T19:00Z",
+   "name": "Uganda at Botswana",
+   "status": {
+    "displayClock": "45'+8'",
+    "type": {
+     "name": "STATUS_HALFTIME",
+     "state": "in",
+     "shortDetail": "HT"
+    }
+   },
+   "competitions": [
+    {
+     "date": "2026-11-17T19:00Z",
+     "competitors": [
+      {
+       "homeAway": "home",
+       "score": "0",
+       "team": {
+        "id": "4245",
+        "displayName": "Botswana",
+        "shortDisplayName": "Botswana",
+        "name": "Botswana",
+        "logo": "https://a.espncdn.com/i/teamlogos/countries/500/bot.png"
+       }
+      },
+      {
+       "homeAway": "away",
+       "score": "0",
+       "team": {
+        "id": "4211",
+        "displayName": "Uganda",
+        "shortDisplayName": "Uganda",
+        "name": "Uganda",
+        "logo": "https://a.espncdn.com/i/teamlogos/countries/500/uga.png"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "401933879",
+   "date": "2026-11-17T05:30Z",
+   "name": "Cook Islands at Tahiti",
+   "status": {
+    "displayClock": "90'",
+    "type": {
+     "name": "STATUS_FULL_TIME",
+     "state": "post",
+     "shortDetail": "FT"
+    }
+   },
+   "competitions": [
+    {
+     "date": "2026-11-17T05:30Z",
+     "competitors": [
+      {
+       "homeAway": "home",
+       "score": "3",
+       "team": {
+        "id": "4863",
+        "displayName": "Tahiti",
+        "shortDisplayName": "Tahiti",
+        "name": "Tahiti",
+        "logo": "https://a.espncdn.com/i/teamlogos/countries/500/tah.png"
+       }
+      },
+      {
+       "homeAway": "away",
+       "score": "3",
+       "team": {
+        "id": "4884",
+        "displayName": "Cook Islands",
+        "shortDisplayName": "Cook Isl",
+        "name": "Cook Islands",
+        "logo": "https://a.espncdn.com/i/teamlogos/countries/500/cok.png"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "401929765",
+   "date": "2026-11-18T00:00Z",
+   "name": "St. Vincent and the Grenadines at French Guiana",
+   "status": {
+    "displayClock": "0'",
+    "type": {
+     "name": "STATUS_SCHEDULED",
+     "state": "pre",
+     "shortDetail": "Scheduled"
+    }
+   },
+   "competitions": [
+    {
+     "date": "2026-11-18T00:00Z",
+     "competitors": [
+      {
+       "homeAway": "home",
+       "score": "0",
+       "team": {
+        "id": "10532",
+        "displayName": "French Guiana",
+        "shortDisplayName": "French Guiana",
+        "name": "French Guiana",
+        "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/10532.png"
+       }
+      },
+      {
+       "homeAway": "away",
+       "score": "0",
+       "team": {
+        "id": "13584",
+        "displayName": "St. Vincent and the Grenadines",
+        "shortDisplayName": "St. Vincent ",
+        "name": "St. Vincent and the Grenadines",
+        "logo": "https://a.espncdn.com/i/teamlogos/countries/500/vin.png"
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
