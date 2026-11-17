@@ -4,6 +4,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.47] — 2026-11-17 (Android)
+
+### Ajouté
+- Jellyfin, Emby, Plex et NAS (SMB) configurés depuis le tableau de bord du site : ils arrivent seuls sur les appareils du compte, qui s'y connectent sans aucune saisie à la télécommande (Plex : liaison du compte plex.tv sur le site, puis choix du serveur)
+- Turc (premier jet à relire sur Weblate)
+
 ## [Bureau 1.2.67] — 2026-11-17
 
 ### Corrigé
