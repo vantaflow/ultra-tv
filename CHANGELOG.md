@@ -8,6 +8,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Direct (TV) : un titre de programme contenant un retour à la ligne (données du guide) restait sur deux lignes et poussait le programme suivant hors de la carte.
 - Réglages (TV) : espace vide supprimé entre le menu de gauche et la liste des rubriques.
 - Sport : le nombre de matchs s'accorde correctement (« 1 match », « 2 matchs ») dans les 14 langues, sur Android et sur le bureau.
+- Espace Sport : plus d'erreur 502 sur la NBA, la Botola et la F1 — les requêtes vers les fournisseurs sportifs envoient désormais un User-Agent, une réponse vide de TheSportsDB (classements NBA, NHL, NFL, Ligue des champions…) n'est plus prise pour une panne, et chaque échec amont est journalisé sans clé
 
 ### Modifié
 - Tableau de bord : une seule carte « Service de suivi » (service actuel et son état, Trakt et Simkl avec Connecter / Déconnecter, choix du service actif) ; nouvelle section « Profils » pour choisir les sources visibles de chaque profil, synchronisée avec les appareils.

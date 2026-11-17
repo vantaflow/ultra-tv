@@ -1,0 +1,334 @@
+{
+ "jolpica_current": {
+  "MRData": {
+   "xmlns": "",
+   "series": "f1",
+   "url": "https://api.jolpi.ca/ergast/f1/current.json",
+   "limit": "30",
+   "offset": "0",
+   "total": "23",
+   "RaceTable": {
+    "season": "2026",
+    "Races": [
+     {
+      "season": "2026",
+      "round": "19",
+      "url": "https://en.wikipedia.org/wiki/2026_Mexico_City_Grand_Prix",
+      "raceName": "Mexico City Grand Prix",
+      "Circuit": {
+       "circuitId": "rodriguez",
+       "url": "https://en.wikipedia.org/wiki/Aut%C3%B3dromo_Hermanos_Rodr%C3%ADguez",
+       "circuitName": "Autódromo Hermanos Rodríguez",
+       "Location": {
+        "lat": "19.4042",
+        "long": "-99.0907",
+        "locality": "Mexico City",
+        "country": "Mexico"
+       }
+      },
+      "date": "2026-11-01",
+      "time": "20:00:00Z",
+      "FirstPractice": {
+       "date": "2026-10-30",
+       "time": "18:30:00Z"
+      },
+      "SecondPractice": {
+       "date": "2026-10-30",
+       "time": "22:00:00Z"
+      },
+      "ThirdPractice": {
+       "date": "2026-10-31",
+       "time": "17:30:00Z"
+      },
+      "Qualifying": {
+       "date": "2026-10-31",
+       "time": "21:00:00Z"
+      }
+     },
+     {
+      "season": "2026",
+      "round": "20",
+      "url": "https://en.wikipedia.org/wiki/2026_Brazilian_Grand_Prix",
+      "raceName": "Brazilian Grand Prix",
+      "Circuit": {
+       "circuitId": "interlagos",
+       "url": "https://en.wikipedia.org/wiki/Interlagos_Circuit",
+       "circuitName": "Autódromo José Carlos Pace",
+       "Location": {
+        "lat": "-23.7036",
+        "long": "-46.6997",
+        "locality": "São Paulo",
+        "country": "Brazil"
+       }
+      },
+      "date": "2026-11-08",
+      "time": "17:00:00Z",
+      "FirstPractice": {
+       "date": "2026-11-06",
+       "time": "15:30:00Z"
+      },
+      "SecondPractice": {
+       "date": "2026-11-06",
+       "time": "19:00:00Z"
+      },
+      "ThirdPractice": {
+       "date": "2026-11-07",
+       "time": "14:30:00Z"
+      },
+      "Qualifying": {
+       "date": "2026-11-07",
+       "time": "18:00:00Z"
+      }
+     },
+     {
+      "season": "2026",
+      "round": "21",
+      "url": "https://en.wikipedia.org/wiki/2026_Las_Vegas_Grand_Prix",
+      "raceName": "Las Vegas Grand Prix",
+      "Circuit": {
+       "circuitId": "vegas",
+       "url": "https://en.wikipedia.org/wiki/Las_Vegas_Grand_Prix#Circuit",
+       "circuitName": "Las Vegas Strip Street Circuit",
+       "Location": {
+        "lat": "36.1147",
+        "long": "-115.173",
+        "locality": "Las Vegas",
+        "country": "USA"
+       }
+      },
+      "date": "2026-11-22",
+      "time": "04:00:00Z",
+      "FirstPractice": {
+       "date": "2026-11-20",
+       "time": "00:30:00Z"
+      },
+      "SecondPractice": {
+       "date": "2026-11-20",
+       "time": "04:00:00Z"
+      },
+      "ThirdPractice": {
+       "date": "2026-11-21",
+       "time": "00:30:00Z"
+      },
+      "Qualifying": {
+       "date": "2026-11-21",
+       "time": "04:00:00Z"
+      }
+     },
+     {
+      "season": "2026",
+      "round": "22",
+      "url": "https://en.wikipedia.org/wiki/2026_Qatar_Grand_Prix",
+      "raceName": "Qatar Grand Prix",
+      "Circuit": {
+       "circuitId": "losail",
+       "url": "https://en.wikipedia.org/wiki/Lusail_International_Circuit",
+       "circuitName": "Lusail International Circuit",
+       "Location": {
+        "lat": "25.49",
+        "long": "51.4542",
+        "locality": "Lusail",
+        "country": "Qatar"
+       }
+      },
+      "date": "2026-11-29",
+      "time": "16:00:00Z",
+      "FirstPractice": {
+       "date": "2026-11-27",
+       "time": "13:30:00Z"
+      },
+      "SecondPractice": {
+       "date": "2026-11-27",
+       "time": "17:00:00Z"
+      },
+      "ThirdPractice": {
+       "date": "2026-11-28",
+       "time": "14:30:00Z"
+      },
+      "Qualifying": {
+       "date": "2026-11-28",
+       "time": "18:00:00Z"
+      }
+     },
+     {
+      "season": "2026",
+      "round": "23",
+      "url": "https://en.wikipedia.org/wiki/2026_Abu_Dhabi_Grand_Prix",
+      "raceName": "Abu Dhabi Grand Prix",
+      "Circuit": {
+       "circuitId": "yas_marina",
+       "url": "https://en.wikipedia.org/wiki/Yas_Marina_Circuit",
+       "circuitName": "Yas Marina Circuit",
+       "Location": {
+        "lat": "24.4672",
+        "long": "54.6031",
+        "locality": "Abu Dhabi",
+        "country": "UAE"
+       }
+      },
+      "date": "2026-12-06",
+      "time": "13:00:00Z",
+      "FirstPractice": {
+       "date": "2026-12-04",
+       "time": "09:30:00Z"
+      },
+      "SecondPractice": {
+       "date": "2026-12-04",
+       "time": "13:00:00Z"
+      },
+      "ThirdPractice": {
+       "date": "2026-12-05",
+       "time": "10:30:00Z"
+      },
+      "Qualifying": {
+       "date": "2026-12-05",
+       "time": "14:00:00Z"
+      }
+     }
+    ]
+   }
+  }
+ },
+ "jolpica_standings": {
+  "MRData": {
+   "xmlns": "",
+   "series": "f1",
+   "url": "https://api.jolpi.ca/ergast/f1/current/driverstandings.json",
+   "limit": "30",
+   "offset": "0",
+   "total": "25",
+   "StandingsTable": {
+    "season": "2026",
+    "round": "20",
+    "StandingsLists": [
+     {
+      "season": "2026",
+      "round": "20",
+      "DriverStandings": [
+       {
+        "position": "1",
+        "positionText": "1",
+        "points": "390",
+        "wins": "9",
+        "Driver": {
+         "driverId": "antonelli",
+         "permanentNumber": "12",
+         "code": "ANT",
+         "url": "https://en.wikipedia.org/wiki/Andrea_Kimi_Antonelli",
+         "givenName": "Andrea Kimi",
+         "familyName": "Antonelli",
+         "dateOfBirth": "2006-08-25",
+         "nationality": "Italian"
+        },
+        "Constructors": [
+         {
+          "constructorId": "mercedes",
+          "url": "https://en.wikipedia.org/wiki/Mercedes-Benz_in_Formula_One",
+          "name": "Mercedes",
+          "nationality": "German"
+         }
+        ]
+       },
+       {
+        "position": "2",
+        "positionText": "2",
+        "points": "279",
+        "wins": "3",
+        "Driver": {
+         "driverId": "max_verstappen",
+         "permanentNumber": "3",
+         "code": "VER",
+         "url": "http://en.wikipedia.org/wiki/Max_Verstappen",
+         "givenName": "Max",
+         "familyName": "Verstappen",
+         "dateOfBirth": "1997-09-30",
+         "nationality": "Dutch"
+        },
+        "Constructors": [
+         {
+          "constructorId": "red_bull",
+          "url": "https://en.wikipedia.org/wiki/Red_Bull_Racing",
+          "name": "Red Bull",
+          "nationality": "Austrian"
+         }
+        ]
+       },
+       {
+        "position": "3",
+        "positionText": "3",
+        "points": "262",
+        "wins": "3",
+        "Driver": {
+         "driverId": "russell",
+         "permanentNumber": "63",
+         "code": "RUS",
+         "url": "http://en.wikipedia.org/wiki/George_Russell_(racing_driver)",
+         "givenName": "George",
+         "familyName": "Russell",
+         "dateOfBirth": "1998-02-15",
+         "nationality": "British"
+        },
+        "Constructors": [
+         {
+          "constructorId": "mercedes",
+          "url": "https://en.wikipedia.org/wiki/Mercedes-Benz_in_Formula_One",
+          "name": "Mercedes",
+          "nationality": "German"
+         }
+        ]
+       },
+       {
+        "position": "4",
+        "positionText": "4",
+        "points": "261",
+        "wins": "1",
+        "Driver": {
+         "driverId": "hamilton",
+         "permanentNumber": "44",
+         "code": "HAM",
+         "url": "http://en.wikipedia.org/wiki/Lewis_Hamilton",
+         "givenName": "Lewis",
+         "familyName": "Hamilton",
+         "dateOfBirth": "1985-01-07",
+         "nationality": "British"
+        },
+        "Constructors": [
+         {
+          "constructorId": "ferrari",
+          "url": "https://en.wikipedia.org/wiki/Scuderia_Ferrari",
+          "name": "Ferrari",
+          "nationality": "Italian"
+         }
+        ]
+       },
+       {
+        "position": "5",
+        "positionText": "5",
+        "points": "249",
+        "wins": "1",
+        "Driver": {
+         "driverId": "leclerc",
+         "permanentNumber": "16",
+         "code": "LEC",
+         "url": "http://en.wikipedia.org/wiki/Charles_Leclerc",
+         "givenName": "Charles",
+         "familyName": "Leclerc",
+         "dateOfBirth": "1997-10-16",
+         "nationality": "Monegasque"
+        },
+        "Constructors": [
+         {
+          "constructorId": "ferrari",
+          "url": "https://en.wikipedia.org/wiki/Scuderia_Ferrari",
+          "name": "Ferrari",
+          "nationality": "Italian"
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  }
+ }
+}
