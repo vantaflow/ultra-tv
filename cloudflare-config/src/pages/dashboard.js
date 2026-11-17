@@ -102,7 +102,11 @@ function post(p){return fetch(p,{method:'POST',credentials:'same-origin',headers
 function fail(){clearInterval(timer);timer=null;go.disabled=false;st.textContent=${JSON.stringify(t.add.mPlexFail)};}
 function show(servers){clearInterval(timer);timer=null;go.disabled=false;list.querySelectorAll('label').forEach(function(l){l.remove();});
  if(!servers.length){st.textContent=${JSON.stringify(t.add.mPlexNone)};return;}st.textContent='';
- servers.forEach(function(s,i){var l=document.createElement('label'),r=document.createElement('input');r.type='radio';r.name='server';r.value=s.id;r.required=true;if(i===0)r.checked=true;l.appendChild(r);l.appendChild(document.createTextNode(' '+s.name+(s.owned?'':' ('+${JSON.stringify(t.add.mPlexShared)}+')')));list.appendChild(l);});
+ servers.forEach(function(s,i){var l=document.createElement('label'),r=document.createElement('input'),n=document.createElement('span'),b=document.createElement('span'),c=document.createElement('span');
+  r.type='radio';r.name='server';r.value=s.id;r.required=true;if(i===0)r.checked=true;n.className='nm';n.textContent=s.name;
+  b.className='chip'+(s.owned?' all':'');b.textContent=s.owned?${JSON.stringify(t.add.mPlexOwner)}:${JSON.stringify(t.add.mPlexSharedBadge)};
+  c.className='chip';c.textContent=s.conn==='local'?${JSON.stringify(t.add.mPlexConnLocal)}:s.conn==='relay'?${JSON.stringify(t.add.mPlexConnRelay)}:${JSON.stringify(t.add.mPlexConnRemote)};
+  l.appendChild(r);l.appendChild(n);l.appendChild(b);l.appendChild(c);list.appendChild(l);});
  list.hidden=false;add.hidden=false;}
 go.addEventListener('click',function(){var w=window.open('about:blank','plexauth');go.disabled=true;st.textContent=${JSON.stringify(t.add.mPlexWaiting)};list.hidden=true;add.hidden=true;
  post('/plex/pin').then(function(j){if(!j.auth)throw new Error('pin');if(w)w.location=j.auth;else window.open(j.auth,'plexauth');var n=0;

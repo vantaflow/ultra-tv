@@ -1908,4 +1908,5 @@
         <item quantity="many">Votre abonnement autorise %1$s connexions : elles sont toutes prises par des enregistrements à ce moment-là</item>
         <item quantity="other">Votre abonnement autorise %1$s connexions : elles sont toutes prises par des enregistrements à ce moment-là</item>
     </plurals>
+    <string name="mlib_cloud_failed">La bibliothèque « %1$s » ajoutée depuis le site n’a pas pu être connectée. La TV réessaiera à la prochaine synchro. Vérifiez que le serveur est joignable.</string>
 </resources>

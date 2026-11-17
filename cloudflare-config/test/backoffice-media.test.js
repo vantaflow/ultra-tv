@@ -94,7 +94,7 @@ describe("serveurs multimédias : tableau de bord → appareil", () => {
     expect((await (await post("/plex/check")).json()).state).toBe("wait");
     validated = true;
     const checked = await (await post("/plex/check")).json();
-    expect(checked).toEqual({ state: "ok", servers: [{ id: "m1", name: "Salon", owned: true }] });
+    expect(checked).toEqual({ state: "ok", servers: [{ id: "m1", name: "Salon", owned: true, conn: "local" }] });
     expect(JSON.stringify(checked)).not.toContain("token");
     const r = await addProvider(acct, { kind: "PLEX", server: "m1" });
     expect(r.headers.get("location")).toBe("/?m=added");

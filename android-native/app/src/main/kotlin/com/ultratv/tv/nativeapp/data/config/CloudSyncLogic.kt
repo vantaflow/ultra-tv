@@ -108,8 +108,13 @@ object CloudSyncLogic {
     fun identity(kind: String, url: String, username: String): String =
         "${kind.uppercase()}|${url.trim().trimEnd('/').lowercase()}|$username"
 
+    /**
+     * Plex : un serveur = son identifiant de machine (`username`), quelle que soit la connexion retenue (locale sur la TV, distante
+     * ou relais sur le site) : lié depuis la TV ET depuis le site, il ne donne qu'une source.
+     */
     private fun identityOf(kind: String, url: String, username: String, mac: String): String =
-        identity(kind, url, if (kind.uppercase() == "STALKER") mac.uppercase() else username)
+        if (kind.uppercase() == "PLEX") "PLEX||$username"
+        else identity(kind, url, if (kind.uppercase() == "STALKER") mac.uppercase() else username)
 
     fun parseConfig(body: String): CloudConfig {
         val o = JSONObject(body)

@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.i18n.sportNav
+import com.ultratv.tv.nativeapp.i18n.mlibHubTitle
 import com.ultratv.tv.nativeapp.ui.common.LocalLowRam
 import com.ultratv.tv.nativeapp.ui.design.Manrope
 import androidx.compose.ui.Alignment
@@ -96,9 +97,18 @@ internal val railItems = listOf(
 /** Entrée facultative « Sport » (Réglages › Affichage), juste après le Guide. */
 private val sportRailItem = RailItem("sport", com.ultratv.tv.nativeapp.ui.sport.SportIcons.Trophy, labelD = { it.sportNav }) { "" }
 
-/** Rail avec (ou sans) la rubrique Sport. */
-internal fun railItemsFor(sport: Boolean): List<RailItem> =
-    if (!sport) railItems else railItems.flatMap { if (it.route == "guide") listOf(it, sportRailItem) else listOf(it) }
+/** Entrée « Mes bibliothèques » : seulement si une source Jellyfin, Emby, Plex ou NAS existe ; dans « Mes listes », après Favoris. */
+private val librariesRailItem = RailItem(com.ultratv.tv.nativeapp.nav.Routes.LIBRARIES, Icons.Series, labelD = { it.mlibHubTitle }, group = RailGroup.MINE) { "" }
+
+/** Rail avec (ou sans) la rubrique Sport et l'entrée « Mes bibliothèques ». */
+internal fun railItemsFor(sport: Boolean, libraries: Boolean = false): List<RailItem> =
+    railItems.flatMap {
+        when {
+            sport && it.route == "guide" -> listOf(it, sportRailItem)
+            libraries && it.route == "favorites" -> listOf(it, librariesRailItem)
+            else -> listOf(it)
+        }
+    }
 
 /** Largeur repliée / dépliée du rail, en px de maquette 1920×1080 (112 = 5,8 % de la largeur). */
 const val RAIL_COLLAPSED_PX = 112
@@ -126,7 +136,8 @@ fun SidebarNav(navController: NavController) {
     val badgesVm: RailBadgesViewModel = androidx.hilt.navigation.compose.hiltViewModel()
     val favCount by badgesVm.favorites.collectAsState()
     val recCount by badgesVm.recording.collectAsState()
-    val items = remember(sportOn) { railItemsFor(sportOn) }
+    val hasLibraries by badgesVm.hasLibraries.collectAsState()
+    val items = remember(sportOn, hasLibraries) { railItemsFor(sportOn, hasLibraries) }
     val lowRam = LocalLowRam.current
     var expanded by remember { mutableStateOf(false) }
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current

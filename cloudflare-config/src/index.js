@@ -820,7 +820,7 @@ async function plexWeb(env, acct, path) {
     st.servers = servers;
     await docs.put(env, key, await encryptJson(keysFromEnv(env), st, acct.login), { expirationTtl: PLEX_PIN_TTL_S });
   }
-  return jsonNoStore({ state: "ok", servers: st.servers.map((s) => ({ id: s.id, name: s.name, owned: s.owned })) });
+  return jsonNoStore({ state: "ok", servers: st.servers.map((s) => ({ id: s.id, name: s.name, owned: s.owned, conn: s.conns[0]?.relay ? "relay" : s.conns[0]?.local ? "local" : "remote" })) });
 }
 
 async function addProvider(env, acct, form) {

@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Plex, Jellyfin, Emby et NAS : « Mes bibliothèques » dans le menu latéral, rangées courtes par serveur avec « Tout voir », serveurs choisissables dans Films et Séries, indexation toujours faite (même si Films/Séries IPTV sont désactivés), serveur ajouté sur le site réessayé à chaque synchro avec message d'erreur, un même serveur Plex lié sur la TV et le site n'est plus dupliqué, liste des serveurs Plex du site mieux présentée
+
 ## [1.3.48] — 2026-11-17 (Android)
 
 ### Ajouté

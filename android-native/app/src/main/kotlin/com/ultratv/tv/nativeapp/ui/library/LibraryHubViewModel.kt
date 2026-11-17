@@ -37,8 +37,14 @@ data class LibraryRow(
     val series: Int,
     /** Dernière copie du catalogue (ms epoch, 0 = jamais) : affichée quand le serveur est hors ligne. */
     val lastCopyAt: Long,
-    val tiles: List<MediaLibraryLogic.Tile>,
+    val shelves: List<Shelf>,
 )
+
+/** Type de rangée d'un serveur ; MOVIES / SERIES / LIBRARY mènent à « Tout voir ». */
+enum class ShelfKind { RESUME, RECENT, MOVIES, SERIES, LIBRARY }
+
+/** Rangée courte (au plus [MediaLibraryLogic.SHELF_MAX] affiches). [title] ne sert que pour LIBRARY (nom de la bibliothèque du serveur). */
+data class Shelf(val kind: ShelfKind, val title: String, val tiles: List<MediaLibraryLogic.Tile>, val seeAllSeries: Boolean?)
 
 /** Vue « dossiers » d'un partage NAS : dossiers de premier niveau + fichiers reconnus automatiquement. */
 data class NasDetail(
@@ -81,21 +87,37 @@ class LibraryHubViewModel @Inject constructor(
         val latestS = values[4] as List<com.ultratv.tv.nativeapp.data.db.SeriesEntity>
         val reachable = (values[5] as Map<Long, Boolean>)[p.id]
         val last = maxOf(p.lastVodSyncAt, p.lastSeriesSyncAt)
-        LibraryRow(p, MediaLibraryLogic.status(p.kind, p.baseUrl, reachable, last), movies, series, last, tilesOf(p, progress, latestM, latestS))
+        LibraryRow(p, MediaLibraryLogic.status(p.kind, p.baseUrl, reachable, last), movies, series, last, shelvesOf(p, progress, latestM, latestS, movies, series))
     }
 
-    /** Titres en cours (barre de progression) d'abord, puis derniers ajouts. */
-    private suspend fun tilesOf(
+    /**
+     * Rangées courtes d'un serveur : Reprendre, Ajoutés récemment, Films, Séries, puis une par bibliothèque (section) du serveur,
+     * 20 affiches au plus chacune. Aucune liste complète n'est lue : tout passe par des requêtes LIMIT (Room, hors thread principal).
+     */
+    private suspend fun shelvesOf(
         p: ProviderEntity, progress: List<com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity>,
         latestM: List<com.ultratv.tv.nativeapp.data.db.MovieEntity>, latestS: List<com.ultratv.tv.nativeapp.data.db.SeriesEntity>,
-    ): List<MediaLibraryLogic.Tile> {
+        movies: Int, series: Int,
+    ): List<Shelf> = withContext(Dispatchers.IO) {
+        val max = MediaLibraryLogic.SHELF_MAX
+        fun m(l: List<com.ultratv.tv.nativeapp.data.db.MovieEntity>) = l.map { MediaLibraryLogic.Tile(false, it.id, it.title, it.poster, 0f) }
+        fun s(l: List<com.ultratv.tv.nativeapp.data.db.SeriesEntity>) = l.map { MediaLibraryLogic.Tile(true, it.id, it.title, it.poster, 0f) }
         val started = progress.mapNotNull { h ->
             val pr = MediaLibraryLogic.progress(h.positionMs, h.durationMs)
             if (h.kind == "MOVIE") movieDao.byRemoteId(p.id, h.remoteId)?.let { MediaLibraryLogic.Tile(false, it.id, it.title, it.poster, pr) }
             else h.parentRemoteId?.let { seriesDao.byRemoteId(p.id, it) }?.let { MediaLibraryLogic.Tile(true, it.id, it.title, it.poster, pr) }
         }
-        val latest = latestM.map { MediaLibraryLogic.Tile(false, it.id, it.title, it.poster, 0f) } + latestS.map { MediaLibraryLogic.Tile(true, it.id, it.title, it.poster, 0f) }
-        return MediaLibraryLogic.pickTiles(started, latest.shuffledStable(), 14)
+        val recent = MediaLibraryLogic.pickTiles(emptyList(), (m(latestM) + s(latestS)).shuffledStable(), max)
+        val libs = buildList {
+            for (kind in listOf("MOVIE", "SERIES")) for (c in categoryDao.forProviderKind(p.id, kind).filter { it.enabled }.take(MediaLibraryLogic.LIBRARY_SHELVES)) {
+                val tiles = if (kind == "MOVIE") m(movieDao.latestInCategory(p.id, c.remoteId, max)) else s(seriesDao.latestInCategory(p.id, c.remoteId, max))
+                if (tiles.isNotEmpty()) add(Shelf(ShelfKind.LIBRARY, c.name, tiles, kind == "SERIES"))
+            }
+        }
+        MediaLibraryLogic.shelfPlan(
+            started.take(max), recent,
+            if (movies > 0) m(latestM).take(max) else emptyList(), if (series > 0) s(latestS).take(max) else emptyList(), libs,
+        )
     }
 
     // Mélange films et séries sans hasard (alterne) pour que la rangée montre les deux.

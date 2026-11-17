@@ -1901,4 +1901,5 @@
     <string name="sport_ok_hint">OK em um jogo: súmula ou reprodução</string>
     <string name="sport_no_events">Ainda sem lances importantes.</string>
     <string name="sport_table_hidden">Classificação oculta no modo sem spoilers.</string>
+    <string name="mlib_cloud_failed">Não foi possível conectar a biblioteca “%1$s” adicionada pelo site. A TV tentará de novo na próxima sincronização. Verifique se o servidor está acessível.</string>
 </resources>

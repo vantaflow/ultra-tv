@@ -1883,4 +1883,5 @@
     <string name="sport_ok_hint">OK σε αγώνα: φύλλο αγώνα ή αναπαραγωγή</string>
     <string name="sport_no_events">Δεν υπάρχουν ακόμη βασικές φάσεις.</string>
     <string name="sport_table_hidden">Η βαθμολογία κρύβεται στη λειτουργία χωρίς spoilers.</string>
+    <string name="mlib_cloud_failed">Δεν ήταν δυνατή η σύνδεση με τη βιβλιοθήκη «%1$s» που προστέθηκε από τον ιστότοπο. Η τηλεόραση θα ξαναδοκιμάσει στον επόμενο συγχρονισμό. Ελέγξτε ότι ο διακομιστής είναι προσβάσιμος.</string>
 </resources>

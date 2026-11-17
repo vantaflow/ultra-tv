@@ -1899,4 +1899,5 @@
         <item quantity="many">Tu suscripción permite %1$s conexiones: todas están ocupadas por grabaciones a esa hora</item>
         <item quantity="other">Tu suscripción permite %1$s conexiones: todas están ocupadas por grabaciones a esa hora</item>
     </plurals>
+    <string name="mlib_cloud_failed">No se pudo conectar la biblioteca «%1$s» añadida desde el sitio web. El televisor lo intentará de nuevo en la próxima sincronización. Comprueba que el servidor sea accesible.</string>
 </resources>

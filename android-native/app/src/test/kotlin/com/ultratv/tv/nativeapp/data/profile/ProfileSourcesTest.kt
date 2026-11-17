@@ -49,4 +49,12 @@ class ProfileSourcesTest {
         assertEquals(listOf("A", "B", "C"), ProfileSourcesRules.decode(ProfileSourcesRules.encode(listOf("A", "B", "C"))))
         assertEquals(null, ProfileSourcesRules.decode(""))
     }
+
+    @Test fun sourcePlexAjoutee_sansChoixDeProfil_estVisible_etAvecChoixElleEstFiltreeJusquAEnsureVisible() {
+        val xt = p(1, "STRONG", active = true); val plex = p(2, "JDM Plex Server").copy(kind = "PLEX")
+        assertEquals(listOf(1L, 2L), ProfileSourcesRules.visible(listOf(xt, plex), null).map { it.id })
+        // Le profil avait choisi ses sources : la nouvelle source est masquée tant que son nom n'est pas ajouté au choix.
+        assertEquals(listOf(1L), ProfileSourcesRules.visible(listOf(xt, plex), listOf("STRONG")).map { it.id })
+        assertEquals(listOf(1L, 2L), ProfileSourcesRules.visible(listOf(xt, plex), listOf("STRONG", "JDM Plex Server")).map { it.id })
+    }
 }

@@ -1825,4 +1825,5 @@
 <string name="sport_ok_hint">Bir maçta Tamam: maç kartı veya oynatma</string>
 <string name="sport_no_events">Henüz önemli an yok.</string>
 <string name="sport_table_hidden">Puan durumu spoiler\'sız modda gizli.</string>
+    <string name="mlib_cloud_failed">Web sitesinden eklenen “%1$s” kütüphanesine bağlanılamadı. TV bir sonraki eşitlemede yeniden deneyecek. Sunucuya erişilebildiğini kontrol edin.</string>
 </resources>

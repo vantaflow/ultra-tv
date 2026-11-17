@@ -11,6 +11,7 @@ import com.ultratv.tv.nativeapp.i18n.kindStalker
 import com.ultratv.tv.nativeapp.i18n.mediaFailed
 import com.ultratv.tv.nativeapp.i18n.mlibHubRowHint
 import com.ultratv.tv.nativeapp.i18n.mlibHubTitle
+import com.ultratv.tv.nativeapp.i18n.mlibCounts
 import com.ultratv.tv.nativeapp.i18n.mlibMy
 import com.ultratv.tv.nativeapp.i18n.nasFailed
 import com.ultratv.tv.nativeapp.i18n.guideCheckMessage
@@ -403,7 +404,11 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, on
                             paired -> C.localPrivate
                             else -> null
                         }
-                        val meta = listOfNotNull(kindName(S.wiz, p.kind) ?: (if (p.kind == "STALKER") D.kindStalker else D.unsupportedSource), cloudTag, if (p.active) D.active else null, if (p.active && counts.live > 0) D.channels(counts.live) else null).joinToString(" · ")
+                        // Serveur multimédia / NAS : films et séries indexés (0 · 0 = pas encore synchronisé ou serveur injoignable).
+                        val libCounts by androidx.compose.runtime.produceState<Pair<Int, Int>?>(null, p.id, p.lastVodSyncAt, p.lastSeriesSyncAt) {
+                            value = if (com.ultratv.tv.nativeapp.data.mediaserver.MediaServer.isMediaKind(p.kind) || com.ultratv.tv.nativeapp.data.nas.Nas.isNasKind(p.kind)) runCatching { vm.mediaCounts(p.id) }.getOrNull() else null
+                        }
+                        val meta = listOfNotNull(kindName(S.wiz, p.kind) ?: (if (p.kind == "STALKER") D.kindStalker else D.unsupportedSource), cloudTag, if (p.active) D.active else null, if (p.active && counts.live > 0) D.channels(counts.live) else null, libCounts?.let { D.mlibCounts(it.first, it.second) }).joinToString(" · ")
                         Text(meta, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Text(D.edit, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1)
