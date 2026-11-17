@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Sport : le football du jour (scores des directs hors ligues suivies, ex. qualifications CAN) est lu directement chez ESPN depuis la TV, avec un User-Agent honnête, une requête par minute au plus et un recul en cas d'erreur ; la feuille d'un match ESPN est lue de la même façon. La route du Worker reste en secours (ESPN bloque les adresses Cloudflare).
+
 ## [1.3.50] — 2026-11-17 (Android) · Worker
 
 ### Ajouté
