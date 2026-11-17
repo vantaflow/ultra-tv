@@ -88,6 +88,9 @@ wrangler secret put SIMKL_CLIENT_ID       # facultatif : identifiant de l'applic
 wrangler secret put SIMKL_CLIENT_SECRET   # facultatif : secret de l'application Simkl (exigé par l'échange du code d'autorisation). Sans les DEUX, Simkl est masqué (tableau de bord et applis)
 wrangler secret put OPENSUBTITLES_API_KEY  # facultatif : sous-titres en ligne (clé commune ; chaque client peut relier son compte)
 wrangler secret put OMDB_API_KEY           # facultatif : notes IMDb / Rotten Tomatoes (clé gratuite omdbapi.com)
+wrangler secret put FOOTBALL_DATA_KEY      # facultatif : football-data.org v4 (10 req/min) — calendriers, classements, direct des 5 grands championnats + C1
+wrangler secret put API_FOOTBALL_KEY       # facultatif : api-sports.io v3 (100 req/JOUR) — Botola, compositions, statistiques des joueurs
+wrangler secret put SPORTSDB_API_KEY       # facultatif : TheSportsDB (offre payante) ; sans lui, clé publique gratuite « 123 »
 wrangler secret put ACCOUNT_RELAY_KEY      # facultatif : clé partagée avec le relais d'abonnement (voir « Relais d'abonnement »)
 wrangler secret put ADMIN_TOKEN        # >= 32 caractères, uniquement pour la migration (à supprimer ensuite)
 
@@ -161,6 +164,42 @@ n'existe pas côté Simkl (réponse `error: "unsupported"`). Le cache de bibliot
 Configuration : créer une application sur Simkl, y déclarer l'adresse de retour `https://<site>/simkl/callback`, puis
 `wrangler secret put SIMKL_CLIENT_ID` et `SIMKL_CLIENT_SECRET` (aucune valeur dans le dépôt). Sans ces deux variables,
 Simkl est masqué.
+
+## Données sportives : plusieurs fournisseurs gratuits croisés
+
+`/api/sports/league` (direct, calendrier, classement) et `/api/sports/match` (feuille de match) sont servis par
+`src/sportsdata.js`. Les appareils n'appellent jamais un fournisseur ; la réponse est toujours au même format. Les clés
+sont des secrets Wrangler (aucune valeur dans le dépôt, les réponses, les clés de cache ni les journaux).
+
+| Fournisseur | Secret | Quota réel → budget suivi | Ligues | Capacités |
+|---|---|---|---|---|
+| football-data.org v4 | `FOOTBALL_DATA_KEY` (en-tête `X-Auth-Token`) | 10/min → 8/min | ligue1, premier, liga, seriea, bundesliga, ucl | direct, calendrier, classement, feuille de match |
+| Jolpica-F1 (Ergast) | aucun | 4/s → 60/min | f1 | calendrier, classement pilotes, résultats d'un GP |
+| API-Football v3 | `API_FOOTBALL_KEY` (en-tête `x-apisports-key`) | 100/jour → 90/jour (direct 25, feuille 40, calendrier 15, classement 10) et 8/min | Botola en premier choix ; les 6 autres ligues football en dernier recours | + compositions, statistiques d'équipe et de joueurs |
+| TheSportsDB | `SPORTSDB_API_KEY` (sinon clé publique `123`) | ≈ 30/min → 25/min (90/min avec clé) | toute la liste blanche (nba, nfl, nhl, mlb, top14, premrugby : seule source) | direct, calendrier, classement, feuille de match |
+
+**Choix par requête** : pour (ligue, capacité), le fournisseur de plus petit rang qui couvre la ligue, a sa clé et du
+budget ; sinon le suivant ; sinon la dernière copie en cache (jusqu'à 24 h), renvoyée avec `"stale": true`. Rangs :
+football-data et Jolpica 1, TheSportsDB 5 (6 pour la Botola), API-Football 9 (1 pour la Botola). Un 429 met le
+fournisseur en pause 1 min (6 h si API-Football annonce son quota atteint).
+
+**Budget** : compteurs par minute / jour / capacité dans l'API Cache (par centre de données, donc approximatifs : les
+budgets gardent une marge) ou dans le KV Turso quand `STORAGE=turso` (compteur global). État lu une fois, au premier
+besoin amont, et écrit une fois au plus par appel du Worker. Chaque `fetch` et chaque lecture/écriture de cache compte
+comme une sous-requête ; plafond de 50 par appel.
+
+**Caches partagés par tous les utilisateurs** : direct 60 s (un seul jeu d'appels pour toutes les ligues), calendrier
+1 h, classement 6 h, feuille de match 2 min (en cours) ou 6 h (terminée). Les données venues d'API-Football ont un cache
+plus long : calendrier 3 h, classement 12 h, direct 5 min, feuille 5 min / 24 h. Le direct de la Botola n'appelle
+API-Football que si un match est plausible (calendrier en cache avec un match à ±3 h).
+
+**Croisement** : les matchs de deux sources sont rapprochés par date ±3 h et noms d'équipes normalisés (accents, sigles,
+alias). Le direct fusionne football-data et TheSportsDB (progression, matchs manquants) ; le calendrier reçoit les scores
+en direct déjà connus (aucun appel de plus) ; la feuille de match football-data est enrichie par API-Football
+(statistiques, compositions, joueurs) tant qu'il reste plus de 40 % du budget « feuille ».
+
+**Identifiants de match** (champ `i`) : numérique = TheSportsDB, `fd-N` football-data, `af-N` API-Football,
+`jo-AAAA-N` Jolpica. Les champs ajoutés (`src`, `lineups`, `players`, `results`) sont facultatifs pour les écrans.
 
 ## Relais d'abonnement
 
