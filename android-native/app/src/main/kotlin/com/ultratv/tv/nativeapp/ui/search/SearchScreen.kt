@@ -1012,9 +1012,7 @@ private fun TouchProgramHit(h: ProgramHit, D: com.ultratv.tv.nativeapp.i18n.Desi
 /** Sortie par le HAUT de ce groupe : vers [target] (les onglets), les autres directions inchangées. */
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 private fun Modifier.upExitTo(target: androidx.compose.ui.focus.FocusRequester): Modifier =
-    focusProperties {
-        exit = { dir -> if (dir == androidx.compose.ui.focus.FocusDirection.Up) target else androidx.compose.ui.focus.FocusRequester.Default }
-    }.focusGroup()
+    focusGroup()
 
 /** « Recherche » ou « Recherche · Films » / « Recherche · Séries » pour une recherche limitée. */
 @Composable

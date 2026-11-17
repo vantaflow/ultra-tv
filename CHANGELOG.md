@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Télécommande : les flèches vont à l'élément le plus proche dans leur direction (navigation 2D), sans passer au bouton suivant ; redirections forcées retirées de la fiche série, du catalogue, de la recherche et du bandeau du Direct
+
 ## [1.3.50] — 2026-11-17 (Android) · Worker
 
 ### Ajouté
