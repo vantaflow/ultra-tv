@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Fiche série (TV) : Droite depuis « Reprendre » ou la colonne de gauche mène à l'épisode en cours, Gauche depuis un épisode revient sur « Reprendre » ; Haut et Bas restent géométriques
+
 ## [1.3.50] — 2026-11-17 (Android) · Worker
 
 ### Ajouté
