@@ -186,4 +186,14 @@ class SportHubLogicTest {
         assertEquals(MatchState.LIVE, m.state); assertEquals(NOW - 10 * M, m.startMs)
         assertNull(m.homeScore)
     }
+
+    @Test fun liveCards_tout_scoreDuFootballDuJour_nomsAnglais() {
+        val e = SportEntry(ch(1, "beIN 1", 3), EpgEntity(id = 1, channelId = 1, title = "Football : Qualifications de la CAN | Égypte / Malawi", description = null, startMs = NOW - 55 * M, endMs = NOW + 60 * M), true, true)
+        val m = LeagueMatch("es-9", NOW - 57 * M, null, "Egypt", "Malawi", null, null, 1, 0, MatchState.LIVE, "57", null)
+        val cards = SportHubLogic.liveCards(null, null, null, emptyList(), listOf(e), listOf(e), emptyMap(), NOW, mapOf("*day" to listOf(m))) { "" }
+        assertEquals(1, cards.size)
+        assertEquals("es-9", cards[0].match?.id)
+        assertEquals(1, cards[0].homeScore)
+        assertEquals("Qualifications de la CAN", cards[0].league)
+    }
 }

@@ -34,7 +34,7 @@ import { tmdbProxy } from "./tmdb.js";
 import { downloadRedirect } from "./download.js";
 import { ratingsProxy } from "./ratings.js";
 import { fanartProxy, tvmazeProxy, sportsTeamProxy } from "./extmeta.js";
-import { sportsLeagueProxy, sportsMatchProxy } from "./sportsdata.js";
+import { sportsDayProxy, sportsLeagueProxy, sportsMatchProxy } from "./sportsdata.js";
 import { subtitlesSearch, subtitlesDownload, osLogin } from "./subtitles.js";
 import { sanitizeText } from "./sanitize.js";
 import { recordEvent, recordEvents, anonTouch as anonTouchD1, purgeTelemetry, touchDeviceActivity, deviceActivity, withActivity, platformOf, modelOf, ANON_PLATFORMS } from "./telemetry.js";
@@ -260,6 +260,7 @@ async function route(req, env, ctx) {
   if (path.startsWith("/api/fanart/") && m === "GET") return deviceExtmeta(req, env, "fanart", () => fanartProxy(path.slice("/api/fanart/".length), url.searchParams, env));
   if (path === "/api/tvmaze/show" && m === "GET") return deviceExtmeta(req, env, "tvmaze", () => tvmazeProxy(url.searchParams, env));
   if (path === "/api/sports/league" && m === "GET") return deviceExtmeta(req, env, "sportsdata", () => sportsLeagueProxy(url.searchParams, env));
+  if (path === "/api/sports/day" && m === "GET") return deviceExtmeta(req, env, "sportsdata", () => sportsDayProxy(env));
   if (path === "/api/sports/match" && m === "GET") return deviceExtmeta(req, env, "sportsdata", () => sportsMatchProxy(url.searchParams, env));
   if (path === "/api/sports/team" && m === "GET") return deviceExtmeta(req, env, "sports", () => sportsTeamProxy(url.searchParams, env));
   // Alertes programmées par l'administrateur : lecture publique (un appareil pas encore appairé doit aussi les voir).

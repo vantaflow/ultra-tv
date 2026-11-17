@@ -404,6 +404,7 @@ class DesignStrings(val lang: AppLang) {
     val themeOled get() = tx(R.string.ds_theme_oled)
     val themeMidnight get() = tx(R.string.ds_theme_midnight)
     val themeForest get() = tx(R.string.ds_theme_forest)
+    val themeTeal get() = tx(R.string.ds_theme_teal)
     val themePlum get() = tx(R.string.ds_theme_plum)
     val themeSand get() = tx(R.string.ds_theme_sand)
     val themeContrast get() = tx(R.string.ds_theme_contrast)

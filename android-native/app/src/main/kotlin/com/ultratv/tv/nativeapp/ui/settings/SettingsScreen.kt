@@ -791,7 +791,7 @@ private fun qualityLabel(D: DesignStrings, q: String) = when (q) { "4k" -> "4K";
 internal fun themeLabel(D: DesignStrings, t: AppTheme) = when (t) {
     AppTheme.LIGHT -> D.themeLight; AppTheme.AUTO -> D.themeAuto; AppTheme.DARK -> D.themeDark; AppTheme.OLED -> D.themeOled
     AppTheme.MIDNIGHT -> D.themeMidnight; AppTheme.FOREST -> D.themeForest; AppTheme.PLUM -> D.themePlum
-    AppTheme.SAND -> D.themeSand; AppTheme.CONTRAST -> D.themeContrast
+    AppTheme.SAND -> D.themeSand; AppTheme.CONTRAST -> D.themeContrast; AppTheme.TEAL -> D.themeTeal
 }
 
 // ───────────────────────── Lecture ─────────────────────────

@@ -110,8 +110,8 @@ class LeaguesViewModel @Inject constructor(
                     (repo.live(key, now) as? LeagueResult.Ok)?.let { live = it.value }
                 } else if (status == LeagueStatus.OK) live = emptyList()
                 emit(key to Data(status, stale, LeagueLogic.merge(schedule, live)))
-                if (status != LeagueStatus.OK) { delay(RETRY_MS); continue }
-                delay(if (LeagueLogic.mayBeLive(schedule + live, System.currentTimeMillis())) LeagueRepository.LIVE_MS else IDLE_MS)
+                if (status != LeagueStatus.OK) { delay(Tuning.RETRY_MS); continue }
+                delay(if (LeagueLogic.mayBeLive(schedule + live, System.currentTimeMillis())) LeagueRepository.LIVE_MS else Tuning.IDLE_MS)
             }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null to Data(LeagueStatus.LOADING, false, emptyList()))
@@ -129,9 +129,11 @@ class LeaguesViewModel @Inject constructor(
                     keys.map { k -> this@coroutineScope.async { k to ((repo.live(k, now) as? LeagueResult.Ok)?.value?.let(LeagueLogic::live).orEmpty()) } }
                         .map { it.await() }
                 }.filter { it.second.isNotEmpty() }.toMap()
-                emit(res)
+                // Puis tout le football du jour (ESPN) : scores des directs du guide qu'aucune ligue suivie ne couvre.
+                val day = (repo.day(now) as? LeagueResult.Ok)?.value?.let(LeagueLogic::live).orEmpty()
+                emit(if (day.isEmpty()) res else res + (DAY_KEY to day))
                 // Une requête par ligue visible : toutes les 3 min pour rester sous la limite du Worker (120 / 10 min / appareil).
-                delay(ALL_LIVE_MS)
+                delay(Tuning.ALL_LIVE_MS)
             }
         }
     }.flowOn(kotlinx.coroutines.Dispatchers.Default)
@@ -188,7 +190,12 @@ class LeaguesViewModel @Inject constructor(
     }
     fun closeMatch() { _sheet.value = null }
 
-    private companion object {
+    companion object {
+        /** Clé de [LeaguesState.liveAll] pour le football du jour hors ligues suivies. */
+        const val DAY_KEY = "*day"
+    }
+
+    private object Tuning {
         const val IDLE_MS = 10 * 60_000L
         const val RETRY_MS = 60_000L
         const val ALL_LIVE_MS = 3 * 60_000L

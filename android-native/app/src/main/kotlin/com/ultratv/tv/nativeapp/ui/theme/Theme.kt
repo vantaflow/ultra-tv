@@ -42,7 +42,7 @@ private val Light = lightColorScheme(
  */
 fun isLightTheme(theme: AppTheme, systemDark: Boolean, isTv: Boolean = false): Boolean = when (theme) {
     AppTheme.LIGHT, AppTheme.SAND -> true
-    AppTheme.DARK, AppTheme.OLED, AppTheme.MIDNIGHT, AppTheme.FOREST, AppTheme.PLUM, AppTheme.CONTRAST -> false
+    AppTheme.DARK, AppTheme.OLED, AppTheme.MIDNIGHT, AppTheme.FOREST, AppTheme.PLUM, AppTheme.CONTRAST, AppTheme.TEAL -> false
     AppTheme.AUTO -> if (isTv) false else !systemDark
 }
 

@@ -352,6 +352,7 @@
     <string name="ds_theme_plum">Ciruela</string>
     <string name="ds_theme_sand">Arena (claro)</string>
     <string name="ds_theme_contrast">Alto contraste</string>
+    <string name="ds_theme_teal">Turquesa</string>
     <string name="ds_language">Idioma</string>
     <string name="ds_menu">Menú</string>
     <string name="ds_menu_sidebar">Barra lateral</string>
