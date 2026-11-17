@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.41] — 2026-11-17 (Android) · Bureau 1.2.66 · Worker
+
 ### Corrigé
 - Direct (TV) : un titre de programme contenant un retour à la ligne (données du guide) restait sur deux lignes et poussait le programme suivant hors de la carte.
 - Réglages (TV) : espace vide supprimé entre le menu de gauche et la liste des rubriques.
