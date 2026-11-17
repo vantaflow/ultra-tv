@@ -194,6 +194,8 @@
   "DesignStrings.getCountSeries()": "%s مسلسل",
   "DesignStrings.getCuts()": "الانقطاعات (دقيقتان)",
   "DesignStrings.getDashboardScan()": "امسح الرمز بهاتفك",
+  "DesignStrings.getDashboardSendHint()": "اضغط موافق للحصول على الرمز، ثم امسح رمز QR بهاتفك",
+  "DesignStrings.getDashboardSendTitle()": "إرسال مصدر من الهاتف",
   "DesignStrings.getDashboardTitle()": "لوحة التحكم",
   "DesignStrings.getDecoding()": "فك الترميز",
   "DesignStrings.getDecodingRow()": "فك الترميز",

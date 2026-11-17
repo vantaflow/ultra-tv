@@ -194,6 +194,8 @@
   "DesignStrings.getCountSeries()": "%s series",
   "DesignStrings.getCuts()": "Cuts (2 min)",
   "DesignStrings.getDashboardScan()": "Scan with your phone",
+  "DesignStrings.getDashboardSendHint()": "Press OK to get a code, then scan the QR code with your phone",
+  "DesignStrings.getDashboardSendTitle()": "Send a source from your phone",
   "DesignStrings.getDashboardTitle()": "Dashboard",
   "DesignStrings.getDecoding()": "Decoding",
   "DesignStrings.getDecodingRow()": "Decoding",
