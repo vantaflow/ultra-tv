@@ -39,6 +39,7 @@ class ZapViewModel @Inject constructor(
     private val epgDao: EpgDao,
     private val recents: RecentChannelsStore,
     private val guard: com.ultratv.tv.nativeapp.data.parental.ParentalGuard,
+    private val numbering: com.ultratv.tv.nativeapp.data.repo.ProfileNumbering,
 ) : ViewModel() {
     private val entry = NumberEntry()
     private val _preview = MutableStateFlow<NumberPreview?>(null)
@@ -85,7 +86,7 @@ class ZapViewModel @Inject constructor(
         _preview.value = null
         if (n == null) return
         // Numéro saisi : la file ne bouge qu'après l'accord du code parental (chaîne verrouillée).
-        val ch = queue.peekNumber(n) ?: return
+        val ch = queue.peekNumber(n, numbering.current) ?: return
         gated(ch) { queue.moveTo(ch) }
     }
 
@@ -93,7 +94,7 @@ class ZapViewModel @Inject constructor(
         val digits = entry.text
         val n = entry.value
         viewModelScope.launch {
-            val ch = n?.let { queue.peekNumber(it) }
+            val ch = n?.let { queue.peekNumber(it, numbering.current) }
             _preview.value = NumberPreview(digits, ch?.title, ch?.let { nowTitle(it) })
         }
     }
@@ -135,7 +136,7 @@ class ZapViewModel @Inject constructor(
             val now = System.currentTimeMillis()
             _recent.value = recents.recent.first().mapNotNull { ref ->
                 val c = channelDao.byRemoteId(ref.providerId, ref.remoteId) ?: return@mapNotNull null
-                RecentEntry(c, ZapLogic.numberOf(c), nowTitle(c))
+                RecentEntry(c, numbering.current.numberOf(c), nowTitle(c))
             }.distinctBy { it.channel.title.trim().lowercase() }   // même chaîne sous plusieurs identifiants (variantes)
         }
     }

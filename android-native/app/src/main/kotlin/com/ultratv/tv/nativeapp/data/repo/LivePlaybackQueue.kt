@@ -58,10 +58,10 @@ class LivePlaybackQueue @Inject constructor() {
     }
 
 
-    /** Chaîne cherchée par numéro, sans changer l'index (aperçu pendant la saisie). */
-    fun peekNumber(number: Int): ChannelEntity? {
+    /** Chaîne cherchée par numéro AFFICHÉ (selon [numbering], celui du profil), sans changer l'index (aperçu pendant la saisie). */
+    fun peekNumber(number: Int, numbering: ChannelNumbering = ChannelNumbering.NONE): ChannelEntity? {
         val s = _state.value ?: return null
-        return ZapLogic.byNumber(s.channels, number)?.let { s.channels[it] }
+        return ZapLogic.byNumber(s.channels, number, numbering)?.let { s.channels[it] }
     }
 
     fun clear() { _state.value = null }

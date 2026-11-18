@@ -41,6 +41,9 @@ data class ProfileCategoryOrderEntity(
     val position: Int,
 )
 
+/** seq d'une chaîne masquée par le profil courant (numérotation par profil, voir ChannelNumbering). */
+data class HiddenSeqRow(val providerId: Long, val categoryId: String?, val seq: Int)
+
 data class HiddenKeyRow(val providerId: Long, val remoteId: String)
 
 /** Filtre « masquée pour le profil courant » à greffer sur une requête de chaînes (alias de table selon la requête). */
@@ -80,6 +83,10 @@ interface ProfileViewDao {
 
     @Query("SELECT providerId AS providerId, remoteId AS remoteId FROM profile_hidden_channel WHERE profileId = :profileId")
     suspend fun rowsOfProfile(profileId: Long): List<HiddenKeyRow>
+
+    /** Observe les seq des chaînes numérotées masquées par le profil courant (petit : seulement les masquées). */
+    @Query("SELECT c.providerId AS providerId, c.categoryId AS categoryId, c.seq AS seq FROM channel c INNER JOIN channel_hidden_now hn ON hn.providerId = c.providerId AND hn.remoteId = c.remoteId WHERE c.seq > 0")
+    fun observeHiddenSeqs(): Flow<List<HiddenSeqRow>>
 
     @Query("DELETE FROM channel_hidden_now")
     suspend fun clearNow()

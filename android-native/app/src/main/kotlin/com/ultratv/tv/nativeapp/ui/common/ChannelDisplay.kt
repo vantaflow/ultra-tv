@@ -16,6 +16,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
+import com.ultratv.tv.nativeapp.data.repo.ChannelNumbering
 import com.ultratv.tv.nativeapp.ui.design.LogoBox
 import com.ultratv.tv.nativeapp.ui.design.Manrope
 import com.ultratv.tv.nativeapp.ui.design.Sora
@@ -35,7 +36,13 @@ enum class GuideNameWidth(val key: String, val tvPx: Int, val touchDp: Int) {
 }
 
 /** Réglages d'affichage des chaînes, fournis à toute l'interface (Direct, Guide, aperçus). */
-data class ChannelDisplay(val showLogos: Boolean = true, val guideNameWidth: GuideNameWidth = GuideNameWidth.NORMAL, val showNumbers: Boolean = true)
+data class ChannelDisplay(
+    val showLogos: Boolean = true,
+    val guideNameWidth: GuideNameWidth = GuideNameWidth.NORMAL,
+    val showNumbers: Boolean = true,
+    /** Numérotation du profil courant (les chaînes masquées par ce profil sont retirées des numéros). */
+    val numbering: ChannelNumbering = ChannelNumbering.NONE,
+)
 
 val LocalChannelDisplay = compositionLocalOf { ChannelDisplay() }
 
@@ -46,9 +53,12 @@ fun channelNumber(seq: Int, num: Int): Int? = when {
     else -> null
 }
 
-/** Numéro à afficher : null si le réglage « Numéros de chaîne » est désactivé (toute l'interface, téléphone comme TV). */
+/** Numéro à afficher d'une chaîne selon la numérotation du PROFIL courant ; null si les numéros sont masqués ou inconnus. */
 @Composable
-fun shownChannelNumber(seq: Int, num: Int): Int? = if (LocalChannelDisplay.current.showNumbers) channelNumber(seq, num) else null
+fun shownChannelNumber(c: ChannelEntity): Int? {
+    val d = LocalChannelDisplay.current
+    return if (d.showNumbers) d.numbering.numberOf(c).takeIf { it > 0 } else null
+}
 
 /** Libellé « numéro · nom » d'une chaîne (le numéro est omis s'il est inconnu). */
 fun channelHeading(number: Int?, title: String): String = if (number == null) title else "$number · $title"
