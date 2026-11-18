@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## Bureau 1.2.75 — 2026-11-18
+
 ### Ajouté
 - Bureau : style des sous-titres (taille de 85 à 150 %, contour ou fond), minuteur d'arrêt de la lecture (30, 60 ou 120 min) et bouton pour effacer la mémoire du lecteur (pistes, décalages et sous-titres en cache) dans le panneau Affichage. Contribution de PlaNeiT.
 
