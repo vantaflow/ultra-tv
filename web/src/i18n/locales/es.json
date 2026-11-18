@@ -365,6 +365,7 @@
   "set.catsChannels": "Canales",
   "set.chTitle": "Canales: {name}",
   "set.chHint": "El orden es propio del perfil activo. Un canal oculto desaparece en todas partes; volver a mostrarlo vuelve a sincronizar la fuente.",
+  "set.chProfileHint": "Este ajuste solo afecta al perfil actual: los demás perfiles conservan sus propios canales y el orden de sus categorías.",
   "set.chVisible": "Visible",
   "set.chHidden": "Oculto",
   "set.chEmpty": "No hay canales en esta categoría.",

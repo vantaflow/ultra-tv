@@ -26,6 +26,7 @@ import { connCounts, isConnectionLimit, limitCounts, probeFailure } from "./conn
 import { slotConfig } from "./connectionSlot";
 import { usePrefs } from "@/state/prefs";
 import { useSources } from "@/state/sources";
+import { useChannelView, viewOf } from "@/state/channelView";
 import { hhmm, QBadge } from "@/ui/common";
 import { Icon } from "@/ui/Icon";
 import { createOsdIdle } from "./osdIdle";
@@ -1231,9 +1232,11 @@ export function PlayerHost() {
     const tg = usePlayer.getState().target;
     if (!buf || !tg) return;
     const n = Number(buf);
-    const row = await db.channels.where("[sourceId+ord]").between([tg.cid, -1], [tg.cid, Infinity], true, true).filter((c) => c.num === n && !c.sep).first();
+    // Numéro AFFICHÉ pour le profil courant : les chaînes qu'il masque ne comptent pas, et ne peuvent pas être appelées.
+    const view = viewOf(tg.sourceId);
+    const row = await db.channels.where("[sourceId+ord]").between([tg.cid, -1], [tg.cid, Infinity], true, true).filter((c) => !c.sep && (!view.keep || view.keep(c)) && view.num(c) === n).first();
     if (!row || usePlayer.getState().target?.refId === row.streamId) { showBanner(); return; }
-    tune({ streamId: row.streamId, num: row.num, name: row.display, logo: row.logo, ord: row.ord, catExt: row.catExt, epg: row.epg, archive: !!row.archive, q: row.q, url: row.url });
+    tune({ streamId: row.streamId, num: view.num(row), name: row.display, logo: row.logo, ord: row.ord, catExt: row.catExt, epg: row.epg, archive: !!row.archive, q: row.q, url: row.url });
   }, [clearNum, showBanner, tune]);
   const uiRef = useRef(ui);
   uiRef.current = ui;
@@ -1843,12 +1846,12 @@ function useRowNow(cid: number, epg: string | null): { title: string; ratio: num
 }
 
 /** Ligne de la liste « Chaînes » : mémoïsée, seule la chaîne courante change d'état au zapping. */
-const ChannelRowBtn = memo(function ChannelRowBtn({ c, cid, on, onPick }: { c: ChannelRow; cid: number; on: boolean; onPick: (c: ChannelRow) => void }) {
+const ChannelRowBtn = memo(function ChannelRowBtn({ c, num, cid, on, onPick }: { c: ChannelRow; num: number; cid: number; on: boolean; onPick: (c: ChannelRow) => void }) {
   const t = useT();
   const now = useRowNow(cid, c.epg);
   return (
     <button className="opt ch" role="radio" aria-checked={on} data-cur={on ? "1" : undefined} onClick={() => onPick(c)}>
-      <span className="num">{c.num}</span>
+      <span className="num">{num}</span>
       <span className="logo" aria-hidden="true">
         <span className="ini">{(c.display.match(/[\p{L}\p{N}]/gu) ?? []).slice(0, 2).join("").toUpperCase()}</span>
         <Img src={c.logo} contain />
@@ -1880,6 +1883,8 @@ function ChannelsPanel({ cid, cat, onZap }: { cid: number; cat: string | null; o
   const profile = usePrefs((s) => s.profileId);
   const cats = useCategories(source, "live");
   const hid = useHiddenCats(source, "live");
+  // Chaînes masquées par le profil courant : filtrées (Set en mémoire) ; numéros affichés propres au profil.
+  const view = useChannelView(source);
   useEffect(() => {
     if (tab === "fav") {
       void orderedList(profile, (source?.id ?? 0), cid, FAVORITES_SCOPE).then((r) => setRows(r ?? []));
@@ -1888,9 +1893,9 @@ function ChannelsPanel({ cid, cat, onZap }: { cid: number; cat: string | null; o
     // Toute la catégorie (plafond large) : la chaîne regardée peut être loin du début (ex. n° 10965). Ordre personnel appliqué s'il existe.
     void (async () => {
       const own = effCat ? await orderedList(profile, (source?.id ?? 0), cid, effCat) : null;
-      setRows(own ?? (await channelsCol(cid, effCat).filter((c) => !c.sep).limit(5000).toArray()));
+      setRows(own ?? (await channelsCol(cid, effCat).filter((c) => !c.sep && (!view.keep || view.keep(c))).limit(5000).toArray()));
     })();
-  }, [cid, effCat, tab, favs, profile, source?.id]);
+  }, [cid, effCat, tab, favs, profile, source?.id, view]);
   // Liste virtualisée : seules les lignes visibles existent dans le DOM (jusqu'à 5000 chaînes).
   const arr = useMemo(() => arrayRows(rows), [rows]);
   const pick = useCallback((c: ChannelRow) => {
@@ -1898,10 +1903,10 @@ function ChannelsPanel({ cid, cat, onZap }: { cid: number; cat: string | null; o
     if (!tg) return;
     usePlayer.getState().open({
       ...tg, refId: c.streamId, title: c.display, image: c.logo, url: c.url, replay: undefined,
-      channel: { ord: c.ord, catExt: c.catExt, num: c.num, epg: c.epg, archive: !!c.archive, q: c.q, logo: c.logo },
+      channel: { ord: c.ord, catExt: c.catExt, num: view.num(c), epg: c.epg, archive: !!c.archive, q: c.q, logo: c.logo },
     }, "full");
     onZap();
-  }, [onZap]);
+  }, [onZap, view]);
   // À l'ouverture : centré sur la chaîne regardée, qui a le focus (Entrée = rester, ↑↓ = parcourir).
   const centered = useRef(false);
   useEffect(() => {
@@ -1935,7 +1940,7 @@ function ChannelsPanel({ cid, cat, onZap }: { cid: number; cat: string | null; o
           </div>
         )}
         <VList ref={list} rows={arr} rowH={76} className="vlist pch-list" label={t("player.channels")}
-          render={(c) => (c ? <ChannelRowBtn c={c} cid={cid} on={curId === c.streamId} onPick={pick} /> : null)} />
+          render={(c) => (c ? <ChannelRowBtn c={c} num={view.num(c)} cid={cid} on={curId === c.streamId} onPick={pick} /> : null)} />
       </div>
     </aside>
   );

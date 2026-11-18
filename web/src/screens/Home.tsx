@@ -13,6 +13,7 @@ import { useTrackerT } from "@/trakt/tracker";
 import { fmtDuration } from "@/lib/text";
 import { usePlayer } from "@/player/store";
 import { channelTarget, movieTarget } from "@/player/targets";
+import { useChannelView } from "@/state/channelView";
 import { usePrefs } from "@/state/prefs";
 import { useActiveSource } from "@/state/sources";
 import { hhmm } from "@/ui/common";
@@ -45,6 +46,7 @@ function FavChannel({ source, ch }: { source: Source; ch: ChannelRow }) {
 
 function LiveNowCard({ source, ch }: { source: Source; ch: ChannelRow }) {
   const { lang } = usePrefs();
+  const num = useChannelView(source).num(ch);
   const nn = useNowNext(source, ch.epg, ch.streamId, false);
   const p = nn.now;
   const ratio = p ? Math.min(1, Math.max(0, (Date.now() - p.start) / Math.max(1, p.end - p.start))) : 0;
@@ -53,7 +55,7 @@ function LiveNowCard({ source, ch }: { source: Source; ch: ChannelRow }) {
       <span className="lc-head">
         <span className="lc-logo" aria-hidden="true"><span className="ini">{(ch.display.match(/[\p{L}\p{N}]/gu) ?? []).slice(0, 2).join("").toUpperCase()}</span><Img src={ch.logo} contain /></span>
         <span className="lc-id">
-          <b className="ellipsis">{ch.num} · {ch.display}</b>
+          <b className="ellipsis">{num} · {ch.display}</b>
           <span className="ellipsis s mono">{p ? `${hhmm(p.start, lang)} – ${hhmm(p.end, lang)}` : ""}</span>
         </span>
       </span>
@@ -189,9 +191,11 @@ function HomeInner({ source }: { source: Source }) {
   const hLive = useHiddenCats(source, "live");
   const hMovie = useHiddenCats(source, "movie");
   const hSeries = useHiddenCats(source, "series");
+  // Chaînes masquées par le profil courant : exclues aussi (Set en mémoire).
+  const cv = useChannelView(source);
   const hist = useLiveQuery(async () => (await historyOf(profileId, source.id!)).filter((h) => h.dur > 0 && h.pos / h.dur < 0.95).slice(0, 12), [profileId, source.id]) ?? [];
-  const favChans = useLiveQuery(async () => (await Promise.all(favs.slice(0, 12).map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c), [favs, source.cid]) ?? [];
-  const featured = useLiveQuery(async () => favChans[0] ?? (await channelsCol(source.cid, null).filter((c) => !c.sep && !!c.epg && !hLive.has(c.catExt)).first()) ?? (await channelsCol(source.cid, null).filter((c) => !c.sep && !hLive.has(c.catExt)).first()), [favChans, source.cid, hLive]);
+  const favChans = useLiveQuery(async () => (await Promise.all(favs.slice(0, 12).map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c && (!cv.keep || cv.keep(c))), [favs, source.cid, cv]) ?? [];
+  const featured = useLiveQuery(async () => favChans[0] ?? (await channelsCol(source.cid, null).filter((c) => !c.sep && !!c.epg && !hLive.has(c.catExt) && (!cv.keep || cv.keep(c))).first()) ?? (await channelsCol(source.cid, null).filter((c) => !c.sep && !hLive.has(c.catExt) && (!cv.keep || cv.keep(c))).first()), [favChans, source.cid, hLive, cv]);
   const nn = useNowNext(source, featured?.epg, featured?.streamId);
   const trakt = useTraktRows(source);
   const favSeries = useFavorites(source, "series");
@@ -233,9 +237,9 @@ function HomeInner({ source }: { source: Source }) {
   const greet = t(hour < 12 ? "home.greetMorning" : hour < 18 ? "home.greetAfternoon" : "home.greetEvening");
   const liveRow = useLiveQuery(async () => {
     if (favChans.length >= 5) return favChans.slice(0, 5);
-    const extra = await channelsCol(source.cid, null).filter((c) => !c.sep && !!c.epg && !hLive.has(c.catExt)).limit(8).toArray();
+    const extra = await channelsCol(source.cid, null).filter((c) => !c.sep && !!c.epg && !hLive.has(c.catExt) && (!cv.keep || cv.keep(c))).limit(8).toArray();
     return [...favChans, ...extra.filter((c) => !favChans.some((f) => f.streamId === c.streamId))].slice(0, 5);
-  }, [favChans, source.cid, hLive]) ?? [];
+  }, [favChans, source.cid, hLive, cv]) ?? [];
   const shortcuts: { to: string; icon: "live" | "guide" | "movies" | "series" | "heart"; label: string; sub: string }[] = [
     { to: "/live", icon: "live", label: t("nav.live"), sub: t("common.channelsCount", { count: source.counts.live }) },
     { to: "/guide", icon: "guide", label: t("nav.guide"), sub: t("home.tonight") },

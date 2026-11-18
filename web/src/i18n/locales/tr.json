@@ -356,6 +356,7 @@
   "set.catsChannels": "Kanallar",
   "set.chTitle": "Kanallar: {name}",
   "set.chHint": "Sıralama etkin profile özeldir. Gizlenen kanal her yerden kaybolur; tekrar göstermek kaynağı yeniden senkronize eder.",
+  "set.chProfileHint": "Bu ayar yalnızca geçerli profili etkiler: diğer profiller kendi kanallarını ve kategori sıralarını korur.",
   "set.chVisible": "Görünür",
   "set.chHidden": "Gizli",
   "set.chEmpty": "Bu kategoride kanal yok.",

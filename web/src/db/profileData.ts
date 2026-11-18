@@ -7,4 +7,6 @@ export async function deleteProfileData(profile: string): Promise<void> {
   await db.history.filter((h) => h.profile === profile).delete();
   await db.channelOrder.filter((o) => o.profile === profile).delete();
   await db.profileHidden.where("[profile+sourceId]").between([profile, -Infinity], [profile, Infinity]).delete();
+  await db.profileHiddenChannels.where("[profile+sourceId]").between([profile, -Infinity], [profile, Infinity]).delete();
+  await db.profileCatOrder.where("[profile+sourceId]").between([profile, -Infinity], [profile, Infinity]).delete();
 }

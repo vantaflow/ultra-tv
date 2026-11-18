@@ -14,6 +14,7 @@ import { visibleSources } from "@/lib/profileSources";
 import { FAVORITES_SCOPE, commitMove, mergeOrder, startMove, stepMove, type MoveSession } from "@/lib/channelOrder";
 import { usePlayer } from "@/player/store";
 import { channelTarget } from "@/player/targets";
+import { useChannelView, useChannelViews } from "@/state/channelView";
 import { usePrefs } from "@/state/prefs";
 import { useActiveSource, useSources } from "@/state/sources";
 import { useUi } from "@/state/ui";
@@ -25,9 +26,10 @@ import { NoSource } from "./states";
 
 function Chan({ source, c, extra, extraCls = "", onMenu, moving, badge, onPlay }: { source: Source; c: ChannelRow; extra?: object; extraCls?: string; onMenu?: () => void; moving?: boolean; badge?: string; onPlay?: () => void }) {
   const nn = useNowNext(source, c.epg, c.streamId, false);
+  const num = useChannelView(source).num(c);
   return (
     <button className={`chan-row${extraCls}${moving ? " moving" : ""}`} data-chan={c.streamId} style={{ height: 62, background: "var(--surface)" }} onClick={onPlay ?? (() => usePlayer.getState().open(channelTarget(source, c), "full", FAVORITES_SCOPE))} onContextMenu={onMenu ? (e) => { e.preventDefault(); onMenu(); } : undefined} {...extra}>
-      <span className="num mono">{c.num}</span>
+      <span className="num mono">{num}</span>
       <span className="logo"><Img src={c.logo} contain /></span>
       <span className="grow" style={{ display: "flex", flexDirection: "column", gap: 2 }}><span className="nm ellipsis">{c.display}</span><span className="sub ellipsis">{[badge, nn.now?.title].filter(Boolean).join(" · ")}</span></span>
       <QBadge q={c.q} />
@@ -65,17 +67,20 @@ function Mixed({ sources }: { sources: Source[] }) {
   const key = sources.map((s) => `${s.id}:${s.cid}`).join(",");
   // Seuls les favoris sont lus (et leurs chaînes, une par une) : jamais un catalogue entier.
   const favs = useLiveQuery(async () => (await Promise.all(sources.map((s) => favoritesOf(profile, s.id!)))).flat(), [profile, key]) ?? [];
+  const views = useChannelViews((st) => st.views);
   const chans = useLiveQuery(async () => {
     const hiddenRows = await db.profileHidden.where("sourceId").anyOf(sources.map((s) => s.id!)).toArray();
     const hidden = new Set<string>();
     for (const r of hiddenRows) if (r.profile === profile && r.kind === "live") for (const id of r.ids) hidden.add(hiddenKey(r.sourceId, id));
     const groups = await Promise.all(sources.map(async (s) => {
-      const rows = (await Promise.all((await favoritesOf(profile, s.id!, "live")).map((f) => db.channels.where("[sourceId+streamId]").equals([s.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c);
+      // Chaînes masquées par le profil courant : écartées source par source.
+      const keep = views.get(s.id!)?.keep;
+      const rows = (await Promise.all((await favoritesOf(profile, s.id!, "live")).map((f) => db.channels.where("[sourceId+streamId]").equals([s.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c && (!keep || keep(c)));
       const ord = mergeOrder(rows, await getOrder(profile, s.id!, FAVORITES_SCOPE), (c) => c.streamId);
       return { sourceId: s.id!, items: ord.map((c): MixedChan => ({ sourceId: s.id!, cid: s.cid, name: s.name, c })) };
     }));
     return dropHidden(concatBySource(groups), hidden);
-  }, [profile, key]) ?? [];
+  }, [profile, key, views]) ?? [];
   const byId = new Map(sources.map((s) => [s.id!, s] as const));
   const nameOf = (id: number) => byId.get(id)?.name ?? "";
   const vod = (k: "movie" | "series"): FavoriteRow[] => favs.filter((f) => f.kind === k && byId.has(f.sourceId));
@@ -131,7 +136,9 @@ function Inner({ source, chip }: { source: Source; chip?: React.ReactNode }) {
   const live = all.filter((f) => f.kind === "live");
   const profile = usePrefs((st) => st.profileId);
   const sid = source.id!;
-  const natural = useLiveQuery(async () => (tab === "live" || tab === "all" ? (await Promise.all(live.map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c) : []), [tab, live.length, source.cid]);
+  // Chaînes masquées par le profil courant : écartées des favoris (Set en mémoire).
+  const cv = useChannelView(source);
+  const natural = useLiveQuery(async () => (tab === "live" || tab === "all" ? (await Promise.all(live.map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c && (!cv.keep || cv.keep(c))) : []), [tab, live.length, source.cid, cv]);
   const order = useLiveQuery(() => getOrder(profile, sid, FAVORITES_SCOPE), [profile, sid]);
   // Déplacer (même ordre que la liste « Favoris » du Direct) : flèches, Entrée valide, Échap annule ; glisser-déposer à la souris.
   const [mv, setMv] = useState<MoveSession | null>(null);

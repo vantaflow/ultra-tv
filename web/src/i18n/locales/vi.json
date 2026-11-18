@@ -356,6 +356,7 @@
   "set.catsChannels": "Kênh",
   "set.chTitle": "Kênh: {name}",
   "set.chHint": "Thứ tự riêng cho hồ sơ đang dùng. Kênh bị ẩn biến mất ở mọi nơi; hiện lại sẽ đồng bộ lại nguồn.",
+  "set.chProfileHint": "Tùy chọn này chỉ áp dụng cho hồ sơ hiện tại: các hồ sơ khác giữ kênh và thứ tự danh mục riêng.",
   "set.chVisible": "Hiện",
   "set.chHidden": "Ẩn",
   "set.chEmpty": "Không có kênh trong danh mục này.",

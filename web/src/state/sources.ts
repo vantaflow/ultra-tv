@@ -7,6 +7,8 @@ import { listSources, migrateCategoryLabels, migrateM3uToXtream } from "@/db/sou
 import { activeToSet } from "@/lib/profileSources";
 import { usePrefs } from "./prefs";
 import { registerPlexTokens } from "@/net/plex";
+import { inheritHiddenAll, projectCategoryOrder, reconcileAllSources, seedProfileCatOrder } from "@/db/profileChannels";
+import { startChannelViewWatcher } from "./channelView";
 
 interface SourcesStore { ready: boolean; list: Source[] }
 export const useSources = create<SourcesStore>(() => ({ ready: false, list: [] }));
@@ -21,15 +23,33 @@ export function enforceProfileSources() {
   if (id != null) set({ activeSourceId: id });
 }
 
+/** Réglages par profil à tenir à jour quand la liste des profils change : un profil créé hérite des chaînes masquées par tous et de l'ordre affiché ; un profil supprimé peut rendre d'autres chaînes unanimes. */
+let profileWork: Promise<unknown> = Promise.resolve();
+function profilesChanged(before: { id: string }[], after: { id: string }[]) {
+  const had = new Set(before.map((p) => p.id));
+  const has = new Set(after.map((p) => p.id));
+  const added = after.filter((p) => !had.has(p.id)).map((p) => p.id);
+  const removed = before.some((p) => !has.has(p.id));
+  if (!added.length && !removed) return;
+  profileWork = profileWork.then(async () => {
+    for (const id of added) { await inheritHiddenAll(id); await seedProfileCatOrder(id); }
+    await reconcileAllSources(after.map((p) => p.id));
+  }).catch(() => undefined);
+}
+
 let started = false;
 export function startSourcesWatcher() {
   if (started) return;
   started = true;
+  startChannelViewWatcher();
   // Changement de profil ou de ses sources visibles : le catalogue affiché change avec lui.
   usePrefs.subscribe((s, prev) => {
     const cur = (s.profiles.find((p) => p.id === s.profileId) ?? s.profiles[0])?.sources;
     const old = (prev.profiles.find((p) => p.id === prev.profileId) ?? prev.profiles[0])?.sources;
     if (s.profileId !== prev.profileId || JSON.stringify(cur) !== JSON.stringify(old)) enforceProfileSources();
+    // L'ordre des catégories est propre à chaque profil : celui du nouveau profil est recopié dans `ord`.
+    if (s.profileId !== prev.profileId) profileWork = profileWork.then(() => projectCategoryOrder(s.profileId)).catch(() => undefined);
+    if (s.profiles !== prev.profiles) profilesChanged(prev.profiles, s.profiles);
   });
   // Réparation des sources M3U « get.php » avant le premier affichage ; en cas d'échec on continue normalement.
   // Puis purge des générations de catalogue orphelines (synchro interrompue) : avant « ready », donc avant toute synchro,

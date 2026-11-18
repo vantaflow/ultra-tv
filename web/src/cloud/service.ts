@@ -24,11 +24,14 @@ import { onLocalProfilesChanged, syncProfiles } from "./profilesSync";
 import { setPosterFinder } from "@/lib/posterFallback";
 import { mapperFor } from "./idmapLoad";
 import type { IdMapper } from "./idmap";
-import { createBatcher, foreignHidden, fromPrefs, hiddenFromWire, planChOrder, shouldApply, toPrefs } from "./prefs";
+import { createBatcher, fromPrefs, planChOrder, planChannelPrefs, shouldApply, toPrefs, type HiddenLocal } from "./prefs";
 import { applyOrders, listOrders, setOrderListener } from "@/db/channelOrder";
 import { applyProfileHidden, listProfileHidden, setProfileHiddenListener } from "@/db/profileCategories";
 import { planPHidden } from "@/lib/profileCategories";
-import { listHidden, removeHiddenFromCatalog, replaceHidden } from "@/db/hidden";
+import { listHidden } from "@/db/hidden";
+import { listProfileCatOrders, listProfileHiddenChannels, projectCategoryOrder, putProfileCatOrders, reconcileHidden, replaceProfileHidden } from "@/db/profileChannels";
+import { mergeCategoryOrder } from "@/lib/categoryOrder";
+import type { Kind } from "@/db/types";
 import { DEFAULT_PROFILE_NAME } from "./sharedState";
 
 const K = {
@@ -227,7 +230,7 @@ export async function applyProviders(remoteAll: CloudProvider[], awaitSync = fal
 // ---------------- Réglages d'affichage partagés (langues + catégories désactivées) ----------------
 
 /** Entrées reçues que le bureau ne sait pas interpréter, gardées pour être renvoyées telles quelles (le Worker remplace `hidden`, `chOrder` et `pHidden`). */
-const foreignKey = (cloudId: string, f: "hidden" | "chOrder" | "pHidden") => `cloud.foreign.${f}.${cloudId}`;
+const foreignKey = (cloudId: string, f: "hidden" | "chOrder" | "pHidden" | "pHiddenCh" | "pOrder") => `cloud.foreign.${f}.${cloudId}`;
 const prefsAtKey = (cloudId: string) => `cloud.prefsAt.${cloudId}`;
 export const getPrefsAt = (cloudId: string) => getSetting<number>(prefsAtKey(cloudId), 0);
 const PUBLISH_DELAY_MS = 1500;
@@ -268,6 +271,70 @@ async function localPHidden(sourceId: number, map: IdMapper) {
   return (await listProfileHidden(sourceId)).filter((r) => names.has(r.profile) && r.ids.length).map((r) => ({ profile: names.get(r.profile)!, kind: r.kind, ids: r.ids.map((x) => map.catOut(r.kind, x)) }));
 }
 
+/** Chaînes masquées EN PROPRE par profil (par NOM) : celles que le profil est seul à masquer ; celles que tous masquent sont dans `hidden`. */
+async function localPHiddenCh(sourceId: number) {
+  const all = new Set((await listHidden(sourceId)).map((h) => h.streamId));
+  const rows = await listProfileHiddenChannels(sourceId);
+  return sharedProfiles().map((p) => ({
+    profile: p.name,
+    items: rows.filter((r) => r.profile === p.id && !all.has(r.streamId)).map((r): HiddenLocal => ({ streamId: r.streamId, catExt: r.catExt, name: r.name })),
+  }));
+}
+
+/** Ordre des catégories par profil (par NOM, ids du compte) et ordre du premier profil (champ historique `order`). */
+async function localPOrder(sourceId: number, map: IdMapper) {
+  const profs = sharedProfiles();
+  const names = new Map(profs.map((p) => [p.id, p.name]));
+  const rows = (await listProfileCatOrders(sourceId)).filter((o) => names.has(o.profile));
+  const first = profs[0]?.id;
+  const legacyOrder: Partial<Record<Kind, string[]>> = {};
+  for (const o of rows) if (o.profile === first) legacyOrder[o.kind] = o.ids;
+  return { pOrder: rows.map((o) => ({ profile: names.get(o.profile)!, kind: o.kind, ids: o.ids.map((x) => map.catOut(o.kind, x)) })), legacyOrder };
+}
+
+/** Réception de `hidden` / `pHiddenCh` : chaînes masquées de chaque profil local (règle de fusion d'Android), puis alignement de la liste « par tous ». Retourne true si des chaînes sont à recharger. */
+async function applyHiddenChannels(s: Source, prefs: CloudPrefs, map: IdMapper): Promise<boolean> {
+  const profs = sharedProfiles();
+  const rows = await listProfileHiddenChannels(s.id!);
+  const local = new Map<string, Map<number, HiddenLocal>>(profs.map((p) => [p.id, new Map()]));
+  for (const r of rows) local.get(r.profile)?.set(r.streamId, { streamId: r.streamId, catExt: r.catExt, name: r.name });
+  const plan = planChannelPrefs(prefs, local, profs, map);
+  if (plan.foreignHidden) await setSetting(foreignKey(s.cloudId!, "hidden"), plan.foreignHidden);
+  if (plan.foreignPHiddenCh) await setSetting(foreignKey(s.cloudId!, "pHiddenCh"), plan.foreignPHiddenCh);
+  for (const [profile, items] of plan.replace) await replaceProfileHidden(profile, s.id!, items);
+  return (await reconcileHidden(s.id!, s.cid, profs.map((p) => p.id))).reshow;
+}
+
+/** Réception de `pOrder` (ordre par profil) ou, d'un appareil plus ancien, de `order` (un seul ordre, appliqué à chaque profil) ; l'ordre du profil courant est recopié dans `ord`. */
+async function applyCategoryOrders(s: Source, prefs: CloudPrefs, cats: CategoryRow[], map: IdMapper): Promise<void> {
+  const profs = sharedProfiles();
+  const kinds: Kind[] = ["live", "movie", "series"];
+  if (prefs.pOrder) {
+    const p = planPHidden(prefs.pOrder, profs);
+    const puts: { profile: string; kind: Kind; ids: string[] }[] = [];
+    for (const [profile, per] of p.byProfile) for (const kind of kinds) puts.push({ profile, kind, ids: per[kind].map((x) => map.catIn(kind, x)) });
+    // Un profil sans entrée reçue pour un type garde son ordre (le bureau n'a pas d'« ordre du fournisseur » à lui rendre).
+    await putProfileCatOrders(s.id!, puts);
+    await setSetting(foreignKey(s.cloudId!, "pOrder"), p.foreign);
+  } else if (prefs.order) {
+    const saved = await listProfileCatOrders(s.id!);
+    const puts: { profile: string; kind: Kind; ids: string[] }[] = [];
+    for (const kind of kinds) {
+      const wanted = (prefs.order[kind] ?? []).map((x) => map.catIn(kind, x));
+      if (!wanted.length) continue;
+      const known = cats.filter((c) => c.kind === kind).sort((a, b) => a.ord - b.ord).map((c) => c.extId);
+      const knownSet = new Set(known);
+      for (const pr of profs) {
+        const mine = saved.find((o) => o.profile === pr.id && o.kind === kind)?.ids.filter((x) => knownSet.has(x)) ?? [];
+        const base = [...mine, ...known.filter((x) => !mine.includes(x))];
+        puts.push({ profile: pr.id, kind, ids: mergeCategoryOrder(base, wanted) });
+      }
+    }
+    await putProfileCatOrders(s.id!, puts);
+  }
+  if (prefs.pOrder || prefs.order) await projectCategoryOrder(usePrefs.getState().profileId);
+}
+
 /** Applique des réglages reçus à une source (sans jamais republier). Retourne true si le catalogue chargé doit être relu. */
 export async function applyPrefsTo(s: Source, prefs: CloudPrefs): Promise<boolean> {
   const cats = await catsOf(s.cid);
@@ -276,16 +343,12 @@ export async function applyPrefsTo(s: Source, prefs: CloudPrefs): Promise<boolea
   const plan = fromPrefs(prefs, cats, map);
   const ups = new Map<number, { enabled?: 0 | 1; ord?: number }>();
   for (const c of plan.changes) ups.set(c.id, { ...ups.get(c.id), enabled: c.enabled });
-  for (const o of plan.ords) ups.set(o.id, { ...ups.get(o.id), ord: o.ord });
+  // L'ordre des catégories est par profil : appliqué plus bas (applyCategoryOrders), pas directement dans `ord`.
   if (ups.size) await db.categories.bulkUpdate([...ups].map(([key, changes]) => ({ key, changes })));
   let reshow = false;
   // Champs facultatifs : absents = appareil plus ancien, on ne touche à rien.
-  if (prefs.hidden) {
-    await setSetting(foreignKey(s.cloudId!, "hidden"), foreignHidden(prefs.hidden, map));
-    reshow = (await replaceHidden(s.id!, hiddenFromWire(prefs.hidden, map))) > 0;
-    const removed = await removeHiddenFromCatalog(s.cid, s.id!);
-    if (removed) { const cur = await getSource(s.id!); if (cur) await db.sources.update(s.id!, { counts: { ...cur.counts, live: Math.max(0, cur.counts.live - removed) } }); }
-  }
+  if (prefs.hidden || prefs.pHiddenCh) reshow = await applyHiddenChannels(s, prefs, map);
+  await applyCategoryOrders(s, prefs, cats, map);
   if (prefs.chOrder) {
     const p = planChOrder(prefs.chOrder, sharedProfiles(), await listOrders(s.id!), map);
     await applyOrders(s.id!, p.put, p.remove);
@@ -337,7 +400,9 @@ export async function publishPrefs(sourceId: number): Promise<PublishOutcome> {
     const map = await mapperFor(s);
     const prefs = toPrefs(s.langs, await catsOf(s.cid), Date.now(), { map, hidden: await listHidden(s.id!), chOrder: await localChOrder(s.id!),
       pHidden: await localPHidden(s.id!, map), keepPHidden: await getSetting(foreignKey(s.cloudId, "pHidden"), []),
-      keepHidden: await getSetting(foreignKey(s.cloudId, "hidden"), []), keepChOrder: await getSetting(foreignKey(s.cloudId, "chOrder"), []) });
+      keepHidden: await getSetting(foreignKey(s.cloudId, "hidden"), []), keepChOrder: await getSetting(foreignKey(s.cloudId, "chOrder"), []),
+      pHiddenCh: await localPHiddenCh(s.id!), keepPHiddenCh: await getSetting(foreignKey(s.cloudId, "pHiddenCh"), []),
+      ...(await localPOrder(s.id!, map).then((o) => ({ pOrder: o.pOrder, legacyOrder: o.legacyOrder }))), keepPOrder: await getSetting(foreignKey(s.cloudId, "pOrder"), []) });
     const r = await putPrefs(st.worker, token, s.cloudId, prefs);
     if (r.status === "ok") { await setSetting(prefsAtKey(s.cloudId), prefs.updatedAt); return "sent"; }
     if (r.status === "stale") {

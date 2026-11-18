@@ -9,6 +9,7 @@ import { useNow } from "@/hooks/misc";
 import { useT } from "@/i18n";
 import { usePlayer } from "@/player/store";
 import { channelTarget } from "@/player/targets";
+import { useChannelView } from "@/state/channelView";
 import { guideColPx } from "@/lib/guideCol";
 import { use24 } from "@/lib/clock";
 import { usePrefs } from "@/state/prefs";
@@ -88,11 +89,11 @@ export function useVisibleProgs(cid: number, ids: string[], from: number, to: nu
 const EMPTY_PROGS: ProgramRow[] = [];
 const NO_CHANS: ChannelRow[] = [];
 
-const Row = memo(function Row({ c, progs, from, to, top, now, col, picked, onPick }: { c: ChannelRow; col: number; progs: ProgramRow[]; from: number; to: number; top: number; now: number; picked: ProgramRow | null; onPick: (p: ProgramRow, c: ChannelRow, e: React.MouseEvent) => void }) {
+const Row = memo(function Row({ c, num, progs, from, to, top, now, col, picked, onPick }: { c: ChannelRow; num: number; col: number; progs: ProgramRow[]; from: number; to: number; top: number; now: number; picked: ProgramRow | null; onPick: (p: ProgramRow, c: ChannelRow, e: React.MouseEvent) => void }) {
   return (
     <div className="g-row" style={{ position: "absolute", top, left: 0, width: TOTAL_W + col }}>
       <div className="g-chan">
-        <span className="num mono">{c.num}</span>
+        <span className="num mono">{num}</span>
         <span className="logo"><Img src={c.logo} contain /></span>
         <b className="clamp-2" title={c.display}>{c.display}</b>
       </div>
@@ -141,6 +142,8 @@ function Inner({ source }: { source: Source }) {
   const prefs = usePrefs();
   const cats = useCategories(source, "live");
   const hid = useHiddenCats(source, "live");
+  // Chaînes masquées par le profil courant : absentes de la grille ; numéros affichés propres au profil.
+  const cv = useChannelView(source);
   const favs = useFavorites(source, "live");
   const now = useNow(30_000);
   const [day, setDay] = useState(0);
@@ -164,10 +167,10 @@ function Inner({ source }: { source: Source }) {
   const chansQ = useLiveQuery(async () => {
     if (!source.cid) return [];
     // Tri par numéro de chaîne croissant partout (Tout, catégories, Favoris), puis plafond d'affichage.
-    if (effCat === "__fav") return sortGuideChannels((await Promise.all(favs.map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c && !!c.epg));
+    if (effCat === "__fav") return sortGuideChannels((await Promise.all(favs.map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c && !!c.epg && (!cv.keep || cv.keep(c))));
     // « Tout » : sans les chaînes des catégories masquées par le profil courant.
-    return sortGuideChannels(await channelsCol(source.cid, effCat || null).filter((c) => !c.sep && !!c.epg && (!!effCat || !hid.has(c.catExt))).toArray()).slice(0, GUIDE_MAX_CHANNELS);
-  }, [source.cid, effCat, favs.length, hid]);
+    return sortGuideChannels(await channelsCol(source.cid, effCat || null).filter((c) => !c.sep && !!c.epg && (!!effCat || !hid.has(c.catExt)) && (!cv.keep || cv.keep(c))).toArray()).slice(0, GUIDE_MAX_CHANNELS);
+  }, [source.cid, effCat, favs.length, hid, cv]);
   const chans = chansQ ?? NO_CHANS;
 
   const v = useVirtualizer({ count: chans.length, getScrollElement: () => scroller.current, estimateSize: () => 72, overscan: 6 });
@@ -245,7 +248,7 @@ function Inner({ source }: { source: Source }) {
           {nowX >= 0 && nowX <= TOTAL_W && <div className="g-now" style={{ insetInlineStart: col + nowX }} />}
           {items.map((it) => {
             const c = chans[it.index]!;
-            return <Row key={c.id} c={c} progs={(c.epg && progs.get(`${from}|${c.epg}`)) || EMPTY_PROGS} from={from} to={to} top={it.start} now={now} col={col} picked={pick?.prog ?? null} onPick={onPick} />;
+            return <Row key={c.id} c={c} num={cv.num(c)} progs={(c.epg && progs.get(`${from}|${c.epg}`)) || EMPTY_PROGS} from={from} to={to} top={it.start} now={now} col={col} picked={pick?.prog ?? null} onPick={onPick} />;
           })}
         </div>
         {chansQ && chans.length === 0 && <div className="g-empty">{t("guide.noChannels")}</div>}

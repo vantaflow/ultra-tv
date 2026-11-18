@@ -41,6 +41,8 @@ export async function deleteSource(id: number): Promise<void> {
   await db.hiddenChannels.where("sourceId").equals(id).delete();
   await db.manualChannels.where("sourceId").equals(id).delete();
   await db.profileHidden.where("sourceId").equals(id).delete();
+  await db.profileHiddenChannels.where("sourceId").equals(id).delete();
+  await db.profileCatOrder.where("sourceId").equals(id).delete();
   await db.sources.delete(id);
 }
 

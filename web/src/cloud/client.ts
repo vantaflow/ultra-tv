@@ -198,6 +198,10 @@ export interface CloudPrefs {
   chOrder?: { p: string; s: string; k: string[] }[];
   /** Facultatif : catégories masquées par profil (p = nom du profil, k = type, ids = identifiants de catégorie du fournisseur). */
   pHidden?: { p: string; k: "live" | "movie" | "series"; ids: string[] }[];
+  /** Facultatif : chaînes masquées par profil (p = nom du profil, ch = chaînes que CE profil est seul à masquer ; celles que tous masquent restent dans `hidden`). */
+  pHiddenCh?: { p: string; ch: { i: string; c: string | null; n: string }[] }[];
+  /** Facultatif : ordre des catégories par profil (p = nom du profil, k = type, ids = identifiants de catégorie dans l'ordre). `order` = ordre du premier profil. */
+  pOrder?: { p: string; k: "live" | "movie" | "series"; ids: string[] }[];
   updatedAt: number;
   by?: string;
 }

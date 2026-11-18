@@ -2,6 +2,7 @@
 // Partagé entre appareils avec les réglages d'affichage de la source (profils rapprochés par nom).
 import { FAVORITES_SCOPE, mergeOrder } from "@/lib/channelOrder";
 import { db } from "./db";
+import { hiddenChannelIds } from "./profileChannels";
 import { channelsCol, favoritesOf } from "./queries";
 import type { ChannelOrderRow, ChannelRow } from "./types";
 
@@ -47,12 +48,15 @@ export async function applyOrders(sourceId: number, put: { profile: string; scop
  * Catégorie sans ordre personnel : null (le lecteur garde la requête par index, sans charger la catégorie).
  */
 export async function orderedList(profile: string, sourceId: number, cid: number, scope: string): Promise<ChannelRow[] | null> {
+  // Chaînes masquées par le profil [profile] : écartées (Set en mémoire, aucune lecture par ligne).
+  const hid = await hiddenChannelIds(profile, sourceId);
+  const keep = (c: ChannelRow) => !c.sep && !hid.has(c.streamId);
   if (scope === FAVORITES_SCOPE) {
     const favs = await favoritesOf(profile, sourceId, "live");
-    const rows = (await Promise.all(favs.map((f) => db.channels.where("[sourceId+streamId]").equals([cid, f.refId]).first()))).filter((r): r is ChannelRow => !!r && !r.sep);
+    const rows = (await Promise.all(favs.map((f) => db.channels.where("[sourceId+streamId]").equals([cid, f.refId]).first()))).filter((r): r is ChannelRow => !!r && keep(r));
     return mergeOrder(rows, await getOrder(profile, sourceId, scope), (c) => c.streamId);
   }
   const order = await getOrder(profile, sourceId, scope);
   if (!order) return null;
-  return mergeOrder(await channelsCol(cid, scope).filter((c) => !c.sep).limit(20000).toArray(), order, (c) => c.streamId);
+  return mergeOrder(await channelsCol(cid, scope).filter(keep).limit(20000).toArray(), order, (c) => c.streamId);
 }

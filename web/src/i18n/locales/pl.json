@@ -361,6 +361,7 @@
   "set.catsChannels": "Kanały",
   "set.chTitle": "Kanały: {name}",
   "set.chHint": "Kolejność dotyczy aktywnego profilu. Ukryty kanał znika wszędzie; ponowne wyświetlenie uruchamia synchronizację źródła.",
+  "set.chProfileHint": "To ustawienie dotyczy tylko bieżącego profilu: pozostałe profile zachowują własne kanały i kolejność kategorii.",
   "set.chVisible": "Widoczny",
   "set.chHidden": "Ukryty",
   "set.chEmpty": "Brak kanałów w tej kategorii.",

@@ -16,6 +16,7 @@ import { normText } from "@/lib/text";
 import { usePlayer } from "@/player/store";
 import { PreviewSlot } from "@/player/PreviewSlot";
 import { channelTarget } from "@/player/targets";
+import { useChannelView } from "@/state/channelView";
 import { usePrefs } from "@/state/prefs";
 import { useActiveSource } from "@/state/sources";
 import { useUi } from "@/state/ui";
@@ -35,12 +36,12 @@ export function Live() {
   return <LiveInner source={source} />;
 }
 
-function ChanRow({ c, source, sel, playing, onPick, extra, extraCls = "", onMenu }: { c: ChannelRow; source: Source; sel: boolean; playing: boolean; onPick: () => void; extra?: object; extraCls?: string; onMenu?: () => void }) {
+function ChanRow({ c, num, source, sel, playing, onPick, extra, extraCls = "", onMenu }: { c: ChannelRow; num: number; source: Source; sel: boolean; playing: boolean; onPick: () => void; extra?: object; extraCls?: string; onMenu?: () => void }) {
   const nn = useNowNext(source, c.epg, c.streamId, false);
   if (c.sep) return <div className="sep-row" role="presentation"><span className="bar" /><span className="ellipsis">{c.display}</span><span className="rule" /></div>;
   return (
     <button className={`chan-row${sel ? " sel" : ""}${playing ? " playing" : ""}${extraCls}`} onClick={onPick} onDoubleClick={() => usePlayer.getState().setMode("full")} onContextMenu={onMenu ? (e) => { e.preventDefault(); onMenu(); } : undefined} role="option" aria-selected={sel} {...extra}>
-      <span className="num mono">{c.num}</span>
+      <span className="num mono">{num}</span>
       <span className="logo"><Img src={c.logo} contain /></span>
       <span className="grow" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         <span className="nm ellipsis">{c.display}</span>
@@ -61,11 +62,17 @@ function LiveInner({ source }: { source: Source }) {
   const wide = size.w >= 1400;
   const hid = useHiddenCats(source, "live");
   const nh = useMemo(() => notInHidden<ChannelRow>(hid), [hid]);
+  // Chaînes masquées par le profil courant (Set en mémoire) et numéros affichés propres au profil.
+  const cv = useChannelView(source);
   // Catégorie mémorisée masquée par le profil courant : retour à « Tout ».
   const rawCat = prefs.liveCat[String(source.id)] ?? "";
   const cat = hid.has(rawCat) ? "" : rawCat;
   // « Tout » : sans les chaînes des catégories masquées par le profil courant.
-  const colOf = useCallback((c: string | null) => { const col = channelsCol(source.cid, c); return c == null && nh ? col.filter(nh) : col; }, [source.cid, nh]);
+  const colOf = useCallback((c: string | null) => {
+    const col = channelsCol(source.cid, c);
+    const base = c == null && nh ? col.filter(nh) : col;
+    return cv.keep ? base.filter(cv.keep) : base;
+  }, [source.cid, nh, cv]);
   const setCat = (c: string) => prefs.set({ liveCat: { ...prefs.liveCat, [String(source.id)]: c } });
   const [filter, setFilter] = useState("");
   const dq = useDebounced(filter, 200);
@@ -84,9 +91,9 @@ function LiveInner({ source }: { source: Source }) {
 
   /** Chaînes de la liste dans l'ordre de la source (sans séparateurs de section). */
   const loadNatural = useCallback(async (): Promise<ChannelRow[]> => {
-    if (scope === FAVORITES_SCOPE) return (await Promise.all(favs.map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((r): r is ChannelRow => !!r);
+    if (scope === FAVORITES_SCOPE) return (await Promise.all(favs.map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((r): r is ChannelRow => !!r && (!cv.keep || cv.keep(r)));
     return colOf(cat || null).filter((c) => !c.sep).limit(20000).toArray();
-  }, [scope, favs, source.cid, cat, colOf]);
+  }, [scope, favs, source.cid, cat, colOf, cv]);
 
   // Mode tableau (favoris, filtre texte, liste réordonnée) ou mode paginé (catalogue entier / catégorie).
   const arrayMode = cat === FAV || filtering || (!!scope && !!order) || !!mv;
@@ -98,9 +105,9 @@ function LiveInner({ source }: { source: Source }) {
       return nq ? merged.filter((r) => r.norm.includes(nq)) : merged;
     }
     // Toutes les chaînes : index par mot (au plus 3000, remis dans l'ordre du fournisseur) ; une catégorie : balayage borné par l'index.
-    if (nq && !cat) return (await searchByWords(db.channels, source.cid, nq, 3000, (c) => !c.sep && (!nh || nh(c)))).sort((a, b) => a.ord - b.ord);
+    if (nq && !cat) return (await searchByWords(db.channels, source.cid, nq, 3000, (c) => !c.sep && (!nh || nh(c)) && (!cv.keep || cv.keep(c)))).sort((a, b) => a.ord - b.ord);
     return colOf(cat || null).filter((c) => !c.sep && c.norm.includes(nq)).limit(3000).toArray();
-  }, [arrayMode, cat, dq, source.cid, order, scope, loadNatural, colOf, nh]);
+  }, [arrayMode, cat, dq, source.cid, order, scope, loadNatural, colOf, nh, cv]);
   const view = useMemo(() => (mv ? mv.ids.map((i) => mv.rows.get(i)).filter((r): r is ChannelRow => !!r) : arr ?? []), [mv, arr]);
   const paged = usePagedQuery<ChannelRow>(() => (arrayMode ? null : colOf(cat || null)), [source.cid, source.lastSyncAt, cat, arrayMode, colOf], 120);
   const rows: Rows<ChannelRow> = useMemo(() => (arrayMode ? arrayRows(view) : paged), [arrayMode, view, paged]);
@@ -249,7 +256,7 @@ function LiveInner({ source }: { source: Source }) {
         {count === 0 ? <div className="state-card"><p>{t("live.noChannels")}</p></div> : (
           <VList
             ref={list} rows={rows} rowH={66} label={t("nav.live")} onKeyDown={onKey}
-            render={(c) => c ? <ChanRow c={c} source={source} sel={c.id === selId} playing={c.streamId === playing} onPick={() => pick(c)} extra={c.sep ? undefined : dnd.props(c.streamId)} extraCls={dnd.cls(c.streamId)} onMenu={scope && !c.sep && !mv ? () => { setSelId(c.id!); void beginMove(c); } : undefined} /> : <div className="skeleton" style={{ height: 58 }} />}
+            render={(c) => c ? <ChanRow c={c} num={cv.num(c)} source={source} sel={c.id === selId} playing={c.streamId === playing} onPick={() => pick(c)} extra={c.sep ? undefined : dnd.props(c.streamId)} extraCls={dnd.cls(c.streamId)} onMenu={scope && !c.sep && !mv ? () => { setSelId(c.id!); void beginMove(c); } : undefined} /> : <div className="skeleton" style={{ height: 58 }} />}
           />
         )}
       </section>
@@ -259,7 +266,7 @@ function LiveInner({ source }: { source: Source }) {
           <>
             <div style={{ display: "flex", gap: 10, alignItems: "center", fontSize: "0.75rem", fontWeight: 800, letterSpacing: "0.1em" }}>
               <span className="badge-live">{t("common.live")}</span>
-              <span style={{ color: "var(--text-2)", letterSpacing: 0 }}>{nn.now ? `${hhmm(nn.now.start)} – ${hhmm(nn.now.end)}` : `${selected.num} · ${selected.display}`}</span>
+              <span style={{ color: "var(--text-2)", letterSpacing: 0 }}>{nn.now ? `${hhmm(nn.now.start)} – ${hhmm(nn.now.end)}` : `${cv.num(selected)} · ${selected.display}`}</span>
             </div>
             <h2>{nn.now?.title || selected.display}</h2>
             {nn.now && (
