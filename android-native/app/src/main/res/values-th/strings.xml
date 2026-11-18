@@ -1884,4 +1884,13 @@
     <string name="mc_badge">ด้วยตนเอง</string>
     <string name="mc_bad_url">ที่อยู่ไม่ถูกต้อง</string>
     <string name="ds_fav_all_sources">ทุกแหล่งที่มา</string>
+    <!-- data/config/MediaFailure.kt -->
+    <string name="mlib_err_lan">เข้าถึง “%1$s” (%2$s) จากทีวีนี้ไม่ได้: ทีวีไม่ได้อยู่ในเครือข่ายภายในเดียวกับเซิร์ฟเวอร์ หากเปิด VPN อยู่ ให้อนุญาตการเข้าถึงเครือข่ายภายใน หรือระบุที่อยู่ระยะไกลของเซิร์ฟเวอร์บนเว็บไซต์</string>
+    <string name="mlib_err_timeout">“%1$s” (%2$s) ไม่ตอบสนอง ตรวจสอบว่าเซิร์ฟเวอร์เปิดอยู่และเข้าถึงได้จากทีวี</string>
+    <string name="mlib_err_refused">“%1$s” (%2$s) ปฏิเสธการเชื่อมต่อ ตรวจสอบที่อยู่และพอร์ตบนเว็บไซต์ และว่าเซิร์ฟเวอร์ทำงานอยู่</string>
+    <string name="mlib_err_auth">“%1$s” ปฏิเสธชื่อผู้ใช้หรือรหัสผ่าน ตรวจสอบบนเว็บไซต์</string>
+    <string name="mlib_err_host">ไม่พบที่อยู่ของ “%1$s” (%2$s) ตรวจสอบบนเว็บไซต์</string>
+    <string name="mlib_err_notfound">ไม่พบสิ่งใดที่ที่อยู่ของ “%1$s” (%2$s) ตรวจสอบบนเว็บไซต์</string>
+    <string name="mlib_err_tls">“%1$s” (%2$s): การเชื่อมต่อที่ปลอดภัยล้มเหลว (ใบรับรอง) ลองใช้ที่อยู่ http</string>
+    <string name="mlib_err_retry">ลองใหม่ในอีก %1$d นาที</string>
 </resources>

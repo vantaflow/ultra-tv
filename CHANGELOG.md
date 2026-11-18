@@ -7,6 +7,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Corrigé
 - Serveur Jellyfin, Emby, NAS ou Plex du compte injoignable depuis l'appareil (autre réseau, VPN) : nouvel essai avec des délais croissants (2 min, 10 min, 30 min, puis toutes les 2 h) au lieu d'une attente de 10 s à chaque synchro, et la configuration du compte n'est plus relue et réappliquée en entier toutes les 2 minutes (lenteurs).
 
+### Modifié
+- Serveur Jellyfin, Emby, NAS ou Plex du compte non connecté : le message dit maintenant la cause et quoi faire (TV sur un autre réseau ou derrière un VPN, serveur qui ne répond pas, connexion refusée, identifiants refusés, adresse introuvable, certificat) avec l'adresse du serveur et le délai avant le prochain essai ; il reste affiché plus longtemps.
+
 ## [1.3.63] — 2026-11-18 (Android)
 
 ### Corrigé

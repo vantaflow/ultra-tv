@@ -39,7 +39,8 @@ object Toaster {
     val state = MutableStateFlow<Msg?>(null)
 
     fun show(text: String, kind: Kind = Kind.INFO) {
-        state.value = Msg(UserText.safe(text), kind)
+        // Erreurs : texte plus long admis (cause + conseil + prochain essai).
+        state.value = Msg(UserText.safe(text, if (kind == Kind.ERROR) 600 else 240), kind)
     }
     fun ok(text: String) = show(text, Kind.OK)
     fun err(text: String) = show(text, Kind.ERROR)
@@ -54,7 +55,8 @@ fun ToasterHost() {
 
     LaunchedEffect(msg?.id) {
         if (msg != null) {
-            delay(3500)
+            // Durée selon la longueur : un message d'erreur détaillé doit pouvoir être lu (3,5 s à 12 s).
+            delay((3_500L + 45L * (msg?.text?.length ?: 0)).coerceAtMost(12_000L))
             // Only clear if the message we observed is still the active one
             // (a newer toast may have replaced it in the meantime).
             if (Toaster.state.value?.id == msg?.id) Toaster.clear()

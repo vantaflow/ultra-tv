@@ -1860,4 +1860,13 @@
     <string name="mc_badge">Ręczny</string>
     <string name="mc_bad_url">Nieprawidłowy adres</string>
     <string name="ds_fav_all_sources">Wszystkie źródła</string>
+    <!-- data/config/MediaFailure.kt -->
+    <string name="mlib_err_lan">„%1$s” (%2$s) jest niedostępny z tego telewizora: telewizor nie jest w tej samej sieci lokalnej co serwer. Jeśli włączony jest VPN, zezwól na dostęp do sieci lokalnej albo podaj na stronie zdalny adres serwera.</string>
+    <string name="mlib_err_timeout">„%1$s” (%2$s) nie odpowiada. Sprawdź, czy serwer jest włączony i dostępny z telewizora.</string>
+    <string name="mlib_err_refused">„%1$s” (%2$s) odrzucił połączenie. Sprawdź na stronie adres i port oraz czy serwer działa.</string>
+    <string name="mlib_err_auth">„%1$s” odrzucił nazwę użytkownika lub hasło. Sprawdź je na stronie.</string>
+    <string name="mlib_err_host">Nie znaleziono adresu „%1$s” (%2$s). Sprawdź go na stronie.</string>
+    <string name="mlib_err_notfound">Pod adresem „%1$s” (%2$s) nic nie znaleziono. Sprawdź go na stronie.</string>
+    <string name="mlib_err_tls">„%1$s” (%2$s): bezpieczne połączenie nie powiodło się (certyfikat). Spróbuj adresu http.</string>
+    <string name="mlib_err_retry">Kolejna próba za %1$d min.</string>
 </resources>

@@ -1846,4 +1846,13 @@
     <string name="mc_badge">Elle eklenen</string>
     <string name="mc_bad_url">Geçersiz adres</string>
     <string name="ds_fav_all_sources">Tüm kaynaklar</string>
+    <!-- data/config/MediaFailure.kt -->
+    <string name="mlib_err_lan">“%1$s” (%2$s) bu TV’den erişilemiyor: TV, sunucuyla aynı yerel ağda değil. VPN açıksa yerel ağ erişimine izin verin veya sitede sunucunun uzak adresini girin.</string>
+    <string name="mlib_err_timeout">“%1$s” (%2$s) yanıt vermiyor. Sunucunun açık ve TV’den erişilebilir olduğunu kontrol edin.</string>
+    <string name="mlib_err_refused">“%1$s” (%2$s) bağlantıyı reddetti. Sitedeki adresi ve bağlantı noktasını, sunucunun çalıştığını kontrol edin.</string>
+    <string name="mlib_err_auth">“%1$s” kullanıcı adını veya şifreyi reddetti. Bunları sitede kontrol edin.</string>
+    <string name="mlib_err_host">“%1$s” adresi (%2$s) bulunamadı. Sitede kontrol edin.</string>
+    <string name="mlib_err_notfound">“%1$s” adresinde (%2$s) hiçbir şey bulunamadı. Sitede kontrol edin.</string>
+    <string name="mlib_err_tls">“%1$s” (%2$s): güvenli bağlantı başarısız (sertifika). http adresini deneyin.</string>
+    <string name="mlib_err_retry">%1$d dk sonra yeniden denenecek.</string>
 </resources>

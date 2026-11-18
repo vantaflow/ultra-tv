@@ -1984,4 +1984,13 @@
     <string name="mc_badge">يدوية</string>
     <string name="mc_bad_url">عنوان غير صالح</string>
     <string name="ds_fav_all_sources">كل المصادر</string>
+    <!-- data/config/MediaFailure.kt -->
+    <string name="mlib_err_lan">تعذّر الوصول إلى «%1$s» (%2$s) من هذا التلفاز: التلفاز ليس على الشبكة المحلية نفسها التي عليها الخادم. إن كانت شبكة VPN مفعّلة، اسمح بالوصول إلى الشبكة المحلية، أو أدخل العنوان البعيد للخادم في الموقع.</string>
+    <string name="mlib_err_timeout">«%1$s» (%2$s) لا يستجيب. تحقّق من أن الخادم يعمل ويمكن الوصول إليه من التلفاز.</string>
+    <string name="mlib_err_refused">رفض «%1$s» (%2$s) الاتصال. تحقّق من العنوان والمنفذ في الموقع، ومن أن الخادم يعمل.</string>
+    <string name="mlib_err_auth">رفض «%1$s» اسم المستخدم أو كلمة المرور. تحقّق منهما في الموقع.</string>
+    <string name="mlib_err_host">تعذّر العثور على عنوان «%1$s» (%2$s). تحقّق منه في الموقع.</string>
+    <string name="mlib_err_notfound">لم يُعثر على شيء في عنوان «%1$s» (%2$s). تحقّق منه في الموقع.</string>
+    <string name="mlib_err_tls">«%1$s» (%2$s): فشل الاتصال الآمن (الشهادة). جرّب العنوان بـ http.</string>
+    <string name="mlib_err_retry">محاولة جديدة بعد %1$d دقيقة.</string>
 </resources>

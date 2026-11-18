@@ -1904,4 +1904,13 @@
     <string name="mc_badge">Manuell</string>
     <string name="mc_bad_url">Ugyldig adresse</string>
     <string name="ds_fav_all_sources">Alle kilder</string>
+    <!-- data/config/MediaFailure.kt -->
+    <string name="mlib_err_lan">«%1$s» (%2$s) kan ikke nås fra denne TV-en: TV-en er ikke på samme lokale nettverk som serveren. Hvis en VPN er på, tillat tilgang til lokalnettet, eller oppgi serverens eksterne adresse på nettstedet.</string>
+    <string name="mlib_err_timeout">«%1$s» (%2$s) svarer ikke. Sjekk at serveren er på og kan nås fra TV-en.</string>
+    <string name="mlib_err_refused">«%1$s» (%2$s) avviste tilkoblingen. Sjekk adresse og port på nettstedet, og at serveren kjører.</string>
+    <string name="mlib_err_auth">«%1$s» avviste brukernavnet eller passordet. Sjekk dem på nettstedet.</string>
+    <string name="mlib_err_host">Fant ikke adressen til «%1$s» (%2$s). Sjekk den på nettstedet.</string>
+    <string name="mlib_err_notfound">Fant ingenting på adressen til «%1$s» (%2$s). Sjekk den på nettstedet.</string>
+    <string name="mlib_err_tls">«%1$s» (%2$s): den sikre tilkoblingen mislyktes (sertifikat). Prøv http-adressen.</string>
+    <string name="mlib_err_retry">Nytt forsøk om %1$d min.</string>
 </resources>
