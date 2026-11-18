@@ -66,6 +66,17 @@ object PlaybackPlanner {
     private val LIVE_RECONNECT_MS = longArrayOf(500, 1_000, 2_000, 3_000, 5_000, 8_000, 10_000, 10_000)
 
     /** Erreurs d'un direct déjà lancé qui justifient une reconnexion (pas « chaîne supprimée », pas un format illisible). */
+    /**
+     * Direct figé EN LECTURE (ni chargement ni erreur) peu après son démarrage, sans décodage logiciel : c'est le décodeur
+     * (ou l'audio qui bloque l'horloge), pas le réseau. Se reconnecter avec la même combinaison regèlerait en boucle ;
+     * on passe à la combinaison suivante (décodage logiciel en dernier recours), mémorisée pour la chaîne si elle marche.
+     */
+    fun frozenMeansDecoder(playedMs: Long, decoder: DecoderMode): Boolean =
+        decoder != DecoderMode.SOFTWARE && playedMs in 0 until EARLY_FREEZE_MS
+
+    /** Gel détecté (10 s sans mouvement) moins de 30 s après la première image : le flux n'a joué que quelques secondes. */
+    const val EARLY_FREEZE_MS = 30_000L
+
     fun shouldReconnectLive(kind: PlayErrorKind) =
         kind == PlayErrorKind.NETWORK || kind == PlayErrorKind.BEHIND_LIVE || kind == PlayErrorKind.REFUSED || kind == PlayErrorKind.UNKNOWN
 

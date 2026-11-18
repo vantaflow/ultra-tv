@@ -507,6 +507,10 @@ class PlaybackSession(
                 if (detector.feed(now, firstFrame && e.isPlaying, e.positionMs, e.renderedFrames(), checkFrames)) {
                     val line = "live frozen (${detector.reason(now)}) engine=${combo.engine} decoder=${combo.decoder} played=${if (playedSinceMs == 0L) 0 else (now - playedSinceMs) / 1000}s"
                     android.util.Log.i("UltraPlay", line); com.ultratv.tv.nativeapp.RemoteLog.warn("play", line)
+                    val played = if (playedSinceMs == 0L) 0L else now - playedSinceMs
+                    if (PlaybackPlanner.frozenMeansDecoder(played, combo.decoder) && fallbackAfter(PlayErrorKind.DECODER) != null) {
+                        onError(PlayErrorKind.DECODER); return@launch
+                    }
                     reconnectLive(); return@launch
                 }
             }

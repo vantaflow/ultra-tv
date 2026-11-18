@@ -128,7 +128,10 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         val renderers = AudioOnlyFfmpegRenderersFactory(ctx).apply {
             setEnableDecoderFallback(true)
             when (config.decoder) {
-                DecoderMode.HARDWARE -> { setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF); setMediaCodecSelector(hardwareFirst) }
+                // « Matériel » ne concerne que la VIDÉO : l'audio garde FFmpeg (AC-3, E-AC-3, MP2…), comme en logiciel. Avec FFmpeg
+                // coupé, l'audio partait au décodeur du système ; sur certains boîtiers (Google TV Streamer) il bloquait l'horloge :
+                // une seconde d'image puis gel, alors que le mode Logiciel jouait.
+                DecoderMode.HARDWARE -> { setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER); setMediaCodecSelector(hardwareFirst) }
                 DecoderMode.SOFTWARE -> { setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER); setMediaCodecSelector(softwareFirst) }
                 DecoderMode.AUTO -> setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
             }
