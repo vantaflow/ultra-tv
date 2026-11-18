@@ -188,6 +188,7 @@
   "fav.exportDone": "القنوات المصدّرة: {n}",
   "fav.exportNone": "لا توجد قناة مفضلة قابلة للتصدير: روابط هذا المصدر تعمل داخل Ultra TV فقط.",
   "fav.exportFailed": "فشل التصدير",
+  "fav.allSources": "كل المصادر",
   "player.live": "مباشر",
   "player.pause": "إيقاف مؤقت",
   "player.back10": "رجوع 10 ثوانٍ",

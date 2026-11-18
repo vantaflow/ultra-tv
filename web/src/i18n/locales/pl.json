@@ -178,6 +178,7 @@
   "fav.exportDone": "Wyeksportowane kanały: {n}",
   "fav.exportNone": "Żaden ulubiony kanał nie nadaje się do eksportu: linki tego źródła działają tylko w Ultra TV.",
   "fav.exportFailed": "Eksport nie powiódł się",
+  "fav.allSources": "Wszystkie źródła",
   "player.live": "Na żywo",
   "player.pause": "Wstrzymaj",
   "player.back10": "Wstecz o 10 sekund",

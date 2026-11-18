@@ -1831,4 +1831,5 @@
     <string name="sport_no_events">Ei vielä kohokohtia.</string>
     <string name="sport_table_hidden">Sarjataulukko piilotettu spoilerittomassa tilassa.</string>
     <string name="mlib_cloud_failed">Verkkosivulta lisättyä kirjastoa “%1$s” ei saatu yhdistettyä. TV yrittää uudelleen seuraavassa synkronoinnissa. Tarkista, että palvelin on tavoitettavissa.</string>
+    <string name="ds_fav_all_sources">Kaikki lähteet</string>
 </resources>

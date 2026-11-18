@@ -242,6 +242,7 @@
   "DesignStrings.getExtraGuide()": "Additional guide",
   "DesignStrings.getExtraGuideHint()": "Fills the channels your source has no programme for",
   "DesignStrings.getExtraGuideOff()": "Off",
+  "DesignStrings.getFavAllSources()": "All sources",
   "DesignStrings.getFavHint()": "Long-press OK: remove from favorites",
   "DesignStrings.getFavoriteChannels()": "Favorite channels",
   "DesignStrings.getFeatured()": "Featured",

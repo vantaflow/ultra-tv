@@ -1842,4 +1842,5 @@
     <string name="sport_no_events">Na razie brak najważniejszych momentów.</string>
     <string name="sport_table_hidden">Tabela ukryta w trybie bez spoilerów.</string>
     <string name="mlib_cloud_failed">Nie udało się połączyć z biblioteką „%1$s” dodaną ze strony. Telewizor ponowi próbę przy następnej synchronizacji. Sprawdź, czy serwer jest osiągalny.</string>
+    <string name="ds_fav_all_sources">Wszystkie źródła</string>
 </resources>

@@ -242,6 +242,7 @@
   "DesignStrings.getExtraGuide()": "دليل إضافي",
   "DesignStrings.getExtraGuideHint()": "يكمل القنوات التي لا يوفر مزودك برامجها",
   "DesignStrings.getExtraGuideOff()": "إيقاف",
+  "DesignStrings.getFavAllSources()": "كل المصادر",
   "DesignStrings.getFavHint()": "اضغط مطولًا على OK لإزالة من المفضلة",
   "DesignStrings.getFavoriteChannels()": "القنوات المفضلة",
   "DesignStrings.getFeatured()": "الأبرز",

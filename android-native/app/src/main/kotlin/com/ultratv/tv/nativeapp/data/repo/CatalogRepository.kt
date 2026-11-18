@@ -134,6 +134,11 @@ class CatalogRepository @Inject constructor(
     fun favoriteChannels(pid: Long, limit: Int): Flow<List<ChannelEntity>> =
         profiles.currentId.flatMapLatest { channelDao.observeFavoritesTop(pid, limit, it) }
 
+    /** Favoris du profil courant dans plusieurs sources (écran Favoris « Toutes les sources »), au plus [limit] chaînes. */
+    fun favoriteChannelsIn(pids: List<Long>, limit: Int): Flow<List<ChannelEntity>> =
+        if (pids.isEmpty()) kotlinx.coroutines.flow.flowOf(emptyList())
+        else profiles.currentId.flatMapLatest { channelDao.observeFavoritesTopIn(pids, limit, it) }
+
     fun topMovies(pid: Long, limit: Int): Flow<List<MovieEntity>> = movieDao.observeTop(pid, limit)
     fun topSeries(pid: Long, limit: Int): Flow<List<SeriesEntity>> = seriesDao.observeTop(pid, limit)
     // Par paquets de 900 identifiants (limite de variables SQLite) : aucun favori n'est perdu au-delà.
