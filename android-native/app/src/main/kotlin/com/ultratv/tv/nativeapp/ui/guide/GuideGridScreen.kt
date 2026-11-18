@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.guide
 
+import com.ultratv.tv.nativeapp.data.db.observeCategoryCounts
 import com.ultratv.tv.nativeapp.ui.design.designT
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement

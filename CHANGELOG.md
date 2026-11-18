@@ -11,6 +11,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Corrigé
 - Synchronisation du compte entre la TV Android et l'ordinateur : favoris, reprises, catégories, chaînes masquées et ordre des chaînes se retrouvent maintenant des deux côtés pour les playlists M3U et les portails Stalker (identifiants traduits à la frontière du compte) ; un profil sans nom s'appelle « Principal » sur la TV comme sur l'ordinateur.
 
+### Modifié
+- Android : chaînes masquées et ordre des catégories propres à chaque profil. Une chaîne masquée par un profil reste visible pour les autres (elle n'est supprimée de l'appareil que si tous les profils la masquent) ; chaque profil garde son ordre de catégories. Les réglages actuels sont attribués à tous les profils existants, rien ne réapparaît ni ne bouge. Partagé entre appareils par nom de profil, sans gêner les versions plus anciennes.
+
 ## Bureau 1.2.73 — 2026-11-18
 
 ### Ajouté

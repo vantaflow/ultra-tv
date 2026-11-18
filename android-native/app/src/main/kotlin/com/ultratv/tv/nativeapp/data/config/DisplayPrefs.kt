@@ -21,7 +21,17 @@ data class CloudPrefs(
     val chOrder: List<ChannelOrderShare>? = null,
     /** Catégories masquées PAR PROFIL (nom) : type (clé du protocole) → identifiants ; `null` = non transmis. */
     val pHidden: List<ProfileHiddenShare>? = null,
+    /**
+     * Chaînes masquées PAR PROFIL (nom) : seulement celles que ce profil est seul à masquer (celles que TOUS masquent sont
+     * dans [hidden], champ historique) ; `null` = non transmis (ancienne version : choix propres de chaque profil conservés).
+     */
+    val pHiddenCh: List<ProfileChannelsShare>? = null,
+    /** Ordre des catégories PAR PROFIL (nom) ; réutilise [ProfileHiddenShare] (p, type, identifiants dans l'ordre) ; `null` = non transmis. */
+    val pOrder: List<ProfileHiddenShare>? = null,
 )
+
+/** Chaînes masquées par le seul profil [p] (nom). */
+data class ProfileChannelsShare(val p: String, val ch: List<com.ultratv.tv.nativeapp.data.prefs.HiddenChannel>)
 
 /** Catégories masquées d'un profil [p] (nom) pour le type [k] (live / movie / series). */
 data class ProfileHiddenShare(val p: String, val k: String, val ids: List<String>)
@@ -40,6 +50,8 @@ data class LocalDisplayPrefs(
     val hidden: List<com.ultratv.tv.nativeapp.data.prefs.HiddenChannel> = emptyList(),
     val chOrder: List<ChannelOrderShare> = emptyList(),
     val pHidden: List<ProfileHiddenShare> = emptyList(),
+    val pHiddenCh: List<ProfileChannelsShare> = emptyList(),
+    val pOrder: List<ProfileHiddenShare> = emptyList(),
 )
 
 object DisplayPrefs {
@@ -77,6 +89,8 @@ object DisplayPrefs {
         hidden = p.hidden.sortedBy { it.id },
         chOrder = p.chOrder.sortedWith(compareBy({ it.p }, { it.s })),
         pHidden = p.pHidden.sortedWith(compareBy({ it.p }, { it.k })),
+        pHiddenCh = p.pHiddenCh.filter { it.ch.isNotEmpty() }.sortedBy { it.p.lowercase() },
+        pOrder = p.pOrder.sortedWith(compareBy({ it.p }, { it.k })),
     )
 
     /** Empreinte stable de l'état (sans l'horodatage) : évite de republier ce qu'on vient d'appliquer ou d'envoyer. */
@@ -88,10 +102,13 @@ object DisplayPrefs {
         val hid = (p.hidden ?: emptyList()).map { it.id }.sorted().joinToString(",")
         val cho = (p.chOrder ?: emptyList()).joinToString("|") { it.p.lowercase() + "/" + it.s + ":" + it.k.joinToString(",") }
         val phi = (p.pHidden ?: emptyList()).joinToString("|") { it.p.lowercase() + "/" + it.k + ":" + it.ids.sorted().joinToString(",") }
-        return "$langs#$dis#$ord#$hid#$cho#$phi".hashCode().toString(16) + ":" + (langs.length + dis.length + ord.length + hid.length + cho.length + phi.length)
+        val pch = (p.pHiddenCh ?: emptyList()).joinToString("|") { it.p.lowercase() + ":" + it.ch.map { h -> h.id }.sorted().joinToString(",") }
+        val por = (p.pOrder ?: emptyList()).joinToString("|") { it.p.lowercase() + "/" + it.k + ":" + it.ids.joinToString(",") }
+        return "$langs#$dis#$ord#$hid#$cho#$phi#$pch#$por".hashCode().toString(16) + ":" + (langs.length + dis.length + ord.length + hid.length + cho.length + phi.length + pch.length + por.length)
     }
 
-    fun tooLarge(p: CloudPrefs): Boolean = p.disabled.values.any { it.size > MAX_IDS } || (p.order?.values?.any { it.size > MAX_IDS } ?: false) || (p.hidden?.size ?: 0) > MAX_IDS
+    fun tooLarge(p: CloudPrefs): Boolean = p.disabled.values.any { it.size > MAX_IDS } || (p.order?.values?.any { it.size > MAX_IDS } ?: false) || (p.hidden?.size ?: 0) > MAX_IDS ||
+        (p.pHiddenCh?.any { it.ch.size > MAX_IDS } ?: false) || (p.pOrder?.any { it.ids.size > MAX_IDS } ?: false)
 
     fun toJson(p: CloudPrefs): String = JSONObject().apply {
         put("langs", p.langs?.let { JSONArray(it) } ?: JSONObject.NULL)
@@ -101,6 +118,8 @@ object DisplayPrefs {
         p.hidden?.let { h -> put("hidden", JSONArray(com.ultratv.tv.nativeapp.data.prefs.HiddenChannelsStore.toJson(h))) }
         p.chOrder?.let { l -> put("chOrder", JSONArray().apply { l.forEach { c -> put(JSONObject().put("p", c.p).put("s", c.s).put("k", JSONArray(c.k))) } }) }
         p.pHidden?.let { l -> put("pHidden", JSONArray().apply { l.forEach { c -> put(JSONObject().put("p", c.p).put("k", c.k).put("ids", JSONArray(c.ids))) } }) }
+        p.pHiddenCh?.let { l -> put("pHiddenCh", JSONArray().apply { l.forEach { c -> put(JSONObject().put("p", c.p).put("ch", JSONArray(com.ultratv.tv.nativeapp.data.prefs.HiddenChannelsStore.toJson(c.ch)))) } }) }
+        p.pOrder?.let { l -> put("pOrder", JSONArray().apply { l.forEach { c -> put(JSONObject().put("p", c.p).put("k", c.k).put("ids", JSONArray(c.ids))) } }) }
     }.toString()
 
     fun parse(o: JSONObject?): CloudPrefs? {
@@ -126,7 +145,21 @@ object DisplayPrefs {
                 ProfileHiddenShare(c.optString("p").takeIf { it.isNotBlank() } ?: return@mapNotNull null, c.optString("k").takeIf { it in KINDS.values } ?: return@mapNotNull null, ids)
             }
         }
-        return CloudPrefs(langs, disabled, updatedAt, order, hidden, chOrder, pHidden)
+        val pHiddenCh = o.optJSONArray("pHiddenCh")?.let { a ->
+            (0 until a.length()).mapNotNull { i ->
+                val c = a.optJSONObject(i) ?: return@mapNotNull null
+                val ch = c.optJSONArray("ch")?.let { com.ultratv.tv.nativeapp.data.prefs.HiddenChannelsStore.parse(it.toString()) } ?: return@mapNotNull null
+                ProfileChannelsShare(c.optString("p").takeIf { it.isNotBlank() } ?: return@mapNotNull null, ch)
+            }
+        }
+        val pOrder = o.optJSONArray("pOrder")?.let { a ->
+            (0 until a.length()).mapNotNull { i ->
+                val c = a.optJSONObject(i) ?: return@mapNotNull null
+                val ids = c.optJSONArray("ids")?.let { ia -> (0 until ia.length()).map { ia.optString(it) }.filter { it.isNotEmpty() } } ?: return@mapNotNull null
+                ProfileHiddenShare(c.optString("p").takeIf { it.isNotBlank() } ?: return@mapNotNull null, c.optString("k").takeIf { it in KINDS.values } ?: return@mapNotNull null, ids)
+            }
+        }
+        return CloudPrefs(langs, disabled, updatedAt, order, hidden, chOrder, pHidden, pHiddenCh, pOrder)
     }
 }
 

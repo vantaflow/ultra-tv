@@ -620,6 +620,38 @@ export function parsePrefs(body, now = Date.now()) {
       pHidden.push({ p, k: c.k, ids: [...new Set(c.ids)] });
     }
   }
+  // Chaînes masquées PAR PROFIL (facultatif) : [{ p: nom du profil, ch: [{ i, c, n }] }]. Seulement les chaînes que ce profil est
+  // seul à masquer ; celles que TOUS masquent restent dans `hidden` (champ historique, lu par les appareils plus anciens).
+  let pHiddenCh;
+  if (body.pHiddenCh !== undefined && body.pHiddenCh !== null) {
+    if (!Array.isArray(body.pHiddenCh) || body.pHiddenCh.length > PREFS_MAX_CHORDER) return { error: "pHiddenCh" };
+    pHiddenCh = [];
+    for (const e of body.pHiddenCh) {
+      const p = e && typeof e === "object" && typeof e.p === "string" ? cleanLine(e.p, 24) : "";
+      if (!p || !Array.isArray(e.ch) || e.ch.length > PREFS_MAX_HIDDEN) return { error: "pHiddenCh" };
+      const seen = new Set();
+      const ch = [];
+      for (const h of e.ch) {
+        const i = h && typeof h === "object" ? cleanId(h.i) : null;
+        if (!i) return { error: "pHiddenCh" };
+        if (seen.has(i)) continue;
+        seen.add(i);
+        ch.push({ i, c: h.c == null ? null : cleanId(h.c), n: typeof h.n === "string" ? cleanLine(h.n, 120) : "" });
+      }
+      pHiddenCh.push({ p, ch });
+    }
+  }
+  // Ordre des catégories PAR PROFIL (facultatif) : [{ p: nom du profil, k: live|movie|series, ids: [...] dans l'ordre }].
+  let pOrder;
+  if (body.pOrder !== undefined && body.pOrder !== null) {
+    if (!Array.isArray(body.pOrder) || body.pOrder.length > PREFS_MAX_CHORDER) return { error: "pOrder" };
+    pOrder = [];
+    for (const c of body.pOrder) {
+      const p = c && typeof c === "object" && typeof c.p === "string" ? cleanLine(c.p, 24) : "";
+      if (!p || !PREFS_KINDS.includes(c.k) || !Array.isArray(c.ids) || c.ids.length > PREFS_MAX_IDS || !c.ids.every((x) => cleanId(x))) return { error: "pOrder" };
+      pOrder.push({ p, k: c.k, ids: [...new Set(c.ids)] });
+    }
+  }
   const updatedAt = Number(body.updatedAt);
   if (!Number.isFinite(updatedAt) || updatedAt <= 0) return { error: "updatedAt" };
   // Horloge d'appareil en avance : plafonnée, sinon ses réglages gagneraient pour toujours.
@@ -628,6 +660,8 @@ export function parsePrefs(body, now = Date.now()) {
   if (hidden) prefs.hidden = hidden;
   if (chOrder) prefs.chOrder = chOrder;
   if (pHidden) prefs.pHidden = pHidden;
+  if (pHiddenCh) prefs.pHiddenCh = pHiddenCh;
+  if (pOrder) prefs.pOrder = pOrder;
   return { prefs };
 }
 

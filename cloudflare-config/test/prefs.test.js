@@ -135,3 +135,25 @@ describe("catégories masquées par profil", () => {
     expect(parsePrefs(prefs(1, { pHidden: [{ p: "A", k: "radio", ids: [] }] })).error).toBe("pHidden");
   });
 });
+
+describe("chaînes masquées et ordre des catégories par profil", () => {
+  it("transmis, gardés si un appareil ancien ne les envoie pas, refusés si invalides", async () => {
+    const { tv, mac, id } = await setup();
+    const pHiddenCh = [{ p: "Maman", ch: [{ i: "501", c: "12", n: "Chaîne X" }, { i: "501", c: "12", n: "doublon" }] }];
+    const pOrder = [{ p: "Maman", k: "live", ids: ["13", "12"] }];
+    expect((await putPrefs(mac, id, prefs(3000, { pHiddenCh, pOrder }))).status).toBe(200);
+    // Appareil ancien : aucun des nouveaux champs, ordre historique inchangé → gardés.
+    await putPrefs(tv, id, prefs(4000));
+    const kept = (await cfg(mac)).providers[0].prefs;
+    expect(kept.pHiddenCh).toEqual([{ p: "Maman", ch: [{ i: "501", c: "12", n: "Chaîne X" }] }]);
+    expect(kept.pOrder).toEqual(pOrder);
+    // Appareil ancien qui réordonne les catégories : l'ordre par profil périmé n'est PAS gardé.
+    await putPrefs(tv, id, prefs(5000, { order: { live: ["12", "13"] } }));
+    const after = (await cfg(mac)).providers[0].prefs;
+    expect(after.pOrder).toBeUndefined();
+    expect(after.pHiddenCh).toBeDefined();
+    expect(parsePrefs(prefs(1, { pHiddenCh: [{ p: "", ch: [] }] })).error).toBe("pHiddenCh");
+    expect(parsePrefs(prefs(1, { pHiddenCh: [{ p: "A", ch: [{ c: "1" }] }] })).error).toBe("pHiddenCh");
+    expect(parsePrefs(prefs(1, { pOrder: [{ p: "A", k: "radio", ids: [] }] })).error).toBe("pOrder");
+  });
+});

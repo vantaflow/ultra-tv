@@ -1710,6 +1710,7 @@
     <string name="cat_channels">Canale</string>
     <string name="cat_channels_title">Canalele din „%1$s”</string>
     <string name="cat_channels_hint">Dezactivează un canal pentru a-l ascunde peste tot, pe toate dispozitivele tale. Reactivează-l pentru a-l afișa din nou.</string>
+    <string name="cat_channels_profile_hint">Această setare se aplică doar profilului curent: celelalte profiluri își păstrează propriile canale și ordinea categoriilor.</string>
     <string name="cat_channel_shown">Afișat</string>
     <string name="cat_channel_hidden">Ascuns</string>
     <string name="cat_order_hint">▸ Ordine · Canale</string>

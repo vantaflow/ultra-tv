@@ -1640,6 +1640,7 @@
 <string name="cat_channels">Kanallar</string>
 <string name="cat_channels_title">“%1$s” kanalları</string>
 <string name="cat_channels_hint">Bir kanalı kapatırsan tüm cihazlarında her yerde gizlenir. Tekrar göstermek için aç.</string>
+<string name="cat_channels_profile_hint">Bu ayar yalnızca geçerli profili etkiler: diğer profiller kendi kanallarını ve kategori sıralarını korur.</string>
 <string name="cat_channel_shown">Gösteriliyor</string>
 <string name="cat_channel_hidden">Gizli</string>
 <string name="cat_order_hint">▸ Sıra · Kanallar</string>

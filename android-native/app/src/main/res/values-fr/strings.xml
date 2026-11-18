@@ -1705,6 +1705,7 @@
     <string name="cat_channels">Chaînes</string>
     <string name="cat_channels_title">Chaînes de « %1$s »</string>
     <string name="cat_channels_hint">Désactivez une chaîne pour la masquer partout, sur tous vos appareils. Réactivez-la pour la retrouver.</string>
+    <string name="cat_channels_profile_hint">Ce choix ne concerne que le profil actuel : les autres profils gardent leurs propres chaînes et leur ordre de catégories.</string>
     <string name="cat_channel_shown">Visible</string>
     <string name="cat_channel_hidden">Masquée</string>
     <string name="cat_order_hint">▸ Ordre · Chaînes</string>

@@ -76,7 +76,7 @@ class LanguesMasqueesTest {
         )
         val id = runBlocking { db.providerDao().upsert(ProviderEntity(name = "fictif", kind = "XTREAM", baseUrl = "http://serveur-fictif.invalid", username = "test", password = "test", active = true)) }
         val manager = LanguageManager(db, providerDao, db.categoryDao(), db.channelDao(), db.movieDao(), db.seriesDao(), prefs, store, SyncCoordinator(ctx))
-        val categories = CategoryManager(db, db.categoryDao(), db.channelDao(), db.movieDao(), db.seriesDao(), SyncCoordinator(ctx), store, com.ultratv.tv.nativeapp.data.prefs.HiddenChannelsStore(ctx))
+        val categories = com.ultratv.tv.nativeapp.data.repo.testCategoryManager(db, ctx, store, profiles = profiles)
         return Rig(db, repo, id, prefs, manager, categories, store)
     }
 

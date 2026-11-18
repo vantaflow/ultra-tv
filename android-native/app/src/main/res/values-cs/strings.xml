@@ -1673,6 +1673,7 @@
     <string name="cat_channels">Kanály</string>
     <string name="cat_channels_title">Kanály „%1$s“</string>
     <string name="cat_channels_hint">Vypnutím kanál skryjete všude na všech svých zařízeních. Opětovným zapnutím jej znovu zobrazíte.</string>
+    <string name="cat_channels_profile_hint">Toto nastavení platí jen pro aktuální profil: ostatní profily si ponechají vlastní kanály a pořadí kategorií.</string>
     <string name="cat_channel_shown">Zobrazeno</string>
     <string name="cat_channel_hidden">Skryto</string>
     <string name="cat_order_hint">▸ Pořadí · Kanály</string>

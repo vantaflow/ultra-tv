@@ -1709,6 +1709,7 @@
     <string name="cat_channels">Canais</string>
     <string name="cat_channels_title">Canais de “%1$s”</string>
     <string name="cat_channels_hint">Desative um canal para ocultá-lo em todos os lugares, em todos os seus dispositivos. Reative-o para mostrá-lo de novo.</string>
+    <string name="cat_channels_profile_hint">Esta opção vale apenas para o perfil atual: os outros perfis mantêm seus próprios canais e a ordem das categorias.</string>
     <string name="cat_channel_shown">Visível</string>
     <string name="cat_channel_hidden">Oculto</string>
     <string name="cat_order_hint">▸ Ordem · Canais</string>

@@ -51,6 +51,9 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
     @Inject lateinit var anonPing: dagger.Lazy<com.ultratv.tv.nativeapp.data.config.AnonPingReporter>
 
     @Inject lateinit var googleTv: dagger.Lazy<com.ultratv.tv.nativeapp.data.tv.GoogleTvSync>
+    @Inject lateinit var profileChannelHiding: dagger.Lazy<com.ultratv.tv.nativeapp.data.repo.ProfileChannelHiding>
+    @Inject lateinit var profileSwitcher: dagger.Lazy<com.ultratv.tv.nativeapp.data.repo.ProfileSwitcher>
+    @Inject lateinit var profileRepo: dagger.Lazy<com.ultratv.tv.nativeapp.data.profile.ProfileRepository>
     @Inject lateinit var hiddenCategories: dagger.Lazy<com.ultratv.tv.nativeapp.data.prefs.HiddenCategoriesStore>
     @Inject lateinit var okHttp: dagger.Lazy<okhttp3.OkHttpClient>
     @Inject lateinit var plexImageAuth: dagger.Lazy<com.ultratv.tv.nativeapp.data.mediaserver.PlexImageAuth>
@@ -262,6 +265,15 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
         bgScope.launch { runCatching { secretsMigrator.get().migrate() } }
         // Anciennes catégories masquées (globales) → profil Principal, une seule fois.
         bgScope.launch { runCatching { hiddenCategories.get().importLegacyOnce() } }
+        // Chaînes masquées globales → tous les profils (une seule fois), puis projections du profil courant (chaînes masquées,
+        // ordre des catégories) alignées sur lui : sans effet si rien n'a changé depuis le dernier lancement.
+        bgScope.launch {
+            runCatching {
+                profileChannelHiding.get().importLegacyOnce()
+                val id = profileRepo.get().currentId.first()
+                profileSwitcher.get().onSwitch(id)
+            }
+        }
 
         // Pipe every uncaught crash straight to the worker. crashSync blocks
         // briefly (≤ 3 s) so the request actually leaves the device before the

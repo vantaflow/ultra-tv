@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.data.config
 
+import com.ultratv.tv.nativeapp.data.repo.ChannelHidingRules
 import kotlinx.coroutines.flow.drop
 import com.ultratv.tv.nativeapp.data.profile.applySharedProfiles
 import com.ultratv.tv.nativeapp.data.db.UltraDb
@@ -63,6 +64,7 @@ class CloudSyncManager @Inject constructor(
     private val profileLog: com.ultratv.tv.nativeapp.data.profile.ProfileSyncLog,
     private val profileCats: com.ultratv.tv.nativeapp.data.repo.ProfileCategories,
     private val handoffs: HandoffInbox,
+    private val profileSwitcher: com.ultratv.tv.nativeapp.data.repo.ProfileSwitcher,
     private val profileSources: dagger.Lazy<com.ultratv.tv.nativeapp.data.profile.ProfileSources>,
 ) {
     private val mutex = Mutex()
@@ -353,7 +355,6 @@ class CloudSyncManager @Inject constructor(
         val selected = p.languages.split(',').map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
         val dao = db.categoryDao()
         val disabled = DisplayPrefs.KINDS.keys.associateWith { k -> dao.disabledIds(localId, k).toSet() }
-        val order = DisplayPrefs.KINDS.keys.associateWith { k -> dao.orderedIds(localId, k) }
         val names = db.profileDao().observeAll().first().associate { it.id to it.name.trim() }
         val chOrder = db.channelOrderDao().allForProvider(localId).groupBy { it.profileId to it.scope }
             .mapNotNull { (key, rows) -> names[key.first]?.let { n -> ChannelOrderShare(n, key.second, rows.sortedBy { it.position }.map { it.remoteId }) } }
@@ -362,7 +363,18 @@ class CloudSyncManager @Inject constructor(
             val n = names[prof] ?: return@flatMap emptyList()
             byKind.mapNotNull { (k, ids) -> wire[k]?.let { ProfileHiddenShare(n, it, ids.sorted()) } }
         }
-        return LocalDisplayPrefs(selected, p.includeMulti, p.includeUnknownLang, disabled, order, categories.hiddenOf(localId), chOrder, pHidden)
+        // Chaînes masquées par profil : seulement les choix PROPRES de chaque profil (les unanimes sont dans `hidden`).
+        val pHiddenCh = names.mapNotNull { (id, n) -> categories.hiddenOnlyBy(id, localId).takeIf { it.isNotEmpty() }?.let { ProfileChannelsShare(n, it) } }
+        // Ordre des catégories par profil ; le champ historique `order` (appareils anciens) = ordre du PREMIER profil, jamais
+        // celui du profil affiché : sinon changer de profil republierait un autre ordre à chaque fois.
+        val orders = db.profileViewDao().ordersOfProvider(localId)
+        val pOrder = orders.groupBy { it.profileId to it.kind }.mapNotNull { (key, rows) ->
+            val n = names[key.first] ?: return@mapNotNull null
+            wire[key.second]?.let { ProfileHiddenShare(n, it, rows.sortedBy { r -> r.position }.map { r -> r.remoteId }) }
+        }
+        val firstId = names.keys.minOrNull()
+        val legacyOrder = DisplayPrefs.KINDS.keys.associateWith { k -> orders.filter { it.profileId == firstId && it.kind == k }.sortedBy { it.position }.map { it.remoteId } }
+        return LocalDisplayPrefs(selected, p.includeMulti, p.includeUnknownLang, disabled, legacyOrder, categories.hiddenOf(localId), chOrder, pHidden, pHiddenCh, pOrder)
     }
 
     /** Applique les réglages cloud plus récents que ceux déjà appliqués/publiés (source par source). */
@@ -408,7 +420,23 @@ class CloudSyncManager @Inject constructor(
         }
         // Ordre des catégories (seulement s'il a été transmis) : les catégories connues reprennent l'ordre reçu, les
         // autres (absentes de l'appareil qui l'a envoyé) gardent leur place relative, à la suite.
-        remote.order?.let { ord ->
+        if (remote.pOrder != null) {
+            // Ordre PAR PROFIL (profils rattachés par NOM) ; un profil absent de la liste, ou sans ordre pour un type = ordre du fournisseur.
+            val profs = db.profileDao().observeAll().first()
+            val byProfile = remote.pOrder.groupBy { it.p.trim().lowercase() }
+            val back = DisplayPrefs.KINDS.entries.associate { (k, w) -> w to k }
+            for (pr in profs) {
+                val entries = byProfile[pr.name.trim().lowercase()].orEmpty().mapNotNull { e -> back[e.k]?.let { it to e.ids } }.toMap()
+                for (kind in DisplayPrefs.KINDS.keys) {
+                    val known = dao.remoteIds(localId, kind).toSet()
+                    val wanted = entries[kind].orEmpty().filter { it in known }.distinct()
+                    profileSwitcher.saveOrderFor(pr.id, localId, kind, wanted)
+                }
+            }
+            profileSwitcher.projectCategoryOrder(profileRepo.currentIdNow)
+        } else remote.order?.let { ord ->
+            // Appareil ancien : un seul ordre pour tous. Appliqué à chaque profil.
+            val profs = db.profileDao().observeAll().first()
             for ((kind, key) in DisplayPrefs.KINDS) {
                 val wanted = ord[key].orEmpty()
                 if (wanted.isEmpty()) continue
@@ -416,15 +444,26 @@ class CloudSyncManager @Inject constructor(
                 if (cur.isEmpty()) continue
                 val known = cur.toSet()
                 val next = (wanted.filter { it in known } + cur.filter { it !in wanted.toSet() }).distinct()
-                if (next != cur) categories.saveOrder(localId, kind, next)
+                if (next != cur) {
+                    categories.saveOrder(localId, kind, next)
+                    for (pr in profs) if (pr.id != profileRepo.currentIdNow) profileSwitcher.saveOrderFor(pr.id, localId, kind, next)
+                }
             }
         }
         // Chaînes masquées (seulement si transmises) : masquer les nouvelles, réafficher celles qui ne le sont plus.
-        remote.hidden?.let { want ->
-            val have = categories.hiddenOf(localId)
-            val wantIds = want.map { it.id }.toSet(); val haveIds = have.map { it.id }.toSet()
-            categories.hideChannels(localId, want.filter { it.id !in haveIds })
-            categories.showChannels(localId, haveIds - wantIds)
+        if (remote.hidden != null || remote.pHiddenCh != null) {
+            val profs = db.profileDao().observeAll().first()
+            val localByName = HashMap<String, Set<String>>(); val infos = HashMap<String, com.ultratv.tv.nativeapp.data.prefs.HiddenChannel>()
+            for (pr in profs) categories.hiddenOfProfile(pr.id, localId).also { l -> l.forEach { infos.putIfAbsent(it.id, it) } }.let { localByName[pr.name.trim().lowercase()] = it.mapTo(HashSet()) { h -> h.id } }
+            val remoteAll = (remote.hidden ?: categories.hiddenOf(localId)).onEach { infos[it.id] = it }.map { it.id }.toSet()
+            val partial = remote.pHiddenCh?.groupBy({ it.p.trim().lowercase() }, { it.ch.onEach { h -> infos[h.id] = h }.map { h -> h.id } })?.mapValues { (_, l) -> l.flatten().toSet() }
+            val merged = ChannelHidingRules.mergeRemote(localByName, remoteAll, partial)
+            for (pr in profs) {
+                val want = merged[pr.name.trim().lowercase()] ?: continue
+                if (want == localByName[pr.name.trim().lowercase()]) continue
+                categories.replaceHiddenFor(pr.id, localId, want.map { infos[it] ?: com.ultratv.tv.nativeapp.data.prefs.HiddenChannel(it, null, "") })
+            }
+            categories.reconcileHidden(localId)
         }
         // Catégories masquées par profil (seulement si transmises) : profils rattachés par NOM.
         remote.pHidden?.let { want ->

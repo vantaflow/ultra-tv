@@ -5,6 +5,7 @@ import com.ultratv.tv.nativeapp.i18n.catSortAz
 import com.ultratv.tv.nativeapp.i18n.catChannels
 import com.ultratv.tv.nativeapp.i18n.catChannelsTitle
 import com.ultratv.tv.nativeapp.i18n.catChannelsHint
+import com.ultratv.tv.nativeapp.i18n.catChannelsProfileHint
 import com.ultratv.tv.nativeapp.i18n.catChannelShown
 import com.ultratv.tv.nativeapp.i18n.catChannelHidden
 import com.ultratv.tv.nativeapp.i18n.catOrderHint
@@ -440,6 +441,7 @@ private fun CategoryChannelsDialog(vm: CategoriesViewModel, cat: String, label: 
         ) {
             Text(D.catChannelsTitle(label), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 34.spx, maxLines = 2)
             Text(D.catChannelsHint, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx, maxLines = 3)
+            Text(D.catChannelsProfileHint, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx, maxLines = 3)
             val list = items
             val arrowFocus = remember(cat) { mutableMapOf<String, Pair<androidx.compose.ui.focus.FocusRequester, androidx.compose.ui.focus.FocusRequester>>() }
             var refocus by remember { mutableStateOf<Pair<String, Int>?>(null) }

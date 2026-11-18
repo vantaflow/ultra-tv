@@ -121,10 +121,23 @@ interface ProfileDao {
     @Query("DELETE FROM channel_order WHERE profileId = :id")
     suspend fun deleteChannelOrderOf(id: Long)
 
+    @Query("DELETE FROM profile_hidden_channel WHERE profileId = :id")
+    suspend fun deleteHiddenChannelsOf(id: Long)
+
+    @Query("DELETE FROM profile_category_order WHERE profileId = :id")
+    suspend fun deleteCategoryOrderOf(id: Long)
+
     @Query("DELETE FROM watch_history WHERE profileId = :id")
     suspend fun deleteHistoryOf(id: Long)
 
     /** Noms de catégories, pour l'heuristique « adulte » du profil Enfants. */
     @Query("SELECT kind AS kind, providerId AS providerId, remoteId AS remoteId, name AS name FROM category")
     fun observeCategoryNames(): Flow<List<CategoryNameRow>>
+}
+
+/** Recalcul des réglages de Direct par profil (voir data.repo.ProfileSwitcher) : au changement de profil, à la création, à la suppression. */
+interface ProfileSwitchHook {
+    suspend fun onSwitch(profileId: Long)
+    suspend fun onProfileCreated(profileId: Long)
+    suspend fun onProfilesChanged()
 }

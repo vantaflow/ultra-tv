@@ -57,7 +57,7 @@ Un appareil ne reçoit, ne modifie et ne supprime QUE les fournisseurs qui lui s
 |---|---|
 | `POST /api/device/profiles` | Profils du compte : nom, couleur, enfants, langue de l'interface ; fusion renvoyée à l'appareil. Jamais de code PIN. |
 | `POST /api/device/handoff` | « Envoyer vers… » : `{to, ref:{src,t,id,par?,pos,n}}`, dépose une demande dans la file de 2 min (3 au plus) de l'appareil cible. Jamais d'URL de flux ni d'identifiants. La cible la lit dans l'en-tête `x-utv-handoff` (base64url) de `GET /api/config`, y compris sur un 304 : aucune interrogation de plus. |
-| `PUT /api/device/providers/<id>/prefs` | Réglages d'une source : langues, catégories désactivées par profil, `order` (ordre des catégories), `chOrder` (ordre des chaînes), `hidden` et `pHidden` (chaînes masquées). Le plus récent gagne, un envoi plus ancien répond `409`. |
+| `PUT /api/device/providers/<id>/prefs` | Réglages d'une source : langues, catégories désactivées par profil, `order` (ordre des catégories), `chOrder` (ordre des chaînes), `hidden` (chaînes masquées par TOUS les profils), `pHidden` (catégories masquées par profil), `pHiddenCh` (chaînes masquées par un seul profil, par nom) et `pOrder` (ordre des catégories par profil, par nom). Le plus récent gagne, un envoi plus ancien répond `409`. |
 | `POST /api/device/providers/<id>/state` | Favoris, reprises et derniers vus de la source (table D1 `shared_state`). |
 
 Les applis vérifient ces changements toutes les 2 min (appli ouverte) et au changement de profil.

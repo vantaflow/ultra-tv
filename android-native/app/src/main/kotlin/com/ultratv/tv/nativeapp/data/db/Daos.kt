@@ -118,14 +118,14 @@ interface ChannelDao {
     /** Les [limit] premières chaînes seulement (rails de l'accueil) : charger les
      *  40 000 lignes pour n'en garder que 30 saturait le CPU à chaque lot inséré. */
     @Query("""
-        SELECT * FROM channel WHERE providerId = :pid
+        SELECT * FROM channel WHERE providerId = :pid AND ${Hid.T}
         ORDER BY num, id
         LIMIT :limit
     """)
     fun observeTop(pid: Long, limit: Int): Flow<List<ChannelEntity>>
 
     @Query("""
-        SELECT * FROM channel WHERE providerId = :pid AND categoryId = :cat
+        SELECT * FROM channel WHERE providerId = :pid AND categoryId = :cat AND ${Hid.T}
         ORDER BY num, id
     """)
     fun observeForCategory(pid: Long, cat: String): Flow<List<ChannelEntity>>
@@ -168,11 +168,11 @@ interface ChannelDao {
     suspend fun byRemoteId(pid: Long, rid: String): ChannelEntity?
 
     /** Rubrique Sport : chaînes de ces identifiants (non séparateurs, non masquées). À appeler par paquets de 400 au plus. */
-    @Query("SELECT * FROM channel WHERE id IN (:ids) AND junk = 0 AND isSeparator = 0")
+    @Query("SELECT * FROM channel WHERE id IN (:ids) AND junk = 0 AND isSeparator = 0 AND ${Hid.T}")
     suspend fun byIds(ids: List<Long>): List<ChannelEntity>
 
     /** Rubrique Sport : chaînes des catégories (identifiants fournisseur), index (providerId, categoryId, num). Paquets de 400 au plus. */
-    @Query("SELECT * FROM channel WHERE providerId = :pid AND categoryId IN (:cats) AND junk = 0 AND isSeparator = 0")
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND categoryId IN (:cats) AND junk = 0 AND isSeparator = 0 AND ${Hid.T}")
     suspend fun byCategories(pid: Long, cats: List<String>): List<ChannelEntity>
 
     /** Rubrique Sport : pré-filtre des noms de chaînes (LIKE construit par [com.ultratv.tv.nativeapp.data.sport.SportRepository]). */
@@ -219,27 +219,32 @@ interface ChannelDao {
 
     /** Chaînes affichées du Direct (sans décorations ni séparateurs) : total de « Toutes les chaînes » du lecteur. */
     @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid AND junk = 0 AND isSeparator = 0")
-    suspend fun countLive(pid: Long): Int
+    suspend fun countLiveAll(pid: Long): Int
+
+    /** Chaînes affichées masquées par le profil courant : retranchées des compteurs (qui restent servis par l'index couvrant). */
+    @Query("SELECT COUNT(*) FROM channel_hidden_now h JOIN channel c ON c.providerId = h.providerId AND c.remoteId = h.remoteId WHERE h.providerId = :pid AND c.junk = 0 AND c.isSeparator = 0")
+    suspend fun countLiveHidden(pid: Long): Int
+
 
     @Query("""
         SELECT COUNT(*) FROM channel c
         JOIN favorite f ON f.profileId = :profileId AND f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
-        WHERE c.providerId = :pid AND c.isSeparator = 0
+        WHERE c.providerId = :pid AND c.isSeparator = 0 AND ${Hid.C}
     """)
     suspend fun countFavorites(pid: Long, profileId: Long): Int
 
     /** Rail d'accueil sans favoris : des chaînes avec logo, par ordre alphabétique (hors décorations). */
     /** Mode simple : les premières chaînes de la liste « Tout » (sans décorations ni séparateurs), dans son ordre. */
-    @Query("SELECT * FROM channel WHERE providerId = :pid AND junk = 0 AND isSeparator = 0 ORDER BY catRank, num, id LIMIT :limit")
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND junk = 0 AND isSeparator = 0 AND ${Hid.T} ORDER BY catRank, num, id LIMIT :limit")
     fun observeFirstClean(pid: Long, limit: Int): Flow<List<ChannelEntity>>
 
-    @Query("SELECT * FROM channel WHERE providerId = :pid AND junk = 0 AND isSeparator = 0 AND logo IS NOT NULL AND logo != '' AND sortKey >= 'a' ORDER BY num, id LIMIT :limit")
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND junk = 0 AND isSeparator = 0 AND logo IS NOT NULL AND logo != '' AND sortKey >= 'a' AND ${Hid.T} ORDER BY num, id LIMIT :limit")
     fun observeTopWithLogo(pid: Long, limit: Int): Flow<List<ChannelEntity>>
 
     @Query("""
         SELECT c.* FROM channel c
         JOIN favorite f ON f.profileId = :profileId AND f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
-        WHERE c.providerId = :pid AND c.isSeparator = 0 ORDER BY c.num, c.id LIMIT :limit
+        WHERE c.providerId = :pid AND c.isSeparator = 0 AND ${Hid.C} ORDER BY c.num, c.id LIMIT :limit
     """)
     fun observeFavoritesTop(pid: Long, limit: Int, profileId: Long): Flow<List<ChannelEntity>>
 
@@ -247,7 +252,7 @@ interface ChannelDao {
     @Query("""
         SELECT c.* FROM channel c
         JOIN favorite f ON f.profileId = :profileId AND f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
-        WHERE c.providerId IN (:pids) AND c.isSeparator = 0 ORDER BY c.providerId, c.num, c.id LIMIT :limit
+        WHERE c.providerId IN (:pids) AND c.isSeparator = 0 AND ${Hid.C} ORDER BY c.providerId, c.num, c.id LIMIT :limit
     """)
     fun observeFavoritesTopIn(pids: List<Long>, limit: Int, profileId: Long): Flow<List<ChannelEntity>>
 
@@ -260,23 +265,23 @@ interface ChannelDao {
     // chaque catégorie. Avant : numéro de chaîne seul, sans rapport avec l'ordre choisi.
     // Ordre servi par l'index grâce à catRank : voir allAfter / allBefore (pagination par clé, LiveAllPagingSource).
 
-    @Query("SELECT * FROM channel WHERE providerId = :pid AND categoryId = :cat AND junk = 0 AND (:useLang = 0 OR lang IN (:langs)) ORDER BY num, id")
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND categoryId = :cat AND junk = 0 AND ${Hid.T} AND (:useLang = 0 OR lang IN (:langs)) ORDER BY num, id")
     fun pagedForCategory(pid: Long, cat: String, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, ChannelEntity>
 
 
     // ── Repli tant que catRank n'est pas rempli (base migrée depuis < 18, remplissage en tâche de fond : LiveOrderBackfill) ──
     // Même ordre que catRank, calculé par jointure : lent (tri complet) mais juste. À retirer quand plus aucune base
     // antérieure à la version 18 n'est en circulation.
-    @Query("SELECT ch.* FROM channel ch LEFT JOIN category k ON k.providerId = ch.providerId AND k.kind = 'LIVE' AND k.remoteId = ch.categoryId WHERE ch.providerId = :pid AND ch.junk = 0 AND ch.isSeparator = 0 AND (:useLang = 0 OR ch.lang IN (:langs)) ORDER BY CASE WHEN COALESCE(k.position, 0) = 0 THEN 1 ELSE 0 END, k.position, k.id, ch.num, ch.id")
+    @Query("SELECT ch.* FROM channel ch LEFT JOIN category k ON k.providerId = ch.providerId AND k.kind = 'LIVE' AND k.remoteId = ch.categoryId WHERE ch.providerId = :pid AND ch.junk = 0 AND ch.isSeparator = 0 AND ${Hid.CH} AND (:useLang = 0 OR ch.lang IN (:langs)) ORDER BY CASE WHEN COALESCE(k.position, 0) = 0 THEN 1 ELSE 0 END, k.position, k.id, ch.num, ch.id")
     fun pagedAllLegacy(pid: Long, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, ChannelEntity>
 
-    @Query("SELECT ch.* FROM channel ch LEFT JOIN category k ON k.providerId = ch.providerId AND k.kind = 'LIVE' AND k.remoteId = ch.categoryId WHERE ch.providerId = :pid AND ch.junk = 0 AND ch.isSeparator = 0 AND (ch.categoryId IS NULL OR ch.categoryId NOT IN (:hidden)) AND (:useLang = 0 OR ch.lang IN (:langs)) ORDER BY CASE WHEN COALESCE(k.position, 0) = 0 THEN 1 ELSE 0 END, k.position, k.id, ch.num, ch.id")
+    @Query("SELECT ch.* FROM channel ch LEFT JOIN category k ON k.providerId = ch.providerId AND k.kind = 'LIVE' AND k.remoteId = ch.categoryId WHERE ch.providerId = :pid AND ch.junk = 0 AND ch.isSeparator = 0 AND ${Hid.CH} AND (ch.categoryId IS NULL OR ch.categoryId NOT IN (:hidden)) AND (:useLang = 0 OR ch.lang IN (:langs)) ORDER BY CASE WHEN COALESCE(k.position, 0) = 0 THEN 1 ELSE 0 END, k.position, k.id, ch.num, ch.id")
     fun pagedAllExcludingLegacy(pid: Long, hidden: List<String>, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, ChannelEntity>
 
-    @Query("SELECT ch.* FROM channel ch LEFT JOIN category k ON k.providerId = ch.providerId AND k.kind = 'LIVE' AND k.remoteId = ch.categoryId WHERE ch.providerId = :pid AND ch.junk = 0 AND ch.isSeparator = 0 ORDER BY CASE WHEN COALESCE(k.position, 0) = 0 THEN 1 ELSE 0 END, k.position, k.id, ch.num, ch.id LIMIT :limit OFFSET :offset")
+    @Query("SELECT ch.* FROM channel ch LEFT JOIN category k ON k.providerId = ch.providerId AND k.kind = 'LIVE' AND k.remoteId = ch.categoryId WHERE ch.providerId = :pid AND ch.junk = 0 AND ch.isSeparator = 0 AND ${Hid.CH} ORDER BY CASE WHEN COALESCE(k.position, 0) = 0 THEN 1 ELSE 0 END, k.position, k.id, ch.num, ch.id LIMIT :limit OFFSET :offset")
     suspend fun windowAllLegacy(pid: Long, limit: Int, offset: Int): List<ChannelEntity>
 
-    @Query("SELECT ch.id FROM channel ch LEFT JOIN category k ON k.providerId = ch.providerId AND k.kind = 'LIVE' AND k.remoteId = ch.categoryId WHERE ch.providerId = :pid AND ch.junk = 0 AND ch.isSeparator = 0 ORDER BY CASE WHEN COALESCE(k.position, 0) = 0 THEN 1 ELSE 0 END, k.position, k.id, ch.num, ch.id")
+    @Query("SELECT ch.id FROM channel ch LEFT JOIN category k ON k.providerId = ch.providerId AND k.kind = 'LIVE' AND k.remoteId = ch.categoryId WHERE ch.providerId = :pid AND ch.junk = 0 AND ch.isSeparator = 0 AND ${Hid.CH} ORDER BY CASE WHEN COALESCE(k.position, 0) = 0 THEN 1 ELSE 0 END, k.position, k.id, ch.num, ch.id")
     suspend fun orderedAllIdsLegacy(pid: Long): List<Long>
 
     /**
@@ -292,7 +297,7 @@ interface ChannelDao {
            FROM channel t
            LEFT JOIN category tk ON tk.providerId = t.providerId AND tk.kind = 'LIVE' AND tk.remoteId = t.categoryId
           WHERE t.id = :cid LIMIT 1) tg
-        WHERE ch.providerId = :pid AND ch.junk = 0 AND ch.isSeparator = 0
+        WHERE ch.providerId = :pid AND ch.junk = 0 AND ch.isSeparator = 0 AND ${Hid.CH}
           AND (CASE WHEN COALESCE(k.position, 0) = 0 THEN 1 ELSE 0 END, COALESCE(k.position, -1), COALESCE(k.id, -1), ch.num, ch.id)
               < (tg.o, tg.p, tg.kid, tg.n, tg.i)
     """)
@@ -312,7 +317,7 @@ interface ChannelDao {
 
     /** Idem, groupe « Tout » du Direct : mêmes catégories masquées exclues, même ordre (rang de catégorie, numéro). */
     @Query("""
-        SELECT * FROM channel c WHERE c.providerId = :pid AND c.junk = 0 AND c.isSeparator = 0
+        SELECT * FROM channel c WHERE c.providerId = :pid AND c.junk = 0 AND c.isSeparator = 0 AND ${Hid.C}
         AND (:useHidden = 0 OR c.categoryId IS NULL OR c.categoryId NOT IN (:hidden))
         AND EXISTS (SELECT 1 FROM epg e WHERE e.channelId = c.id AND e.endMs >= :from AND e.startMs <= :to)
         ORDER BY c.catRank, c.num, c.id
@@ -321,7 +326,7 @@ interface ChannelDao {
 
     /** Idem, une catégorie du fournisseur. */
     @Query("""
-        SELECT * FROM channel c WHERE c.providerId = :pid AND c.categoryId = :cat AND c.junk = 0 AND c.isSeparator = 0
+        SELECT * FROM channel c WHERE c.providerId = :pid AND c.categoryId = :cat AND c.junk = 0 AND c.isSeparator = 0 AND ${Hid.C}
         AND EXISTS (SELECT 1 FROM epg e WHERE e.channelId = c.id AND e.endMs >= :from AND e.startMs <= :to)
         ORDER BY c.num, c.id
     """)
@@ -331,7 +336,7 @@ interface ChannelDao {
     @Query("""
         SELECT c.* FROM channel c
         JOIN favorite f ON f.profileId = :profileId AND f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
-        WHERE c.providerId = :pid AND c.isSeparator = 0
+        WHERE c.providerId = :pid AND c.isSeparator = 0 AND ${Hid.C}
         AND EXISTS (SELECT 1 FROM epg e WHERE e.channelId = c.id AND e.endMs >= :from AND e.startMs <= :to)
         ORDER BY c.num, c.id
     """)
@@ -344,11 +349,11 @@ interface ChannelDao {
     // Filtres facultatifs : langue de la vue (useLang) et catégories masquées du profil (useHidden).
 
     /** Page suivante : les [limit] chaînes strictement APRÈS (catRank, num, id). */
-    @Query("SELECT * FROM channel WHERE providerId = :pid AND junk = 0 AND isSeparator = 0 AND (catRank, num, id) > (:catRank, :num, :id) AND (:useHidden = 0 OR categoryId IS NULL OR categoryId NOT IN (:hidden)) AND (:useLang = 0 OR lang IN (:langs)) ORDER BY catRank, num, id LIMIT :limit")
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND junk = 0 AND isSeparator = 0 AND ${Hid.T} AND (catRank, num, id) > (:catRank, :num, :id) AND (:useHidden = 0 OR categoryId IS NULL OR categoryId NOT IN (:hidden)) AND (:useLang = 0 OR lang IN (:langs)) ORDER BY catRank, num, id LIMIT :limit")
     suspend fun allAfter(pid: Long, catRank: Int, num: Int, id: Long, limit: Int, useHidden: Int, hidden: List<String>, useLang: Int, langs: List<String>): List<ChannelEntity>
 
     /** Page précédente : les [limit] chaînes strictement AVANT (catRank, num, id), de la plus proche à la plus lointaine. */
-    @Query("SELECT * FROM channel WHERE providerId = :pid AND junk = 0 AND isSeparator = 0 AND (catRank, num, id) < (:catRank, :num, :id) AND (:useHidden = 0 OR categoryId IS NULL OR categoryId NOT IN (:hidden)) AND (:useLang = 0 OR lang IN (:langs)) ORDER BY catRank DESC, num DESC, id DESC LIMIT :limit")
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND junk = 0 AND isSeparator = 0 AND ${Hid.T} AND (catRank, num, id) < (:catRank, :num, :id) AND (:useHidden = 0 OR categoryId IS NULL OR categoryId NOT IN (:hidden)) AND (:useLang = 0 OR lang IN (:langs)) ORDER BY catRank DESC, num DESC, id DESC LIMIT :limit")
     suspend fun allBefore(pid: Long, catRank: Int, num: Int, id: Long, limit: Int, useHidden: Int, hidden: List<String>, useLang: Int, langs: List<String>): List<ChannelEntity>
 
     /** Vrai tant que des chaînes affichées de la source n'ont pas de rang (base migrée, remplissage en cours) : repli sur l'ordre joint. */
@@ -363,17 +368,17 @@ interface ChannelDao {
     @Query("UPDATE channel SET catRank = :rank WHERE providerId = :pid AND catRank != :rank AND (categoryId IS NULL OR categoryId NOT IN (SELECT remoteId FROM category WHERE providerId = :pid AND kind = 'LIVE'))")
     suspend fun setCatRankOrphans(pid: Long, rank: Int)
 
-    @Query("SELECT * FROM channel WHERE providerId = :pid AND categoryId = :cat AND junk = 0 AND isSeparator = 0 ORDER BY num, id LIMIT :limit OFFSET :offset")
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND categoryId = :cat AND junk = 0 AND isSeparator = 0 AND ${Hid.T} ORDER BY num, id LIMIT :limit OFFSET :offset")
     suspend fun windowCategory(pid: Long, cat: String, limit: Int, offset: Int): List<ChannelEntity>
 
 
-    @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid AND categoryId = :cat AND junk = 0 AND isSeparator = 0 AND (num < :num OR (num = :num AND id < :id))")
+    @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid AND categoryId = :cat AND junk = 0 AND isSeparator = 0 AND ${Hid.T} AND (num < :num OR (num = :num AND id < :id))")
     suspend fun rankCategory(pid: Long, cat: String, num: Int, id: Long): Int
 
     @Query("""
         SELECT c.* FROM channel c
         JOIN favorite f ON f.profileId = :profileId AND f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
-        WHERE c.providerId = :pid AND c.isSeparator = 0 ORDER BY c.num, c.id
+        WHERE c.providerId = :pid AND c.isSeparator = 0 AND ${Hid.C} ORDER BY c.num, c.id
     """)
     suspend fun favoritesList(pid: Long, profileId: Long): List<ChannelEntity>
 
@@ -386,7 +391,7 @@ interface ChannelDao {
     @Query("""
         SELECT c.* FROM channel c
         LEFT JOIN channel_order o ON o.profileId = :profileId AND o.providerId = c.providerId AND o.scope = :cat AND o.remoteId = c.remoteId
-        WHERE c.providerId = :pid AND c.categoryId = :cat AND c.junk = 0 AND (:useLang = 0 OR c.lang IN (:langs))
+        WHERE c.providerId = :pid AND c.categoryId = :cat AND c.junk = 0 AND ${Hid.C} AND (:useLang = 0 OR c.lang IN (:langs))
         ORDER BY COALESCE(o.position, 2147483647), c.num, c.id
     """)
     fun pagedForCategoryOrdered(pid: Long, cat: String, useLang: Int, langs: List<String>, profileId: Long): androidx.paging.PagingSource<Int, ChannelEntity>
@@ -396,7 +401,7 @@ interface ChannelDao {
         SELECT c.* FROM channel c
         JOIN favorite f ON f.profileId = :profileId AND f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
         LEFT JOIN channel_order o ON o.profileId = :profileId AND o.providerId = c.providerId AND o.scope = '__fav__' AND o.remoteId = c.remoteId
-        WHERE c.providerId = :pid AND c.isSeparator = 0 AND (:useLang = 0 OR c.lang IN (:langs))
+        WHERE c.providerId = :pid AND c.isSeparator = 0 AND ${Hid.C} AND (:useLang = 0 OR c.lang IN (:langs))
         ORDER BY COALESCE(o.position, 2147483647), c.num, c.id
     """)
     fun pagedFavoritesOrdered(pid: Long, useLang: Int, langs: List<String>, profileId: Long): androidx.paging.PagingSource<Int, ChannelEntity>
@@ -405,7 +410,7 @@ interface ChannelDao {
     @Query("""
         SELECT c.* FROM channel c
         LEFT JOIN channel_order o ON o.profileId = :profileId AND o.providerId = c.providerId AND o.scope = :cat AND o.remoteId = c.remoteId
-        WHERE c.providerId = :pid AND c.categoryId = :cat AND c.junk = 0 AND c.isSeparator = 0
+        WHERE c.providerId = :pid AND c.categoryId = :cat AND c.junk = 0 AND c.isSeparator = 0 AND ${Hid.C}
         ORDER BY COALESCE(o.position, 2147483647), c.num, c.id LIMIT :limit OFFSET :offset
     """)
     suspend fun windowCategoryOrdered(pid: Long, cat: String, profileId: Long, limit: Int, offset: Int): List<ChannelEntity>
@@ -414,7 +419,7 @@ interface ChannelDao {
     @Query("""
         SELECT COUNT(*) FROM channel c
         LEFT JOIN channel_order o ON o.profileId = :profileId AND o.providerId = c.providerId AND o.scope = :cat AND o.remoteId = c.remoteId
-        WHERE c.providerId = :pid AND c.categoryId = :cat AND c.junk = 0 AND c.isSeparator = 0
+        WHERE c.providerId = :pid AND c.categoryId = :cat AND c.junk = 0 AND c.isSeparator = 0 AND ${Hid.C}
         AND (COALESCE(o.position, 2147483647) < :pos
             OR (COALESCE(o.position, 2147483647) = :pos AND (c.num < :num OR (c.num = :num AND c.id < :id))))
     """)
@@ -425,7 +430,7 @@ interface ChannelDao {
         SELECT c.* FROM channel c
         JOIN favorite f ON f.profileId = :profileId AND f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
         LEFT JOIN channel_order o ON o.profileId = :profileId AND o.providerId = c.providerId AND o.scope = '__fav__' AND o.remoteId = c.remoteId
-        WHERE c.providerId = :pid AND c.isSeparator = 0
+        WHERE c.providerId = :pid AND c.isSeparator = 0 AND ${Hid.C}
         ORDER BY COALESCE(o.position, 2147483647), c.num, c.id
     """)
     suspend fun favoritesListOrdered(pid: Long, profileId: Long): List<ChannelEntity>
@@ -434,7 +439,7 @@ interface ChannelDao {
     @Query("""
         SELECT c.remoteId FROM channel c
         LEFT JOIN channel_order o ON o.profileId = :profileId AND o.providerId = c.providerId AND o.scope = :cat AND o.remoteId = c.remoteId
-        WHERE c.providerId = :pid AND c.categoryId = :cat AND c.junk = 0
+        WHERE c.providerId = :pid AND c.categoryId = :cat AND c.junk = 0 AND ${Hid.C}
         ORDER BY COALESCE(o.position, 2147483647), c.num, c.id
     """)
     suspend fun orderedKeysForCategory(pid: Long, cat: String, profileId: Long): List<String>
@@ -444,13 +449,13 @@ interface ChannelDao {
         SELECT c.remoteId FROM channel c
         JOIN favorite f ON f.profileId = :profileId AND f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
         LEFT JOIN channel_order o ON o.profileId = :profileId AND o.providerId = c.providerId AND o.scope = '__fav__' AND o.remoteId = c.remoteId
-        WHERE c.providerId = :pid AND c.isSeparator = 0
+        WHERE c.providerId = :pid AND c.isSeparator = 0 AND ${Hid.C}
         ORDER BY COALESCE(o.position, 2147483647), c.num, c.id
     """)
     suspend fun orderedKeysForFavorites(pid: Long, profileId: Long): List<String>
 
     /** Autres qualités d'une même chaîne (même titre nettoyé et même langue), de la meilleure à la moins bonne. */
-    @Query("SELECT * FROM channel WHERE providerId = :pid AND title = :title AND lang = :lang AND junk = 0 AND isSeparator = 0 ORDER BY quality DESC, num LIMIT 12")
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND title = :title AND lang = :lang AND junk = 0 AND isSeparator = 0 AND ${Hid.T} ORDER BY quality DESC, num LIMIT 12")
     suspend fun variantsOf(pid: Long, title: String, lang: String): List<ChannelEntity>
 
     /** Chaînes précises d'une source (écran « Chaînes verrouillées » : seulement celles qu'on a verrouillées). */
@@ -460,19 +465,24 @@ interface ChannelDao {
     @Query("""
         SELECT c.* FROM channel c
         JOIN favorite f ON f.profileId = :profileId AND f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
-        WHERE c.providerId = :pid AND c.isSeparator = 0 AND (:useLang = 0 OR c.lang IN (:langs)) ORDER BY c.num, c.id
+        WHERE c.providerId = :pid AND c.isSeparator = 0 AND ${Hid.C} AND (:useLang = 0 OR c.lang IN (:langs)) ORDER BY c.num, c.id
     """)
     fun pagedFavorites(pid: Long, useLang: Int, langs: List<String>, profileId: Long): androidx.paging.PagingSource<Int, ChannelEntity>
 
     /** Compteurs par catégorie (colonne de gauche du Direct), servis par l'index couvrant. */
     @Query("SELECT categoryId AS categoryId, SUM(CASE WHEN isSeparator = 0 THEN 1 ELSE 0 END) AS n, SUM(isSeparator) AS sections FROM channel WHERE providerId = :pid AND junk = 0 GROUP BY categoryId")
-    fun observeCategoryCounts(pid: Long): Flow<List<CategoryCount>>
+    fun observeCategoryCountsAll(pid: Long): Flow<List<CategoryCount>>
+
+    /** Chaînes masquées par le profil courant, par catégorie : à retrancher de [observeCategoryCountsAll]. */
+    @Query("SELECT c.categoryId AS categoryId, SUM(CASE WHEN c.isSeparator = 0 THEN 1 ELSE 0 END) AS n, SUM(c.isSeparator) AS sections FROM channel_hidden_now h JOIN channel c ON c.providerId = h.providerId AND c.remoteId = h.remoteId WHERE h.providerId = :pid AND c.junk = 0 GROUP BY c.categoryId")
+    fun observeHiddenCounts(pid: Long): Flow<List<CategoryCount>>
+
 
     // Sous-requête et non jointure : avec la jointure, SQLite parcourait toutes les lignes de la source et évaluait le MATCH
     // pour chacune (55 s pour « spider » sur une box 2 Go, ~500 fois plus lent). Ici l'index plein texte est lu une fois.
     @Query("""
         SELECT c.* FROM channel c WHERE c.id IN (SELECT docid FROM channel_fts WHERE channel_fts MATCH :match)
-        AND c.providerId = :pid AND c.junk = 0 AND c.isSeparator = 0 LIMIT :limit
+        AND c.providerId = :pid AND c.junk = 0 AND c.isSeparator = 0 AND ${Hid.C} LIMIT :limit
     """)
     suspend fun searchFts(pid: Long, match: String, limit: Int): List<ChannelEntity>
 }
@@ -1019,7 +1029,7 @@ interface EpgDao {
     @Query("""
         SELECT c.*, e.title AS pTitle, e.startMs AS pStart, e.endMs AS pEnd
         FROM epg e JOIN channel c ON c.id = e.channelId
-        WHERE c.providerId = :pid AND c.junk = 0 AND c.isSeparator = 0
+        WHERE c.providerId = :pid AND c.junk = 0 AND c.isSeparator = 0 AND ${Hid.C}
           AND e.endMs > :nowMs AND e.startMs <= :toMs AND e.title LIKE :pattern ESCAPE '\'
         ORDER BY e.startMs LIMIT :limit
     """)
@@ -1078,6 +1088,20 @@ data class CatalogLite(val id: Long, val title: String, val poster: String?, val
 data class EnabledCount(val kind: String, val enabled: Boolean, val n: Int)
 
 data class CategoryCount(val categoryId: String?, val n: Int, val sections: Int = 0)
+
+/** Nombre de chaînes du Direct VISIBLES pour le profil courant. */
+suspend fun ChannelDao.countLive(pid: Long): Int = countLiveAll(pid) - countLiveHidden(pid)
+
+/** Compteurs par catégorie VISIBLES pour le profil courant (voir [minusHidden]). */
+fun ChannelDao.observeCategoryCounts(pid: Long): Flow<List<CategoryCount>> =
+    kotlinx.coroutines.flow.combine(observeCategoryCountsAll(pid), observeHiddenCounts(pid)) { all, hid -> all.minusHidden(hid) }
+
+/** Retranche les chaînes masquées ([hidden]) des compteurs par catégorie. Pur. */
+fun List<CategoryCount>.minusHidden(hidden: List<CategoryCount>): List<CategoryCount> {
+    if (hidden.isEmpty()) return this
+    val h = hidden.associateBy { it.categoryId }
+    return map { c -> h[c.categoryId]?.let { x -> c.copy(n = (c.n - x.n).coerceAtLeast(0), sections = (c.sections - x.sections).coerceAtLeast(0)) } ?: c }
+}
 
 /** Parties du catalogue synchronisées (et horodatées) indépendamment. */
 enum class SyncPart { LIVE, VOD, SERIES, EPG }

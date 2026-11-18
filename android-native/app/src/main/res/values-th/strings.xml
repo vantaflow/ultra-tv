@@ -1673,6 +1673,7 @@
     <string name="cat_channels">ช่อง</string>
     <string name="cat_channels_title">ช่องของ “%1$s”</string>
     <string name="cat_channels_hint">ปิดช่องเพื่อซ่อนทุกที่บนทุกอุปกรณ์ของคุณ เปิดอีกครั้งเพื่อแสดง</string>
+    <string name="cat_channels_profile_hint">การตั้งค่านี้ใช้กับโปรไฟล์ปัจจุบันเท่านั้น โปรไฟล์อื่นยังคงมีช่องและลำดับหมวดหมู่ของตัวเอง</string>
     <string name="cat_channel_shown">แสดง</string>
     <string name="cat_channel_hidden">ซ่อน</string>
     <string name="cat_order_hint">▸ ลำดับ · ช่อง</string>

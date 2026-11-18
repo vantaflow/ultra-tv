@@ -1754,6 +1754,7 @@
     <string name="cat_channels">القنوات</string>
     <string name="cat_channels_title">قنوات «%1$s»</string>
     <string name="cat_channels_hint">عطّل قناة لإخفائها في كل مكان وعلى كل أجهزتك. أعد تفعيلها لإظهارها من جديد.</string>
+    <string name="cat_channels_profile_hint">يخص هذا الإعداد الملف الشخصي الحالي فقط: تحتفظ الملفات الأخرى بقنواتها وبترتيب فئاتها.</string>
     <string name="cat_channel_shown">ظاهرة</string>
     <string name="cat_channel_hidden">مخفية</string>
     <string name="cat_order_hint">▸ الترتيب · القنوات</string>

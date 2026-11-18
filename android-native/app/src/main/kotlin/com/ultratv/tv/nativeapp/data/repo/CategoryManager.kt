@@ -8,8 +8,10 @@ import com.ultratv.tv.nativeapp.data.db.ChannelDao
 import com.ultratv.tv.nativeapp.data.db.MovieDao
 import com.ultratv.tv.nativeapp.data.db.SeriesDao
 import com.ultratv.tv.nativeapp.data.db.UltraDb
+import com.ultratv.tv.nativeapp.data.db.observeCategoryCounts
 import com.ultratv.tv.nativeapp.data.sync.SyncCoordinator
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.sample
@@ -36,6 +38,9 @@ class CategoryManager @Inject constructor(
     private val sync: SyncCoordinator,
     private val langDisabled: com.ultratv.tv.nativeapp.data.prefs.LangDisabledStore,
     private val hidden: com.ultratv.tv.nativeapp.data.prefs.HiddenChannelsStore,
+    private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
+    private val hiding: ProfileChannelHiding,
+    private val switcher: ProfileSwitcher,
 ) {
     fun observe(pid: Long, kind: String, query: String): Flow<List<CategoryRow>> {
         val counts: Flow<List<CategoryCount>> = when (kind) { "LIVE" -> channelDao.observeCategoryCounts(pid); "MOVIE" -> movieDao.observeCategoryCounts(pid); else -> seriesDao.observeCategoryCounts(pid) }
@@ -61,8 +66,13 @@ class CategoryManager @Inject constructor(
         if (enabled) sync.requestCategories(pid, kind, ids)
     }
 
-    /** Enregistre l'ordre (1..n) tel qu'affiché. Direct : le rang précalculé des chaînes suit (voir [LiveOrder]). */
+    /**
+     * Enregistre l'ordre (1..n) tel qu'affiché, pour le profil COURANT (chaque profil a le sien : table
+     * `profile_category_order`) ; `category.position` en est la projection. Direct : le rang précalculé des chaînes suit
+     * (voir [LiveOrder]).
+     */
     suspend fun saveOrder(pid: Long, kind: String, orderedIds: List<String>) = db.withTransaction {
+        switcher.saveOrderFor(profiles.currentIdNow, pid, kind, orderedIds)
         orderedIds.forEachIndexed { i, id -> categoryDao.setPosition(pid, kind, id, i + 1) }
         if (kind == LiveOrder.KIND) LiveOrder.apply(channelDao, pid, LiveOrder.ranks(categoryDao.forProviderKind(pid, kind)))
     }
@@ -86,36 +96,45 @@ class CategoryManager @Inject constructor(
     /** Ordre complet actuel (identifiants du fournisseur). */
     suspend fun orderedIds(pid: Long, kind: String): List<String> = categoryDao.orderedIds(pid, kind)
 
-    // ── Chaînes masquées ────────────────────────────────────────────────────────────────────────
+    // ── Chaînes masquées (PAR PROFIL, voir [ProfileChannelHiding]) ───────────────────────────────
 
-    fun observeHidden(pid: Long) = hidden.observe(pid)
+    /** Chaînes masquées par le profil COURANT (écran Catégories). */
+    fun observeHidden(pid: Long): Flow<List<com.ultratv.tv.nativeapp.data.prefs.HiddenChannel>> =
+        profiles.currentId.flatMapLatest { hiding.observe(it, pid) }
+
+    /** Chaînes masquées par TOUS les profils (supprimées de la base) : champ historique `hidden` du cloud. */
     fun hiddenOf(pid: Long) = hidden.list(pid)
 
-    /** Chaînes d'une catégorie : présentes en base + masquées de cette catégorie (pour pouvoir les réafficher). */
-    suspend fun channelsOf(pid: Long, cat: String): List<com.ultratv.tv.nativeapp.data.prefs.HiddenChannel> =
-        channelDao.listInCategory(pid, cat).map { com.ultratv.tv.nativeapp.data.prefs.HiddenChannel(it.remoteId, it.categoryId, it.name) } +
-            hidden.list(pid).filter { it.cat == cat }
-
-    /** Masque des chaînes : retirées tout de suite de la base, ignorées par les prochaines synchros. */
-    suspend fun hideChannels(pid: Long, items: List<com.ultratv.tv.nativeapp.data.prefs.HiddenChannel>) {
-        if (items.isEmpty()) return
-        hidden.add(pid, items)
-        db.withTransaction {
-            items.map { it.id }.chunked(500).forEach { channelDao.deleteByRemoteIds(pid, it) }
-            // Numéros resserrés tout de suite : masquer les chaînes 1 et 2 fait de la 3 la chaîne 1 (liste et télécommande).
-            items.map { it.cat }.distinct().forEach { cat ->
-                ChannelSeq.compact(channelDao.seqsInCategory(pid, cat).map { it.id to it.seq }).forEach { (id, n) -> channelDao.setSeq(id, n) }
-            }
-        }
+    /** Chaînes masquées par le seul profil [profileId] et pas par tous : champ `pHiddenCh` du cloud. */
+    suspend fun hiddenOnlyBy(profileId: Long, pid: Long): List<com.ultratv.tv.nativeapp.data.prefs.HiddenChannel> {
+        val all = hidden.ids(pid)
+        return hiding.listOf(profileId, pid).filter { it.id !in all }
     }
 
-    /** Réaffiche des chaînes : retirées de la liste, leurs catégories rechargées. */
-    suspend fun showChannels(pid: Long, ids: Collection<String>) {
-        if (ids.isEmpty()) return
-        val cats = hidden.list(pid).filter { it.id in ids }.mapNotNull { it.cat }.distinct()
-        hidden.remove(pid, ids)
-        if (cats.isNotEmpty()) sync.requestCategories(pid, "LIVE", cats)
+    /** Chaînes d'une catégorie : présentes en base + masquées par le profil courant (pour pouvoir les réafficher). */
+    suspend fun channelsOf(pid: Long, cat: String): List<com.ultratv.tv.nativeapp.data.prefs.HiddenChannel> {
+        val mine = hiding.listOf(profiles.currentIdNow, pid)
+        val mineIds = mine.mapTo(HashSet()) { it.id }
+        return channelDao.listInCategory(pid, cat).filter { it.remoteId !in mineIds }.map { com.ultratv.tv.nativeapp.data.prefs.HiddenChannel(it.remoteId, it.categoryId, it.name) } +
+            mine.filter { it.cat == cat }
     }
+
+    /** Masque des chaînes pour le profil COURANT : les autres profils les voient toujours (supprimées seulement si tous les masquent). */
+    suspend fun hideChannels(pid: Long, items: List<com.ultratv.tv.nativeapp.data.prefs.HiddenChannel>) =
+        hiding.hide(profiles.currentIdNow, pid, items, profiles.currentIdNow)
+
+    /** Réaffiche des chaînes pour le profil courant (leurs catégories sont rechargées si plus aucun profil ne les masquait… ou les masquait tous). */
+    suspend fun showChannels(pid: Long, ids: Collection<String>) = hiding.show(profiles.currentIdNow, pid, ids, profiles.currentIdNow)
+
+    /** Réglages reçus du cloud : chaînes masquées de [profileId] (remplacement complet). */
+    suspend fun replaceHiddenFor(profileId: Long, pid: Long, items: List<com.ultratv.tv.nativeapp.data.prefs.HiddenChannel>) =
+        hiding.replaceFor(profileId, pid, items, profiles.currentIdNow)
+
+    /** Tout ce que masque le profil [profileId] (réglages cloud). */
+    suspend fun hiddenOfProfile(profileId: Long, pid: Long) = hiding.listOf(profileId, pid)
+
+    /** À appeler après une série de [replaceHiddenFor] : supprime les chaînes devenues unanimes, recharge les autres. */
+    suspend fun reconcileHidden(pid: Long) = hiding.reconcile(pid)
 
     companion object {
         /** Fusion d'un ordre partiel dans l'ordre complet : les places des catégories visibles leur sont réattribuées. Pur. */
