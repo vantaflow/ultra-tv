@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Modifié
+- OSD du Direct sur TV allégé : une carte compacte en bas (numéro, logo, chaîne, programme sur une ligne avec horaires, progression et « Ensuite », heure, date, qualité). Les chaînes récentes restent juste au-dessus ; les commandes (pistes, sous-titres, guide, enregistrer…), la soirée et la carte « Ensuite » passent derrière le bouton « Plus » (Retour le referme).
+
 ## [1.3.64] — 2026-11-18 (Android)
 
 ### Corrigé

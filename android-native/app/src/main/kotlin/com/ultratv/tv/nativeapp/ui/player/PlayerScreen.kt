@@ -1574,7 +1574,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 onSubs = { panel = Panel.Subtitles }, onSleep = { sleepMenu = true }, onOptions = { panel = Panel.Options }, onAudio = { panel = Panel.Tracks },
             ) else if (osdState != null) LiveOsd(
                 state = osdState, focus = osdFocus, onAction = onOsdAction, onRecent = onOsdRecent, onNextAction = onOsdNext,
-                initialStage = OsdStage.CONTROLS, onStage = { osdStage = it },
+                initialStage = OsdStage.CONTROLS, onStage = { osdStage = it }, moreLabel = M.moreInfo,
             )
         }
         }
