@@ -1692,6 +1692,7 @@
     <string name="cat_channels">Κανάλια</string>
     <string name="cat_channels_title">Κανάλια της «%1$s»</string>
     <string name="cat_channels_hint">Απενεργοποιήστε ένα κανάλι για να το αποκρύψετε παντού, σε όλες τις συσκευές σας. Ενεργοποιήστε το ξανά για να εμφανιστεί ξανά.</string>
+    <string name="cat_channels_profile_hint">Αυτή η ρύθμιση αφορά μόνο το τρέχον προφίλ: τα άλλα προφίλ κρατούν τα δικά τους κανάλια και τη σειρά των κατηγοριών τους.</string>
     <string name="cat_channel_shown">Ορατό</string>
     <string name="cat_channel_hidden">Κρυφό</string>
     <string name="cat_order_hint">▸ Σειρά · Κανάλια</string>

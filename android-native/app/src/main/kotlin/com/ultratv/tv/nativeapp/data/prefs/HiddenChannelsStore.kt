@@ -14,13 +14,17 @@ import javax.inject.Singleton
 data class HiddenChannel(val id: String, val cat: String?, val name: String)
 
 /**
- * Chaînes masquées, par source. Une chaîne masquée est retirée de la base et ignorée par la synchro : elle disparaît
- * partout (liste, zapping, guide, recherche, accueil). Partagée entre appareils avec les réglages d'affichage.
+ * Chaînes masquées par TOUS les profils, par source (le choix de chaque profil est dans `profile_hidden_channel`, voir
+ * ProfileChannelHiding). Une telle chaîne est retirée de la base et ignorée par la synchro : elle disparaît partout
+ * (liste, zapping, guide, recherche, accueil). Valeur du champ historique `hidden` du cloud.
  */
 @Singleton
 class HiddenChannelsStore @Inject constructor(@ApplicationContext ctx: Context) {
     private val sp = ctx.getSharedPreferences("hidden_channels", Context.MODE_PRIVATE)
     private val version = MutableStateFlow(0)
+
+    /** Sources qui ont (ou ont eu) des chaînes masquées par tous les profils. */
+    fun providerIds(): List<Long> = sp.all.keys.mapNotNull { k -> k.removePrefix("p").toLongOrNull()?.takeIf { k.startsWith("p") } }
 
     fun list(pid: Long): List<HiddenChannel> = parse(sp.getString(key(pid), null))
     fun ids(pid: Long): Set<String> = list(pid).mapTo(HashSet()) { it.id }

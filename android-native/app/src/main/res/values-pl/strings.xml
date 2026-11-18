@@ -1646,6 +1646,7 @@
     <string name="cat_channels">Kanały</string>
     <string name="cat_channels_title">Kanały „%1$s”</string>
     <string name="cat_channels_hint">Wyłącz kanał, aby ukryć go wszędzie, na wszystkich urządzeniach. Włącz go ponownie, aby go przywrócić.</string>
+    <string name="cat_channels_profile_hint">To ustawienie dotyczy tylko bieżącego profilu: pozostałe profile zachowują własne kanały i kolejność kategorii.</string>
     <string name="cat_channel_shown">Widoczny</string>
     <string name="cat_channel_hidden">Ukryty</string>
     <string name="cat_order_hint">▸ Kolejność · Kanały</string>

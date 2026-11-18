@@ -257,7 +257,32 @@ val MIGRATION_22_23 = object : Migration(22, 23) {
     }
 }
 
-val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23)
+/**
+ * 23 → 24 (réglages de Direct PAR PROFIL) : tables `profile_hidden_channel` (chaînes masquées par profil),
+ * `channel_hidden_now` (projection du profil courant, lue par les listes) et `profile_category_order` (ordre des catégories
+ * par profil). L'ordre actuel des catégories (global jusque-là) est recopié pour CHAQUE profil existant : rien ne bouge
+ * à l'écran. Les chaînes masquées globales vivent dans les préférences (pas dans la base) : elles sont attribuées à tous
+ * les profils au premier lancement (ProfileChannelHiding.importLegacyOnce). Aucune ligne de `channel` n'est réécrite.
+ */
+val MIGRATION_23_24 = object : Migration(23, 24) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `profile_hidden_channel` (`profileId` INTEGER NOT NULL, `providerId` INTEGER NOT NULL, " +
+                "`remoteId` TEXT NOT NULL, `categoryId` TEXT, `name` TEXT NOT NULL, PRIMARY KEY(`profileId`, `providerId`, `remoteId`))",
+        )
+        db.execSQL("CREATE TABLE IF NOT EXISTS `channel_hidden_now` (`providerId` INTEGER NOT NULL, `remoteId` TEXT NOT NULL, PRIMARY KEY(`providerId`, `remoteId`))")
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `profile_category_order` (`profileId` INTEGER NOT NULL, `providerId` INTEGER NOT NULL, " +
+                "`kind` TEXT NOT NULL, `remoteId` TEXT NOT NULL, `position` INTEGER NOT NULL, PRIMARY KEY(`profileId`, `providerId`, `kind`, `remoteId`))",
+        )
+        db.execSQL(
+            "INSERT OR IGNORE INTO `profile_category_order` (`profileId`, `providerId`, `kind`, `remoteId`, `position`) " +
+                "SELECT p.`id`, c.`providerId`, c.`kind`, c.`remoteId`, c.`position` FROM `profile` p, `category` c WHERE c.`position` != 0",
+        )
+    }
+}
+
+val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24)
 
 /** Profil « Principal » (id 1) : posé par la migration 14 → 15 ET par [DefaultProfileCallback] sur une installation neuve. */
 const val DEFAULT_PROFILE_SEED_SQL =

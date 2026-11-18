@@ -1692,6 +1692,7 @@
     <string name="cat_channels">Channels</string>
     <string name="cat_channels_title">Channels of “%1$s”</string>
     <string name="cat_channels_hint">Turn a channel off to hide it everywhere, on all your devices. Turn it back on to show it again.</string>
+    <string name="cat_channels_profile_hint">This only applies to the current profile: other profiles keep their own channels and category order.</string>
     <string name="cat_channel_shown">Shown</string>
     <string name="cat_channel_hidden">Hidden</string>
     <string name="cat_order_hint">▸ Order · Channels</string>

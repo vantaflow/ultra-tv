@@ -1637,6 +1637,7 @@
     <string name="cat_channels">Kanavat</string>
     <string name="cat_channels_title">Kanavat: ”%1$s”</string>
     <string name="cat_channels_hint">Poista kanava käytöstä piilottaaksesi sen kaikkialla kaikilla laitteillasi. Ota se uudelleen käyttöön näyttääksesi sen.</string>
+    <string name="cat_channels_profile_hint">Tämä asetus koskee vain nykyistä profiilia: muut profiilit säilyttävät omat kanavansa ja kategoriajärjestyksensä.</string>
     <string name="cat_channel_shown">Näkyvissä</string>
     <string name="cat_channel_hidden">Piilotettu</string>
     <string name="cat_order_hint">▸ Järjestys · Kanavat</string>

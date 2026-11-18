@@ -25,9 +25,14 @@ class ProfileRepository(
     scope: CoroutineScope,
     /** Journal pour la synchro entre appareils (absent dans les tests). */
     private val log: ProfileSyncLog? = null,
+    /** Réglages de Direct par profil à recalculer au changement de profil (absent dans la plupart des tests). */
+    private val hook: ProfileSwitchHook? = null,
 ) {
-    @Inject constructor(dao: ProfileDao, state: ProfileStateStore, log: ProfileSyncLog) :
-        this(dao, state, CoroutineScope(SupervisorJob() + Dispatchers.Default), log)
+    @Inject constructor(dao: ProfileDao, state: ProfileStateStore, log: ProfileSyncLog, hook: com.ultratv.tv.nativeapp.data.repo.ProfileSwitcher) :
+        this(dao, state, CoroutineScope(SupervisorJob() + Dispatchers.Default), log, hook)
+
+    /** Appelé aussi pour un profil créé par la synchro entre appareils (voir [applySharedProfiles]). */
+    internal suspend fun profileCreated(id: Long) { runCatching { hook?.onProfileCreated(id) } }
 
     val profiles: StateFlow<List<ProfileEntity>> =
         dao.observeAll().stateIn(scope, SharingStarted.Eagerly, emptyList())
@@ -84,6 +89,9 @@ class ProfileRepository(
 
     /** Choisit le profil et marque la sélection de la session comme faite. */
     suspend fun select(id: Long) {
+        // Projections du profil (chaînes masquées, ordre des catégories) AVANT le changement : les listes ne montrent jamais
+        // un instant les réglages de l'autre profil.
+        runCatching { hook?.onSwitch(id) }
         state.setCurrentId(id)
         chosenThisSession.value = true
         forced.value = false
@@ -104,7 +112,7 @@ class ProfileRepository(
                 name = n, color = color, initial = ProfileRules.initialOf(n), isKids = isKids,
                 pinHash = pin?.takeIf { it.isNotBlank() }?.let(ProfileRules::hashPin),
             ),
-        )
+        ).also { profileCreated(it) }
     }
 
     suspend fun rename(id: Long, name: String) {
@@ -130,9 +138,12 @@ class ProfileRepository(
         if (!ProfileRules.canDelete(dao.count())) return false
         dao.byId(id)?.let { log?.tombstone(it.name) }
         dao.deleteFavoritesOf(id); dao.deleteHistoryOf(id); dao.deletePrefsOf(id); dao.deleteHiddenOf(id); dao.deleteChannelOrderOf(id)
+        dao.deleteHiddenChannelsOf(id); dao.deleteCategoryOrderOf(id)
         dao.deleteProfile(id)
         val remaining = dao.observeAllOnce()
-        if (current.value?.id == id) remaining.firstOrNull()?.let { state.setCurrentId(it.id) }
+        if (current.value?.id == id) remaining.firstOrNull()?.let { runCatching { hook?.onSwitch(it.id) }; state.setCurrentId(it.id) }
+        // Moins de profils : des chaînes peuvent être devenues masquées par TOUS les autres.
+        runCatching { hook?.onProfilesChanged() }
         return true
     }
 
@@ -212,6 +223,7 @@ suspend fun ProfileRepository.applySharedProfiles(dao: ProfileDao, log: ProfileS
             a.p.s?.let { dao.putPref(ProfilePrefEntity(id, ProfilePrefs.SOURCES, ProfileSourcesRules.encode(it))) }
             applySharedScreenTime(dao, id, a.p.t)
             log.set(a.p.n, a.p.at, true)
+            profileCreated(id)
         }
         is ProfileSyncLogic.Action.Update -> dao.byId(a.id)?.let {
             dao.update(it.copy(color = a.p.c, isKids = a.p.k))

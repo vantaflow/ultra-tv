@@ -69,7 +69,7 @@ class SportRepository @Inject constructor(
     private suspend fun otherCandidates(pid: Long, nowMs: Long, toMs: Long): List<com.ultratv.tv.nativeapp.data.db.EpgEntity> {
         val like = SportDetector.TITLE_LIKE
         val sql = "SELECT e.id, e.channelId, e.title, NULL AS description, e.startMs, e.endMs FROM epg e JOIN channel c ON c.id = e.channelId " +
-            "WHERE c.providerId = ? AND c.junk = 0 AND c.isSeparator = 0 AND e.endMs > ? AND e.startMs <= ? AND (" +
+            "WHERE c.providerId = ? AND c.junk = 0 AND c.isSeparator = 0 AND ${com.ultratv.tv.nativeapp.data.db.Hid.C} AND e.endMs > ? AND e.startMs <= ? AND (" +
             like.joinToString(" OR ") { "e.title LIKE ?" } + ") ORDER BY e.startMs LIMIT $MAX_OTHER_ROWS"
         val args = (listOf<Any?>(pid, nowMs, toMs) + like).toTypedArray()
         return epgDao.epgRaw(SimpleSQLiteQuery(sql, args))
@@ -81,7 +81,7 @@ class SportRepository @Inject constructor(
         val catIds = cats.filter { it.enabled && SportDetector.isSportChannel(null, it.name) }.map { it.remoteId }
         val byCat = catIds.chunked(CHUNK).flatMap { channelDao.byCategories(pid, it) }
         val like = SportDetector.CHANNEL_LIKE
-        val sql = "SELECT * FROM channel WHERE providerId = ? AND junk = 0 AND isSeparator = 0 AND (" + like.joinToString(" OR ") { "name LIKE ?" } + ")"
+        val sql = "SELECT * FROM channel WHERE providerId = ? AND junk = 0 AND isSeparator = 0 AND ${com.ultratv.tv.nativeapp.data.db.Hid.T} AND (" + like.joinToString(" OR ") { "name LIKE ?" } + ")"
         val byName = channelDao.channelsRaw(SimpleSQLiteQuery(sql, (listOf<Any?>(pid) + like).toTypedArray()))
             .filter { SportDetector.isSportChannel(it.name, null) }
         val all = SportLogic.sportChannels(byCat + byName, MAX_CHANNELS)

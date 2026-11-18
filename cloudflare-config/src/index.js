@@ -1682,6 +1682,10 @@ async function devicePutPrefs(req, env, id) {
     if (next.hidden === undefined && cur?.hidden) next.hidden = cur.hidden;
     if (next.chOrder === undefined && cur?.chOrder) next.chOrder = cur.chOrder;
     if (next.pHidden === undefined && cur?.pHidden) next.pHidden = cur.pHidden;
+    // Chaînes masquées et ordre des catégories PAR PROFIL : gardés si le client ne les envoie pas. L'ordre par profil n'est
+    // gardé que si l'ordre historique n'a pas changé : un appareil ancien qui réordonne doit l'emporter sur l'ancien état par profil.
+    if (next.pHiddenCh === undefined && cur?.pHiddenCh) next.pHiddenCh = cur.pHiddenCh;
+    if (next.pOrder === undefined && cur?.pOrder && JSON.stringify(next.order ?? null) === JSON.stringify(cur.order ?? null)) next.pOrder = cur.pOrder;
     providers[i] = { ...providers[i], prefs: next };
     await saveProviders(env, acct, providers);
     await putAccount(env, acct);

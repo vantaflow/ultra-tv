@@ -1692,6 +1692,7 @@
     <string name="cat_channels">Kanaler</string>
     <string name="cat_channels_title">Kanaler i “%1$s”</string>
     <string name="cat_channels_hint">Slå en kanal fra for at skjule den overalt på alle dine enheder. Slå den til igen for at vise den igen.</string>
+    <string name="cat_channels_profile_hint">Denne indstilling gælder kun den aktuelle profil: andre profiler beholder deres egne kanaler og kategorirækkefølge.</string>
     <string name="cat_channel_shown">Vist</string>
     <string name="cat_channel_hidden">Skjult</string>
     <string name="cat_order_hint">▸ Rækkefølge · Kanaler</string>

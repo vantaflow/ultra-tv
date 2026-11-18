@@ -1673,6 +1673,7 @@
     <string name="cat_channels">Kênh</string>
     <string name="cat_channels_title">Kênh của “%1$s”</string>
     <string name="cat_channels_hint">Tắt một kênh để ẩn nó ở mọi nơi, trên tất cả thiết bị của bạn. Bật lại để hiện lại.</string>
+    <string name="cat_channels_profile_hint">Tùy chọn này chỉ áp dụng cho hồ sơ hiện tại: các hồ sơ khác giữ kênh và thứ tự danh mục riêng.</string>
     <string name="cat_channel_shown">Hiện</string>
     <string name="cat_channel_hidden">Ẩn</string>
     <string name="cat_order_hint">▸ Thứ tự · Kênh</string>
