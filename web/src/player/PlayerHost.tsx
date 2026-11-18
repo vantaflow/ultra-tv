@@ -1100,6 +1100,30 @@ export function PlayerHost() {
     v.muted = !v.muted;
     usePrefs.getState().set({ muted: v.muted });
   }, []);
+  const setVolAbs = useCallback((abs: number) => {
+    const v = videoRef.current!;
+    v.volume = Math.max(0, Math.min(1, abs));
+    v.muted = false;
+    usePrefs.getState().set({ volume: v.volume, muted: false });
+    setZapFlash(`${Math.round(v.volume * 100)} %`);
+    window.setTimeout(() => setZapFlash(null), 600);
+  }, []);
+  const volumeBtn = (cls: "dbtn" | "pbtn") => {
+    const v = videoRef.current;
+    const shown = Math.round((v && !v.muted ? v.volume : 0) * 100);
+    return (
+      <span className="volwrap">
+        <button className={cls} aria-label={t("a11y.volume")} onClick={toggleMute}>
+          <Icon name={v?.muted || shown === 0 ? "mute" : "volume"} size={cls === "dbtn" ? 22 : 20} />
+          {cls === "dbtn" && <span className="lbl">{t("a11y.volume")}</span>}
+        </button>
+        <span className="volpop">
+          <input type="range" min={0} max={100} step={1} value={shown} aria-label={t("a11y.volume")} onChange={(e) => setVolAbs(Number(e.target.value) / 100)} style={{ writingMode: "vertical-lr", direction: "rtl" }} />
+          <b className="vol-num">{shown}<i>%</i></b>
+        </span>
+      </span>
+    );
+  };
   const pip = useCallback(async () => {
     const v = videoRef.current as HTMLVideoElement & { requestPictureInPicture?: () => Promise<unknown> };
     try {
@@ -1510,7 +1534,7 @@ export function PlayerHost() {
             <button className="dbtn" aria-label={t("player.pause")} onClick={togglePlay}>
               <Icon name={state === "paused" ? "play" : "pause"} size={22} fill /><span className="lbl">{t("player.pause")}</span>
             </button>
-            <button className="dbtn" aria-label={t("a11y.volume")} onClick={toggleMute}><Icon name={videoRef.current?.muted ? "mute" : "volume"} size={22} /><span className="lbl">{t("a11y.volume")}</span></button>
+            {volumeBtn("dbtn")}
             <button className={`dbtn${panel === "tracks" ? " on" : ""}`} aria-label={t("player.tracks")} onClick={() => setPanel(panel === "tracks" ? null : "tracks")}><Icon name="sliders" size={22} /><span className="lbl">{t("player.tracks")}</span></button>
             <button className={`dbtn${panel === "display" ? " on" : ""}`} aria-label={t("player.display")} onClick={() => setPanel(panel === "display" ? null : "display")}><Icon name="display" size={22} /><span className="lbl">{t("player.display")}</span></button>
             <button className={`dbtn${panel === "channels" ? " on" : ""}`} aria-label={t("player.channels")} onClick={() => setPanel(panel === "channels" ? null : "channels")}><Icon name="list" size={22} /><span className="lbl">{t("player.channels")}</span></button>
@@ -1577,7 +1601,7 @@ export function PlayerHost() {
               {full && skipNext && target.kind === "episode" && (
                 <button className="pbtn" aria-label={t("player.nextEpisode")} onClick={() => usePlayer.getState().open(skipNext, "full")}><Icon name="chevron" size={22} /></button>
               )}
-              <button className="pbtn" aria-label={t("a11y.volume")} onClick={toggleMute}><Icon name={videoRef.current?.muted ? "mute" : "volume"} size={20} /></button>
+              {volumeBtn("pbtn")}
             </div>
             <div className="grp">
               {full ? (
@@ -1605,6 +1629,7 @@ export function PlayerHost() {
 
       {full && panel && panel !== "channels" && panel !== "episodes" && (
         <aside className="pside" aria-label={t("player.player")}>
+          <button className="pside-x" aria-label={t("common.close")} onClick={() => setPanel(null)}><Icon name="x" size={18} /></button>
           <div className="tabs" role="tablist">
             {(["tracks", "display", "player", "stats"] as const).map((p) => (
               <button key={p} role="tab" aria-selected={panel === p} onClick={() => setPanel(p)}>{t(`player.${p}` as "player.tracks")}</button>
