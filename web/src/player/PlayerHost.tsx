@@ -126,6 +126,12 @@ export function PlayerHost() {
   const xTextRef = useRef(-1);
   const subCuesRef = useRef<Cue[] | null>(null);
   const subTrackRef = useRef<TextTrack | null>(null);
+  /** Mémoire des pistes du média courant (audio / sous-titre choisis) : réappliquée à la réouverture de l'épisode. */
+  const txMemRef = useRef<{ a: number; s: number } | null>(null);
+  const txMemKeyRef = useRef("");
+  const txMemAppliedRef = useRef(false);
+  /** Accès tardif à selectSub (startCandidate est défini avant) : pour réactiver le sous-titre mémorisé. */
+  const selectSubRef = useRef<((i: number) => void) | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [ui, setUi] = useState(true);
   const [panel, setPanel] = useState<null | "tracks" | "display" | "player" | "stats" | "channels" | "episodes">(null);
@@ -293,6 +299,12 @@ export function PlayerHost() {
     resumeAtRef.current = null;
     const isTx = c.label === TX_LABEL;
     if (!isTx) txRef.current = null;
+    // Première candidate de conversion de l'ouverture : le sous-titre mémorisé de l'épisode est réactivé
+    // (instantané s'il est déjà en cache, extraction rapide sinon — elle part de la position courante).
+    if (isTx && !txMemAppliedRef.current) {
+      txMemAppliedRef.current = true;
+      if (txMemRef.current && txMemRef.current.s >= 0) selectSubRef.current?.(txMemRef.current.s);
+    }
     await engineRef.current.load({
       url: c.url, format: c.format, live: tg.kind === "live" && !tg.replay,
       // Conversion du bureau : MPEG-TS continu sans durée annoncée — ouvert comme un flux continu, sinon MSE
@@ -312,6 +324,16 @@ export function PlayerHost() {
     if (!target || !source) { engineRef.current?.stop(); return; }
     setTracks(NO_TRACKS);
     setXinfo(null); xinfoKeyRef.current = ""; setXAudio(0); setXText(-1); xTextRef.current = -1; setSubFail(false); setSubLoading(false); subReqRef.current?.abort.abort(); subReqRef.current = null; subCuesRef.current = null; applySubs();
+    // Mémoire des pistes de cet épisode (audio / sous-titre choisis la fois précédente) : réappliquée quand la
+    // conversion démarre — la piste audio est demandée dès la création de la candidate, le sous-titre est
+    // réactivé (instantané si déjà en cache). VOD seulement.
+    txMemKeyRef.current = target.kind !== "live" ? `${target.kind}#${target.refId}` : "";
+    txMemRef.current = null;
+    txMemAppliedRef.current = false;
+    const memKey = txMemKeyRef.current;
+    if (memKey) void getSetting<Record<string, { a: number; s: number; at: number }>>("tx.tracks", {})
+      .then((m) => { if (txMemKeyRef.current === memKey && m[memKey]) txMemRef.current = { a: m[memKey]!.a, s: m[memKey]!.s }; })
+      .catch(() => undefined);
     setPanel(null);
     setCur({ t: 0, d: 0, buf: 0 });
     window.clearTimeout(scrubTimer.current); scrubRef.current = null; setScrub(null);
@@ -406,10 +428,13 @@ export function PlayerHost() {
         const cur = c.list[c.i];
         if (base && cur && cur.label !== TX_LABEL) {
           const isLive = target.kind === "live" && !target.replay;
-          const tx: TxState = { orig: cur.url, offset: isLive ? 0 : v.currentTime, duration: isLive || !Number.isFinite(v.duration) ? 0 : v.duration };
+          // Piste audio mémorisée de l'épisode (choix précédent) : la conversion démarre dessus directement.
+          const audio = isLive ? 0 : (txMemRef.current?.a ?? 0);
+          const tx: TxState = { orig: cur.url, offset: isLive ? 0 : v.currentTime, duration: isLive || !Number.isFinite(v.duration) ? 0 : v.duration, audio };
           txRef.current = tx;
-          c.list = [...c.list, { url: txUrl(base, tx.orig, tx.offset, isLive), format: "ts", label: TX_LABEL }];
+          c.list = [...c.list, { url: txUrl(base, tx.orig, tx.offset, isLive, audio), format: "ts", label: TX_LABEL }];
           c.i = c.list.length - 1;
+          setXAudio(audio);
           void startCandidate(c.list[c.i]!);
           return;
         }
@@ -653,6 +678,19 @@ export function PlayerHost() {
     const v = videoRef.current!;
     if (v.paused) void v.play().catch(() => undefined); else v.pause();
   }, []);
+  /** Mémorise les pistes choisies de l'épisode courant (audio / sous-titre) : borné aux 60 derniers épisodes. */
+  const rememberTracks = useCallback((patch: { a?: number; s?: number }) => {
+    const key = txMemKeyRef.current;
+    if (!key) return;
+    void getSetting<Record<string, { a: number; s: number; at: number }>>("tx.tracks", {})
+      .then((m) => {
+        const cur = { a: patch.a ?? txMemRef.current?.a ?? 0, s: patch.s ?? txMemRef.current?.s ?? -1, at: Date.now() };
+        txMemRef.current = cur;
+        const kept = Object.entries({ ...m, [key]: cur }).sort((x, y) => y[1].at - x[1].at).slice(0, 60);
+        return setSetting("tx.tracks", Object.fromEntries(kept) as Record<string, { a: number; s: number; at: number }>);
+      })
+      .catch(() => undefined);
+  }, []);
   /**
    * Choix d'un sous-titre texte du fichier (-1 = aucun) : extraction WebVTT par ffmpeg EN PARTANT DE LA POSITION
    * DE LECTURE — les sous-titres sont entrelacés dans un MKV/MP4, sans `-ss` la position courante n'est atteinte
@@ -666,8 +704,9 @@ export function PlayerHost() {
     const orig = originUrl();
     subReqRef.current?.abort.abort();
     setSubFail(false);
-    if (i < 0 || !base || !orig) { subReqRef.current = null; subCuesRef.current = null; xTextRef.current = -1; setXText(-1); setSubLoading(false); applySubs(); return; }
+    if (i < 0 || !base || !orig) { subReqRef.current = null; subCuesRef.current = null; xTextRef.current = -1; setXText(-1); setSubLoading(false); applySubs(); rememberTracks({ s: -1 }); return; }
     xTextRef.current = i;
+    rememberTracks({ s: i });
     setXText(i);
     setSubLoading(true);
     const req = { token: (subReqRef.current?.token ?? 0) + 1, abort: new AbortController() };
@@ -718,7 +757,9 @@ export function PlayerHost() {
         if (subReqRef.current?.token !== req.token) return; // remplaçée : la nouvelle sélection gère son état
         subCuesRef.current = null; xTextRef.current = -1; setXText(-1); setSubFail(true); setSubLoading(false); applySubs();
       });
-  }, [originUrl, applySubs, proxyHeaders]);
+  }, [originUrl, applySubs, proxyHeaders, rememberTracks]);
+  /** Accès tardif à selectSub depuis startCandidate (définie avant dans le composant). */
+  useEffect(() => { selectSubRef.current = selectSub; });
 
   /** Saut à une position (s). Conversion audio en cours : le flux n'est pas cherchable, la conversion repart de là. */
   const seekTo = useCallback((sec: number) => {
@@ -770,9 +811,10 @@ export function PlayerHost() {
     if (at >= 0) { c.list = c.list.map((x, k) => (k === at ? cand : x)); c.i = at; }
     else { c.list = [...c.list, cand]; c.i = c.list.length - 1; }
     setXAudio(i);
+    rememberTracks({ a: i });
     void startCandidate(cand);
     applySubs();
-  }, [originUrl, startCandidate, applySubs]);
+  }, [originUrl, startCandidate, applySubs, rememberTracks]);
 
 
   const seekBy = useCallback((s: number) => {
