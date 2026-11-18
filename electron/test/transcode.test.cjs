@@ -15,6 +15,7 @@ test("parseTranscodePath : jeton, cible et position", () => {
 test("transcodeArgs : vidéo copiée, audio AAC, MPEG-TS, -ss avant -i", () => {
   const a = transcodeArgs("http://h/movie/u/p/1.mkv", { ss: 90, userAgent: "UA" });
   assert.ok(a.indexOf("-ss") < a.indexOf("-i"));
+  assert.ok(a.includes("-re"), "la conversion est servie au rythme réel de la lecture (jamais d'idle fournisseur)");
   assert.deepStrictEqual(a.slice(a.indexOf("-c:v"), a.indexOf("-c:v") + 6), ["-c:v", "copy", "-c:a", "aac", "-b:a", "192k"]);
   assert.strictEqual(a[a.indexOf("-f") + 1], "mpegts");
   assert.strictEqual(a[a.indexOf("-user_agent") + 1], "UA");

@@ -53,7 +53,11 @@ function parseTranscodePath(pathname, search) {
 
 /** Arguments ffmpeg (fonction pure, testée). */
 function transcodeArgs(url, { ss = 0, userAgent = null, referer = null, live = false, audio = 0 } = {}) {
-  const a = ["-hide_banner", "-loglevel", "error", "-nostdin"];
+  // -re : la source est lue au rythme réel de la lecture. Sans lui, ffmpeg convertit à pleine vitesse : le tampon
+  // du lecteur se remplit en quelques dizaines de secondes, il cesse de lire, ffmpeg reste bloqué sur son tube de
+  // sortie et SA connexion au fournisseur devient inactive — certains serveurs la coupent ; quand le lecteur
+  // reprend, la conversion est morte et la lecture patine jusqu'à la réouverture (boucle de chargement).
+  const a = ["-hide_banner", "-loglevel", "error", "-nostdin", "-re"];
   if (userAgent) a.push("-user_agent", String(userAgent).slice(0, 300));
   if (referer) a.push("-referer", String(referer).slice(0, 500));
   // Reconnexion seulement en direct : sur un fichier sans Content-Length, ffmpeg relirait le film en boucle.

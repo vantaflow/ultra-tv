@@ -5,6 +5,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ## [Non publié]
 
 ### Corrigé
+- Bureau : la boucle de chargement en lecture convertie (après une à deux minutes de lecture, la vidéo patinait jusqu'à la fermeture/réouverture, sans cesse) — la conversion était servie à pleine vitesse : le tampon du lecteur se remplissait, il cessait de lire, ffmpeg restait bloqué et son fournisseur coupait sa connexion devenue inactive. La conversion est servie au rythme réel de la lecture (`-re` côté ffmpeg) — plus d'interruption si la source coupe les connexions inactives, et la lecture ne tire plus des dizaines de giga-octets du compte à chaque séance.
 - Bureau : les sous-titres d'un fichier MKV/MP4 s'affichent en quelques secondes au lieu de quelques minutes, même en reprenant au milieu d'un épisode. L'extraction WebVTT part de la position de lecture (`-ss`, les pistes sont entrelacées dans le conteneur : sans lui, la position demandée n'est atteinte qu'après une longue lecture du fichier — mesuré : 5-6 minutes pour un épisode de 2 Go) et est servie au fil de l'eau : les premiers repères apparaissent presque aussitôt. Le panneau Pistes montre un indicateur d'extraction pendant la lecture. Choisir une autre piste (ou éteindre les sous-titres) annule la précédente : une extraction lente ne peut plus finir après coup et écraser un choix plus récent. Les repères extraits sont conservés en cache par média et piste : réouverture, retour en arrière ou saut = instantané quand c'est déjà en cache.
 
 ## [1.3.48] — 2026-11-17 (Android)
