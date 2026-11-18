@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## Bureau 1.2.72 — 2026-11-18
+
 ### Ajouté
 - Bureau : les pistes choisies (audio, sous-titres) d'un film ou d'un épisode sont mémorisées et réappliquées à la réouverture — la conversion démarre directement sur la piste audio choisie et le sous-titre se réactive (instantané s'il est déjà en cache, extraction rapide sinon). 60 derniers titres mémorisés.
 
