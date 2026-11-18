@@ -49,10 +49,10 @@ import { sendToDevice } from "@/cloud/handoff";
 import { useUi } from "@/state/ui";
 import { startScrobble, type Scrobbler } from "./trakt";
 import { loadSkips, skipOfferAt, type SkipSegment } from "./skip";
-import { canDecodeHevc, clampSeek, parseTxDiag, parseTxInfo, TX_LABEL, txClock, txDiagUrl, txInfoUrl, txSubUrl, txUrl, type TxDiag, type TxInfo, type TxState } from "./transcode";
+import { canDecodeHevc, clampSeek, parseTxDiag, parseTxInfo, TX_LABEL, txBaseUrl, txClock, txDiagUrl, txInfoUrl, txSubUrl, txUrl, type TxDiag, type TxInfo, type TxState } from "./transcode";
 import { classifyFailure, planAudioRepair, planFallback, type Failure } from "./failure";
 import { playLog, urlInfo } from "./playlog";
-import { parseVtt, shiftCues, type Cue } from "./subtitles";
+import { flattenOverlaps, fmtShiftMs, nudgeShift, parseVtt, shiftCues, type Cue } from "./subtitles";
 import type { PlayTarget } from "./resolve";
 import { EpisodesPanel } from "./EpisodesPanel";
 import { stepIndex } from "@/lib/episodePanel";
@@ -136,16 +136,20 @@ export function PlayerHost() {
   const [subLoading, setSubLoading] = useState(false);
   /** Extraction en vol : jeton (la dernière sélection engagée gagne) + annulation (le proxy arrête son ffmpeg). */
   const subReqRef = useRef<{ token: number; abort: AbortController } | null>(null);
+  /** Relance de l'extraction différée après un saut : les sauts rapides n'en déclenchent qu'une seule. */
+  const subSeekTimerRef = useRef<number>(0);
   /** Piste texte choisie (miroir d'état : les sauts relancent l'extraction à la nouvelle position). */
   const xTextRef = useRef(-1);
   const subCuesRef = useRef<Cue[] | null>(null);
   const subTrackRef = useRef<TextTrack | null>(null);
-  /** Mémoire des pistes du média courant (audio / sous-titre choisis) : réappliquée à la réouverture de l'épisode. */
-  const txMemRef = useRef<{ a: number; s: number } | null>(null);
+  /** Mémoire des pistes du média courant (audio / sous-titre choisis, décalage des sous-titres) : réappliquée à la réouverture de l'épisode. */
+  const txMemRef = useRef<{ a: number; s: number; d: number } | null>(null);
   const txMemKeyRef = useRef("");
   const txMemAppliedRef = useRef(false);
   /** Accès tardif à selectSub (startCandidate est défini avant) : pour réactiver le sous-titre mémorisé. */
   const selectSubRef = useRef<((i: number) => void) | null>(null);
+  /** Accès tardif à warmBase (startCandidate est défini avant) : aligner les sous-titres sur la base réelle. */
+  const warmBaseRef = useRef<(() => void) | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [ui, setUi] = useState(true);
   const [panel, setPanel] = useState<null | "tracks" | "display" | "player" | "stats" | "channels" | "episodes">(null);
@@ -414,7 +418,7 @@ export function PlayerHost() {
     eng.preferredAudio = effectivePreferred([], usePrefs.getState().lang);
     v.volume = usePrefs.getState().volume;
     v.muted = usePrefs.getState().muted;
-    return () => { recon.dispose(); clearTimeout(limitTimerRef.current); subReqRef.current?.abort.abort(); subReqRef.current = null; eng.stop(); engineRef.current = null; };
+    return () => { recon.dispose(); clearTimeout(limitTimerRef.current); clearTimeout(subSeekTimerRef.current); subReqRef.current?.abort.abort(); subReqRef.current = null; eng.stop(); engineRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -428,7 +432,9 @@ export function PlayerHost() {
     if (!tr) { tr = v.addTextTrack("subtitles", "Ultra TV"); subTrackRef.current = tr; }
     while (tr.cues && tr.cues.length > 0) tr.removeCue(tr.cues[0]!);
     if (!cues) { tr.mode = "disabled"; return; }
-    for (const c of shiftCues(cues, txRef.current?.offset ?? 0)) tr.addCue(new VTTCue(c.start, c.end, c.text));
+    // Décalage manuel des sous-titres (mémorisé par épisode) : positif = les retarde.
+    const d = txMemRef.current?.d ?? 0;
+    for (const c of shiftCues(cues, (txRef.current?.offset ?? 0) + d)) tr.addCue(new VTTCue(c.start, c.end, c.text));
     tr.mode = "showing";
   }, []);
 
@@ -478,6 +484,10 @@ export function PlayerHost() {
       container: isTx ? "mpegts(ffmpeg)" : urlInfo(c.url).ext, ...urlInfo(c.url), userAgent: src.userAgent ? "source" : "repli VLC", referer: !!src.referer,
       transcode: isTx ? (txRef.current?.video ? "vidéo H.264 + audio AAC" : "remux + audio AAC") : "aucune", resumeAt: Math.round(resume ?? tg.startAt ?? 0),
     });
+    // Conversion du bureau : la base réelle de la conversion (son premier paquet : une image-clé près du départ
+    // demandé) est demandée — les sous-titres s'y alignent (extraction fraîche comme en cache), et la position
+    // affichée honore le vrai départ. Chaque (re)démarrage de conversion en redemande une.
+    if (isTx) warmBaseRef.current?.();
     // Première candidate de conversion de l'ouverture : le sous-titre mémorisé de l'épisode est réactivé
     // (instantané s'il est déjà en cache, extraction rapide sinon — elle part de la position courante).
     if (isTx && !txMemAppliedRef.current) {
@@ -502,7 +512,7 @@ export function PlayerHost() {
     statusRef.current = null; videoTriedRef.current = false; diagRef.current = null;
     setLimit(false); setFailure(null);
     // Extraction de sous-titres en vol : fermée à chaque changement de média et à la fermeture du lecteur (le proxy arrête son ffmpeg).
-    subReqRef.current?.abort.abort(); subReqRef.current = null;
+    subReqRef.current?.abort.abort(); subReqRef.current = null; clearTimeout(subSeekTimerRef.current);
     if (!target || !source) { engineRef.current?.stop(); return; }
     setTracks(NO_TRACKS);
     setXinfo(null); xinfoKeyRef.current = ""; setXAudio(0); setXText(-1); xTextRef.current = -1; setSubFail(false); setSubLoading(false); subCuesRef.current = null; applySubs();
@@ -512,9 +522,10 @@ export function PlayerHost() {
     txMemKeyRef.current = target.kind !== "live" ? `${target.kind}#${target.refId}` : "";
     txMemRef.current = null;
     txMemAppliedRef.current = false;
+    setSubShift(0);
     const memKey = txMemKeyRef.current;
-    if (memKey) void getSetting<Record<string, { a: number; s: number; at: number }>>("tx.tracks", {})
-      .then((m) => { if (txMemKeyRef.current === memKey && m[memKey]) txMemRef.current = { a: m[memKey]!.a, s: m[memKey]!.s }; })
+    if (memKey) void getSetting<Record<string, { a: number; s: number; d?: number; at: number }>>("tx.tracks", {})
+      .then((m) => { if (txMemKeyRef.current === memKey && m[memKey]) { txMemRef.current = { a: m[memKey]!.a, s: m[memKey]!.s, d: m[memKey]!.d ?? 0 }; setSubShift(m[memKey]!.d ?? 0); } })
       .catch(() => undefined);
     setPanel(null);
     setCur({ t: 0, d: 0, buf: 0 });
@@ -908,15 +919,15 @@ export function PlayerHost() {
     if (v.paused) void v.play().catch(() => undefined); else v.pause();
   }, []);
   /** Mémorise les pistes choisies de l'épisode courant (audio / sous-titre) : borné aux 60 derniers épisodes. */
-  const rememberTracks = useCallback((patch: { a?: number; s?: number }) => {
+  const rememberTracks = useCallback((patch: { a?: number; s?: number; d?: number }) => {
     const key = txMemKeyRef.current;
     if (!key) return;
-    void getSetting<Record<string, { a: number; s: number; at: number }>>("tx.tracks", {})
+    void getSetting<Record<string, { a: number; s: number; d?: number; at: number }>>("tx.tracks", {})
       .then((m) => {
-        const cur = { a: patch.a ?? txMemRef.current?.a ?? 0, s: patch.s ?? txMemRef.current?.s ?? -1, at: Date.now() };
+        const cur = { a: patch.a ?? txMemRef.current?.a ?? 0, s: patch.s ?? txMemRef.current?.s ?? -1, d: patch.d ?? txMemRef.current?.d ?? 0, at: Date.now() };
         txMemRef.current = cur;
         const kept = Object.entries({ ...m, [key]: cur }).sort((x, y) => y[1].at - x[1].at).slice(0, 60);
-        return setSetting("tx.tracks", Object.fromEntries(kept) as Record<string, { a: number; s: number; at: number }>);
+        return setSetting("tx.tracks", Object.fromEntries(kept) as Record<string, { a: number; s: number; d?: number; at: number }>);
       })
       .catch(() => undefined);
   }, []);
@@ -928,7 +939,7 @@ export function PlayerHost() {
    * Chaque sélection annule la précédente : seule la dernière engagée s'applique. Les repères sont conservés en
    * cache (par média et piste) : re-regarder ou revenir en arrière ne relance pas l'extraction de zéro.
    */
-  const selectSub = useCallback((i: number) => {
+  const selectSub = useCallback((i: number, retry = true) => {
     const base = bridge()?.proxyBase;
     const orig = originUrl();
     subReqRef.current?.abort.abort();
@@ -942,8 +953,10 @@ export function PlayerHost() {
     subReqRef.current = req;
     // Extraction qui part de la position courante de la conversion (0 = lecture native : le fichier est lu du début).
     const ss = txRef.current ? txRef.current.offset : 0;
-    const rebase = (cues: Cue[]): Cue[] => cues.map((c) => ({ start: c.start + ss, end: c.end + ss, text: c.text }));
-    void getSetting<Record<string, { cues: Cue[]; from: number; at: number }>>("tx.subsCache", {})
+    // Les repères extraits sont en temps de contenu absolus (-copyts côté ffmpeg) : aucun rebase, seulement les
+    // chevauchements aplatis (des durées qui débordent empileraient deux lignes sinon).
+    const abs = (t: string): Cue[] => flattenOverlaps(parseVtt(t));
+    void getSetting<Record<string, { cues: Cue[]; from: number; at: number }>>("tx.subsAbs", {})
       .then(async (m) => {
         // Cache qui couvre la position courante : instantané, sans extraction.
         const hit = m[`${orig}#${i}`];
@@ -956,6 +969,19 @@ export function PlayerHost() {
         }
         const r = await fetch(txSubUrl(base, orig, i, ss), { headers: proxyHeaders(), signal: req.abort.signal });
         if (!r.ok || !r.body) throw new Error("sub");
+        // Départ réel de la conversion en cours (proche du départ demandé : calé sur une image-clé de la vidéo).
+        // Les repères absolus s'alignent sur la timeline vidéo en les décalant de ce départ — pas du départ
+        // demandé, dont l'écart avec l'image-clé décalait les sous-titres d'autant (en avance, variable).
+        const bS = r.headers.get("x-ut-base");
+        if (bS == null && retry && txRef.current) {
+          // La conversion vient (re)démarrer : sa base n'est pas encore servie. Un seul essai de plus après un délai.
+          await new Promise((ok) => { window.setTimeout(ok, 900); });
+          if (subReqRef.current?.token !== req.token) return;
+          return selectSub(i, false);
+        }
+        const k = bS != null ? Number(bS) : NaN;
+        const tx = txRef.current;
+        if (tx && Number.isFinite(k) && Math.abs(k - tx.offset) > 0.001) { txRef.current = { ...tx, offset: k }; applySubs(); }
         const reader = r.body.getReader();
         const dec = new TextDecoder();
         let buf = "";
@@ -967,11 +993,11 @@ export function PlayerHost() {
           const now = Date.now();
           if (now - last < 400) continue; // re-analyse au plus ~2,5 fois par seconde
           last = now;
-          const cues = rebase(parseVtt(buf));
+          const cues = abs(buf);
           if (subReqRef.current?.token !== req.token) return; // remplaçée : on ne touche plus à rien
           if (cues.length > 0) { subCuesRef.current = cues; applySubs(); }
         }
-        const cues = rebase(parseVtt(buf + dec.decode()));
+        const cues = abs(buf + dec.decode());
         if (subReqRef.current?.token !== req.token) return;
         setSubLoading(false);
         if (cues.length === 0) throw new Error("empty");
@@ -980,10 +1006,10 @@ export function PlayerHost() {
         const entry = { [`${orig}#${i}`]: { cues, from: ss, at: Date.now() } };
         // Relu au moment d'écrire : l'instantané du début est périmé après plusieurs minutes d'extraction.
         try {
-          const fresh = await getSetting<Record<string, { cues: Cue[]; from: number; at: number }>>("tx.subsCache", {});
+          const fresh = await getSetting<Record<string, { cues: Cue[]; from: number; at: number }>>("tx.subsAbs", {});
           const next = { ...fresh, ...entry };
           const kept = Object.entries(next).sort((a, b) => b[1].at - a[1].at).slice(0, 40);
-          await setSetting("tx.subsCache", Object.fromEntries(kept) as Record<string, { cues: Cue[]; from: number; at: number }>);
+          await setSetting("tx.subsAbs", Object.fromEntries(kept) as Record<string, { cues: Cue[]; from: number; at: number }>);
         } catch { /* cache indisponible : les sous-titres restent affichés */ }
       })
       .catch(() => {
@@ -993,6 +1019,43 @@ export function PlayerHost() {
   }, [originUrl, applySubs, proxyHeaders, rememberTracks]);
   /** Accès tardif à selectSub depuis startCandidate (définie avant dans le composant). */
   useEffect(() => { selectSubRef.current = selectSub; });
+
+  /** Base réelle de la conversion en cours (son premier paquet : l'image-clé près du départ demandé) : le lecteur
+   * y aligne les sous-titres et honore la vraie position. Demandée à chaque (re)démarrage de conversion — le proxy
+   * répond dès que le premier paquet est passé, même quand le sous-titre vient du cache (aucune extraction, aucun
+   * en-tête de réponse à lire). */
+  const warmBase = useCallback((retries = 1) => {
+    const base = bridge()?.proxyBase;
+    const orig = originUrl();
+    const ss = txRef.current?.offset ?? 0;
+    if (!base || !orig) return;
+    void fetch(txBaseUrl(base, orig, ss), { headers: proxyHeaders() })
+      .then((r) => (r.ok ? (r.json() as Promise<{ base?: number | null }>) : null))
+      .then((j) => {
+        const tx = txRef.current;
+        const k = j?.base ?? NaN;
+        if (tx && Number.isFinite(k) && Math.abs(k - tx.offset) > 0.001) {
+          txRef.current = { ...tx, offset: k };
+          applySubs();
+        } else if (tx && !Number.isFinite(k) && retries > 0) {
+          // La conversion n'a pas encore servi son premier paquet (fournisseur lent) : on repose la question.
+          window.setTimeout(() => { if (txRef.current) warmBase(retries - 1); }, 2500);
+        }
+      })
+      .catch(() => { /* sans base : le décalage du départ demandé reste utilisé */ });
+  }, [originUrl, proxyHeaders, applySubs]);
+  useEffect(() => { warmBaseRef.current = warmBase; });
+
+  /** Décalage manuel des sous-titres de l'épisode (±250 ms par clic, borné ±10 s) : appliqué aussitôt et
+   * mémorisé avec les pistes — réapliqué à la réouverture. Positif retarde les repères. */
+  const [subShift, setSubShift] = useState(0);
+  const nudgeSubs = useCallback((delta: number) => {
+    const d = nudgeShift(txMemRef.current?.d ?? 0, delta);
+    if (txMemRef.current) txMemRef.current = { ...txMemRef.current, d };
+    setSubShift(d);
+    rememberTracks({ d });
+    applySubs();
+  }, [rememberTracks, applySubs]);
 
   /** Saut à une position (s). Conversion audio en cours : le flux n'est pas cherchable, la conversion repart de là. */
   const seekTo = useCallback((sec: number) => {
@@ -1005,12 +1068,21 @@ export function PlayerHost() {
       const c = candRef.current;
       c.list = c.list.map((x, k) => (k === c.i ? { ...x, url: txUrl(base, tx.orig, ss, false, tx.audio ?? 0, !!tx.video) } : x));
       void startCandidate(c.list[c.i]!);
-      // Sous-titre choisi : l'extraction est relancée à la nouvelle position (instantané si elle est en cache).
-      if (xTextRef.current >= 0) selectSub(xTextRef.current); else applySubs();
+      warmBase();
+      // Sous-titre choisi : les repères posés sont ceux de l'ancienne position — vidés immédiatement (sinon un
+      // repère fantôme reste affiché tant que la nouvelle extraction, servie au rythme réel, n'a rien livré), et la
+      // relance est déboncée : une suite de sauts rapides n'empile pas des extractions aussitôt abandonnées.
+      if (xTextRef.current >= 0) {
+        subReqRef.current?.abort.abort();
+        subCuesRef.current = null;
+        applySubs();
+        clearTimeout(subSeekTimerRef.current);
+        subSeekTimerRef.current = window.setTimeout(() => { if (xTextRef.current >= 0) selectSub(xTextRef.current); }, 500);
+      } else applySubs();
       return;
     }
     if (Number.isFinite(v.duration)) v.currentTime = Math.max(0, Math.min(v.duration, sec));
-  }, [startCandidate, applySubs, selectSub]);
+  }, [startCandidate, applySubs, selectSub, warmBase]);
   /** Liste des pistes, demandée au proxy à l'ouverture du panneau (une connexion brève au fournisseur, pas pendant la lecture normale). */
   useEffect(() => {
     const base = bridge()?.proxyBase;
@@ -1100,6 +1172,30 @@ export function PlayerHost() {
     v.muted = !v.muted;
     usePrefs.getState().set({ muted: v.muted });
   }, []);
+  const setVolAbs = useCallback((abs: number) => {
+    const v = videoRef.current!;
+    v.volume = Math.max(0, Math.min(1, abs));
+    v.muted = false;
+    usePrefs.getState().set({ volume: v.volume, muted: false });
+    setZapFlash(`${Math.round(v.volume * 100)} %`);
+    window.setTimeout(() => setZapFlash(null), 600);
+  }, []);
+  const volumeBtn = (cls: "dbtn" | "pbtn") => {
+    const v = videoRef.current;
+    const shown = Math.round((v && !v.muted ? v.volume : 0) * 100);
+    return (
+      <span className="volwrap">
+        <button className={cls} aria-label={t("a11y.volume")} onClick={toggleMute}>
+          <Icon name={v?.muted || shown === 0 ? "mute" : "volume"} size={cls === "dbtn" ? 22 : 20} />
+          {cls === "dbtn" && <span className="lbl">{t("a11y.volume")}</span>}
+        </button>
+        <span className="volpop">
+          <input type="range" min={0} max={100} step={1} value={shown} aria-label={t("a11y.volume")} onChange={(e) => setVolAbs(Number(e.target.value) / 100)} style={{ writingMode: "vertical-lr", direction: "rtl" }} />
+          <b className="vol-num">{shown}<i>%</i></b>
+        </span>
+      </span>
+    );
+  };
   const pip = useCallback(async () => {
     const v = videoRef.current as HTMLVideoElement & { requestPictureInPicture?: () => Promise<unknown> };
     try {
@@ -1510,7 +1606,7 @@ export function PlayerHost() {
             <button className="dbtn" aria-label={t("player.pause")} onClick={togglePlay}>
               <Icon name={state === "paused" ? "play" : "pause"} size={22} fill /><span className="lbl">{t("player.pause")}</span>
             </button>
-            <button className="dbtn" aria-label={t("a11y.volume")} onClick={toggleMute}><Icon name={videoRef.current?.muted ? "mute" : "volume"} size={22} /><span className="lbl">{t("a11y.volume")}</span></button>
+            {volumeBtn("dbtn")}
             <button className={`dbtn${panel === "tracks" ? " on" : ""}`} aria-label={t("player.tracks")} onClick={() => setPanel(panel === "tracks" ? null : "tracks")}><Icon name="sliders" size={22} /><span className="lbl">{t("player.tracks")}</span></button>
             <button className={`dbtn${panel === "display" ? " on" : ""}`} aria-label={t("player.display")} onClick={() => setPanel(panel === "display" ? null : "display")}><Icon name="display" size={22} /><span className="lbl">{t("player.display")}</span></button>
             <button className={`dbtn${panel === "channels" ? " on" : ""}`} aria-label={t("player.channels")} onClick={() => setPanel(panel === "channels" ? null : "channels")}><Icon name="list" size={22} /><span className="lbl">{t("player.channels")}</span></button>
@@ -1577,7 +1673,7 @@ export function PlayerHost() {
               {full && skipNext && target.kind === "episode" && (
                 <button className="pbtn" aria-label={t("player.nextEpisode")} onClick={() => usePlayer.getState().open(skipNext, "full")}><Icon name="chevron" size={22} /></button>
               )}
-              <button className="pbtn" aria-label={t("a11y.volume")} onClick={toggleMute}><Icon name={videoRef.current?.muted ? "mute" : "volume"} size={20} /></button>
+              {volumeBtn("pbtn")}
             </div>
             <div className="grp">
               {full ? (
@@ -1605,6 +1701,7 @@ export function PlayerHost() {
 
       {full && panel && panel !== "channels" && panel !== "episodes" && (
         <aside className="pside" aria-label={t("player.player")}>
+          <button className="pside-x" aria-label={t("common.close")} onClick={() => setPanel(null)}><Icon name="x" size={18} /></button>
           <div className="tabs" role="tablist">
             {(["tracks", "display", "player", "stats"] as const).map((p) => (
               <button key={p} role="tab" aria-selected={panel === p} onClick={() => setPanel(p)}>{t(`player.${p}` as "player.tracks")}</button>
@@ -1632,6 +1729,13 @@ export function PlayerHost() {
                   {xinfo.subs.map((a) => <button key={a.i} className="opt" role="radio" aria-checked={xText === a.i} onClick={() => selectSub(a.i)}>{a.title || trackLabel({ lang: a.lang }, a.i, usePrefs.getState().lang)}<span className="h">{a.lang}</span></button>)}
                   {subLoading && <div className="muted" role="status">{t("player.subtitlesLoading")}</div>}
                   {subFail && <div className="muted" role="status">{t("player.subtitlesFailed")}</div>}
+                  {xText >= 0 && (
+                    <div className="subshift">
+                      <button className="opt" aria-label={t("player.subsEarlier")} onClick={() => nudgeSubs(-0.25)}>-</button>
+                      <span className="v" title={t("player.subShift")}>{fmtShiftMs(subShift)}</span>
+                      <button className="opt" aria-label={t("player.subsLater")} onClick={() => nudgeSubs(0.25)}>+</button>
+                    </div>
+                  )}
                 </>
               )}
               {tracks.audio.length > 1 && (

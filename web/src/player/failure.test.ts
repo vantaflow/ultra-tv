@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { classifyFailure, ffmpegInstallCommand, planAudioRepair, planFallback } from "./failure";
-import { parseTxDiag, txDiagUrl, txUrl, type TxDiag } from "./transcode";
+import { parseTxDiag, txBaseUrl, txDiagUrl, txUrl, type TxDiag } from "./transcode";
 
 const diag = (o: Partial<TxDiag>): TxDiag => ({ reason: "ok", status: null, codec: "", convert: false, canEncode: true, duration: 0, container: "", audio: "", ...o });
 
@@ -37,6 +37,12 @@ describe("conversion vidéo : URL et diagnostic", () => {
     expect(txUrl("http://x/t/", "http://h/a.ts", 0, true, 0, true)).toBe(`${txUrl("http://x/t/", "http://h/a.ts", 0, true)}&v=h264`);
     expect(txUrl("http://x/t/", "http://h/a.ts", 0)).not.toContain("v=h264");
     expect(txDiagUrl("http://x/t/", "http://h/a.ts", true)).toMatch(/^http:\/\/x\/t\/txd\/.+\?hevc=1$/);
+  });
+  it("base de la conversion : mêmes ss normalisés que la conversion elle-même", () => {
+    // La base n'est valable que pour la génération de conversion identifiée par son départ (ss).
+    expect(txBaseUrl("http://x/t/", "http://h/a.ts", 90.123456)).toMatch(/\/txb\/[A-Za-z0-9_-]+\?ss=90\.123$/);
+    expect(txBaseUrl("http://x/t/", "http://h/a.ts", 0)).not.toContain("ss=");
+    expect(txBaseUrl("http://x/t/", "http://h/a.ts", -3)).not.toContain("ss=");
   });
   it("réponse /txd validée", () => {
     expect(parseTxDiag(null)).toBeNull();

@@ -60,7 +60,7 @@ function findVideoFfmpeg(opts = {}, run = spawnSync) {
  */
 function parseTranscodePath(pathname, search) {
   const segs = String(pathname).split("/");
-  const kinds = { tx: "tx", txi: "info", txs: "sub", txd: "diag" };
+  const kinds = { tx: "tx", txi: "info", txs: "sub", txd: "diag", txb: "base" };
   if (segs.length !== 4 || segs[0] !== "" || !Object.hasOwn(kinds, segs[2])) return null;
   const q = new URLSearchParams(search || "");
   const ssRaw = q.get("ss");
@@ -112,18 +112,22 @@ function transcodeArgs(url, { ss = 0, userAgent = null, referer = null, live = f
   // -re y ajouterait seulement du retard.
   const a = ["-hide_banner", "-loglevel", "error", "-nostdin"];
   if (!live) a.push("-re");
-  a.push("-user_agent", String(userAgent || FALLBACK_UA).slice(0, 300));
+  // -user_agent est une option du protocole HTTP(S) — inconnue sur un fichier local.
+  if (/^https?:/i.test(String(url))) a.push("-user_agent", String(userAgent || FALLBACK_UA).slice(0, 300));
   if (referer) a.push("-referer", String(referer).slice(0, 500));
   // Reconnexion seulement en direct : sur un fichier sans Content-Length, ffmpeg relirait le film en boucle.
   if (live) a.push("-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5");
   // -ss AVANT -i : recherche rapide côté source (reprise / saut dans un film).
   if (ss > 0) a.push("-ss", String(ss));
+  // -copyts : les horodatages d'entrée sont conservés tels quels (sinon ffmpeg les remet à zéro du départ demandé,
+  // et le lecteur perd le lien entre la timeline de la vidéo et les temps de contenu du fichier).
+  a.push("-copyts");
   a.push("-i", String(url), "-map", "0:v:0?", "-map", `0:a:${audio}?`);
   if (video === "h264") a.push(...videoEncodeArgs(encoder, { live }));
   else a.push("-c:v", "copy");
   a.push(
     "-c:a", "aac", "-b:a", "192k", "-ac", "2",
-    "-sn", "-dn", "-f", "mpegts", "-muxdelay", "0", "pipe:1",
+    "-sn", "-dn", "-f", "mpegts", "-mpegts_copyts", "1", "-muxdelay", "0", "pipe:1",
   );
   return a;
 }
@@ -270,11 +274,42 @@ async function serveStreamInfo(req, res, { ffmpeg, target, headers, probe = prob
  * demandée n'est atteinte qu'après une longue lecture ; depuis `ss`, ffmpeg y arrive en un instant. */
 function subtitleArgs(url, { s = 0, ss = 0, userAgent = null, referer = null } = {}) {
   const a = ["-hide_banner", "-loglevel", "error", "-nostdin"];
-  if (userAgent) a.push("-user_agent", String(userAgent).slice(0, 300));
+  // -user_agent est une option du protocole HTTP(S) — inconnue sur un fichier local.
+  if (/^https?:/i.test(String(url)) && userAgent) a.push("-user_agent", String(userAgent).slice(0, 300));
   if (referer) a.push("-referer", String(referer).slice(0, 500));
   if (ss > 0) a.push("-ss", String(ss));
+  // -copyts : les temps des repères restent ceux du fichier (temps de contenu absolus). Sans lui, ffmpeg les
+  // remet à zéro du point d'atterrissage de la recherche — un point qui n'est ni le départ demandé ni celui
+  // de la conversion vidéo, et les sous-titres dérivent (en avance) de l'écart entre les deux.
+  a.push("-copyts");
   a.push("-i", String(url), "-map", `0:s:${s}`, "-c:s", "webvtt", "-vn", "-an", "-f", "webvtt", "pipe:1");
   return a;
+}
+
+/** Premier horodatage (DTS quand il est là, sinon PTS) d'un flux MPEG-TS (en secondes) ou null (fonction pure,
+ * testée) : celui du premier paquet média servi — la timeline du lecteur se cale sur le DTS de l'image-clé ; le
+ * PTS seul l'anticipe du délai des B-frames (jusqu'à ~0,2 s de sous-titres en avance). */
+function firstPts(ts) {
+  const b = Buffer.isBuffer(ts) ? ts : Buffer.from(String(ts), "binary");
+  for (let p = 0; p + 188 <= b.length; ) {
+    if (b[p] !== 0x47) { p += 1; continue; } // resynchronisation : le flux peut commencer non aligné
+    // Code de début de PES (00 00 01 suivi d'un flux audio/vidéo) n'importe où dans le paquet TS.
+    for (let i = p; i + 20 <= p + 188; i++) {
+      if (b[i] !== 0 || b[i + 1] !== 0 || b[i + 2] !== 1) continue;
+      const sid = b[i + 3];
+      const isMedia = (sid >= 0xc0 && sid <= 0xdf) || (sid >= 0xe0 && sid <= 0xef);
+      if (!isMedia) continue;
+      const flags = b[i + 7];
+      const pts = ((b[i + 9] >> 1) & 0x07) * 0x40000000 + (b[i + 10] << 22) + ((b[i + 11] >> 1) << 15) + (b[i + 12] << 7) + (b[i + 13] >> 1);
+      if ((flags & 0xc0) === 0x80) return pts / 90000; // PTS_DTS_flags = « 10 » : PTS seul
+      if ((flags & 0xc0) === 0xc0) { // PTS_DTS_flags = « 11 » : PTS puis DTS — la timeline se cale sur le DTS
+        const dts = ((b[i + 14] >> 1) & 0x07) * 0x40000000 + (b[i + 15] << 22) + ((b[i + 16] >> 1) << 15) + (b[i + 17] << 7) + (b[i + 18] >> 1);
+        return Math.min(pts, dts) / 90000;
+      }
+    }
+    p += 188;
+  }
+  return null;
 }
 
 /**
@@ -283,7 +318,15 @@ function subtitleArgs(url, { s = 0, ss = 0, userAgent = null, referer = null } =
  * (lecture du fichier entier) ; en servant au fil de l'eau, le lecteur affiche les premiers repères en quelques
  * secondes. Le build ffmpeg n'a pas ffprobe, l'extraction coupe à 8 Mo au-delà du dernier repère utile.
  */
-function serveSubtitle(req, res, { ffmpeg, target, s, ss = 0, headers, report = () => {}, spawnFn = spawn }) {
+/**
+ * GET /txs : un sous-titre en WebVTT, servi AU FIL de l'extraction — ffmpeg écrit petit à petit, la réponse
+ * aussi. Les sous-titres sont entrelacés dans un MKV/MP4 : l'extraction complète peut prendre plusieurs minutes
+ * (lecture du fichier entier) ; en servant au fil de l'eau, le lecteur affiche les premiers repères en quelques
+ * secondes. Le build ffmpeg n'a pas ffprobe, l'extraction coupe à 8 Mo au-delà du dernier repère utile.
+ * `base` : temps de contenu du début réel de la conversion vidéo en cours (le lecteur aligne ses repères
+ * dessus, cf. firstPts) — exposé dans l'en-tête x-ut-base.
+ */
+function serveSubtitle(req, res, { ffmpeg, target, s, ss = 0, base = null, headers, report = () => {}, spawnFn = spawn }) {
   const child = spawnFn(ffmpeg, subtitleArgs(target.toString(), { s, ss, userAgent: req.headers["x-ut-ua"] || null, referer: req.headers["x-ut-referer"] || null }), { windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
   let started = false;
   let size = 0;
@@ -293,7 +336,7 @@ function serveSubtitle(req, res, { ffmpeg, target, s, ss = 0, headers, report = 
   child.on("error", () => { report("ETRANSCODE"); if (!res.headersSent) { res.writeHead(502, headers); res.end(); } });
   child.stdout.once("data", () => {
     started = true;
-    if (!res.headersSent) res.writeHead(200, { ...headers, "Content-Type": "text/vtt; charset=utf-8", "Cache-Control": "no-store" });
+    if (!res.headersSent) res.writeHead(200, { ...headers, "Content-Type": "text/vtt; charset=utf-8", "Cache-Control": "no-store", ...(base != null ? { "x-ut-base": String(base) } : {}) });
   });
   child.stdout.on("data", (c) => { size += c.length; if (size > 8_000_000) stop(); else if (started && !res.writableEnded) res.write(c); });
   child.on("close", (code) => {
@@ -308,13 +351,17 @@ function serveSubtitle(req, res, { ffmpeg, target, s, ss = 0, headers, report = 
 /**
  * Sert une requête de conversion : ffmpeg écrit le MPEG-TS dans la réponse ; fermeture du client = arrêt de ffmpeg.
  * `headers` : en-têtes CORS du proxy. `onSpawn(stop)` : crochet appelé dès le lancement d'ffmpeg (suivi du côté proxy).
+ * `onBase(sec)` : crochet appelé avec le temps de contenu du premier paquet servi (cf. firstPts) — le départ réel
+ * de la conversion, calé sur une image-clé, utile pour aligner les sous-titres extraits sur la vidéo reçue.
  */
-function serveTranscode(req, res, { ffmpeg, target, ss, live = false, audio = 0, video = "copy", encoder = "libx264", headers, report = () => {}, spawnFn = spawn, onSpawn, log = () => {} }) {
+function serveTranscode(req, res, { ffmpeg, target, ss, live = false, audio = 0, video = "copy", encoder = "libx264", headers, report = () => {}, spawnFn = spawn, onSpawn, onBase, log = () => {} }) {
   const t0 = Date.now();
   const ua = req.headers["x-ut-ua"] || null;
   const ref = req.headers["x-ut-referer"] || null;
   const child = spawnFn(ffmpeg, transcodeArgs(target.toString(), { ss, userAgent: ua, referer: ref, live, audio, video, encoder }), { windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
   let started = false;
+  let baseAcc = null;
+  let baseFound = false;
   const stop = () => { try { child.kill("SIGKILL"); } catch { /* déjà terminé */ } };
   if (typeof onSpawn === "function") onSpawn(stop);
   res.on("close", stop);
@@ -326,7 +373,15 @@ function serveTranscode(req, res, { ffmpeg, target, ss, live = false, audio = 0,
     log("ffmpeg.firstData", { host: target.host, ms: Date.now() - t0 });
     if (!res.headersSent) res.writeHead(200, { ...headers, "Content-Type": "video/mp2t", "Cache-Control": "no-store" });
   });
-  child.stdout.on("data", (chunk) => { if (started && !res.writableEnded) res.write(chunk); });
+  child.stdout.on("data", (chunk) => {
+    if (!baseFound && typeof onBase === "function") {
+      baseAcc = baseAcc === null ? chunk : Buffer.concat([baseAcc, chunk]);
+      const pts = firstPts(baseAcc);
+      if (pts !== null) { baseFound = true; log("ffmpeg.baseScan", { ms: Date.now() - t0, scanned: baseAcc.length, base: pts }); onBase(pts); baseAcc = null; }
+      else if (baseAcc.length > 524288) { baseFound = true; log("ffmpeg.baseMiss", { ms: Date.now() - t0, scanned: baseAcc.length }); baseAcc = null; }
+    }
+    if (started && !res.writableEnded) res.write(chunk);
+  });
   child.on("close", (code) => {
     if (!started) log("ffmpeg.failed", { host: target.host, code, video: video === "h264" ? "h264" : "copy", ms: Date.now() - t0 });
     if (!started && !res.headersSent) { report(code === 0 ? "ETRANSCODE_EMPTY" : "ETRANSCODE"); res.writeHead(502, headers); }
@@ -334,4 +389,4 @@ function serveTranscode(req, res, { ffmpeg, target, ss, live = false, audio = 0,
   });
 }
 
-module.exports = { parseDuration, ffmpegCandidates, findFfmpeg, findVideoFfmpeg, pickVideoEncoder, videoEncodeArgs, parseVideo, needsVideoConversion, classifyProbe, probeRaw, diagnoseStream, serveDiagnosis, parseTranscodePath, transcodeArgs, parseStreams, probeStreams, serveStreamInfo, subtitleArgs, serveSubtitle, serveTranscode };
+module.exports = { parseDuration, ffmpegCandidates, findFfmpeg, findVideoFfmpeg, pickVideoEncoder, videoEncodeArgs, parseVideo, needsVideoConversion, classifyProbe, probeRaw, diagnoseStream, serveDiagnosis, parseTranscodePath, transcodeArgs, parseStreams, probeStreams, serveStreamInfo, subtitleArgs, firstPts, serveSubtitle, serveTranscode };

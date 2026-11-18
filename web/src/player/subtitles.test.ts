@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseVtt, shiftCues, vttTime } from "./subtitles";
+import { flattenOverlaps, fmtShiftMs, nudgeShift, parseVtt, shiftCues, vttTime } from "./subtitles";
 
 describe("sous-titres WebVTT (bureau)", () => {
   it("temps avec et sans heures", () => {
@@ -15,5 +15,27 @@ describe("sous-titres WebVTT (bureau)", () => {
     const c = [{ start: 1, end: 3, text: "a" }, { start: 60, end: 62, text: "b" }];
     expect(shiftCues(c, 0)).toEqual(c);
     expect(shiftCues(c, 59)).toEqual([{ start: 1, end: 3, text: "b" }]);
+  });
+
+  it("aplatit les chevauchements de repères", () => {
+    const chevauche = [{ start: 10, end: 13, text: "première" }, { start: 12, end: 14, text: "deuxième" }];
+    expect(flattenOverlaps(chevauche)).toEqual([{ start: 10, end: 11.975, text: "première" }, { start: 12, end: 14, text: "deuxième" }]);
+    // Un repère avalé au suivant est raccourci avant lui, pas empilé.
+    expect(flattenOverlaps([{ start: 10, end: 11.5, text: "avalée" }, { start: 10.2, end: 12, text: "garde" }, { start: 20, end: 21, text: "après" }]))
+      .toEqual([{ start: 10, end: 10.2 - 0.025, text: "avalée" }, { start: 10.2, end: 12, text: "garde" }, { start: 20, end: 21, text: "après" }]);
+    // Sans chevauchement important : inchangé (le léger battement ne coupe rien).
+    const ok = [{ start: 1, end: 2, text: "a" }, { start: 2, end: 3, text: "b" }];
+    expect(flattenOverlaps(ok)).toEqual(ok);
+  });
+
+  it("borde le décalage manuel (±10 s, pas de 250 ms)", () => {
+    expect(nudgeShift(0, 0.25)).toBe(0.25);
+    expect(nudgeShift(0, -0.25)).toBe(-0.25);
+    expect(nudgeShift(0.1, 0.25)).toBe(0.25);
+    expect(nudgeShift(10, 0.25)).toBe(10);
+    expect(nudgeShift(-10, -0.25)).toBe(-10);
+    expect(fmtShiftMs(0)).toBe("0 ms");
+    expect(fmtShiftMs(0.25)).toBe("+250 ms");
+    expect(fmtShiftMs(-0.5)).toBe("-500 ms");
   });
 });

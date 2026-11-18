@@ -31,3 +31,30 @@ export function parseVtt(text: string): Cue[] {
 export function shiftCues(cues: Cue[], offset: number): Cue[] {
   return cues.flatMap((c) => (c.end - offset > 0 ? [{ start: Math.max(0, c.start - offset), end: c.end - offset, text: c.text }] : []));
 }
+
+/** Aplatit les chevauchements : un repère ne déborde plus sur le suivant (le rendu HTML5 affiche sinon les deux
+ * lignes empilées — certains flux ont des durées qui débordent). 25 ms de battement, un repère entièrement
+ * avalé par le suivant est écarté. Fonction pure, testée. */
+export function flattenOverlaps(cues: Cue[]): Cue[] {
+  const s = [...cues].sort((a, b) => a.start - b.start || a.end - b.end);
+  return s.flatMap((c, i) => {
+    const n = s[i + 1];
+    if (n && c.end > n.start + 0.05) {
+      const end = n.start - 0.025;
+      if (end <= c.start + 0.05) return [];
+      return [{ ...c, end }];
+    }
+    return [c];
+  });
+}
+
+/** Décalage des sous-titres borné (±10 s) et par pas de 250 ms (fonction pure, testée). */
+export function nudgeShift(cur: number, delta: number): number {
+  return Math.max(-10, Math.min(10, Math.round((cur + delta) * 4) / 4));
+}
+
+/** Affichage du décalage des sous-titres : « +250 ms », « -500 ms », « 0 ms » (fonction pure, testée). */
+export function fmtShiftMs(d: number): string {
+  if (Math.abs(d) < 0.001) return "0 ms";
+  return `${d > 0 ? "+" : "-"}${Math.round(Math.abs(d) * 1000)} ms`;
+}

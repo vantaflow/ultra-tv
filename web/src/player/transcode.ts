@@ -52,6 +52,13 @@ export const txInfoUrl = (proxyBase: string, orig: string): string => `${proxyBa
 export const txSubUrl = (proxyBase: string, orig: string, s: number, ss = 0): string =>
   `${proxyBase}txs/${b64url(orig)}?s=${Math.max(0, Math.floor(s))}${ss > 0 ? `&ss=${Math.round(ss)}` : ""}`;
 
+/** Base de la conversion en cours pour le départ demandé (`ss`, normalisé comme dans txUrl : la base n'est
+ * valable que pour cette génération de conversion). Le proxy répond dès qu'il a vu son premier paquet. */
+export const txBaseUrl = (proxyBase: string, orig: string, ss = 0): string => {
+  const s = Math.max(0, Math.round(ss * 1000) / 1000);
+  return `${proxyBase}txb/${b64url(orig)}${s > 0 ? `?ss=${s}` : ""}`;
+};
+
 /** Diagnostic d'un flux qui ne s'affiche pas (le proxy sonde avec ffmpeg) ; `hevc` : Chromium sait décoder le HEVC ici. */
 export const txDiagUrl = (proxyBase: string, orig: string, hevc: boolean): string => `${proxyBase}txd/${b64url(orig)}?hevc=${hevc ? 1 : 0}`;
 
