@@ -13,6 +13,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Modifié
 - Android : chaînes masquées et ordre des catégories propres à chaque profil. Une chaîne masquée par un profil reste visible pour les autres (elle n'est supprimée de l'appareil que si tous les profils la masquent) ; chaque profil garde son ordre de catégories. Les réglages actuels sont attribués à tous les profils existants, rien ne réapparaît ni ne bouge. Partagé entre appareils par nom de profil, sans gêner les versions plus anciennes.
+- Numéros de chaîne par profil : les chaînes masquées par le profil courant ne laissent plus de trou (masquer les chaînes 1 et 2 fait de la 3 la chaîne 1) dans Direct, Guide, Favoris, mode simple, affichage du lecteur, récentes et saisie du numéro à la télécommande.
 
 ## Bureau 1.2.73 — 2026-11-18
 

@@ -290,7 +290,7 @@ private fun ChannelTile(c: ChannelEntity, now: EpgEntity?, source: String?, onCl
         Column(Modifier.fillMaxSize().padding(24.design), verticalArrangement = Arrangement.SpaceBetween) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.design)) {
                 LogoBox(c.logo, c.title, Modifier.width(88.design).height(56.design), radius = 12, pad = 6, bg = if (f) Ux.Surface else Ux.Surface2)
-                if (c.seq > 0 && com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay.current.showNumbers) Text("${c.seq}", color = if (f) Ux.OnFocus2 else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1)
+                if (c.seq > 0 && com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay.current.showNumbers) Text("${com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay.current.numbering.numberOf(c)}", color = if (f) Ux.OnFocus2 else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1)
             }
             Column(verticalArrangement = Arrangement.spacedBy(4.design)) {
                 Text(c.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 26.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)

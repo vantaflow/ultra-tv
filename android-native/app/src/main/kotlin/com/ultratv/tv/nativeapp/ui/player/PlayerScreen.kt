@@ -1268,7 +1268,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         }
     }
     val osdCurrentChannel =if (isLive) vm.queue.collectAsState().value.firstOrNull { it.isCurrent }?.channel else null
-    val osdChannelNumber = osdCurrentChannel?.let { com.ultratv.tv.nativeapp.ui.player.zap.ZapLogic.numberOf(it) }?.takeIf { showNumbers && it > 0 }
+    val osdChannelNumber = osdCurrentChannel?.let { com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay.current.numbering.numberOf(it) }?.takeIf { showNumbers && it > 0 }
     val osdSchedule by vm.schedule.collectAsState()
     // Pastille HDR : type du flux lu dans les statistiques du moteur (quelques relectures après le début de la lecture, pas en continu).
     var liveHdr by remember { mutableStateOf<String?>(null) }

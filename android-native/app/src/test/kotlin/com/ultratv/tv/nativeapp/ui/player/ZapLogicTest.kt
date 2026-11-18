@@ -37,6 +37,16 @@ class ZapLogicTest {
         assertNull(ZapLogic.step(emptyList(), 0, true))
     }
 
+    @Test fun byNumber_avec_numerotation_du_profil_trouve_par_numero_affiche() {
+        // Le profil masque Sport 1 (seq 1) : Sport 2 s'affiche 1, Sport 3 s'affiche 2 ; la masquée n'est plus dans la liste.
+        val numbering = com.ultratv.tv.nativeapp.data.repo.ChannelNumbering.of(listOf(Triple(1L, "c", 1)))
+        val visible = list.filter { it.id != 2L }
+        assertEquals(2, ZapLogic.byNumber(visible, 1, numbering))   // Sport 2 (index 2)
+        assertEquals(3, ZapLogic.byNumber(visible, 2, numbering))   // Sport 3
+        assertNull(ZapLogic.byNumber(visible, 3, numbering))
+        assertEquals(1, ZapLogic.numberOf(visible[2], numbering))
+    }
+
     @Test fun byNumber_trouve_par_numero_sequentiel_et_ignore_les_separateurs() {
         assertEquals(3, ZapLogic.byNumber(list, 2))
         assertNull(ZapLogic.byNumber(list, 9))
