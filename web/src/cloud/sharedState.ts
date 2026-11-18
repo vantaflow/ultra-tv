@@ -38,6 +38,59 @@ export function localFavorites(known: Map<string, SharedFav>, current: Array<{ p
   return out;
 }
 
+/**
+ * Migration des favoris connus de l'ancien identifiant (numéro local) vers l'identifiant traduit du compte.
+ * Un changement d'identifiant n'est PAS un retrait : l'entrée est renommée (on/at gardés), sans tombe.
+ * Un identifiant que la traduction reconnaît tel quel (tvg-id numérique réel) n'est pas touché.
+ */
+export function migrateLegacyFavs(known: Map<string, SharedFav>, wasLocal: Set<string>, map: IdMapper): { known: Map<string, SharedFav>; wasLocal: Set<string> } {
+  if (!map.active) return { known, wasLocal };
+  const rename = (e: { p: string; k: string; r: string }): string | null => {
+    const kind = WIRE_TO_KIND[e.k]; if (!kind) return null;
+    const n = map.inn(kind, e.r); if (n == null) return null;
+    const r = map.out(kind, n);
+    return r === e.r ? null : r;
+  };
+  const outKnown = new Map<string, SharedFav>();
+  for (const e of known.values()) {
+    const r = rename(e);
+    const ne = r == null ? e : { ...e, r };
+    const nk = fk(ne); const o = outKnown.get(nk);
+    // Deux entrées pour le même élément : la plus récente, « on » l'emporte à égalité.
+    if (!o || ne.at > o.at || (ne.at === o.at && ne.on && !o.on)) outKnown.set(nk, ne);
+  }
+  const outLocal = new Set<string>();
+  for (const key of wasLocal) {
+    const [p, k, ...rest] = key.split("|"); const e = { p: p!, k: k!, r: rest.join("|") };
+    const r = rename(e);
+    outLocal.add(r == null ? key : fk({ ...e, r }));
+  }
+  return { known: outKnown, wasLocal: outLocal };
+}
+
+/**
+ * Changements distants ramenés à un seul par favori local (profil, type, élément) : plusieurs identifiants peuvent désigner
+ * le même élément (ancien numéro et identifiant traduit). Le plus récent gagne, « on » l'emporte à égalité ; une tombe à
+ * l'ancien identifiant est ignorée quand l'identifiant traduit du même élément est « on ».
+ */
+export function dedupeFavChanges(changes: SharedFav[], map: IdMapper): SharedFav[] {
+  const groups = new Map<string, { kind: Kind; n: number; list: SharedFav[] }>();
+  const out: SharedFav[] = [];
+  for (const e of changes) {
+    const kind = WIRE_TO_KIND[e.k]; const n = kind ? map.inn(kind, e.r) : null;
+    if (!kind || n == null) { out.push(e); continue; }
+    const key = `${e.p.toLowerCase()}|${kind}|${n}`;
+    const g = groups.get(key) ?? { kind, n, list: [] };
+    g.list.push(e); groups.set(key, g);
+  }
+  for (const { kind, n, list } of groups.values()) {
+    const canon = (e: SharedFav) => map.out(kind, n) === e.r;
+    const cand = list.some((e) => canon(e) && e.on) ? list.filter((e) => e.on || canon(e)) : list;
+    out.push(cand.reduce((a, b) => (b.at > a.at || (b.at === a.at && b.on && !a.on) ? b : a)));
+  }
+  return out;
+}
+
 /** Entrées distantes plus récentes que l'état connu. */
 export function remoteFavChanges(known: Map<string, SharedFav>, remote: SharedFav[]): SharedFav[] {
   return remote.filter((e) => { const o = known.get(fk(e)); return !o || e.at > o.at; });
@@ -60,10 +113,10 @@ export async function syncSourceState(worker: string, token: string, s: Source):
   const map = await mapperFor(s);
   const now = Date.now();
   const kFav = `cloud.st.fav.${s.cloudId}`; const kHist = `cloud.st.hist.${s.cloudId}`; const kLocal = `cloud.st.favLocal.${s.cloudId}`;
-  const known = new Map((await getSetting<SharedFav[]>(kFav, [])).map((e) => [fk(e), e] as const));
+  const known0 = new Map((await getSetting<SharedFav[]>(kFav, [])).map((e) => [fk(e), e] as const));
   const favs = (await db.favorites.filter((f) => f.sourceId === sid).toArray()).map((f) => ({ p: nameOf(f.profile), k: wireKind(s, map, f.kind), r: map.out(f.kind, f.refId) }));
   // Absent (première synchro avec cette version) : aucune tombe, plutôt que de retirer partout un favori jamais appliqué ici.
-  const wasLocal = new Set(await getSetting<string[]>(kLocal, []));
+  const { known, wasLocal } = migrateLegacyFavs(known0, new Set(await getSetting<string[]>(kLocal, [])), map);
   const updated = localFavorites(known, favs, now, wasLocal);
   const since = await getSetting<number>(kHist, 0);
   const hist: SharedHist[] = (await db.history.where("updatedAt").above(since).filter((h) => h.sourceId === sid).toArray()).map((h) => h.kind === "series"
@@ -80,7 +133,7 @@ export async function syncSourceState(worker: string, token: string, s: Source):
   // Favoris distants plus récents, appliqués au profil du même nom (nom/image pris dans le catalogue local).
   // Non appliqués (profil inconnu, élément introuvable) : pas enregistrés comme connus, donc réessayés au prochain échange.
   const pending = new Set<string>();
-  for (const e of remoteFavChanges(updated, res.fav)) {
+  for (const e of dedupeFavChanges(remoteFavChanges(updated, res.fav), map)) {
     let kind = WIRE_TO_KIND[e.k]; const profile = idOf(e.p);
     const refId = kind ? map.inn(kind, e.r) : null;
     if (!kind || !profile || refId == null) { pending.add(fk(e)); continue; }

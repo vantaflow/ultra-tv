@@ -119,3 +119,16 @@ describe("réglages d'affichage traduits", () => {
     expect(identityMapper.catOut("live", "x")).toBe("x");
   });
 });
+
+describe("réglages : un changement d'identifiant n'est jamais un retrait", () => {
+  const m = m3uMapper(["a", null, "b"]);
+  it("chaînes masquées : ancien numéro et identifiant traduit du même élément = une seule entrée", () => {
+    const l = hiddenFromWire([{ i: "3", c: null, n: "" }, { i: "b", c: "g:S", n: "B" }, { i: "1", c: null, n: "" }], m);
+    expect(l.map((x) => x.streamId).sort()).toEqual([1, 3]);
+    expect(hiddenToWire(l, [], m).map((x) => x.i).sort()).toEqual(["a", "b"]);
+  });
+  it("ordre des chaînes : ancien numéro accepté, doublons fusionnés", () => {
+    const p = planChOrder([{ p: "Principal", s: "g:S", k: ["3", "b", "1"] }], [{ id: "p1", name: "Principal" }], [], m);
+    expect(p.put[0]!.ids).toEqual([3, 1]);
+  });
+});
