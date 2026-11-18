@@ -11,11 +11,18 @@ import { currentTransport } from "@/net/transport";
 import { credsOf } from "@/sync/core";
 import { syncState, type SharedFav, type SharedHist } from "./client";
 import { cadence, fingerprint, pushGate } from "./cadence";
+import { type IdMapper } from "./idmap";
+import { mapperFor } from "./idmapLoad";
 
 import { DEFAULT_PROFILE_NAME } from "./profilesLogic";
 export { DEFAULT_PROFILE_NAME };
 const KIND_TO_WIRE: Record<Kind, string> = { live: "LIVE", movie: "MOVIE", series: "SERIES" };
 const WIRE_TO_KIND: Record<string, Kind> = { LIVE: "live", MOVIE: "movie", SERIES: "series" };
+/**
+ * Type envoyé au compte. Une playlist M3U n'a que du « direct » sur Android (films et épisodes y sont des chaînes) :
+ * un film du bureau y est donc annoncé comme chaîne, pour que le favori apparaisse aussi là-bas.
+ */
+const wireKind = (s: Source, m: IdMapper, kind: Kind): string => (s.type === "m3u" && m.active && kind === "movie" ? "LIVE" : KIND_TO_WIRE[kind]);
 const fk = (e: { p: string; k: string; r: string }) => `${e.p}|${e.k}|${e.r}`;
 
 /**
@@ -50,17 +57,18 @@ export async function syncSourceState(worker: string, token: string, s: Source):
   if (!s.cloudId || !s.id) return;
   const sid = s.id;
   const { nameOf, idOf } = profileNames();
+  const map = await mapperFor(s);
   const now = Date.now();
   const kFav = `cloud.st.fav.${s.cloudId}`; const kHist = `cloud.st.hist.${s.cloudId}`; const kLocal = `cloud.st.favLocal.${s.cloudId}`;
   const known = new Map((await getSetting<SharedFav[]>(kFav, [])).map((e) => [fk(e), e] as const));
-  const favs = (await db.favorites.filter((f) => f.sourceId === sid).toArray()).map((f) => ({ p: nameOf(f.profile), k: KIND_TO_WIRE[f.kind], r: String(f.refId) }));
+  const favs = (await db.favorites.filter((f) => f.sourceId === sid).toArray()).map((f) => ({ p: nameOf(f.profile), k: wireKind(s, map, f.kind), r: map.out(f.kind, f.refId) }));
   // Absent (première synchro avec cette version) : aucune tombe, plutôt que de retirer partout un favori jamais appliqué ici.
   const wasLocal = new Set(await getSetting<string[]>(kLocal, []));
   const updated = localFavorites(known, favs, now, wasLocal);
   const since = await getSetting<number>(kHist, 0);
   const hist: SharedHist[] = (await db.history.where("updatedAt").above(since).filter((h) => h.sourceId === sid).toArray()).map((h) => h.kind === "series"
-    ? { p: nameOf(h.profile), k: "EPISODE", r: String(h.epId ?? h.refId), t: h.title, img: h.image, pos: Math.round(h.pos * 1000), dur: Math.round(h.dur * 1000), at: h.updatedAt, par: String(h.seriesId ?? h.refId) }
-    : { p: nameOf(h.profile), k: KIND_TO_WIRE[h.kind], r: String(h.refId), t: h.title, img: h.image, pos: Math.round(h.pos * 1000), dur: Math.round(h.dur * 1000), at: h.updatedAt, par: null });
+    ? { p: nameOf(h.profile), k: "EPISODE", r: map.epOut(h.seriesId ?? h.refId, h.epId ?? h.refId), t: h.title, img: h.image, pos: Math.round(h.pos * 1000), dur: Math.round(h.dur * 1000), at: h.updatedAt, par: map.parentOut(h.seriesId ?? h.refId) }
+    : { p: nameOf(h.profile), k: KIND_TO_WIRE[h.kind], r: map.out(h.kind, h.refId), t: h.title, img: h.image, pos: Math.round(h.pos * 1000), dur: Math.round(h.dur * 1000), at: h.updatedAt, par: null });
   const body = { fav: [...updated.values()], hist };
   // Contenu inchangé depuis le dernier envoi réussi : rien à pousser (échange de rafraîchissement toutes les 10 min).
   const gateKey = `state:${s.cloudId}`; const print = fingerprint(JSON.stringify(body));
@@ -73,8 +81,12 @@ export async function syncSourceState(worker: string, token: string, s: Source):
   // Non appliqués (profil inconnu, élément introuvable) : pas enregistrés comme connus, donc réessayés au prochain échange.
   const pending = new Set<string>();
   for (const e of remoteFavChanges(updated, res.fav)) {
-    const kind = WIRE_TO_KIND[e.k]; const profile = idOf(e.p); const refId = Number(e.r);
-    if (!kind || !profile || !Number.isFinite(refId)) { pending.add(fk(e)); continue; }
+    let kind = WIRE_TO_KIND[e.k]; const profile = idOf(e.p);
+    const refId = kind ? map.inn(kind, e.r) : null;
+    if (!kind || !profile || refId == null) { pending.add(fk(e)); continue; }
+    // M3U : Android annonce tout comme « direct » ; une entrée que le bureau range dans les films y est retrouvée.
+    if (kind === "live" && s.type === "m3u" && map.active && !(await db.channels.where("[sourceId+streamId]").equals([s.cid, refId]).first())
+      && await db.movies.where("[sourceId+streamId]").equals([s.cid, refId]).first()) kind = "movie";
     const key = favKey(profile, sid, kind, refId);
     received = true;
     if (!e.on) { await db.favorites.delete(key); continue; }
@@ -84,13 +96,13 @@ export async function syncSourceState(worker: string, token: string, s: Source):
   }
   const merged = new Map(updated); for (const e of res.fav) if (!pending.has(fk(e))) merged.set(fk(e), e);
   await setSetting(kFav, [...merged.values()]);
-  const nowLocal = (await db.favorites.filter((f) => f.sourceId === sid).toArray()).map((f) => fk({ p: nameOf(f.profile), k: KIND_TO_WIRE[f.kind], r: String(f.refId) }));
+  const nowLocal = (await db.favorites.filter((f) => f.sourceId === sid).toArray()).map((f) => fk({ p: nameOf(f.profile), k: wireKind(s, map, f.kind), r: map.out(f.kind, f.refId) }));
   await setSetting(kLocal, nowLocal);
   // Reprises distantes plus récentes que la ligne locale.
   let maxAt = Math.max(since, ...hist.map((h) => h.at));
   for (const e of res.hist) {
     const profile = idOf(e.p); if (!profile) continue;
-    const row = await historyRow(s, profile, e);
+    const row = await historyRow(s, profile, e, map);
     if (!row) continue;
     const cur = await db.history.get(row.key);
     if (cur && cur.updatedAt >= e.at) continue;
@@ -121,17 +133,17 @@ async function catalogMeta(s: Source, kind: Kind, refId: number): Promise<{ name
 }
 
 /** Ligne d'historique locale pour une reprise distante (le direct n'a pas de reprise ici). Épisode : détails de la série requis. */
-async function historyRow(s: Source, profile: string, e: SharedHist): Promise<HistoryRow | null> {
+async function historyRow(s: Source, profile: string, e: SharedHist, map: IdMapper): Promise<HistoryRow | null> {
   const sid = s.id!;
   const base = { profile, sourceId: sid, title: e.t, image: e.img, pos: e.pos / 1000, dur: e.dur / 1000, updatedAt: e.at };
   if (e.k === "MOVIE") {
-    const refId = Number(e.r); if (!Number.isFinite(refId)) return null;
+    const refId = map.inn("movie", e.r); if (refId == null) return null;
     const m = await db.movies.where("[sourceId+streamId]").equals([s.cid, refId]).first();
     return { ...base, key: histKey(profile, sid, "movie", refId), kind: "movie", refId, title: e.t || m?.title || "", image: e.img ?? m?.poster ?? null, ext: m?.ext };
   }
   if (e.k === "EPISODE" && e.par) {
-    const seriesId = Number(e.par); const epId = Number(e.r);
-    if (!Number.isFinite(seriesId) || !Number.isFinite(epId)) return null;
+    const seriesId = map.parentIn(e.par); const epId = map.epIn(e.r);
+    if (seriesId == null || epId == null) return null;
     // Série jamais ouverte sur cet appareil (installation neuve) : on télécharge sa fiche, sinon la reprise
     // venue d'un autre appareil était ignorée indéfiniment.
     let det = await db.details.get(`series:${sid}:${seriesId}`);
