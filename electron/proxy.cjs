@@ -300,6 +300,10 @@ function createProxyServer({ allowedOrigin, token, onError, lookup, ffmpeg = nul
   const activeLive = new Map();
   // Conversions ffmpeg vivantes par hôte : seule la plus récente est utile (route /tx).
   const txActive = new Map();
+  // Départ réel (temps de contenu) de la dernière conversion lancée pour un hôte — { ss, base } : la base n'est
+  // valable que pour la génération de conversion qui lui a donné naissance (un saut relance une conversion à un
+  // autre départ). Les sous-titres extraits s'alignent dessus (cf. transcode.cjs).
+  const txBases = new Map();
 
   function trackLive(host, state, res) {
     const entry = { state, res, closed: false, waiters: [] };
@@ -340,7 +344,7 @@ function createProxyServer({ allowedOrigin, token, onError, lookup, ffmpeg = nul
       Vary: "Origin",
       "Access-Control-Allow-Headers": req.headers["access-control-request-headers"] || "*",
       "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
-      "Access-Control-Expose-Headers": "Content-Length, Content-Range, Accept-Ranges",
+      "Access-Control-Expose-Headers": "Content-Length, Content-Range, Accept-Ranges, x-ut-base",
       "Access-Control-Max-Age": "600",
     };
     if (req.headers["access-control-request-private-network"]) {
@@ -502,7 +506,34 @@ function createProxyServer({ allowedOrigin, token, onError, lookup, ffmpeg = nul
       // Liste des pistes et sous-titres : lecture de l'en-tête seule, sans libérer le flux en cours.
       if (tx.kind === "info") return serveStreamInfo(req, res, { ffmpeg, target: txTarget, headers: corsHeaders(req) });
       if (tx.kind === "diag") return serveDiagnosis(req, res, { ffmpeg, target: txTarget, headers: corsHeaders(req), hevc: tx.hevc, canEncode: !!videoFfmpeg, log: jlog });
-      if (tx.kind === "sub") return serveSubtitle(req, res, { ffmpeg, target: txTarget, s: tx.s, ss: tx.ss, headers: corsHeaders(req), report });
+      if (tx.kind === "sub") {
+        const e = txBases.get(txTarget.host.toLowerCase());
+        return serveSubtitle(req, res, { ffmpeg, target: txTarget, s: tx.s, ss: tx.ss, base: e && e.ss === tx.ss ? e.base : null, headers: corsHeaders(req), report });
+      }
+      // Base de la génération de conversion demandée (son premier paquet : l'image-clé de départ). Le proxy peut
+      // la connaître d'emblée (conversion déjà lancée) ou attendre son premier paquet : le lecteur y aligne ses
+      // sous-titres, même servis depuis son cache (aucune extraction pour lire un en-tête).
+      if (tx.kind === "base") {
+        const key = txTarget.host.toLowerCase();
+        const started = Date.now();
+        const h = corsHeaders(req);
+        let gone = false;
+        res.on("close", () => { gone = true; });
+        const wait = () => {
+          if (gone || res.writableEnded) return;
+          const e = txBases.get(key);
+          const b = e && e.ss === tx.ss && typeof e.base === "number" ? e.base : null;
+          if (b != null || Date.now() - started > 5000) {
+            jlog("ffmpeg.baseQuery", { host: txTarget.host, ss: tx.ss, base: b, ms: Date.now() - started });
+            res.writeHead(200, { ...h, "Content-Type": "application/json", "Cache-Control": "no-store" });
+            res.end(JSON.stringify({ base: b }));
+            return;
+          }
+          setTimeout(wait, 60);
+        };
+        wait();
+        return;
+      }
       // Comptes à connexion unique : l'ancien flux du même hôte est libéré avant que ffmpeg ouvre le sien.
       await releaseEntry(activeLive.get(txTarget.host.toLowerCase()));
       // Une seule conversion ffmpeg vivante par hôte : le lecteur relance une conversion (saut, piste, tentative
@@ -518,10 +549,12 @@ function createProxyServer({ allowedOrigin, token, onError, lookup, ffmpeg = nul
       // Conversion vidéo H.264 : ffmpeg avec encodeur (embarqué si possible, sinon celui du système) ; sans lui, 501.
       if (tx.video === "h264" && !videoFfmpeg) { txActive.delete(txKey); return fail(res, req, 501); }
       const useFfmpeg = tx.video === "h264" ? videoFfmpeg.path : ffmpeg;
+      // Une entrée de base par génération de conversion : sa valeur n'est valable que pour ce départ demandé.
+      txBases.set(txKey, { ss: tx.ss, base: null });
       return serveTranscode(req, res, { log: jlog, ffmpeg: useFfmpeg, video: tx.video, encoder: videoFfmpeg?.encoder, target: txTarget, ss: tx.ss, live: tx.live, audio: tx.a, headers: corsHeaders(req), report, onSpawn: (stop) => {
         if (cur.stop) stop(); // remplacée déjà : partie aussitôt née
         else cur.stop = stop;
-      } });
+      }, onBase: (sec) => { const e = txBases.get(txKey); if (e && e.ss === tx.ss) { txBases.set(txKey, { ss: tx.ss, base: sec }); jlog("ffmpeg.base", { host: txTarget.host, ss: tx.ss, base: sec }); } } });
     }
     const parsed = parseProxyPath(parsedUrl.pathname, secret);
     if (parsed.error) return fail(res, req, parsed.error);

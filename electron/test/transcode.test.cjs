@@ -2,7 +2,7 @@
 const test = require("node:test");
 const { PassThrough } = require("node:stream");
 const assert = require("node:assert");
-const { ffmpegCandidates, findFfmpeg, parseTranscodePath, transcodeArgs, parseStreams, subtitleArgs, serveStreamInfo, serveSubtitle, serveTranscode } = require("../transcode.cjs");
+const { ffmpegCandidates, findFfmpeg, parseTranscodePath, transcodeArgs, parseStreams, subtitleArgs, firstPts, serveStreamInfo, serveSubtitle, serveTranscode } = require("../transcode.cjs");
 
 test("parseTranscodePath : jeton, cible et position", () => {
   assert.deepStrictEqual(parseTranscodePath("/tok/tx/aGVsbG8", "?ss=754.5"), { kind: "tx", token: "tok", b64: "aGVsbG8", ss: 754.5, live: false, a: 0, s: 0, video: "copy", hevc: false });
@@ -10,6 +10,8 @@ test("parseTranscodePath : jeton, cible et position", () => {
   assert.strictEqual(parseTranscodePath("/tok/aGVsbG8", ""), null);
   assert.strictEqual(parseTranscodePath("/tok/tx/a/b", ""), null);
   assert.strictEqual(parseTranscodePath("/tok/tx/aGVsbG8", "?ss=-1;rm")?.ss, 0);
+  assert.strictEqual(parseTranscodePath("/tok/txb/aGVsbG8", "?ss=754.5")?.kind, "base");
+  assert.strictEqual(parseTranscodePath("/tok/txb/aGVsbG8", "?ss=754.5")?.ss, 754.5);
 });
 
 test("transcodeArgs : vidéo copiée, audio AAC, MPEG-TS, -ss avant -i", () => {
@@ -269,4 +271,56 @@ test("serveSubtitle : échec de ffmpeg sans sortie → 502", async () => {
   await new Promise((r) => setImmediate(r));
   assert.strictEqual(res.status, 502);
   assert.ok(res.writableEnded);
+});
+
+test("transcodeArgs : horodatages conservés (-copyts, muxer MPEG-TS réglé)", () => {
+  const a = transcodeArgs("http://h/movie/u/p/1.mkv", { ss: 90 });
+  assert.ok(a.includes("-copyts"), "les temps d'entrée restent ceux du fichier");
+  assert.ok(a.indexOf("-copyts") < a.indexOf("-i"));
+  assert.strictEqual(a[a.indexOf("-mpegts_copyts") + 1], "1");
+});
+
+test("subtitleArgs : -copyts (repères en temps de contenu absolus)", () => {
+  const a = subtitleArgs("http://h/1.mkv", { s: 1, ss: 1345.5 });
+  assert.ok(a.includes("-copyts"));
+  assert.ok(a.indexOf("-copyts") < a.indexOf("-i"));
+});
+
+test("firstPts : premier PTS d'un paquet TS, : base de la conversion", () => {
+  const pts90k = 111111030; // 1234.567 s
+  const p = Buffer.alloc(188);
+  p[0] = 0x47;
+  const pes = Buffer.alloc(19);
+  pes[0] = 0; pes[1] = 0; pes[2] = 1; pes[3] = 0xe0; // PES vidéo
+  pes[4] = 0; pes[5] = 13;
+  pes[6] = 0x80;
+  pes[7] = 0x80; // PTS_DTS_flags = « 10 »
+  pes[8] = 5;
+  const v = BigInt(pts90k);
+  pes[9] = 0x20 | (Number((v >> 30n) & 0x7n) << 1) | 1;
+  pes[10] = Number((v >> 22n) & 0xffn);
+  pes[11] = (Number((v >> 15n) & 0x7fn) << 1) | 1;
+  pes[12] = Number((v >> 7n) & 0xffn);
+  pes[13] = (Number(v & 0x7fn) << 1) | 1;
+  p.set(pes, 8);
+  assert.ok(Math.abs(firstPts(p) - 1234.567) < 0.001);
+  // Pas de PES, ou flux non aligné sur des paquets de 188 octets : null.
+  assert.strictEqual(firstPts(Buffer.alloc(376, 0x42)), null);
+  assert.strictEqual(firstPts(Buffer.from("zz")), null);
+});
+
+test("serveSubtitle : la base de la conversion est exposée en x-ut-base", async () => {
+  const child = fakeChild();
+  const res = fakeRes();
+  serveSubtitle({ headers: {} }, res, { ffmpeg: "ffmpeg", target: new URL("http://h/1.mkv"), s: 1, base: 754.5, headers: {}, spawnFn: () => child });
+  child.stdout.write("WEBVTT\n\n");
+  await new Promise((r) => setTimeout(r, 20));
+  assert.strictEqual(res.headers["x-ut-base"], "754.5");
+  // Sans conversion en cours : pas d'en-tête (le lecteur retombe sur le temps demandé).
+  const res2 = fakeRes();
+  const child2 = fakeChild();
+  serveSubtitle({ headers: {} }, res2, { ffmpeg: "ffmpeg", target: new URL("http://h/1.mkv"), s: 1, headers: {}, spawnFn: () => child2 });
+  child2.stdout.write("WEBVTT\n\n");
+  await new Promise((r) => setTimeout(r, 20));
+  assert.strictEqual(res2.headers["x-ut-base"], undefined);
 });

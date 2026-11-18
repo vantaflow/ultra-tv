@@ -49,10 +49,10 @@ import { sendToDevice } from "@/cloud/handoff";
 import { useUi } from "@/state/ui";
 import { startScrobble, type Scrobbler } from "./trakt";
 import { loadSkips, skipOfferAt, type SkipSegment } from "./skip";
-import { canDecodeHevc, clampSeek, parseTxDiag, parseTxInfo, TX_LABEL, txClock, txDiagUrl, txInfoUrl, txSubUrl, txUrl, type TxDiag, type TxInfo, type TxState } from "./transcode";
+import { canDecodeHevc, clampSeek, parseTxDiag, parseTxInfo, TX_LABEL, txBaseUrl, txClock, txDiagUrl, txInfoUrl, txSubUrl, txUrl, type TxDiag, type TxInfo, type TxState } from "./transcode";
 import { classifyFailure, planAudioRepair, planFallback, type Failure } from "./failure";
 import { playLog, urlInfo } from "./playlog";
-import { parseVtt, shiftCues, type Cue } from "./subtitles";
+import { flattenOverlaps, parseVtt, shiftCues, type Cue } from "./subtitles";
 import type { PlayTarget } from "./resolve";
 import { EpisodesPanel } from "./EpisodesPanel";
 import { stepIndex } from "@/lib/episodePanel";
@@ -136,6 +136,8 @@ export function PlayerHost() {
   const [subLoading, setSubLoading] = useState(false);
   /** Extraction en vol : jeton (la dernière sélection engagée gagne) + annulation (le proxy arrête son ffmpeg). */
   const subReqRef = useRef<{ token: number; abort: AbortController } | null>(null);
+  /** Relance de l'extraction différée après un saut : les sauts rapides n'en déclenchent qu'une seule. */
+  const subSeekTimerRef = useRef<number>(0);
   /** Piste texte choisie (miroir d'état : les sauts relancent l'extraction à la nouvelle position). */
   const xTextRef = useRef(-1);
   const subCuesRef = useRef<Cue[] | null>(null);
@@ -146,6 +148,8 @@ export function PlayerHost() {
   const txMemAppliedRef = useRef(false);
   /** Accès tardif à selectSub (startCandidate est défini avant) : pour réactiver le sous-titre mémorisé. */
   const selectSubRef = useRef<((i: number) => void) | null>(null);
+  /** Accès tardif à warmBase (startCandidate est défini avant) : aligner les sous-titres sur la base réelle. */
+  const warmBaseRef = useRef<(() => void) | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [ui, setUi] = useState(true);
   const [panel, setPanel] = useState<null | "tracks" | "display" | "player" | "stats" | "channels" | "episodes">(null);
@@ -414,7 +418,7 @@ export function PlayerHost() {
     eng.preferredAudio = effectivePreferred([], usePrefs.getState().lang);
     v.volume = usePrefs.getState().volume;
     v.muted = usePrefs.getState().muted;
-    return () => { recon.dispose(); clearTimeout(limitTimerRef.current); subReqRef.current?.abort.abort(); subReqRef.current = null; eng.stop(); engineRef.current = null; };
+    return () => { recon.dispose(); clearTimeout(limitTimerRef.current); clearTimeout(subSeekTimerRef.current); subReqRef.current?.abort.abort(); subReqRef.current = null; eng.stop(); engineRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -478,6 +482,10 @@ export function PlayerHost() {
       container: isTx ? "mpegts(ffmpeg)" : urlInfo(c.url).ext, ...urlInfo(c.url), userAgent: src.userAgent ? "source" : "repli VLC", referer: !!src.referer,
       transcode: isTx ? (txRef.current?.video ? "vidéo H.264 + audio AAC" : "remux + audio AAC") : "aucune", resumeAt: Math.round(resume ?? tg.startAt ?? 0),
     });
+    // Conversion du bureau : la base réelle de la conversion (son premier paquet : une image-clé près du départ
+    // demandé) est demandée — les sous-titres s'y alignent (extraction fraîche comme en cache), et la position
+    // affichée honore le vrai départ. Chaque (re)démarrage de conversion en redemande une.
+    if (isTx) warmBaseRef.current?.();
     // Première candidate de conversion de l'ouverture : le sous-titre mémorisé de l'épisode est réactivé
     // (instantané s'il est déjà en cache, extraction rapide sinon — elle part de la position courante).
     if (isTx && !txMemAppliedRef.current) {
@@ -502,7 +510,7 @@ export function PlayerHost() {
     statusRef.current = null; videoTriedRef.current = false; diagRef.current = null;
     setLimit(false); setFailure(null);
     // Extraction de sous-titres en vol : fermée à chaque changement de média et à la fermeture du lecteur (le proxy arrête son ffmpeg).
-    subReqRef.current?.abort.abort(); subReqRef.current = null;
+    subReqRef.current?.abort.abort(); subReqRef.current = null; clearTimeout(subSeekTimerRef.current);
     if (!target || !source) { engineRef.current?.stop(); return; }
     setTracks(NO_TRACKS);
     setXinfo(null); xinfoKeyRef.current = ""; setXAudio(0); setXText(-1); xTextRef.current = -1; setSubFail(false); setSubLoading(false); subCuesRef.current = null; applySubs();
@@ -928,7 +936,7 @@ export function PlayerHost() {
    * Chaque sélection annule la précédente : seule la dernière engagée s'applique. Les repères sont conservés en
    * cache (par média et piste) : re-regarder ou revenir en arrière ne relance pas l'extraction de zéro.
    */
-  const selectSub = useCallback((i: number) => {
+  const selectSub = useCallback((i: number, retry = true) => {
     const base = bridge()?.proxyBase;
     const orig = originUrl();
     subReqRef.current?.abort.abort();
@@ -942,8 +950,10 @@ export function PlayerHost() {
     subReqRef.current = req;
     // Extraction qui part de la position courante de la conversion (0 = lecture native : le fichier est lu du début).
     const ss = txRef.current ? txRef.current.offset : 0;
-    const rebase = (cues: Cue[]): Cue[] => cues.map((c) => ({ start: c.start + ss, end: c.end + ss, text: c.text }));
-    void getSetting<Record<string, { cues: Cue[]; from: number; at: number }>>("tx.subsCache", {})
+    // Les repères extraits sont en temps de contenu absolus (-copyts côté ffmpeg) : aucun rebase, seulement les
+    // chevauchements aplatis (des durées qui débordent empileraient deux lignes sinon).
+    const abs = (t: string): Cue[] => flattenOverlaps(parseVtt(t));
+    void getSetting<Record<string, { cues: Cue[]; from: number; at: number }>>("tx.subsAbs", {})
       .then(async (m) => {
         // Cache qui couvre la position courante : instantané, sans extraction.
         const hit = m[`${orig}#${i}`];
@@ -956,6 +966,19 @@ export function PlayerHost() {
         }
         const r = await fetch(txSubUrl(base, orig, i, ss), { headers: proxyHeaders(), signal: req.abort.signal });
         if (!r.ok || !r.body) throw new Error("sub");
+        // Départ réel de la conversion en cours (proche du départ demandé : calé sur une image-clé de la vidéo).
+        // Les repères absolus s'alignent sur la timeline vidéo en les décalant de ce départ — pas du départ
+        // demandé, dont l'écart avec l'image-clé décalait les sous-titres d'autant (en avance, variable).
+        const bS = r.headers.get("x-ut-base");
+        if (bS == null && retry && txRef.current) {
+          // La conversion vient (re)démarrer : sa base n'est pas encore servie. Un seul essai de plus après un délai.
+          await new Promise((ok) => { window.setTimeout(ok, 900); });
+          if (subReqRef.current?.token !== req.token) return;
+          return selectSub(i, false);
+        }
+        const k = bS != null ? Number(bS) : NaN;
+        const tx = txRef.current;
+        if (tx && Number.isFinite(k) && Math.abs(k - tx.offset) > 0.001) { txRef.current = { ...tx, offset: k }; applySubs(); }
         const reader = r.body.getReader();
         const dec = new TextDecoder();
         let buf = "";
@@ -967,11 +990,11 @@ export function PlayerHost() {
           const now = Date.now();
           if (now - last < 400) continue; // re-analyse au plus ~2,5 fois par seconde
           last = now;
-          const cues = rebase(parseVtt(buf));
+          const cues = abs(buf);
           if (subReqRef.current?.token !== req.token) return; // remplaçée : on ne touche plus à rien
           if (cues.length > 0) { subCuesRef.current = cues; applySubs(); }
         }
-        const cues = rebase(parseVtt(buf + dec.decode()));
+        const cues = abs(buf + dec.decode());
         if (subReqRef.current?.token !== req.token) return;
         setSubLoading(false);
         if (cues.length === 0) throw new Error("empty");
@@ -980,10 +1003,10 @@ export function PlayerHost() {
         const entry = { [`${orig}#${i}`]: { cues, from: ss, at: Date.now() } };
         // Relu au moment d'écrire : l'instantané du début est périmé après plusieurs minutes d'extraction.
         try {
-          const fresh = await getSetting<Record<string, { cues: Cue[]; from: number; at: number }>>("tx.subsCache", {});
+          const fresh = await getSetting<Record<string, { cues: Cue[]; from: number; at: number }>>("tx.subsAbs", {});
           const next = { ...fresh, ...entry };
           const kept = Object.entries(next).sort((a, b) => b[1].at - a[1].at).slice(0, 40);
-          await setSetting("tx.subsCache", Object.fromEntries(kept) as Record<string, { cues: Cue[]; from: number; at: number }>);
+          await setSetting("tx.subsAbs", Object.fromEntries(kept) as Record<string, { cues: Cue[]; from: number; at: number }>);
         } catch { /* cache indisponible : les sous-titres restent affichés */ }
       })
       .catch(() => {
@@ -993,6 +1016,32 @@ export function PlayerHost() {
   }, [originUrl, applySubs, proxyHeaders, rememberTracks]);
   /** Accès tardif à selectSub depuis startCandidate (définie avant dans le composant). */
   useEffect(() => { selectSubRef.current = selectSub; });
+
+  /** Base réelle de la conversion en cours (son premier paquet : l'image-clé près du départ demandé) : le lecteur
+   * y aligne les sous-titres et honore la vraie position. Demandée à chaque (re)démarrage de conversion — le proxy
+   * répond dès que le premier paquet est passé, même quand le sous-titre vient du cache (aucune extraction, aucun
+   * en-tête de réponse à lire). */
+  const warmBase = useCallback((retries = 1) => {
+    const base = bridge()?.proxyBase;
+    const orig = originUrl();
+    const ss = txRef.current?.offset ?? 0;
+    if (!base || !orig) return;
+    void fetch(txBaseUrl(base, orig, ss), { headers: proxyHeaders() })
+      .then((r) => (r.ok ? (r.json() as Promise<{ base?: number | null }>) : null))
+      .then((j) => {
+        const tx = txRef.current;
+        const k = j?.base ?? NaN;
+        if (tx && Number.isFinite(k) && Math.abs(k - tx.offset) > 0.001) {
+          txRef.current = { ...tx, offset: k };
+          applySubs();
+        } else if (tx && !Number.isFinite(k) && retries > 0) {
+          // La conversion n'a pas encore servi son premier paquet (fournisseur lent) : on repose la question.
+          window.setTimeout(() => { if (txRef.current) warmBase(retries - 1); }, 2500);
+        }
+      })
+      .catch(() => { /* sans base : le décalage du départ demandé reste utilisé */ });
+  }, [originUrl, proxyHeaders, applySubs]);
+  useEffect(() => { warmBaseRef.current = warmBase; });
 
   /** Saut à une position (s). Conversion audio en cours : le flux n'est pas cherchable, la conversion repart de là. */
   const seekTo = useCallback((sec: number) => {
@@ -1005,12 +1054,21 @@ export function PlayerHost() {
       const c = candRef.current;
       c.list = c.list.map((x, k) => (k === c.i ? { ...x, url: txUrl(base, tx.orig, ss, false, tx.audio ?? 0, !!tx.video) } : x));
       void startCandidate(c.list[c.i]!);
-      // Sous-titre choisi : l'extraction est relancée à la nouvelle position (instantané si elle est en cache).
-      if (xTextRef.current >= 0) selectSub(xTextRef.current); else applySubs();
+      warmBase();
+      // Sous-titre choisi : les repères posés sont ceux de l'ancienne position — vidés immédiatement (sinon un
+      // repère fantôme reste affiché tant que la nouvelle extraction, servie au rythme réel, n'a rien livré), et la
+      // relance est déboncée : une suite de sauts rapides n'empile pas des extractions aussitôt abandonnées.
+      if (xTextRef.current >= 0) {
+        subReqRef.current?.abort.abort();
+        subCuesRef.current = null;
+        applySubs();
+        clearTimeout(subSeekTimerRef.current);
+        subSeekTimerRef.current = window.setTimeout(() => { if (xTextRef.current >= 0) selectSub(xTextRef.current); }, 500);
+      } else applySubs();
       return;
     }
     if (Number.isFinite(v.duration)) v.currentTime = Math.max(0, Math.min(v.duration, sec));
-  }, [startCandidate, applySubs, selectSub]);
+  }, [startCandidate, applySubs, selectSub, warmBase]);
   /** Liste des pistes, demandée au proxy à l'ouverture du panneau (une connexion brève au fournisseur, pas pendant la lecture normale). */
   useEffect(() => {
     const base = bridge()?.proxyBase;

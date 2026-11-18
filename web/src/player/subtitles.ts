@@ -31,3 +31,19 @@ export function parseVtt(text: string): Cue[] {
 export function shiftCues(cues: Cue[], offset: number): Cue[] {
   return cues.flatMap((c) => (c.end - offset > 0 ? [{ start: Math.max(0, c.start - offset), end: c.end - offset, text: c.text }] : []));
 }
+
+/** Aplatit les chevauchements : un repère ne déborde plus sur le suivant (le rendu HTML5 affiche sinon les deux
+ * lignes empilées — certains flux ont des durées qui débordent). 25 ms de battement, un repère entièrement
+ * avalé par le suivant est écarté. Fonction pure, testée. */
+export function flattenOverlaps(cues: Cue[]): Cue[] {
+  const s = [...cues].sort((a, b) => a.start - b.start || a.end - b.end);
+  return s.flatMap((c, i) => {
+    const n = s[i + 1];
+    if (n && c.end > n.start + 0.05) {
+      const end = n.start - 0.025;
+      if (end <= c.start + 0.05) return [];
+      return [{ ...c, end }];
+    }
+    return [c];
+  });
+}
