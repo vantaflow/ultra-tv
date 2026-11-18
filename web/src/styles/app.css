@@ -458,6 +458,9 @@ html.platform-darwin .player.full .ptop { padding-inline-start: 6rem; }
 .pside .tabs button[aria-selected="true"] { background: #fff; color: #0A0C10; font-weight: 700; }
 .pside .grp-t { font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.1em; color: #A9AFBC; margin-top: 0.5rem; }
 .pside .opt { height: 2.75rem; padding: 0 1rem; border-radius: 0.875rem; background: #161A22; color: #C9CDD6; display: flex; align-items: center; justify-content: space-between; font-weight: 600; font-size: 0.875rem; text-align: start; width: 100%; }
+.pside .subshift { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.35rem; }
+.pside .subshift .opt { width: 2.75rem; flex: none; justify-content: center; }
+.pside .subshift .v { flex: 1; text-align: center; font-weight: 700; color: #F4F5F7; font-variant-numeric: tabular-nums; }
 .pside .opt:hover { background: #1C2029; }
 .pside .opt[aria-checked="true"] { background: #1C2029; color: #F4F5F7; box-shadow: inset 0 0 0 2px var(--accent); }
 .pside .opt .h { color: #A9AFBC; font-size: 0.75rem; font-weight: 500; }

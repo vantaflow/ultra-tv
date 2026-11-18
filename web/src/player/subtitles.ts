@@ -47,3 +47,14 @@ export function flattenOverlaps(cues: Cue[]): Cue[] {
     return [c];
   });
 }
+
+/** Décalage des sous-titres borné (±10 s) et par pas de 250 ms (fonction pure, testée). */
+export function nudgeShift(cur: number, delta: number): number {
+  return Math.max(-10, Math.min(10, Math.round((cur + delta) * 4) / 4));
+}
+
+/** Affichage du décalage des sous-titres : « +250 ms », « -500 ms », « 0 ms » (fonction pure, testée). */
+export function fmtShiftMs(d: number): string {
+  if (Math.abs(d) < 0.001) return "0 ms";
+  return `${d > 0 ? "+" : "-"}${Math.round(Math.abs(d) * 1000)} ms`;
+}

@@ -52,7 +52,7 @@ import { loadSkips, skipOfferAt, type SkipSegment } from "./skip";
 import { canDecodeHevc, clampSeek, parseTxDiag, parseTxInfo, TX_LABEL, txBaseUrl, txClock, txDiagUrl, txInfoUrl, txSubUrl, txUrl, type TxDiag, type TxInfo, type TxState } from "./transcode";
 import { classifyFailure, planAudioRepair, planFallback, type Failure } from "./failure";
 import { playLog, urlInfo } from "./playlog";
-import { flattenOverlaps, parseVtt, shiftCues, type Cue } from "./subtitles";
+import { flattenOverlaps, fmtShiftMs, nudgeShift, parseVtt, shiftCues, type Cue } from "./subtitles";
 import type { PlayTarget } from "./resolve";
 import { EpisodesPanel } from "./EpisodesPanel";
 import { stepIndex } from "@/lib/episodePanel";
@@ -142,8 +142,8 @@ export function PlayerHost() {
   const xTextRef = useRef(-1);
   const subCuesRef = useRef<Cue[] | null>(null);
   const subTrackRef = useRef<TextTrack | null>(null);
-  /** Mémoire des pistes du média courant (audio / sous-titre choisis) : réappliquée à la réouverture de l'épisode. */
-  const txMemRef = useRef<{ a: number; s: number } | null>(null);
+  /** Mémoire des pistes du média courant (audio / sous-titre choisis, décalage des sous-titres) : réappliquée à la réouverture de l'épisode. */
+  const txMemRef = useRef<{ a: number; s: number; d: number } | null>(null);
   const txMemKeyRef = useRef("");
   const txMemAppliedRef = useRef(false);
   /** Accès tardif à selectSub (startCandidate est défini avant) : pour réactiver le sous-titre mémorisé. */
@@ -432,7 +432,9 @@ export function PlayerHost() {
     if (!tr) { tr = v.addTextTrack("subtitles", "Ultra TV"); subTrackRef.current = tr; }
     while (tr.cues && tr.cues.length > 0) tr.removeCue(tr.cues[0]!);
     if (!cues) { tr.mode = "disabled"; return; }
-    for (const c of shiftCues(cues, txRef.current?.offset ?? 0)) tr.addCue(new VTTCue(c.start, c.end, c.text));
+    // Décalage manuel des sous-titres (mémorisé par épisode) : positif = les retarde.
+    const d = txMemRef.current?.d ?? 0;
+    for (const c of shiftCues(cues, (txRef.current?.offset ?? 0) + d)) tr.addCue(new VTTCue(c.start, c.end, c.text));
     tr.mode = "showing";
   }, []);
 
@@ -520,9 +522,10 @@ export function PlayerHost() {
     txMemKeyRef.current = target.kind !== "live" ? `${target.kind}#${target.refId}` : "";
     txMemRef.current = null;
     txMemAppliedRef.current = false;
+    setSubShift(0);
     const memKey = txMemKeyRef.current;
-    if (memKey) void getSetting<Record<string, { a: number; s: number; at: number }>>("tx.tracks", {})
-      .then((m) => { if (txMemKeyRef.current === memKey && m[memKey]) txMemRef.current = { a: m[memKey]!.a, s: m[memKey]!.s }; })
+    if (memKey) void getSetting<Record<string, { a: number; s: number; d?: number; at: number }>>("tx.tracks", {})
+      .then((m) => { if (txMemKeyRef.current === memKey && m[memKey]) { txMemRef.current = { a: m[memKey]!.a, s: m[memKey]!.s, d: m[memKey]!.d ?? 0 }; setSubShift(m[memKey]!.d ?? 0); } })
       .catch(() => undefined);
     setPanel(null);
     setCur({ t: 0, d: 0, buf: 0 });
@@ -916,15 +919,15 @@ export function PlayerHost() {
     if (v.paused) void v.play().catch(() => undefined); else v.pause();
   }, []);
   /** Mémorise les pistes choisies de l'épisode courant (audio / sous-titre) : borné aux 60 derniers épisodes. */
-  const rememberTracks = useCallback((patch: { a?: number; s?: number }) => {
+  const rememberTracks = useCallback((patch: { a?: number; s?: number; d?: number }) => {
     const key = txMemKeyRef.current;
     if (!key) return;
-    void getSetting<Record<string, { a: number; s: number; at: number }>>("tx.tracks", {})
+    void getSetting<Record<string, { a: number; s: number; d?: number; at: number }>>("tx.tracks", {})
       .then((m) => {
-        const cur = { a: patch.a ?? txMemRef.current?.a ?? 0, s: patch.s ?? txMemRef.current?.s ?? -1, at: Date.now() };
+        const cur = { a: patch.a ?? txMemRef.current?.a ?? 0, s: patch.s ?? txMemRef.current?.s ?? -1, d: patch.d ?? txMemRef.current?.d ?? 0, at: Date.now() };
         txMemRef.current = cur;
         const kept = Object.entries({ ...m, [key]: cur }).sort((x, y) => y[1].at - x[1].at).slice(0, 60);
-        return setSetting("tx.tracks", Object.fromEntries(kept) as Record<string, { a: number; s: number; at: number }>);
+        return setSetting("tx.tracks", Object.fromEntries(kept) as Record<string, { a: number; s: number; d?: number; at: number }>);
       })
       .catch(() => undefined);
   }, []);
@@ -1042,6 +1045,17 @@ export function PlayerHost() {
       .catch(() => { /* sans base : le décalage du départ demandé reste utilisé */ });
   }, [originUrl, proxyHeaders, applySubs]);
   useEffect(() => { warmBaseRef.current = warmBase; });
+
+  /** Décalage manuel des sous-titres de l'épisode (±250 ms par clic, borné ±10 s) : appliqué aussitôt et
+   * mémorisé avec les pistes — réapliqué à la réouverture. Positif retarde les repères. */
+  const [subShift, setSubShift] = useState(0);
+  const nudgeSubs = useCallback((delta: number) => {
+    const d = nudgeShift(txMemRef.current?.d ?? 0, delta);
+    if (txMemRef.current) txMemRef.current = { ...txMemRef.current, d };
+    setSubShift(d);
+    rememberTracks({ d });
+    applySubs();
+  }, [rememberTracks, applySubs]);
 
   /** Saut à une position (s). Conversion audio en cours : le flux n'est pas cherchable, la conversion repart de là. */
   const seekTo = useCallback((sec: number) => {
@@ -1715,6 +1729,13 @@ export function PlayerHost() {
                   {xinfo.subs.map((a) => <button key={a.i} className="opt" role="radio" aria-checked={xText === a.i} onClick={() => selectSub(a.i)}>{a.title || trackLabel({ lang: a.lang }, a.i, usePrefs.getState().lang)}<span className="h">{a.lang}</span></button>)}
                   {subLoading && <div className="muted" role="status">{t("player.subtitlesLoading")}</div>}
                   {subFail && <div className="muted" role="status">{t("player.subtitlesFailed")}</div>}
+                  {xText >= 0 && (
+                    <div className="subshift">
+                      <button className="opt" aria-label={t("player.subsEarlier")} onClick={() => nudgeSubs(-0.25)}>-</button>
+                      <span className="v" title={t("player.subShift")}>{fmtShiftMs(subShift)}</span>
+                      <button className="opt" aria-label={t("player.subsLater")} onClick={() => nudgeSubs(0.25)}>+</button>
+                    </div>
+                  )}
                 </>
               )}
               {tracks.audio.length > 1 && (

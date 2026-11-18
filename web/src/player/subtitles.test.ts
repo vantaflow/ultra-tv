@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { flattenOverlaps, parseVtt, shiftCues, vttTime } from "./subtitles";
+import { flattenOverlaps, fmtShiftMs, nudgeShift, parseVtt, shiftCues, vttTime } from "./subtitles";
 
 describe("sous-titres WebVTT (bureau)", () => {
   it("temps avec et sans heures", () => {
@@ -26,5 +26,16 @@ describe("sous-titres WebVTT (bureau)", () => {
     // Sans chevauchement important : inchangé (le léger battement ne coupe rien).
     const ok = [{ start: 1, end: 2, text: "a" }, { start: 2, end: 3, text: "b" }];
     expect(flattenOverlaps(ok)).toEqual(ok);
+  });
+
+  it("borde le décalage manuel (±10 s, pas de 250 ms)", () => {
+    expect(nudgeShift(0, 0.25)).toBe(0.25);
+    expect(nudgeShift(0, -0.25)).toBe(-0.25);
+    expect(nudgeShift(0.1, 0.25)).toBe(0.25);
+    expect(nudgeShift(10, 0.25)).toBe(10);
+    expect(nudgeShift(-10, -0.25)).toBe(-10);
+    expect(fmtShiftMs(0)).toBe("0 ms");
+    expect(fmtShiftMs(0.25)).toBe("+250 ms");
+    expect(fmtShiftMs(-0.5)).toBe("-500 ms");
   });
 });
