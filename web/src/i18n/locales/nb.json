@@ -172,6 +172,7 @@
   "fav.exportDone": "Kanaler eksportert: {n}",
   "fav.exportNone": "Ingen favorittkanal kan eksporteres: lenkene til denne kilden fungerer bare i Ultra TV.",
   "fav.exportFailed": "Eksporten mislyktes",
+  "fav.allSources": "Alle kilder",
   "player.live": "Direkte",
   "player.pause": "Pause",
   "player.back10": "Tilbake 10 sekunder",

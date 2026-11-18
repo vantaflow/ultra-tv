@@ -243,6 +243,14 @@ interface ChannelDao {
     """)
     fun observeFavoritesTop(pid: Long, limit: Int, profileId: Long): Flow<List<ChannelEntity>>
 
+    /** Favoris du profil de PLUSIEURS sources (écran Favoris « Toutes les sources ») : même requête, bornée par [limit] au total. */
+    @Query("""
+        SELECT c.* FROM channel c
+        JOIN favorite f ON f.profileId = :profileId AND f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
+        WHERE c.providerId IN (:pids) AND c.isSeparator = 0 ORDER BY c.providerId, c.num, c.id LIMIT :limit
+    """)
+    fun observeFavoritesTopIn(pids: List<Long>, limit: Int, profileId: Long): Flow<List<ChannelEntity>>
+
     @Query("SELECT lang AS lang, COUNT(*) AS n FROM channel WHERE providerId = :pid AND junk = 0 AND isSeparator = 0 GROUP BY lang")
     fun observeLangCounts(pid: Long): Flow<List<LangCount>>
 

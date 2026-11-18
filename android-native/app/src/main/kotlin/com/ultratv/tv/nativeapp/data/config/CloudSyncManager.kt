@@ -219,8 +219,8 @@ class CloudSyncManager @Inject constructor(
     /** Échange l'état d'une source ; renvoie vrai si des changements venus d'un autre appareil ont été appliqués. */
     private suspend fun syncStateOf(base: String, pid: Long, cid: String): Boolean {
         val profiles = db.profileDao().observeAll().first().ifEmpty { listOf(com.ultratv.tv.nativeapp.data.profile.ProfileEntity(id = 1, name = "Principal", color = 0, initial = "P")) }
-        val nameOf = profiles.associate { it.id to it.name.trim() }
-        val idOf = profiles.associate { it.name.trim().lowercase() to it.id }
+        val nameOf = SharedStateLogic.nameOf(profiles.map { it.id to it.name })
+        val idOf = SharedStateLogic.idOf(profiles.map { it.id to it.name })
         val now = System.currentTimeMillis()
         // Favoris : état connu (dernier échange) mis à jour par l'état local (ajouts, retraits = tombes).
         val known = links.stateFavs(cid)?.let { SharedStateLogic.parseFavs(runCatching { org.json.JSONArray(it) }.getOrNull()) }.orEmpty().associateBy { it.key }

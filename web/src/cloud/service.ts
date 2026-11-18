@@ -22,6 +22,8 @@ import { cadence, pushGate } from "./cadence";
 import { syncSourceState } from "./sharedState";
 import { onLocalProfilesChanged, syncProfiles } from "./profilesSync";
 import { setPosterFinder } from "@/lib/posterFallback";
+import { mapperFor } from "./idmapLoad";
+import type { IdMapper } from "./idmap";
 import { createBatcher, foreignHidden, fromPrefs, hiddenFromWire, planChOrder, shouldApply, toPrefs } from "./prefs";
 import { applyOrders, listOrders, setOrderListener } from "@/db/channelOrder";
 import { applyProfileHidden, listProfileHidden, setProfileHiddenListener } from "@/db/profileCategories";
@@ -261,16 +263,17 @@ async function localChOrder(sourceId: number) {
 }
 
 /** Catégories masquées par profil de la source, par NOM de profil (les profils supprimés ici sont ignorés). */
-async function localPHidden(sourceId: number) {
+async function localPHidden(sourceId: number, map: IdMapper) {
   const names = new Map(sharedProfiles().map((p) => [p.id, p.name]));
-  return (await listProfileHidden(sourceId)).filter((r) => names.has(r.profile) && r.ids.length).map((r) => ({ profile: names.get(r.profile)!, kind: r.kind, ids: r.ids }));
+  return (await listProfileHidden(sourceId)).filter((r) => names.has(r.profile) && r.ids.length).map((r) => ({ profile: names.get(r.profile)!, kind: r.kind, ids: r.ids.map((x) => map.catOut(r.kind, x)) }));
 }
 
 /** Applique des réglages reçus à une source (sans jamais republier). Retourne true si le catalogue chargé doit être relu. */
 export async function applyPrefsTo(s: Source, prefs: CloudPrefs): Promise<boolean> {
   const cats = await catsOf(s.cid);
   if (!cats.length) return false; // catalogue pas encore là : réessayé après la première synchro
-  const plan = fromPrefs(prefs, cats);
+  const map = await mapperFor(s);
+  const plan = fromPrefs(prefs, cats, map);
   const ups = new Map<number, { enabled?: 0 | 1; ord?: number }>();
   for (const c of plan.changes) ups.set(c.id, { ...ups.get(c.id), enabled: c.enabled });
   for (const o of plan.ords) ups.set(o.id, { ...ups.get(o.id), ord: o.ord });
@@ -278,19 +281,21 @@ export async function applyPrefsTo(s: Source, prefs: CloudPrefs): Promise<boolea
   let reshow = false;
   // Champs facultatifs : absents = appareil plus ancien, on ne touche à rien.
   if (prefs.hidden) {
-    await setSetting(foreignKey(s.cloudId!, "hidden"), foreignHidden(prefs.hidden));
-    reshow = (await replaceHidden(s.id!, hiddenFromWire(prefs.hidden))) > 0;
+    await setSetting(foreignKey(s.cloudId!, "hidden"), foreignHidden(prefs.hidden, map));
+    reshow = (await replaceHidden(s.id!, hiddenFromWire(prefs.hidden, map))) > 0;
     const removed = await removeHiddenFromCatalog(s.cid, s.id!);
     if (removed) { const cur = await getSource(s.id!); if (cur) await db.sources.update(s.id!, { counts: { ...cur.counts, live: Math.max(0, cur.counts.live - removed) } }); }
   }
   if (prefs.chOrder) {
-    const p = planChOrder(prefs.chOrder, sharedProfiles(), await listOrders(s.id!));
+    const p = planChOrder(prefs.chOrder, sharedProfiles(), await listOrders(s.id!), map);
     await applyOrders(s.id!, p.put, p.remove);
     await setSetting(foreignKey(s.cloudId!, "chOrder"), p.foreign);
   }
   if (prefs.pHidden) {
     // Profils locaux rattachés par nom ; ceux sans entrée reçue n'ont plus aucune catégorie masquée ; profils inconnus : gardés pour le renvoi.
     const p = planPHidden(prefs.pHidden, sharedProfiles());
+    // Identifiants de catégories du compte -> locaux (« g:groupe » -> « groupe » pour une playlist M3U).
+    for (const r of p.byProfile.values()) for (const k of ["live", "movie", "series"] as const) r[k] = r[k].map((x) => map.catIn(k, x));
     await applyProfileHidden(s.id!, p.byProfile);
     await setSetting(foreignKey(s.cloudId!, "pHidden"), p.foreign);
   }
@@ -329,8 +334,9 @@ export async function publishPrefs(sourceId: number): Promise<PublishOutcome> {
   const token = await getToken();
   if (!token) return "skipped";
   try {
-    const prefs = toPrefs(s.langs, await catsOf(s.cid), Date.now(), { hidden: await listHidden(s.id!), chOrder: await localChOrder(s.id!),
-      pHidden: await localPHidden(s.id!), keepPHidden: await getSetting(foreignKey(s.cloudId, "pHidden"), []),
+    const map = await mapperFor(s);
+    const prefs = toPrefs(s.langs, await catsOf(s.cid), Date.now(), { map, hidden: await listHidden(s.id!), chOrder: await localChOrder(s.id!),
+      pHidden: await localPHidden(s.id!, map), keepPHidden: await getSetting(foreignKey(s.cloudId, "pHidden"), []),
       keepHidden: await getSetting(foreignKey(s.cloudId, "hidden"), []), keepChOrder: await getSetting(foreignKey(s.cloudId, "chOrder"), []) });
     const r = await putPrefs(st.worker, token, s.cloudId, prefs);
     if (r.status === "ok") { await setSetting(prefsAtKey(s.cloudId), prefs.updatedAt); return "sent"; }

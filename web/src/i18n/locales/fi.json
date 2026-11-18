@@ -172,6 +172,7 @@
   "fav.exportDone": "Kanavia viety: {n}",
   "fav.exportNone": "Suosikkikanavia ei voi viedä: tämän lähteen linkit toimivat vain Ultra TV:n sisällä.",
   "fav.exportFailed": "Vienti epäonnistui",
+  "fav.allSources": "Kaikki lähteet",
   "player.live": "Suora",
   "player.pause": "Tauko",
   "player.back10": "Taakse 10 sekuntia",

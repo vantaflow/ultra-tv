@@ -1920,4 +1920,5 @@
     <string name="mc_edit">Editar</string>
     <string name="mc_badge">Manual</string>
     <string name="mc_bad_url">Endereço inválido</string>
+    <string name="ds_fav_all_sources">Todas as fontes</string>
 </resources>

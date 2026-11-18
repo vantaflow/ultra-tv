@@ -1882,4 +1882,5 @@
     <string name="mc_edit">แก้ไข</string>
     <string name="mc_badge">ด้วยตนเอง</string>
     <string name="mc_bad_url">ที่อยู่ไม่ถูกต้อง</string>
+    <string name="ds_fav_all_sources">ทุกแหล่งที่มา</string>
 </resources>

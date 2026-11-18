@@ -60,6 +60,9 @@ class ProfileRepository(
     /** Recherche dans toutes les sources visibles du profil courant. */
     val currentSearchAll: Flow<Boolean> = currentPrefs.map { it.searchAllSources == true }.distinctUntilChanged()
 
+    /** Écran Favoris du profil courant : favoris de toutes les sources visibles réunis (choix mémorisé par profil). */
+    val currentFavAll: Flow<Boolean> = currentPrefs.map { it.favAllSources == true }.distinctUntilChanged()
+
     /** Espace Sport du profil courant : ligues (ordre et masquage, codage de LeaguePrefs) et mode sans spoiler. */
     val currentSportLeagues: Flow<String?> = currentPrefs.map { it.sportLeagues }.distinctUntilChanged()
     val currentSportNoSpoiler: Flow<Boolean> = currentPrefs.map { it.sportNoSpoiler == true }.distinctUntilChanged()
@@ -166,6 +169,8 @@ class ProfileRepository(
     }
 
     suspend fun setSearchAll(on: Boolean) = putPref(ProfilePrefs.SEARCH_ALL, on.toString())
+
+    suspend fun setFavAll(on: Boolean) = putPref(ProfilePrefs.FAV_ALL, on.toString())
 
     suspend fun setSportLeagues(encoded: String?) {
         if (encoded.isNullOrEmpty()) dao.removePref(currentIdNow, ProfilePrefs.SPORT_LEAGUES) else putPref(ProfilePrefs.SPORT_LEAGUES, encoded)

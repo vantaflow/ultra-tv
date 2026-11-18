@@ -13,6 +13,18 @@ data class SharedHist(val p: String, val k: String, val r: String, val t: String
 
 /** Règles pures de l'état partagé (favoris, reprises) : testables sans Android. */
 object SharedStateLogic {
+    /** Nom du profil par défaut sans nom, partagé avec le bureau (qui applique la même règle). */
+    const val DEFAULT_PROFILE = "Principal"
+
+    /** Nom partagé d'un profil : rogné, « Principal » s'il est vide (sinon le bureau et la TV ne se rapprochaient pas). */
+    fun profileName(raw: String): String = raw.trim().ifBlank { DEFAULT_PROFILE }
+
+    /** Identifiant -> nom partagé. */
+    fun nameOf(profiles: List<Pair<Long, String>>): Map<Long, String> = profiles.associate { (id, n) -> id to profileName(n) }
+
+    /** Nom partagé (sans casse) -> identifiant. */
+    fun idOf(profiles: List<Pair<Long, String>>): Map<String, Long> = profiles.associate { (id, n) -> profileName(n).lowercase() to id }
+
     /**
      * Met à jour l'état connu des favoris à partir de l'état local : un favori apparu est « on » maintenant,
      * un favori disparu devient une tombe datée de maintenant (sinon un autre appareil le recréerait).

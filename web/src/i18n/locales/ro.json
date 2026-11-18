@@ -176,6 +176,7 @@
   "fav.exportDone": "Canale exportate: {n}",
   "fav.exportNone": "Niciun canal favorit nu poate fi exportat: linkurile acestei surse funcționează doar în Ultra TV.",
   "fav.exportFailed": "Exportul a eșuat",
+  "fav.allSources": "Toate sursele",
   "player.live": "Direct",
   "player.pause": "Pauză",
   "player.back10": "Înapoi 10 secunde",

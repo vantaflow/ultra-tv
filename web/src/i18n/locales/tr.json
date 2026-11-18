@@ -172,6 +172,7 @@
   "fav.exportDone": "Dışa aktarılan kanal: {n}",
   "fav.exportNone": "Dışa aktarılabilecek favori kanal yok: bu kaynağın bağlantıları yalnızca Ultra TV içinde çalışır.",
   "fav.exportFailed": "Dışa aktarma başarısız",
+  "fav.allSources": "Tüm kaynaklar",
   "player.live": "Canlı",
   "player.pause": "Duraklat",
   "player.back10": "10 saniye geri",

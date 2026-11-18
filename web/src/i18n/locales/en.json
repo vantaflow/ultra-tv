@@ -172,6 +172,7 @@
   "fav.exportDone": "Channels exported: {n}",
   "fav.exportNone": "No favorite channel can be exported: the links of this source only work inside Ultra TV.",
   "fav.exportFailed": "Export failed",
+  "fav.allSources": "All sources",
   "player.live": "Live",
   "player.pause": "Pause",
   "player.back10": "Back 10 seconds",

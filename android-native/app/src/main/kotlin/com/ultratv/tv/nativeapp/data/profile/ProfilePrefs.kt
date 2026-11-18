@@ -36,6 +36,8 @@ data class ProfilePrefs(
     val sources: List<String>? = null,
     /** Recherche dans toutes les sources visibles du profil (et non la seule source active) ; local à l'appareil. */
     val searchAllSources: Boolean? = null,
+    /** Écran Favoris : favoris de toutes les sources visibles du profil réunis (et non ceux de la seule source active) ; local à l'appareil. */
+    val favAllSources: Boolean? = null,
     /** Espace Sport : ligues dans l'ordre choisi, les masquées préfixées de « - » (codage de LeaguePrefs) ; null = ordre par défaut. */
     val sportLeagues: String? = null,
     /** Espace Sport : mode sans spoiler (scores masqués jusqu'à ce qu'on les affiche) ; null = désactivé. */
@@ -78,6 +80,7 @@ data class ProfilePrefs(
         const val SCREEN_TIME = "screen_time"
         const val SOURCES = "sources"
         const val SEARCH_ALL = "search_all"
+        const val FAV_ALL = "fav_all"
         const val SPORT_LEAGUES = "sport_leagues"
         const val SPORT_NO_SPOILER = "sport_no_spoiler"
 
@@ -100,6 +103,7 @@ data class ProfilePrefs(
             screenTime = m[SCREEN_TIME]?.takeIf { it.isNotEmpty() },
             sources = ProfileSourcesRules.decode(m[SOURCES]),
             searchAllSources = m[SEARCH_ALL]?.toBooleanStrictOrNull(),
+            favAllSources = m[FAV_ALL]?.toBooleanStrictOrNull(),
             sportLeagues = m[SPORT_LEAGUES]?.takeIf { it.isNotEmpty() },
             sportNoSpoiler = m[SPORT_NO_SPOILER]?.toBooleanStrictOrNull(),
         )

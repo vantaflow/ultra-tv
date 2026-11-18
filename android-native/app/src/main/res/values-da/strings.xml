@@ -1902,4 +1902,5 @@
     <string name="mc_edit">Rediger</string>
     <string name="mc_badge">Manuel</string>
     <string name="mc_bad_url">Ugyldig adresse</string>
+    <string name="ds_fav_all_sources">Alle kilder</string>
 </resources>

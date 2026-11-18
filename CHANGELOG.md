@@ -11,9 +11,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Ajouté
 - Bureau : jauge de volume verticale (avec le pourcentage) au survol de l'icône son, et croix de fermeture sur le panneau latéral du lecteur.
+- Favoris : puce « Toutes les sources » (Android et bureau) pour voir les favoris de toutes les sources du profil au même endroit, sans changer de source active ; la source est indiquée sur chaque élément, le choix est mémorisé par profil et le zapping suit la liste réunie.
 
 ### Corrigé
 - Bureau : les sous-titres des fichiers convertis ne dérivent plus après une reprise ou un saut. Vidéo et sous-titres gardent les temps du fichier, et les repères s'alignent sur la vraie image-clé de départ de la conversion, y compris quand ils viennent du cache. Les repères qui se chevauchaient ne s'empilent plus sur deux lignes.
+- Synchronisation du compte entre la TV Android et l'ordinateur : favoris, reprises, catégories, chaînes masquées et ordre des chaînes se retrouvent maintenant des deux côtés pour les playlists M3U et les portails Stalker (identifiants traduits à la frontière du compte) ; un profil sans nom s'appelle « Principal » sur la TV comme sur l'ordinateur
 
 ## [1.3.57] — 2026-11-18 (Android)
 

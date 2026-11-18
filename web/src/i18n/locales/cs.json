@@ -180,6 +180,7 @@
   "fav.exportDone": "Exportováno kanálů: {n}",
   "fav.exportNone": "Nelze exportovat žádný oblíbený kanál: odkazy tohoto zdroje fungují jen uvnitř Ultra TV.",
   "fav.exportFailed": "Export selhal",
+  "fav.allSources": "Všechny zdroje",
   "player.live": "Živě",
   "player.pause": "Pozastavit",
   "player.back10": "Zpět o 10 sekund",

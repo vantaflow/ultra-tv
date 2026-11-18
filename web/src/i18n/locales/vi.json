@@ -172,6 +172,7 @@
   "fav.exportDone": "Đã xuất kênh: {n}",
   "fav.exportNone": "Không có kênh yêu thích nào xuất được: liên kết của nguồn này chỉ dùng được trong Ultra TV.",
   "fav.exportFailed": "Xuất thất bại",
+  "fav.allSources": "Tất cả nguồn",
   "player.live": "Trực tiếp",
   "player.pause": "Tạm dừng",
   "player.back10": "Lùi 10 giây",

@@ -2,7 +2,8 @@
 // bloquer l'interface, même avec 55 000 chaînes, 180 000 films et 48 000 séries.
 // Lecture en flux (net/json.ts) + écriture par lots dans IndexedDB.
 
-import { clearCatalog, db, nextCid, purgeOrphanGenerations, setGenerationPending } from "@/db/db";
+import { clearCatalog, db, nextCid, purgeOrphanGenerations, setGenerationPending, setSetting } from "@/db/db";
+import { m3uTvgKey, packTvgIds, type M3uTvgStore } from "@/cloud/idmapLoad";
 import { removeHiddenFromCatalog } from "@/db/hidden";
 import { injectManual } from "@/db/manual";
 import { mergeCategoryOrder } from "@/lib/categoryOrder";
@@ -861,5 +862,8 @@ async function syncM3u({ source, cid: sourceId, counts, report }: Ctx, t: Transp
   for (let i = 0; i < details.length; i += 2000) await db.details.bulkPut(details.slice(i, i + 2000));
   counts.movie = movies.length; counts.series = series.length;
   await db.categories.bulkAdd([...cats, ...vodCats.values()].map((c, ord) => ({ ...c, ord: c.kind === "live" ? c.ord : ord })));
+  // tvg-id de CHAQUE entrée, dans l'ordre du fichier : sert à retrouver l'identifiant Android d'une entrée (synchro cloud des favoris,
+  // reprises et réglages), y compris pour les chaînes masquées, retirées du catalogue.
+  if (source.id != null) await setSetting(m3uTvgKey(source.id), { cid: sourceId, tvg: packTvgIds(entries.map((e) => e.tvgId)) } satisfies M3uTvgStore);
   report("live", 1, true);
 }

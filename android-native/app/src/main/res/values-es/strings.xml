@@ -1918,4 +1918,5 @@
     <string name="mc_edit">Editar</string>
     <string name="mc_badge">A mano</string>
     <string name="mc_bad_url">Dirección no válida</string>
+    <string name="ds_fav_all_sources">Todas las fuentes</string>
 </resources>
