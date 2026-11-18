@@ -1045,6 +1045,35 @@ export function PlayerHost() {
       })
       .catch(() => { /* sans base : le décalage du départ demandé reste utilisé */ });
   }, [originUrl, proxyHeaders, applySubs]);
+  /**
+   * Minuteur d'arrêt de la lecture (veille) : ferme le lecteur à l'échéance — la connexion au fournisseur est
+   * libérée au lieu de rester vivante toute la nuit. Choix par tranche de 30/60/120 min, un second clic annule.
+   */
+  const [sleepTimer, setSleepTimer] = useState(0);
+  const [sleepAt, setSleepAt] = useState<number | null>(null);
+  const [, setSleepTick] = useState(0);
+  const armSleep = useCallback((minutes: number) => {
+    setSleepTimer(minutes);
+    setSleepAt(minutes > 0 ? Date.now() + minutes * 60_000 : null);
+  }, []);
+  useEffect(() => {
+    if (sleepAt === null) return;
+    const iv = window.setInterval(() => {
+      if (Date.now() >= (sleepAt ?? 0)) { setSleepAt(null); setSleepTimer(0); usePlayer.getState().close(); }
+      else setSleepTick((x) => x + 1);
+    }, 5000);
+    return () => window.clearInterval(iv);
+  }, [sleepAt]);
+
+  /** Efface ce que le lecteur a mémorisé (pistes et décalages par épisode, sous-titres extraits en cache) :
+   * panacée quand un choix se comporte bizarrement, sans toucher aux sources ni aux réglages. */
+  const clearPlayerMemory = useCallback(async () => {
+    txMemRef.current = null;
+    setSubShift(0);
+    await Promise.allSettled([setSetting("tx.tracks", {}), setSetting("tx.subsAbs", {})]);
+    setPanel(null);
+  }, []);
+
   useEffect(() => { warmBaseRef.current = warmBase; });
 
   /** Décalage manuel des sous-titres de l'épisode (±250 ms par clic, borné ±10 s) : appliqué aussitôt et
@@ -1484,7 +1513,7 @@ export function PlayerHost() {
   return (
     <div
       ref={wrapRef}
-      className={`player ${full ? "full" : "inline"}${showUi ? " ui" : ""}${!showUi && full && banner && live ? " banner" : ""}${!showUi && full && !(banner && live) ? " nocursor" : ""}`}
+      className={`player ${full ? "full" : "inline"}${showUi ? " ui" : ""}${!showUi && full && banner && live ? " banner" : ""}${!showUi && full && !(banner && live) ? " nocursor" : ""} subs-${prefs.subsSize} subsb-${prefs.subsStyle}`}
       style={style}
       onMouseMove={onMove}
       onMouseOver={holdOver}
@@ -1764,6 +1793,18 @@ export function PlayerHost() {
                   {t(f === "contain" ? "player.fitContain" : f === "cover" ? "player.fitCover" : "player.fitFill")}
                 </button>
               ))}
+              <div className="grp-t">{t("player.subsSize")}</div>
+              {(["small", "normal", "large", "xlarge"] as const).map((s) => (
+                <button key={s} className="opt" role="radio" aria-checked={prefs.subsSize === s} onClick={() => prefs.set({ subsSize: s })}>
+                  {s === "small" ? "85 %" : s === "large" ? "125 %" : s === "xlarge" ? "150 %" : "100 %"}
+                </button>
+              ))}
+              <div className="grp-t">{t("player.subsStyleG")}</div>
+              {(["outline", "box"] as const).map((s) => (
+                <button key={s} className="opt" role="radio" aria-checked={prefs.subsStyle === s} onClick={() => prefs.set({ subsStyle: s })}>
+                  {t(s === "outline" ? "player.subsOutline" : "player.subsBox")}
+                </button>
+              ))}
               {!live && (
                 <>
                   <div className="grp-t">{t("player.speed")}</div>
@@ -1800,6 +1841,19 @@ export function PlayerHost() {
               </div>
               <div className="grp-t">{t("player.stats")}</div>
               <button className="opt" onClick={() => setPanel("stats")}>{t("player.stats")}<Icon name="chevron" size={16} /></button>
+              <div className="grp-t">{t("player.sleepTimer")}</div>
+              <div className="row2">
+                {[30, 60, 120].map((m) => {
+                  const left = sleepAt !== null ? Math.max(0, Math.ceil((sleepAt - Date.now()) / 60000)) : 0;
+                  return (
+                    <button key={m} className="opt" role="radio" aria-checked={sleepTimer === m} onClick={() => armSleep(sleepTimer === m ? 0 : m)}>
+                      {sleepTimer === m && sleepAt !== null && left > 0 ? `${left} min` : `${m} min`}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="grp-t">{t("player.memory")}</div>
+              <button className="opt" onClick={() => void clearPlayerMemory()}>{t("player.memoryReset")}</button>
             </>
           )}
           {panel === "stats" && stats && (
