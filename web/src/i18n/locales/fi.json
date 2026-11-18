@@ -900,5 +900,17 @@
   "sport.back": "Takaisin",
   "sport.okHint": "OK ottelussa: ottelukortti tai toisto",
   "sport.noEvents": "Ei vielä kohokohtia.",
-  "sport.tableHidden": "Sarjataulukko piilotettu spoilerittomassa tilassa."
+  "sport.tableHidden": "Sarjataulukko piilotettu spoilerittomassa tilassa.",
+  "mc.add": "Lisää kanava",
+  "mc.editTitle": "Muokkaa kanavaa",
+  "mc.sub": "Lisätty käsin tähän lähteeseen ja säilytetään jokaisen synkronoinnin jälkeen",
+  "mc.name": "Kanavan nimi",
+  "mc.url": "Lähetyksen osoite",
+  "mc.logo": "Logon osoite (valinnainen)",
+  "mc.epg": "Oppaan tunnus, tvg-id (valinnainen)",
+  "mc.category": "Luokka",
+  "mc.catCustom": "Omat kanavani",
+  "mc.badge": "Käsin lisätty",
+  "mc.badUrl": "Virheellinen osoite",
+  "mc.deleteSure": "Poistetaanko?"
 }

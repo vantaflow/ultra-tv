@@ -1831,4 +1831,20 @@
     <string name="sport_no_events">Ei vielä kohokohtia.</string>
     <string name="sport_table_hidden">Sarjataulukko piilotettu spoilerittomassa tilassa.</string>
     <string name="mlib_cloud_failed">Verkkosivulta lisättyä kirjastoa “%1$s” ei saatu yhdistettyä. TV yrittää uudelleen seuraavassa synkronoinnissa. Tarkista, että palvelin on tavoitettavissa.</string>
+    <!-- ui/categories/ManualChannelStrings.kt -->
+    <string name="mc_add">Lisää kanava</string>
+    <string name="mc_edit_title">Muokkaa kanavaa</string>
+    <string name="mc_sub">Lisätty käsin tähän lähteeseen ja säilytetään jokaisen synkronoinnin jälkeen</string>
+    <string name="mc_name">Kanavan nimi</string>
+    <string name="mc_url">Lähetyksen osoite</string>
+    <string name="mc_logo">Logon osoite (valinnainen)</string>
+    <string name="mc_epg">Oppaan tunnus, tvg-id (valinnainen)</string>
+    <string name="mc_category">Luokka</string>
+    <string name="mc_cat_custom">Omat kanavani</string>
+    <string name="mc_cat_hint">OK: seuraava luokka</string>
+    <string name="mc_save">Tallenna</string>
+    <string name="mc_delete">Poista tämä kanava</string>
+    <string name="mc_edit">Muokkaa</string>
+    <string name="mc_badge">Käsin lisätty</string>
+    <string name="mc_bad_url">Virheellinen osoite</string>
 </resources>

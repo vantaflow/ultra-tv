@@ -1866,4 +1866,20 @@
     <string name="sport_no_events">ยังไม่มีช่วงเด็ด</string>
     <string name="sport_table_hidden">ซ่อนตารางคะแนนในโหมดไม่สปอยล์</string>
     <string name="mlib_cloud_failed">เชื่อมต่อคลัง “%1$s” ที่เพิ่มจากเว็บไซต์ไม่สำเร็จ ทีวีจะลองใหม่เมื่อซิงก์ครั้งถัดไป โปรดตรวจสอบว่าเซิร์ฟเวอร์เข้าถึงได้</string>
+    <!-- ui/categories/ManualChannelStrings.kt -->
+    <string name="mc_add">เพิ่มช่อง</string>
+    <string name="mc_edit_title">แก้ไขช่อง</string>
+    <string name="mc_sub">เพิ่มด้วยตนเองในแหล่งนี้ และคงไว้หลังการซิงค์ทุกครั้ง</string>
+    <string name="mc_name">ชื่อช่อง</string>
+    <string name="mc_url">URL ของสตรีม</string>
+    <string name="mc_logo">URL ของโลโก้ (ไม่บังคับ)</string>
+    <string name="mc_epg">ID ของผังรายการ tvg-id (ไม่บังคับ)</string>
+    <string name="mc_category">หมวดหมู่</string>
+    <string name="mc_cat_custom">ช่องของฉัน</string>
+    <string name="mc_cat_hint">OK: หมวดหมู่ถัดไป</string>
+    <string name="mc_save">บันทึก</string>
+    <string name="mc_delete">ลบช่องนี้</string>
+    <string name="mc_edit">แก้ไข</string>
+    <string name="mc_badge">ด้วยตนเอง</string>
+    <string name="mc_bad_url">ที่อยู่ไม่ถูกต้อง</string>
 </resources>

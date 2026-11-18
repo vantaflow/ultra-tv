@@ -900,5 +900,17 @@
   "sport.back": "Tilbage",
   "sport.okHint": "OK på en kamp: kampside eller afspilning",
   "sport.noEvents": "Ingen højdepunkter endnu.",
-  "sport.tableHidden": "Stillingen er skjult i tilstanden uden spoilere."
+  "sport.tableHidden": "Stillingen er skjult i tilstanden uden spoilere.",
+  "mc.add": "Tilføj en kanal",
+  "mc.editTitle": "Rediger kanalen",
+  "mc.sub": "Tilføjet manuelt til denne kilde og bevaret efter hver synkronisering",
+  "mc.name": "Kanalnavn",
+  "mc.url": "Stream-URL",
+  "mc.logo": "Logo-URL (valgfrit)",
+  "mc.epg": "Guide-ID, tvg-id (valgfrit)",
+  "mc.category": "Kategori",
+  "mc.catCustom": "Mine kanaler",
+  "mc.badge": "Manuel",
+  "mc.badUrl": "Ugyldig adresse",
+  "mc.deleteSure": "Slet?"
 }

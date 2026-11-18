@@ -1886,4 +1886,20 @@
     <string name="sport_no_events">Ingen højdepunkter endnu.</string>
     <string name="sport_table_hidden">Stillingen er skjult i tilstanden uden spoilere.</string>
     <string name="mlib_cloud_failed">Biblioteket “%1$s”, der blev tilføjet fra webstedet, kunne ikke tilsluttes. TV\'et prøver igen ved næste synkronisering. Kontrollér, at serveren kan nås.</string>
+    <!-- ui/categories/ManualChannelStrings.kt -->
+    <string name="mc_add">Tilføj en kanal</string>
+    <string name="mc_edit_title">Rediger kanalen</string>
+    <string name="mc_sub">Tilføjet manuelt til denne kilde og bevaret efter hver synkronisering</string>
+    <string name="mc_name">Kanalnavn</string>
+    <string name="mc_url">Stream-URL</string>
+    <string name="mc_logo">Logo-URL (valgfrit)</string>
+    <string name="mc_epg">Guide-ID, tvg-id (valgfrit)</string>
+    <string name="mc_category">Kategori</string>
+    <string name="mc_cat_custom">Mine kanaler</string>
+    <string name="mc_cat_hint">OK: næste kategori</string>
+    <string name="mc_save">Gem</string>
+    <string name="mc_delete">Slet denne kanal</string>
+    <string name="mc_edit">Rediger</string>
+    <string name="mc_badge">Manuel</string>
+    <string name="mc_bad_url">Ugyldig adresse</string>
 </resources>

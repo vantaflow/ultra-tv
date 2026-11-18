@@ -899,5 +899,17 @@
   "sport.back": "Quay lại",
   "sport.okHint": "OK trên một trận: thẻ trận hoặc phát",
   "sport.noEvents": "Chưa có diễn biến chính.",
-  "sport.tableHidden": "Bảng xếp hạng bị ẩn ở chế độ không spoiler."
+  "sport.tableHidden": "Bảng xếp hạng bị ẩn ở chế độ không spoiler.",
+  "mc.add": "Thêm kênh",
+  "mc.editTitle": "Sửa kênh",
+  "mc.sub": "Được thêm thủ công vào nguồn này và giữ lại sau mỗi lần đồng bộ",
+  "mc.name": "Tên kênh",
+  "mc.url": "Địa chỉ luồng",
+  "mc.logo": "Địa chỉ logo (tùy chọn)",
+  "mc.epg": "ID hướng dẫn, tvg-id (tùy chọn)",
+  "mc.category": "Danh mục",
+  "mc.catCustom": "Kênh của tôi",
+  "mc.badge": "Thủ công",
+  "mc.badUrl": "Địa chỉ không hợp lệ",
+  "mc.deleteSure": "Xóa?"
 }

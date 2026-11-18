@@ -901,5 +901,17 @@
   "sport.back": "Voltar",
   "sport.okHint": "OK em um jogo: súmula ou reprodução",
   "sport.noEvents": "Ainda sem lances importantes.",
-  "sport.tableHidden": "Classificação oculta no modo sem spoilers."
+  "sport.tableHidden": "Classificação oculta no modo sem spoilers.",
+  "mc.add": "Adicionar um canal",
+  "mc.editTitle": "Editar o canal",
+  "mc.sub": "Adicionado manualmente a esta fonte e mantido após cada sincronização",
+  "mc.name": "Nome do canal",
+  "mc.url": "URL da transmissão",
+  "mc.logo": "URL do logotipo (opcional)",
+  "mc.epg": "ID do guia, tvg-id (opcional)",
+  "mc.category": "Categoria",
+  "mc.catCustom": "Meus canais",
+  "mc.badge": "Manual",
+  "mc.badUrl": "Endereço inválido",
+  "mc.deleteSure": "Excluir?"
 }

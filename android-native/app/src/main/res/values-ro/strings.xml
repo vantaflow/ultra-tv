@@ -1905,4 +1905,20 @@
     <string name="sport_no_events">Încă nu există faze importante.</string>
     <string name="sport_table_hidden">Clasament ascuns în modul fără spoilere.</string>
     <string name="mlib_cloud_failed">Biblioteca „%1$s” adăugată de pe site nu a putut fi conectată. Televizorul va reîncerca la următoarea sincronizare. Verificați dacă serverul este accesibil.</string>
+    <!-- ui/categories/ManualChannelStrings.kt -->
+    <string name="mc_add">Adaugă un canal</string>
+    <string name="mc_edit_title">Editează canalul</string>
+    <string name="mc_sub">Adăugat manual la această sursă și păstrat după fiecare sincronizare</string>
+    <string name="mc_name">Numele canalului</string>
+    <string name="mc_url">Adresa fluxului</string>
+    <string name="mc_logo">Adresa siglei (opțional)</string>
+    <string name="mc_epg">ID ghid, tvg-id (opțional)</string>
+    <string name="mc_category">Categorie</string>
+    <string name="mc_cat_custom">Canalele mele</string>
+    <string name="mc_cat_hint">OK: categoria următoare</string>
+    <string name="mc_save">Salvează</string>
+    <string name="mc_delete">Șterge acest canal</string>
+    <string name="mc_edit">Editează</string>
+    <string name="mc_badge">Manual</string>
+    <string name="mc_bad_url">Adresă invalidă</string>
 </resources>

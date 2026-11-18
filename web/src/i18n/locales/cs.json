@@ -922,5 +922,17 @@
   "sport.back": "Zpět",
   "sport.okHint": "OK na zápase: karta zápasu nebo přehrávání",
   "sport.noEvents": "Zatím žádné klíčové momenty.",
-  "sport.tableHidden": "Tabulka skryta v režimu bez spoilerů."
+  "sport.tableHidden": "Tabulka skryta v režimu bez spoilerů.",
+  "mc.add": "Přidat kanál",
+  "mc.editTitle": "Upravit kanál",
+  "mc.sub": "Přidáno ručně k tomuto zdroji a zachováno po každé synchronizaci",
+  "mc.name": "Název kanálu",
+  "mc.url": "Adresa streamu",
+  "mc.logo": "Adresa loga (volitelné)",
+  "mc.epg": "ID průvodce, tvg-id (volitelné)",
+  "mc.category": "Kategorie",
+  "mc.catCustom": "Moje kanály",
+  "mc.badge": "Ruční",
+  "mc.badUrl": "Neplatná adresa",
+  "mc.deleteSure": "Smazat?"
 }

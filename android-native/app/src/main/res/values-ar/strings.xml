@@ -1966,4 +1966,20 @@
         <item quantity="other">يسمح اشتراكك بـ %1$s اتصالات: كلها مشغولة بتسجيلات في ذلك الوقت</item>
     </plurals>
     <string name="mlib_cloud_failed">تعذّر الاتصال بالمكتبة «%1$s» المضافة من الموقع. سيعيد التلفاز المحاولة عند المزامنة التالية. تحقق من إمكانية الوصول إلى الخادم.</string>
+    <!-- ui/categories/ManualChannelStrings.kt -->
+    <string name="mc_add">إضافة قناة</string>
+    <string name="mc_edit_title">تعديل القناة</string>
+    <string name="mc_sub">أُضيفت يدويًا إلى هذا المصدر وتبقى بعد كل مزامنة</string>
+    <string name="mc_name">اسم القناة</string>
+    <string name="mc_url">رابط البث</string>
+    <string name="mc_logo">رابط الشعار (اختياري)</string>
+    <string name="mc_epg">معرّف الدليل tvg-id (اختياري)</string>
+    <string name="mc_category">الفئة</string>
+    <string name="mc_cat_custom">قنواتي</string>
+    <string name="mc_cat_hint">موافق: الفئة التالية</string>
+    <string name="mc_save">حفظ</string>
+    <string name="mc_delete">حذف هذه القناة</string>
+    <string name="mc_edit">تعديل</string>
+    <string name="mc_badge">يدوية</string>
+    <string name="mc_bad_url">عنوان غير صالح</string>
 </resources>

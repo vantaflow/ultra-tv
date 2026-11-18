@@ -1886,4 +1886,20 @@
     <string name="sport_no_events">Δεν υπάρχουν ακόμη βασικές φάσεις.</string>
     <string name="sport_table_hidden">Η βαθμολογία κρύβεται στη λειτουργία χωρίς spoilers.</string>
     <string name="mlib_cloud_failed">Δεν ήταν δυνατή η σύνδεση με τη βιβλιοθήκη «%1$s» που προστέθηκε από τον ιστότοπο. Η τηλεόραση θα ξαναδοκιμάσει στον επόμενο συγχρονισμό. Ελέγξτε ότι ο διακομιστής είναι προσβάσιμος.</string>
+    <!-- ui/categories/ManualChannelStrings.kt -->
+    <string name="mc_add">Προσθήκη καναλιού</string>
+    <string name="mc_edit_title">Επεξεργασία καναλιού</string>
+    <string name="mc_sub">Προστέθηκε χειροκίνητα σε αυτή την πηγή και διατηρείται μετά από κάθε συγχρονισμό</string>
+    <string name="mc_name">Όνομα καναλιού</string>
+    <string name="mc_url">Διεύθυνση ροής</string>
+    <string name="mc_logo">Διεύθυνση λογοτύπου (προαιρετικό)</string>
+    <string name="mc_epg">Αναγνωριστικό οδηγού, tvg-id (προαιρετικό)</string>
+    <string name="mc_category">Κατηγορία</string>
+    <string name="mc_cat_custom">Τα κανάλια μου</string>
+    <string name="mc_cat_hint">OK: επόμενη κατηγορία</string>
+    <string name="mc_save">Αποθήκευση</string>
+    <string name="mc_delete">Διαγραφή αυτού του καναλιού</string>
+    <string name="mc_edit">Επεξεργασία</string>
+    <string name="mc_badge">Χειροκίνητο</string>
+    <string name="mc_bad_url">Μη έγκυρη διεύθυνση</string>
 </resources>

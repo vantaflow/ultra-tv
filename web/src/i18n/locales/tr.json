@@ -900,5 +900,17 @@
   "sport.back": "Geri",
   "sport.okHint": "Bir maçta Tamam: maç kartı veya oynatma",
   "sport.noEvents": "Henüz önemli an yok.",
-  "sport.tableHidden": "Puan durumu spoiler'sız modda gizli."
+  "sport.tableHidden": "Puan durumu spoiler'sız modda gizli.",
+  "mc.add": "Kanal ekle",
+  "mc.editTitle": "Kanalı düzenle",
+  "mc.sub": "Bu kaynağa elle eklendi ve her eşitlemeden sonra korunur",
+  "mc.name": "Kanal adı",
+  "mc.url": "Yayın adresi",
+  "mc.logo": "Logo adresi (isteğe bağlı)",
+  "mc.epg": "Rehber kimliği, tvg-id (isteğe bağlı)",
+  "mc.category": "Kategori",
+  "mc.catCustom": "Kanallarım",
+  "mc.badge": "Elle eklenen",
+  "mc.badUrl": "Geçersiz adres",
+  "mc.deleteSure": "Silinsin mi?"
 }

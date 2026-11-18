@@ -1896,4 +1896,20 @@
         <item quantity="other">Your subscription allows %1$s connections: they are all taken by recordings at that time</item>
     </plurals>
     <string name="mlib_cloud_failed">The library “%1$s” added from the website could not be connected. The TV will try again at the next sync. Check that the server is reachable.</string>
+    <!-- ui/categories/ManualChannelStrings.kt -->
+    <string name="mc_add">Add a channel</string>
+    <string name="mc_edit_title">Edit channel</string>
+    <string name="mc_sub">Added by hand to this source and kept after every sync</string>
+    <string name="mc_name">Channel name</string>
+    <string name="mc_url">Stream URL</string>
+    <string name="mc_logo">Logo URL (optional)</string>
+    <string name="mc_epg">Guide ID, tvg-id (optional)</string>
+    <string name="mc_category">Category</string>
+    <string name="mc_cat_custom">My channels</string>
+    <string name="mc_cat_hint">OK: next category</string>
+    <string name="mc_save">Save</string>
+    <string name="mc_delete">Delete this channel</string>
+    <string name="mc_edit">Edit</string>
+    <string name="mc_badge">Manual</string>
+    <string name="mc_bad_url">Invalid address</string>
 </resources>

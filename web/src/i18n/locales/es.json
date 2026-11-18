@@ -915,5 +915,17 @@
   "sport.back": "Atrás",
   "sport.okHint": "OK en un partido: ficha del partido o reproducción",
   "sport.noEvents": "Aún no hay jugadas destacadas.",
-  "sport.tableHidden": "Clasificación oculta en el modo sin spoilers."
+  "sport.tableHidden": "Clasificación oculta en el modo sin spoilers.",
+  "mc.add": "Añadir un canal",
+  "mc.editTitle": "Editar el canal",
+  "mc.sub": "Añadido a mano a esta fuente y conservado tras cada sincronización",
+  "mc.name": "Nombre del canal",
+  "mc.url": "URL de la emisión",
+  "mc.logo": "URL del logotipo (opcional)",
+  "mc.epg": "ID de la guía, tvg-id (opcional)",
+  "mc.category": "Categoría",
+  "mc.catCustom": "Mis canales",
+  "mc.badge": "A mano",
+  "mc.badUrl": "Dirección no válida",
+  "mc.deleteSure": "¿Eliminar?"
 }

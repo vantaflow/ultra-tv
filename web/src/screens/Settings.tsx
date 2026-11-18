@@ -8,7 +8,9 @@ import { categoriesOf, channelsCol } from "@/db/queries";
 import { getOrder, saveOrder } from "@/db/channelOrder";
 import { addHidden, listHidden, removeHidden, removeHiddenFromCatalog } from "@/db/hidden";
 import { mergeOrder, moveBy } from "@/lib/channelOrder";
-import type { CategoryRow, ChannelRow, HiddenChannelRow, Kind, Source } from "@/db/types";
+import { isManualStreamId, listManual, manualStreamId } from "@/db/manual";
+import { ManualChannelModal } from "./ManualChannelModal";
+import type { CategoryRow, ChannelRow, HiddenChannelRow, Kind, ManualChannelRow, Source } from "@/db/types";
 import { LANGS, useT, type Key, type Lang } from "@/i18n";
 import { normText } from "@/lib/text";
 import { bridge, currentTransport, defaultProxy, getProxySetting, isElectron, setProxySetting } from "@/net/transport";
@@ -441,6 +443,8 @@ function CategoriesPane() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sameKind, nq, ordKey]);
   const [chanCat, setChanCat] = useState<CategoryRow | null>(null);
+  // Ajout d'une chaîne manuelle (catégorie proposée : celle de la liste ouverte, sinon « Mes chaînes »).
+  const [addManual, setAddManual] = useState(false);
   if (!source) return null;
   // Déplacer / trier n'a de sens que sur la liste complète du type (pas filtrée).
   const canMove = !nq;
@@ -465,6 +469,7 @@ function CategoriesPane() {
         <button className="btn sm" onClick={() => void setMany(shown, 1)}>{t("set.catsEnableAll")} ({shown.length})</button>
         <button className="btn sm" onClick={() => void setMany(shown, 0)}>{t("set.catsDisableAll")} ({shown.length})</button>
         <button className="btn sm" disabled={!canMove} onClick={() => void sortAZ()}>{t("set.catsSort")}</button>
+        {kind === "live" && source.id != null && <button className="btn sm" onClick={() => setAddManual(true)}>{t("mc.add")}</button>}
       </div>
       <div style={{ height: "min(28rem, 50vh)", display: "flex", flexDirection: "column", minHeight: 0 }}>
         <VList rows={arrayRows(shown)} rowH={52} className="vlist" label={t("common.categories")}
@@ -486,11 +491,13 @@ function CategoriesPane() {
         {sync.running && sync.progress && <span className="muted mono">{Math.round(sync.progress.ratio * 100)} %</span>}
       </div>
       {chanCat && <ChannelsModal source={source} cat={chanCat} onClose={() => setChanCat(null)} />}
+      {addManual && source.id != null && <ManualChannelModal sourceId={source.id} categories={all.filter((c) => c.kind === "live")} onClose={() => setAddManual(false)} />}
     </>
   );
 }
 
 type ChanItem = { streamId: number; name: string; hidden: boolean };
+const manualStreamIdOf = (m: ManualChannelRow) => manualStreamId(m.ref);
 
 /** Chaînes d'une catégorie du Direct : visibilité (masquer = retirée partout) et ordre personnel du profil courant. */
 function ChannelsModal({ source, cat, onClose }: { source: Source; cat: CategoryRow; onClose: () => void }) {
@@ -506,6 +513,10 @@ function ChannelsModal({ source, cat, onClose }: { source: Source; cat: Category
     const shown: ChanItem[] = mergeOrder(rows, order, (c) => c.streamId).map((c) => ({ streamId: c.streamId, name: c.display || c.name, hidden: false }));
     return [...shown, ...hid.map((h) => ({ streamId: h.streamId, name: h.name, hidden: true }))];
   }, [source.cid, cat.extId, profile, sid]);
+  // Chaînes ajoutées à la main de cette catégorie : OK / « Modifier » ouvre leur fiche (modifier, supprimer).
+  const manual = useLiveQuery(() => listManual(sid), [sid]) ?? [];
+  const [editing, setEditing] = useState<ManualChannelRow | null>(null);
+  const allCats = useLiveQuery(() => (source.cid ? db.categories.where("[sourceId+kind]").equals([source.cid, "live"]).toArray() : []), [source.cid]) ?? [];
   // Chaînes réaffichées : absentes du catalogue jusqu'à la prochaine synchro, on les garde dans la liste (case « Visible »).
   const [back, setBack] = useState<ChanItem[]>([]);
   const list = data ? [...data, ...back.filter((b) => !data.some((d) => d.streamId === b.streamId))] : [];
@@ -545,11 +556,14 @@ function ChannelsModal({ source, cat, onClose }: { source: Source; cat: Category
                   <button className="btn sm" disabled={c.hidden || !visibleIds.includes(c.streamId)} aria-label={`${t("cor.up")} : ${c.name}`} onClick={() => void move(c.streamId, -1)}>▲</button>
                   <button className="btn sm" disabled={c.hidden || !visibleIds.includes(c.streamId)} aria-label={`${t("cor.down")} : ${c.name}`} onClick={() => void move(c.streamId, 1)}>▼</button>
                 </span>
-                <span><Switch on={!c.hidden} label={`${c.name} : ${c.hidden ? t("set.chHidden") : t("set.chVisible")}`} onChange={(v) => void setVisible(c, v)} /></span>
+                {isManualStreamId(c.streamId)
+                  ? <span><button className="btn sm" aria-label={`${t("common.edit")} : ${c.name}`} onClick={() => setEditing(manual.find((m) => manualStreamIdOf(m) === c.streamId) ?? null)}>{t("mc.badge")} · {t("common.edit")}</button></span>
+                  : <span><Switch on={!c.hidden} label={`${c.name} : ${c.hidden ? t("set.chHidden") : t("set.chVisible")}`} onChange={(v) => void setVisible(c, v)} /></span>}
               </div>
             )} />
         )}
       </div>
+      {editing && <ManualChannelModal sourceId={sid} categories={allCats} existing={editing} onClose={() => setEditing(null)} />}
     </Modal>
   );
 }

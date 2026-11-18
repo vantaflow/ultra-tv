@@ -2,7 +2,7 @@ import Dexie, { type Table } from "dexie";
 import { wordKeys } from "@/lib/text";
 import type { Recording, Reminder } from "@/lib/schedule";
 import type {
-  CategoryRow, ChannelOrderRow, ChannelRow, DetailRow, FavoriteRow, HiddenChannelRow, HistoryRow, MovieRow,
+  CategoryRow, ChannelOrderRow, ChannelRow, DetailRow, FavoriteRow, HiddenChannelRow, HistoryRow, ManualChannelRow, MovieRow,
   ProgramRow, ProfileHiddenRow, SeriesRow, SettingRow, Source,
 } from "./types";
 
@@ -22,6 +22,7 @@ export class UltraTvDb extends Dexie {
   channelOrder!: Table<ChannelOrderRow, string>;
   hiddenChannels!: Table<HiddenChannelRow, string>;
   profileHidden!: Table<ProfileHiddenRow, string>;
+  manualChannels!: Table<ManualChannelRow, string>;
 
   constructor(name = "ultratv-desktop") {
     super(name);
@@ -66,6 +67,10 @@ export class UltraTvDb extends Dexie {
     // v6 : catégories masquées par profil / source / type (table neuve, aucune donnée à convertir : rien n'est masqué au départ).
     this.version(6).stores({
       profileHidden: "&key, [profile+sourceId], sourceId",
+    });
+    // v7 : chaînes ajoutées à la main par source (table neuve, aucune donnée à convertir : vide au départ).
+    this.version(7).stores({
+      manualChannels: "&key, sourceId",
     });
   }
 }

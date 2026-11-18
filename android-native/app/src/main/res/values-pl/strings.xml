@@ -1842,4 +1842,20 @@
     <string name="sport_no_events">Na razie brak najważniejszych momentów.</string>
     <string name="sport_table_hidden">Tabela ukryta w trybie bez spoilerów.</string>
     <string name="mlib_cloud_failed">Nie udało się połączyć z biblioteką „%1$s” dodaną ze strony. Telewizor ponowi próbę przy następnej synchronizacji. Sprawdź, czy serwer jest osiągalny.</string>
+    <!-- ui/categories/ManualChannelStrings.kt -->
+    <string name="mc_add">Dodaj kanał</string>
+    <string name="mc_edit_title">Edytuj kanał</string>
+    <string name="mc_sub">Dodany ręcznie do tego źródła i zachowywany po każdej synchronizacji</string>
+    <string name="mc_name">Nazwa kanału</string>
+    <string name="mc_url">Adres strumienia</string>
+    <string name="mc_logo">Adres logo (opcjonalnie)</string>
+    <string name="mc_epg">Identyfikator przewodnika, tvg-id (opcjonalnie)</string>
+    <string name="mc_category">Kategoria</string>
+    <string name="mc_cat_custom">Moje kanały</string>
+    <string name="mc_cat_hint">OK: następna kategoria</string>
+    <string name="mc_save">Zapisz</string>
+    <string name="mc_delete">Usuń ten kanał</string>
+    <string name="mc_edit">Edytuj</string>
+    <string name="mc_badge">Ręczny</string>
+    <string name="mc_bad_url">Nieprawidłowy adres</string>
 </resources>

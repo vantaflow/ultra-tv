@@ -2,6 +2,7 @@
 import type { Source } from "@/db/types";
 import { credsOf, stalkerOf } from "@/sync/core";
 import { db } from "@/db/db";
+import { isManualStreamId } from "@/db/manual";
 import { isStalkerLink, parseStalkerLink, stalkerLink, type StalkerClient } from "@/net/stalker";
 import { MediaClient, isMediaLink, isMediaType, numericId, parseMediaLink, resumeSeconds, type MediaApi } from "@/net/mediaServer";
 import { PlexClient } from "@/net/plex";
@@ -113,6 +114,11 @@ export async function stalkerClientFor(source: Source): Promise<StalkerClient> {
 
 /** Lien de lecture demandé au portail (create_link) juste avant d'ouvrir le flux ; format deviné d'après l'adresse. */
 export async function stalkerCandidate(source: Source, t: PlayTarget): Promise<Candidate | null> {
+  // Chaîne ajoutée à la main : son adresse est directe (aucun create_link auprès du portail).
+  if (t.kind === "live" && isManualStreamId(t.refId)) {
+    const url = t.url ?? (await db.channels.where("[sourceId+streamId]").equals([t.cid, t.refId]).first())?.url;
+    return url ? { url, format: stalkerFormat(url, "live"), label: "URL" } : null;
+  }
   const link = await stalkerLinkOf(t);
   const p = link ? parseStalkerLink(link) : null;
   if (!p) return null;

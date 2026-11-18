@@ -915,5 +915,17 @@
   "sport.back": "Retour",
   "sport.okHint": "OK sur un match : feuille de match ou lecture",
   "sport.noEvents": "Aucun temps fort pour le moment.",
-  "sport.tableHidden": "Classement masqué en mode sans spoiler."
+  "sport.tableHidden": "Classement masqué en mode sans spoiler.",
+  "mc.add": "Ajouter une chaîne",
+  "mc.editTitle": "Modifier la chaîne",
+  "mc.sub": "Ajoutée à la main à cette source, conservée après chaque synchronisation",
+  "mc.name": "Nom de la chaîne",
+  "mc.url": "Adresse du flux",
+  "mc.logo": "Adresse du logo (facultatif)",
+  "mc.epg": "Identifiant du guide, tvg-id (facultatif)",
+  "mc.category": "Catégorie",
+  "mc.catCustom": "Mes chaînes",
+  "mc.badge": "Manuelle",
+  "mc.badUrl": "Adresse invalide",
+  "mc.deleteSure": "Supprimer ?"
 }

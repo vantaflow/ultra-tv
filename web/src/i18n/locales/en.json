@@ -904,5 +904,17 @@
   "sport.back": "Back",
   "sport.okHint": "OK on a match: match sheet or playback",
   "sport.noEvents": "No key moments yet.",
-  "sport.tableHidden": "Standings hidden in no-spoiler mode."
+  "sport.tableHidden": "Standings hidden in no-spoiler mode.",
+  "mc.add": "Add a channel",
+  "mc.editTitle": "Edit channel",
+  "mc.sub": "Added by hand to this source and kept after every sync",
+  "mc.name": "Channel name",
+  "mc.url": "Stream URL",
+  "mc.logo": "Logo URL (optional)",
+  "mc.epg": "Guide ID, tvg-id (optional)",
+  "mc.category": "Category",
+  "mc.catCustom": "My channels",
+  "mc.badge": "Manual",
+  "mc.badUrl": "Invalid address",
+  "mc.deleteSure": "Delete?"
 }

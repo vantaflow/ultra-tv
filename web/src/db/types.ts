@@ -182,6 +182,30 @@ export interface ChannelOrderRow {
   updatedAt: number;
 }
 
+/**
+ * Chaîne ajoutée À LA MAIN à une source existante. Stockée à part du catalogue : la synchro écrit une nouvelle génération et
+ * jette l'ancienne, cette table n'est jamais touchée. Réinjectée dans la génération courante après chaque synchro (db/manual.ts).
+ * SECRET : [url] peut contenir des identifiants, jamais journalisée.
+ */
+export interface ManualChannelRow {
+  /** `${sourceId}:${ref}` */
+  key: string;
+  /** Identifiant réel de la source (et non la génération de catalogue). */
+  sourceId: number;
+  /** Identifiant fournisseur « custom:<uuid> » (même valeur que sur Android). */
+  ref: string;
+  name: string;
+  url: string;
+  logo: string | null;
+  /** Identifiant de guide (tvg-id). */
+  epg: string | null;
+  /** Catégorie de la source (extId) ou « custom:cat » (catégorie « Mes chaînes »). */
+  catExt: string;
+  /** Libellé de « Mes chaînes » dans la langue de l'utilisateur à la création. */
+  catName: string | null;
+  createdAt: number;
+}
+
 /** Chaîne masquée par l'utilisateur pour une source (n'apparaît plus nulle part ; partagée entre appareils). */
 export interface HiddenChannelRow {
   key: string;

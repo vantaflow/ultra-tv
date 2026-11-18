@@ -913,5 +913,17 @@
   "sport.back": "Wstecz",
   "sport.okHint": "OK na meczu: karta meczu lub odtwarzanie",
   "sport.noEvents": "Na razie brak najważniejszych momentów.",
-  "sport.tableHidden": "Tabela ukryta w trybie bez spoilerów."
+  "sport.tableHidden": "Tabela ukryta w trybie bez spoilerów.",
+  "mc.add": "Dodaj kanał",
+  "mc.editTitle": "Edytuj kanał",
+  "mc.sub": "Dodany ręcznie do tego źródła i zachowywany po każdej synchronizacji",
+  "mc.name": "Nazwa kanału",
+  "mc.url": "Adres strumienia",
+  "mc.logo": "Adres logo (opcjonalnie)",
+  "mc.epg": "Identyfikator przewodnika, tvg-id (opcjonalnie)",
+  "mc.category": "Kategoria",
+  "mc.catCustom": "Moje kanały",
+  "mc.badge": "Ręczny",
+  "mc.badUrl": "Nieprawidłowy adres",
+  "mc.deleteSure": "Usunąć?"
 }
