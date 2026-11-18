@@ -128,6 +128,14 @@ test("subtitleArgs : WebVTT sur la sortie standard", () => {
   assert.strictEqual(a.at(-1), "pipe:1");
 });
 
+test("subtitleArgs : extraction qui part de la position courante (ss avant -i)", () => {
+  const a = subtitleArgs("http://h/1.mkv", { s: 1, ss: 1345.5 });
+  assert.strictEqual(a[a.indexOf("-ss") + 1], "1345.5");
+  assert.ok(a.indexOf("-ss") < a.indexOf("-i"), "-ss AVANT -i (recherche rapide côté source)");
+  const b = subtitleArgs("http://h/1.mkv", { s: 0, ss: 0 });
+  assert.ok(!b.includes("-ss"), "pas de -ss depuis le début");
+});
+
 test("serveStreamInfo : JSON des pistes, 502 sinon", async () => {
   const res = fakeRes();
   await serveStreamInfo({ headers: {} }, res, { ffmpeg: "ffmpeg", target: new URL("http://h/1.mkv"), headers: {}, probe: async () => ({ audio: [], subs: [] }) });

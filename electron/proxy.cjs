@@ -490,7 +490,7 @@ function createProxyServer({ allowedOrigin, token, onError, lookup, ffmpeg = nul
       if (req.method !== "GET") return fail(res, req, 405);
       // Liste des pistes et sous-titres : lecture de l'en-tête seule, sans libérer le flux en cours.
       if (tx.kind === "info") return serveStreamInfo(req, res, { ffmpeg, target: txTarget, headers: corsHeaders(req) });
-      if (tx.kind === "sub") return serveSubtitle(req, res, { ffmpeg, target: txTarget, s: tx.s, headers: corsHeaders(req), report });
+      if (tx.kind === "sub") return serveSubtitle(req, res, { ffmpeg, target: txTarget, s: tx.s, ss: tx.ss, headers: corsHeaders(req), report });
       // Comptes à connexion unique : l'ancien flux du même hôte est libéré avant que ffmpeg ouvre le sien.
       await releaseEntry(activeLive.get(txTarget.host.toLowerCase()));
       // Une seule conversion ffmpeg vivante par hôte : le lecteur relance une conversion (saut, piste, tentative

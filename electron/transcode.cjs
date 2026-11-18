@@ -130,10 +130,14 @@ async function serveStreamInfo(req, res, { ffmpeg, target, headers, probe = prob
 }
 
 /** Arguments ffmpeg d'extraction d'un sous-titre texte en WebVTT (fonction pure, testée). */
-function subtitleArgs(url, { s = 0, userAgent = null, referer = null } = {}) {
+/** Arguments ffmpeg d'extraction d'un sous-titre texte en WebVTT. `ss` : départ (reprise / conversion en cours) —
+ * sans lui, l'extraction part du début du fichier : sur un MKV/MP4 où les sous-titres sont entrelacés, la position
+ * demandée n'est atteinte qu'après une longue lecture ; depuis `ss`, ffmpeg y arrive en un instant. */
+function subtitleArgs(url, { s = 0, ss = 0, userAgent = null, referer = null } = {}) {
   const a = ["-hide_banner", "-loglevel", "error", "-nostdin"];
   if (userAgent) a.push("-user_agent", String(userAgent).slice(0, 300));
   if (referer) a.push("-referer", String(referer).slice(0, 500));
+  if (ss > 0) a.push("-ss", String(ss));
   a.push("-i", String(url), "-map", `0:s:${s}`, "-c:s", "webvtt", "-vn", "-an", "-f", "webvtt", "pipe:1");
   return a;
 }
@@ -144,8 +148,8 @@ function subtitleArgs(url, { s = 0, userAgent = null, referer = null } = {}) {
  * (lecture du fichier entier) ; en servant au fil de l'eau, le lecteur affiche les premiers repères en quelques
  * secondes. Le build ffmpeg n'a pas ffprobe, l'extraction coupe à 8 Mo au-delà du dernier repère utile.
  */
-function serveSubtitle(req, res, { ffmpeg, target, s, headers, report = () => {}, spawnFn = spawn }) {
-  const child = spawnFn(ffmpeg, subtitleArgs(target.toString(), { s, userAgent: req.headers["x-ut-ua"] || null, referer: req.headers["x-ut-referer"] || null }), { windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
+function serveSubtitle(req, res, { ffmpeg, target, s, ss = 0, headers, report = () => {}, spawnFn = spawn }) {
+  const child = spawnFn(ffmpeg, subtitleArgs(target.toString(), { s, ss, userAgent: req.headers["x-ut-ua"] || null, referer: req.headers["x-ut-referer"] || null }), { windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
   let started = false;
   let size = 0;
   const stop = () => { try { child.kill("SIGKILL"); } catch { /* déjà terminé */ } };

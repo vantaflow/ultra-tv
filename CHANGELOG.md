@@ -5,7 +5,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ## [Non publié]
 
 ### Corrigé
-- Bureau : les sous-titres d'un fichier MKV/MP4 s'affichent en quelques secondes au lieu de quelques minutes — l'extraction WebVTT est servie au fil de l'eau (l'extraction lit le fichier entier, les pistes y sont entrelacées ; mesuré : 5-6 minutes pour un épisode de 2 Go avant d'afficher le moindre repère). Le panneau Pistes montre un indicateur d'extraction pendant la lecture. Choisir une autre extraction (ou éteindre les sous-titres) annule la précédente : une extraction lente ne peut plus finir après coup et écraser un choix plus récent.
+- Bureau : les sous-titres d'un fichier MKV/MP4 s'affichent en quelques secondes au lieu de quelques minutes, même en reprenant au milieu d'un épisode. L'extraction WebVTT part de la position de lecture (`-ss`, les pistes sont entrelacées dans le conteneur : sans lui, la position demandée n'est atteinte qu'après une longue lecture du fichier — mesuré : 5-6 minutes pour un épisode de 2 Go) et est servie au fil de l'eau : les premiers repères apparaissent presque aussitôt. Le panneau Pistes montre un indicateur d'extraction pendant la lecture. Choisir une autre piste (ou éteindre les sous-titres) annule la précédente : une extraction lente ne peut plus finir après coup et écraser un choix plus récent. Les repères extraits sont conservés en cache par média et piste : réouverture, retour en arrière ou saut = instantané quand c'est déjà en cache.
 
 ## [1.3.48] — 2026-11-17 (Android)
 
