@@ -901,5 +901,17 @@
   "sport.back": "Tilbake",
   "sport.okHint": "OK på en kamp: kampark eller avspilling",
   "sport.noEvents": "Ingen høydepunkter ennå.",
-  "sport.tableHidden": "Tabellen er skjult i modus uten spoilere."
+  "sport.tableHidden": "Tabellen er skjult i modus uten spoilere.",
+  "mc.add": "Legg til en kanal",
+  "mc.editTitle": "Rediger kanalen",
+  "mc.sub": "Lagt til manuelt i denne kilden og beholdt etter hver synkronisering",
+  "mc.name": "Kanalnavn",
+  "mc.url": "Strøm-URL",
+  "mc.logo": "Logo-URL (valgfritt)",
+  "mc.epg": "Guide-ID, tvg-id (valgfritt)",
+  "mc.category": "Kategori",
+  "mc.catCustom": "Mine kanaler",
+  "mc.badge": "Manuell",
+  "mc.badUrl": "Ugyldig adresse",
+  "mc.deleteSure": "Slette?"
 }

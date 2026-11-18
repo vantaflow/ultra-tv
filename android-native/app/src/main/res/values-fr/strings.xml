@@ -1911,5 +1911,21 @@
         <item quantity="other">Votre abonnement autorise %1$s connexions : elles sont toutes prises par des enregistrements à ce moment-là</item>
     </plurals>
     <string name="mlib_cloud_failed">La bibliothèque « %1$s » ajoutée depuis le site n’a pas pu être connectée. La TV réessaiera à la prochaine synchro. Vérifiez que le serveur est joignable.</string>
+    <!-- ui/categories/ManualChannelStrings.kt -->
+    <string name="mc_add">Ajouter une chaîne</string>
+    <string name="mc_edit_title">Modifier la chaîne</string>
+    <string name="mc_sub">Ajoutée à la main à cette source, conservée après chaque synchronisation</string>
+    <string name="mc_name">Nom de la chaîne</string>
+    <string name="mc_url">Adresse du flux</string>
+    <string name="mc_logo">Adresse du logo (facultatif)</string>
+    <string name="mc_epg">Identifiant du guide, tvg-id (facultatif)</string>
+    <string name="mc_category">Catégorie</string>
+    <string name="mc_cat_custom">Mes chaînes</string>
+    <string name="mc_cat_hint">OK : catégorie suivante</string>
+    <string name="mc_save">Enregistrer</string>
+    <string name="mc_delete">Supprimer cette chaîne</string>
+    <string name="mc_edit">Modifier</string>
+    <string name="mc_badge">Manuelle</string>
+    <string name="mc_bad_url">Adresse invalide</string>
     <string name="ds_fav_all_sources">Toutes les sources</string>
 </resources>

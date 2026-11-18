@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/db/db";
 import { emptySource } from "@/db/sources";
 import { addHidden } from "@/db/hidden";
+import { addManual, MANUAL_CAT, manualStreamId } from "@/db/manual";
 import { categoriesOf } from "@/db/queries";
 import { detectLanguages, runSync } from "./core";
 
@@ -168,5 +169,29 @@ describe("réglages de l'utilisateur reportés sur la nouvelle génération", ()
     expect(after.counts.live).toBe(2);
     expect((await categoriesOf(after.cid, "live")).find((c) => c.extId === "1")!.count).toBe(before - 1);
     await db.hiddenChannels.clear();
+  });
+});
+
+describe("chaînes ajoutées à la main", () => {
+  it("survivent à deux synchros complètes, après les chaînes du fournisseur, avec leurs effectifs", async () => {
+    await db.hiddenChannels.clear(); await db.manualChannels.clear();
+    await db.sources.put({ ...src() });
+    await runSync({ source: src(), transport: { mode: "direct" }, onProgress: () => undefined });
+    const first = (await db.sources.get(1))!;
+    const live0 = first.counts.live;
+    const ref = await addManual(1, { name: "Ma chaîne", url: "http://perso.invalid/flux.m3u8", logo: "", epg: "", catExt: "1", catName: null });
+    const ref2 = await addManual(1, { name: "Autre", url: "http://perso.invalid/2.m3u8", logo: "", epg: "", catExt: MANUAL_CAT, catName: "Mes chaînes" });
+    for (let i = 0; i < 2; i++) {
+      await runSync({ source: (await db.sources.get(1))!, transport: { mode: "direct" }, onProgress: () => undefined, preserveFlags: true });
+      const cur = (await db.sources.get(1))!;
+      const rows = await db.channels.where("[sourceId+ord]").between([cur.cid, -1], [cur.cid, Infinity]).toArray();
+      const mine = rows.find((r) => r.streamId === manualStreamId(ref))!;
+      expect(mine.url).toBe("http://perso.invalid/flux.m3u8");
+      expect(mine.num).toBeGreaterThan(Math.max(...rows.filter((r) => r.catExt === "1" && r.streamId !== mine.streamId).map((r) => r.num)));
+      expect(rows.find((r) => r.streamId === manualStreamId(ref2))!.catExt).toBe(MANUAL_CAT);
+      expect(cur.counts.live).toBe(live0 + 2);
+      expect((await categoriesOf(cur.cid, "live")).some((c) => c.extId === MANUAL_CAT && c.count === 1)).toBe(true);
+    }
+    await db.manualChannels.clear();
   });
 });

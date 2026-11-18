@@ -180,6 +180,8 @@ class ProviderRepository @Inject constructor(
                 step("Saving ${channels.size} channels…", 90)
                 val ranks = LiveOrder.ranks(categoryDao.forProviderKind(p.id, LiveOrder.KIND))
                 insertChunked(channels) { channelDao.upsertAll(ranks.stamp(it)) }
+                // Chaînes ajoutées à la main : la table `channel` vient d'être vidée, on les y remet (même transaction).
+                ManualChannels.reinject(db, p.id)
             }
             step("Done — ${channels.size} channels", 100)
             return channels.size
@@ -534,6 +536,7 @@ class ProviderRepository @Inject constructor(
 
     suspend fun delete(id: Long) {
         channelDao.deleteForProvider(id)
+        db.manualChannelDao().deleteForProvider(id)
         movieDao.deleteForProvider(id)
         seriesDao.deleteForProvider(id)
         categoryDao.deleteForProviderKind(id, "LIVE")
@@ -1046,7 +1049,11 @@ class ProviderRepository @Inject constructor(
         syncXtreamPartLocked(p, spec, lock, progress, catsAhead, onDownloaded).also {
             // Filet de sécurité du Direct : les chaînes restées en place (catégorie disparue du serveur, synchro par
             // catégorie) reprennent le rang de l'ordre courant ; ne réécrit que ce qui change (pas de coût sinon).
-            if (spec.kind == LiveOrder.KIND) db.withTransaction { LiveOrder.apply(channelDao, p.id, liveRanks) }
+            if (spec.kind == LiveOrder.KIND) db.withTransaction {
+                LiveOrder.apply(channelDao, p.id, liveRanks)
+                // Chaînes ajoutées à la main : supprimées avec le reste par la synchro, réinjectées ici (voir ManualChannels).
+                ManualChannels.reinject(db, p.id)
+            }
         }
     }
 
@@ -1244,6 +1251,11 @@ class ProviderRepository @Inject constructor(
         if (p.kind == "M3U" && ids.isNotEmpty()) { syncAll(providerId, force = true); return }
         if ((p.kind != "XTREAM" && p.kind != "STALKER") || ids.isEmpty()) return
         val part = when (kind) { "LIVE" -> SyncPart.LIVE; "MOVIE" -> SyncPart.VOD; else -> SyncPart.SERIES }
+        // « Mes chaînes » n'existe pas côté serveur : jamais interrogée, ses chaînes sont réinjectées depuis la table locale.
+        if (kind == "LIVE" && ManualChannels.CUSTOM_CAT in ids) {
+            if (ids.size == 1) { partLock(kind).withLock { ManualChannels.reinject(db, p.id) }; return }
+            return syncCategoriesNow(providerId, kind, ids.filter { it != ManualChannels.CUSTOM_CAT }).also { partLock(kind).withLock { ManualChannels.reinject(db, p.id) } }
+        }
         // Serveur qui ignore `category_id` : pas de chargement ciblé possible, synchro complète (verrou global).
         if (p.categoryFilter == 0) { syncAll(providerId, force = true); return }
         // Synchro complète en cours : on ne touche pas à son indicateur de progression (ni ne l'efface).
@@ -1265,6 +1277,8 @@ class ProviderRepository @Inject constructor(
                     }
                     if (ownStatus) syncStatus.set(SyncStatusBus.Status(p.name, "Categories", ((i + 1) * 100) / ids.size, part, n))
                 }
+                // Chaînes ajoutées à la main de ces catégories : supprimées par insertCategory, remises en place.
+                if (kind == "LIVE") ManualChannels.reinject(db, p.id)
             } finally { if (ownStatus) syncStatus.clear() }
         }
         // Nouvelles chaînes du direct : leur guide tout de suite (regroupé), pas à la synchro de la nuit.

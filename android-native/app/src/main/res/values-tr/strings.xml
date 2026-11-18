@@ -1828,5 +1828,21 @@
 <string name="sport_no_events">Henüz önemli an yok.</string>
 <string name="sport_table_hidden">Puan durumu spoiler\'sız modda gizli.</string>
     <string name="mlib_cloud_failed">Web sitesinden eklenen “%1$s” kütüphanesine bağlanılamadı. TV bir sonraki eşitlemede yeniden deneyecek. Sunucuya erişilebildiğini kontrol edin.</string>
+    <!-- ui/categories/ManualChannelStrings.kt -->
+    <string name="mc_add">Kanal ekle</string>
+    <string name="mc_edit_title">Kanalı düzenle</string>
+    <string name="mc_sub">Bu kaynağa elle eklendi ve her eşitlemeden sonra korunur</string>
+    <string name="mc_name">Kanal adı</string>
+    <string name="mc_url">Yayın adresi</string>
+    <string name="mc_logo">Logo adresi (isteğe bağlı)</string>
+    <string name="mc_epg">Rehber kimliği, tvg-id (isteğe bağlı)</string>
+    <string name="mc_category">Kategori</string>
+    <string name="mc_cat_custom">Kanallarım</string>
+    <string name="mc_cat_hint">OK: sonraki kategori</string>
+    <string name="mc_save">Kaydet</string>
+    <string name="mc_delete">Bu kanalı sil</string>
+    <string name="mc_edit">Düzenle</string>
+    <string name="mc_badge">Elle eklenen</string>
+    <string name="mc_bad_url">Geçersiz adres</string>
     <string name="ds_fav_all_sources">Tüm kaynaklar</string>
 </resources>

@@ -5,6 +5,7 @@
 import { clearCatalog, db, nextCid, purgeOrphanGenerations, setGenerationPending, setSetting } from "@/db/db";
 import { m3uTvgKey, packTvgIds, type M3uTvgStore } from "@/cloud/idmapLoad";
 import { removeHiddenFromCatalog } from "@/db/hidden";
+import { injectManual } from "@/db/manual";
 import { mergeCategoryOrder } from "@/lib/categoryOrder";
 import type { CategoryRow, ChannelRow, Kind, MovieRow, SeriesRow, Source, SyncProgress } from "@/db/types";
 import { parseChannelName } from "@/lib/channelName";
@@ -226,6 +227,8 @@ export async function runSync({ source, transport: t, onProgress, signal, preser
     // Réglages de l'utilisateur à reporter sur la nouvelle génération : ordre des catégories, chaînes masquées.
     if (oldCid) await carryCategoryOrder(oldCid, cid);
     counts.live = Math.max(0, counts.live - await removeHiddenFromCatalog(cid, source.id!));
+    // Chaînes ajoutées à la main : la nouvelle génération ne les contient pas, on les y réinjecte avant la bascule (db/manual.ts).
+    counts.live = Math.max(0, counts.live + await injectManual(cid, source.id!));
     await db.sources.update(source.id!, { cid, counts, lastSyncAt: Date.now(), state: "ready", error: undefined });
     if (oldCid) await clearCatalog(oldCid);
   } finally {

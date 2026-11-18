@@ -243,7 +243,21 @@ val MIGRATION_21_22 = object : Migration(21, 22) {
     }
 }
 
-val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22)
+/**
+ * 22 → 23 (chaînes ajoutées à la main) : table `manual_channel`. SCHÉMA SEULEMENT : elle démarre vide, rien n'est réécrit.
+ * Elle est lue après chaque synchro pour réinjecter ces chaînes dans `channel` (que la synchro vide et réécrit).
+ */
+val MIGRATION_22_23 = object : Migration(22, 23) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `manual_channel` (`providerId` INTEGER NOT NULL, `remoteId` TEXT NOT NULL, `name` TEXT NOT NULL, " +
+                "`streamUrl` TEXT NOT NULL, `logo` TEXT, `epgChannelId` TEXT, `categoryId` TEXT NOT NULL, `categoryName` TEXT, " +
+                "`createdAt` INTEGER NOT NULL, PRIMARY KEY(`providerId`, `remoteId`))",
+        )
+    }
+}
+
+val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23)
 
 /** Profil « Principal » (id 1) : posé par la migration 14 → 15 ET par [DefaultProfileCallback] sur une installation neuve. */
 const val DEFAULT_PROFILE_SEED_SQL =

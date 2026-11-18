@@ -140,6 +140,10 @@ interface ChannelDao {
     @Query("SELECT id, remoteId FROM channel WHERE providerId = :pid")
     suspend fun idsByRemote(pid: Long): List<ChannelIdRow>
 
+    /** Plus grands numéros par catégorie, chaînes manuelles (« custom:… ») exclues : les chaînes ajoutées passent APRÈS celles du fournisseur. */
+    @Query("SELECT categoryId AS categoryId, MAX(num) AS maxNum, MAX(seq) AS maxSeq FROM channel WHERE providerId = :pid AND remoteId NOT LIKE 'custom:%' GROUP BY categoryId")
+    suspend fun maxNumbersByCategory(pid: Long): List<CategoryMaxRow>
+
     /** (id, titre, identifiant EPG) de toutes les chaînes : rattache « TF1 +1 » au programme de « TF1 ». */
     @Query("SELECT id, title, epgChannelId, country FROM channel WHERE providerId = :pid AND isSeparator = 0")
     suspend fun epgTitles(pid: Long): List<EpgTitle>
@@ -1080,6 +1084,9 @@ enum class SyncPart { LIVE, VOD, SERIES, EPG }
 
 data class EpgMapping(val id: Long, val epgChannelId: String)
 data class ChannelIdRow(val id: Long, val remoteId: String)
+
+/** Plus grands `num` et `seq` des chaînes du fournisseur dans une catégorie (voir ManualChannels). */
+data class CategoryMaxRow(val categoryId: String?, val maxNum: Int, val maxSeq: Int)
 data class SeqRow(val id: Long, val seq: Int)
 data class EpgTitle(val id: Long, val title: String, val epgChannelId: String?, val country: String? = null)
 

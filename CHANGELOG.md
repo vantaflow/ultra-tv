@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Ajouté
+- Ajouter à la main une chaîne (nom, adresse du flux, logo et identifiant de guide facultatifs, catégorie existante ou « Mes chaînes ») à une source Xtream, M3U ou Stalker, puis la modifier ou la supprimer (Paramètres › Catégories, Android et bureau). Ces chaînes sont conservées à chaque synchronisation ; pas de partage entre appareils pour l’instant.
+
 ## Bureau 1.2.73 — 2026-11-18
 
 ### Ajouté

@@ -912,5 +912,17 @@
   "sport.back": "Înapoi",
   "sport.okHint": "OK pe un meci: fișa meciului sau redare",
   "sport.noEvents": "Încă nu există faze importante.",
-  "sport.tableHidden": "Clasament ascuns în modul fără spoilere."
+  "sport.tableHidden": "Clasament ascuns în modul fără spoilere.",
+  "mc.add": "Adaugă un canal",
+  "mc.editTitle": "Editează canalul",
+  "mc.sub": "Adăugat manual la această sursă și păstrat după fiecare sincronizare",
+  "mc.name": "Numele canalului",
+  "mc.url": "Adresa fluxului",
+  "mc.logo": "Adresa siglei (opțional)",
+  "mc.epg": "ID ghid, tvg-id (opțional)",
+  "mc.category": "Categorie",
+  "mc.catCustom": "Canalele mele",
+  "mc.badge": "Manual",
+  "mc.badUrl": "Adresă invalidă",
+  "mc.deleteSure": "Ștergi?"
 }

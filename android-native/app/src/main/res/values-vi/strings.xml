@@ -1866,5 +1866,21 @@
     <string name="sport_no_events">Chưa có diễn biến chính.</string>
     <string name="sport_table_hidden">Bảng xếp hạng bị ẩn ở chế độ không spoiler.</string>
     <string name="mlib_cloud_failed">Không kết nối được thư viện “%1$s” đã thêm từ trang web. TV sẽ thử lại ở lần đồng bộ tiếp theo. Hãy kiểm tra máy chủ có truy cập được không.</string>
+    <!-- ui/categories/ManualChannelStrings.kt -->
+    <string name="mc_add">Thêm kênh</string>
+    <string name="mc_edit_title">Sửa kênh</string>
+    <string name="mc_sub">Được thêm thủ công vào nguồn này và giữ lại sau mỗi lần đồng bộ</string>
+    <string name="mc_name">Tên kênh</string>
+    <string name="mc_url">Địa chỉ luồng</string>
+    <string name="mc_logo">Địa chỉ logo (tùy chọn)</string>
+    <string name="mc_epg">ID hướng dẫn, tvg-id (tùy chọn)</string>
+    <string name="mc_category">Danh mục</string>
+    <string name="mc_cat_custom">Kênh của tôi</string>
+    <string name="mc_cat_hint">OK: danh mục tiếp theo</string>
+    <string name="mc_save">Lưu</string>
+    <string name="mc_delete">Xóa kênh này</string>
+    <string name="mc_edit">Sửa</string>
+    <string name="mc_badge">Thủ công</string>
+    <string name="mc_bad_url">Địa chỉ không hợp lệ</string>
     <string name="ds_fav_all_sources">Tất cả nguồn</string>
 </resources>

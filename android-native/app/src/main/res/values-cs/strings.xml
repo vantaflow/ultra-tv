@@ -1869,5 +1869,21 @@
     <string name="sport_no_events">Zatím žádné klíčové momenty.</string>
     <string name="sport_table_hidden">Tabulka skryta v režimu bez spoilerů.</string>
     <string name="mlib_cloud_failed">Knihovnu „%1$s“ přidanou z webu se nepodařilo připojit. Televize to zkusí znovu při další synchronizaci. Zkontrolujte dostupnost serveru.</string>
+    <!-- ui/categories/ManualChannelStrings.kt -->
+    <string name="mc_add">Přidat kanál</string>
+    <string name="mc_edit_title">Upravit kanál</string>
+    <string name="mc_sub">Přidáno ručně k tomuto zdroji a zachováno po každé synchronizaci</string>
+    <string name="mc_name">Název kanálu</string>
+    <string name="mc_url">Adresa streamu</string>
+    <string name="mc_logo">Adresa loga (volitelné)</string>
+    <string name="mc_epg">ID průvodce, tvg-id (volitelné)</string>
+    <string name="mc_category">Kategorie</string>
+    <string name="mc_cat_custom">Moje kanály</string>
+    <string name="mc_cat_hint">OK: další kategorie</string>
+    <string name="mc_save">Uložit</string>
+    <string name="mc_delete">Smazat tento kanál</string>
+    <string name="mc_edit">Upravit</string>
+    <string name="mc_badge">Ruční</string>
+    <string name="mc_bad_url">Neplatná adresa</string>
     <string name="ds_fav_all_sources">Všechny zdroje</string>
 </resources>

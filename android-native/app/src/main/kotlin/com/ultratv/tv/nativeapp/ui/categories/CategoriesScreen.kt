@@ -104,6 +104,7 @@ class CategoriesViewModel @Inject constructor(
     private val channelOrder: com.ultratv.tv.nativeapp.data.repo.ChannelOrderRepository,
     private val profileCats: com.ultratv.tv.nativeapp.data.repo.ProfileCategories,
     private val hiddenStore: com.ultratv.tv.nativeapp.data.prefs.HiddenCategoriesStore,
+    private val manual: com.ultratv.tv.nativeapp.data.repo.ManualChannelRepository,
 ) : ViewModel() {
     val kind = MutableStateFlow("LIVE")
     val query = MutableStateFlow("")
@@ -197,6 +198,20 @@ class CategoriesViewModel @Inject constructor(
     fun setChannelVisible(ch: com.ultratv.tv.nativeapp.data.prefs.HiddenChannel, visible: Boolean) {
         viewModelScope.launch { providerId()?.let { if (visible) manager.showChannels(it, listOf(ch.id)) else manager.hideChannels(it, listOf(ch)); publish(it) } }
     }
+    // ── Chaînes ajoutées à la main (voir ManualChannels) ──
+    suspend fun manualChannel(rid: String): com.ultratv.tv.nativeapp.data.db.ManualChannelEntity? = providerId()?.let { manual.get(it, rid) }
+    suspend fun manualCategoryChoices(): List<Pair<String, String>> = providerId()?.let { manual.categoryChoices(it) }.orEmpty()
+    fun saveManual(rid: String?, f: ManualChannelForm, customName: String) {
+        viewModelScope.launch {
+            val pid = providerId() ?: return@launch
+            val catName = if (f.categoryId == com.ultratv.tv.nativeapp.data.repo.ManualChannels.CUSTOM_CAT) customName else null
+            if (rid == null) manual.add(pid, f.name, f.url, f.logo, f.epg, f.categoryId, catName)
+            else manual.update(pid, rid, f.name, f.url, f.logo, f.epg, f.categoryId, catName)
+            publish(pid)
+        }
+    }
+    fun deleteManual(rid: String) { viewModelScope.launch { providerId()?.let { manual.delete(it, rid); publish(it) } } }
+
     val filterUnsupported: StateFlow<Boolean> = providerList.map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.categoryFilter == 0 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 }
 
@@ -204,6 +219,7 @@ class CategoriesViewModel @Inject constructor(
 @Composable
 fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltViewModel()) {
     val D = LocalDs.current
+    val manualStrings = remember(D.lang) { ManualChannelStrings(D.lang) }
     val kind by vm.kind.collectAsState()
     val q by vm.query.collectAsState()
     val rows by vm.rows.collectAsState()
@@ -218,7 +234,11 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
     BackHandler(enabled = moving != null) { moving = null; local = rows }
     // Dialogue « Chaînes de la catégorie » (Direct) : (identifiant, nom affiché).
     var channelsOf by remember { mutableStateOf<Pair<String, String>?>(null) }
-    channelsOf?.let { (cat, label) -> CategoryChannelsDialog(vm, cat, label, D) { channelsOf = null } }
+    // Chaîne manuelle en cours d'ajout (« » = nouvelle) ou de modification (identifiant « custom:… »).
+    var manualEdit by remember { mutableStateOf<String?>(null) }
+    var manualCat by remember { mutableStateOf<String?>(null) }
+    channelsOf?.let { (cat, label) -> CategoryChannelsDialog(vm, cat, label, D, onEditManual = { rid -> manualCat = cat; channelsOf = null; manualEdit = rid }) { channelsOf = null } }
+    manualEdit?.let { rid -> ManualChannelHost(vm, rid.ifEmpty { null }, manualCat) { manualEdit = null; manualCat = null } }
 
     if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
         TouchCategories(
@@ -232,6 +252,7 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
             },
             onConfirmMove = { vm.saveOrder(local.map { it.remoteId }); moving = null },
             onChannels = { id, label -> channelsOf = id to label },
+            onAddManual = { manualCat = null; manualEdit = "" },
         )
         return
     }
@@ -262,6 +283,7 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
             PillButton(D.enableAll, { vm.setAll(true) }, heightPx = 64, hPadPx = 26, fontPx = 20, weight = FontWeight.Bold, bg = Ux.Surface)
             PillButton(D.disableAll, { vm.setAll(false) }, heightPx = 64, hPadPx = 26, fontPx = 20, weight = FontWeight.Bold, bg = Ux.Surface)
             PillButton(D.catSortAz, { vm.sortAz() }, heightPx = 64, hPadPx = 26, fontPx = 20, weight = FontWeight.Bold, bg = Ux.Surface)
+            if (kind == "LIVE") PillButton(manualStrings.add, { manualCat = null; manualEdit = "" }, heightPx = 64, hPadPx = 26, fontPx = 20, weight = FontWeight.Bold, bg = Ux.Surface)
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = 28.design)) {
             Text("${D.categoryCol} · ${shown.size}", color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 1.4.sp, maxLines = 1, modifier = Modifier.weight(1f))
@@ -405,7 +427,8 @@ private fun CategoryLine(
  * La liste comprend les chaînes déjà masquées de cette catégorie, pour pouvoir les réafficher.
  */
 @Composable
-private fun CategoryChannelsDialog(vm: CategoriesViewModel, cat: String, label: String, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, onClose: () -> Unit) {
+private fun CategoryChannelsDialog(vm: CategoriesViewModel, cat: String, label: String, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, onEditManual: (String) -> Unit, onClose: () -> Unit) {
+    val M = remember(D.lang) { ManualChannelStrings(D.lang) }
     var items by remember(cat) { mutableStateOf<List<com.ultratv.tv.nativeapp.data.prefs.HiddenChannel>?>(null) }
     LaunchedEffect(cat) { items = vm.channelsOf(cat) }
     val hidden by vm.hiddenIds.collectAsState()
@@ -446,16 +469,21 @@ private fun CategoryChannelsDialog(vm: CategoriesViewModel, cat: String, label: 
                         refocus = ch.id to (if (delta < 0) 1 else 2)
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.design), verticalAlignment = Alignment.CenterVertically) {
+                    val isManual = com.ultratv.tv.nativeapp.data.repo.ManualChannels.isManual(ch.id)
                     FocusSurface(
-                        onClick = { vm.setChannelVisible(ch, !visible) }, shape = RoundedCornerShape(16.design), bg = Ux.Surface, ringWidth = 5.design, focusedScale = 1f,
+                        // Chaîne manuelle : OK ouvre sa fiche (modifier / supprimer) ; l'interrupteur « masquée » ne s'applique pas.
+                        onClick = { if (isManual) onEditManual(ch.id) else vm.setChannelVisible(ch, !visible) }, shape = RoundedCornerShape(16.design), bg = Ux.Surface, ringWidth = 5.design, focusedScale = 1f,
                         modifier = Modifier.weight(1f).height(72.design).then(if (idx == 0) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier),
                     ) { f ->
                         Row(Modifier.fillMaxSize().padding(horizontal = 24.design), verticalAlignment = Alignment.CenterVertically) {
                             Text(ch.name, color = if (f) Ux.TextOnLight else if (visible) Ux.Text else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
                                 style = TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content))
+                            if (isManual) Text(M.badge + " · " + M.edit, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1)
+                            else {
                             Text(if (visible) D.catChannelShown else D.catChannelHidden, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1)
                             Spacer(Modifier.width(14.design))
                             Switch(visible, inverted = f)
+                            }
                         }
                     }
                     for ((which, icon, delta) in listOf(Triple(1, "M6 15l6-6 6 6", -1), Triple(2, "M6 9l6 6 6-6", 1))) {
@@ -484,6 +512,7 @@ private fun TouchCategories(
     D: com.ultratv.tv.nativeapp.i18n.DesignStrings,
     onBack: () -> Unit, onKind: (String) -> Unit, onStartMove: (String) -> Unit, onMove: (String, Int) -> Unit, onConfirmMove: () -> Unit,
     onChannels: (String, String) -> Unit = { _, _ -> },
+    onAddManual: () -> Unit = {},
 ) {
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dpT, vertical = 12.dpT), verticalArrangement = Arrangement.spacedBy(12.dpT)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -506,6 +535,9 @@ private fun TouchCategories(
                     Text(label, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 15.sp, lineHeight = 18.sp, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 }
             }
+        }
+        if (kind == "LIVE") Box(Modifier.fillMaxWidth().heightIn44().clip(RoundedCornerShape(14.dpT)).background(Ux.Surface).border(1.dpT, Ux.Line, RoundedCornerShape(14.dpT)).clickableT(onAddManual).padding(horizontal = 10.dpT, vertical = 8.dpT), contentAlignment = Alignment.Center) {
+            Text(ManualChannelStrings(D.lang).add, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1)
         }
         Text("${D.categoryCol} · ${shown.size}", color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 1.sp, maxLines = 1)
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dpT)) {
@@ -551,3 +583,19 @@ private fun Modifier.clickableT(onClick: () -> Unit) = this.clickable(onClick = 
 
 private fun Modifier.defaultMinSize56() = this.then(defaultMinSize(minWidth = 56.design))
 
+
+/** Charge la chaîne (modification) et les catégories de la source, puis affiche le formulaire ; enregistre / supprime via le modèle. */
+@Composable
+private fun ManualChannelHost(vm: CategoriesViewModel, rid: String?, defaultCategory: String?, onClose: () -> Unit) {
+    val D = LocalDs.current
+    val M = remember(D.lang) { ManualChannelStrings(D.lang) }
+    var loaded by remember(rid) { mutableStateOf<Pair<com.ultratv.tv.nativeapp.data.db.ManualChannelEntity?, List<Pair<String, String>>>?>(null) }
+    LaunchedEffect(rid) { loaded = (if (rid == null) null else vm.manualChannel(rid)) to vm.manualCategoryChoices() }
+    val (existing, cats) = loaded ?: return
+    ManualChannelDialog(
+        existing = existing, categories = cats, defaultCategory = defaultCategory,
+        onDismiss = onClose,
+        onSave = { f -> vm.saveManual(rid, f, M.catCustom); onClose() },
+        onDelete = if (rid != null) ({ vm.deleteManual(rid); onClose() }) else null,
+    )
+}
