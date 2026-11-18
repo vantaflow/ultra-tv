@@ -63,8 +63,11 @@ class CloudSyncManager @Inject constructor(
     private val profileLog: com.ultratv.tv.nativeapp.data.profile.ProfileSyncLog,
     private val profileCats: com.ultratv.tv.nativeapp.data.repo.ProfileCategories,
     private val handoffs: HandoffInbox,
+    private val profileSources: dagger.Lazy<com.ultratv.tv.nativeapp.data.profile.ProfileSources>,
 ) {
     private val mutex = Mutex()
+    /** Premier relevé de chaque lancement : toujours complet (jamais en 304), pour réparer un état où une source du site manque ici. */
+    @Volatile private var fullFetchDone = false
     /** Cadence adaptative (2 min après un changement, puis 10 min) et empreintes de ce qui a déjà été envoyé. */
     private val cadence = SyncCadence()
     private val pushGate = SyncPushGate()
@@ -108,11 +111,15 @@ class CloudSyncManager @Inject constructor(
         _state.value = _state.value.copy(syncing = true, failed = false)
         try {
             // Suppressions faites hors ligne : transmises d'abord ; la configuration est alors relue en entier.
+            links.migrateEtag()
+            val firstFullFetch = !fullFetchDone
+            fullFetchDone = true
             val flushed = flushPendingDeletes(base)
-            val fetched = source.withToken(base) { t -> client.fetch(base, t, if (force || flushed) null else links.etag()) }
+            val fetched = source.withToken(base) { t -> client.fetch(base, t, if (force || flushed || firstFullFetch) null else links.etag()) }
             // Demande « Reprendre sur cet appareil » déposée par un autre appareil : en-tête de la réponse (200 comme 304).
             handoffs.note(fetched.handoff)
             if (fetched.notModified) {
+                com.ultratv.tv.nativeapp.UtvLog.i(com.ultratv.tv.nativeapp.UtvLog.CLOUD, "304: configuration inchangée (etag=${links.etag() ?: "-"}), aucun plan à appliquer")
                 links.lastSyncAt = System.currentTimeMillis()
                 // Configuration inchangée : les profils, favoris et reprises peuvent avoir changé ailleurs, on les échange
                 // quand même (avant : seulement 60 s après un changement local ou toutes les 10 min, donc parfois jamais
@@ -127,7 +134,9 @@ class CloudSyncManager @Inject constructor(
             val summary = apply(cfg)
             // Configuration reçue d'un autre appareil : cadence rapide pendant 10 min.
             if (summary.added + summary.updated + summary.removed > 0 || summary.pending.isNotEmpty()) cadence.noteChange()
-            links.setEtag(fetched.etag)
+            // Serveur multimédia du site non ajouté : ETag non retenu, la configuration est relue (et réessayée) à la prochaine synchro.
+            if (summary.failedMedia == 0) links.setEtag(fetched.etag)
+            com.ultratv.tv.nativeapp.UtvLog.i(com.ultratv.tv.nativeapp.UtvLog.CLOUD, "synchro: +${summary.added} ~${summary.updated} -${summary.removed} échecsMedia=${summary.failedMedia} etag=${if (summary.failedMedia == 0) "retenu" else "NON retenu"}")
             links.lastSyncAt = System.currentTimeMillis()
             stateScope.launch { syncSharedState() }
             _state.value = CloudSyncState(
@@ -464,21 +473,27 @@ class CloudSyncManager @Inject constructor(
         }
     }
 
-    private data class Summary(val added: Int, val updated: Int, val removed: Int, val pending: List<PendingRemoval>)
+    private data class Summary(val added: Int, val updated: Int, val removed: Int, val pending: List<PendingRemoval>, val failedMedia: Int = 0)
 
     private suspend fun apply(cfg: CloudConfig): Summary {
         val locals = repo.observeProviders().first()
         // Serveurs à jeton (Jellyfin, Emby, Plex) : seulement ceux reçus du site (liés) ; ceux ajoutés sur l'appareil
         // ne sont jamais rapprochés ni supprimés par la synchro.
         val localModels = locals.filter { it.kind in SUPPORTED_KINDS }.map { localModel(it) }
-            .filter { it.kind !in TOKEN_KINDS || it.cloudId != null }
+            .filter { it.kind !in TOKEN_KINDS || it.cloudId != null || it.kind == "PLEX" }  // Plex local : rapprochable (même machine), jamais supprimé
         val dependents = localModels.filter { it.cloudId != null }.associate { it.localId to (db.favoriteDao().countForProvider(it.localId) + db.recordingDao().countForProvider(it.localId)) }
         val applied = cfg.providers.mapNotNull { c -> links.appliedName(c.id)?.let { c.id to it } }.toMap() +
             localModels.mapNotNull { l -> l.cloudId?.let { id -> links.appliedName(id)?.let { id to it } } }.toMap()
         var added = 0; var updated = 0; var removed = 0
         val pending = mutableListOf<PendingRemoval>()
+        val failed = mutableListOf<CloudProvider>()
         val deviceCount = cfg.devices.size
-        for (a in CloudSyncLogic.plan(localModels, cfg.providers, dependents, applied)) when (a) {
+        val plan = CloudSyncLogic.plan(localModels, cfg.providers, dependents, applied)
+        val dups = CloudSyncLogic.duplicateCloudIds(cfg.providers, localModels.mapNotNull { it.cloudId }.toSet())
+        if (dups.isNotEmpty()) com.ultratv.tv.nativeapp.UtvLog.w(com.ultratv.tv.nativeapp.UtvLog.CLOUD, "doublons cloud ignorés (même serveur Plex): ${dups.joinToString(",")} — à supprimer sur le tableau de bord")
+        com.ultratv.tv.nativeapp.UtvLog.i(com.ultratv.tv.nativeapp.UtvLog.CLOUD, "plan: cloud=${cfg.providers.size} locaux=${localModels.size} actions=" +
+            plan.joinToString(",") { a -> when (a) { is SyncAction.Add -> "Add:${a.cloud.kind}"; is SyncAction.Link -> "Link:${a.cloud.kind}"; is SyncAction.Update -> "Update:${a.cloud.kind}"; is SyncAction.Remove -> "Remove" } }.ifEmpty { "aucune" })
+        for (a in plan) when (a) {
             is SyncAction.Add -> {
                 val id = when (a.cloud.kind) {
                     "XTREAM" -> repo.addXtream(a.cloud.name, a.cloud.url, a.cloud.username, a.cloud.password)
@@ -486,14 +501,17 @@ class CloudSyncManager @Inject constructor(
                     "STALKER" -> runCatching { repo.addStalker(a.cloud.name, a.cloud.url, a.cloud.mac, a.cloud.username, a.cloud.password) }.getOrNull() ?: continue
                     // Serveurs multimédias ajoutés sur le site : l'appareil s'y connecte lui-même. Serveur injoignable ou
                     // refus : ignoré pour cette fois, nouvel essai à la prochaine synchro (rien n'est lié).
-                    "JELLYFIN", "EMBY" -> runCatching { repo.addMediaServer(a.cloud.kind, a.cloud.name, a.cloud.url, a.cloud.username, a.cloud.password, a.cloud.apiKey) }.getOrNull() ?: continue
-                    "NAS" -> runCatching { repo.addNas(a.cloud.name, a.cloud.url, a.cloud.username, a.cloud.password) }.getOrNull() ?: continue
-                    "PLEX" -> CloudSyncLogic.plexServerOf(a.cloud)?.let { s -> runCatching { repo.addPlexServer(s) }.getOrNull() } ?: continue
+                    "JELLYFIN", "EMBY" -> mediaAdd(a.cloud, failed) { repo.addMediaServer(a.cloud.kind, a.cloud.name, a.cloud.url, a.cloud.username, a.cloud.password, a.cloud.apiKey) } ?: continue
+                    "NAS" -> mediaAdd(a.cloud, failed) { repo.addNas(a.cloud.name, a.cloud.url, a.cloud.username, a.cloud.password) } ?: continue
+                    // Plex : champs manquants (machine ou jeton vides) ou serveur injoignable = échec SIGNALÉ (jamais silencieux).
+                    "PLEX" -> mediaAdd(a.cloud, failed) { repo.addPlexServer(CloudSyncLogic.plexServerOf(a.cloud) ?: throw java.io.IOException("plex: incomplete")) } ?: continue
                     "M3U" -> repo.addM3u(a.cloud.name, a.cloud.url)
                     else -> continue
                 }
                 links.link(id, a.cloud.id, a.cloud.name, a.cloud.sharedWith(deviceCount))
                 if (repo.firstActive() == null) repo.setDefault(id)
+                // Une source ajoutée sur le site doit rester visible pour le profil courant (sinon elle serait filtrée par son nom).
+                if (a.cloud.kind in TOKEN_KINDS || a.cloud.kind == "NAS") runCatching { profileSources.get().ensureVisible(id) }
                 // Appairage depuis l'assistant : une source Xtream attend l'étape Langues (sinon une
                 // box modeste synchronisait d'emblée tout le catalogue — 50 000 chaînes, 180 000 films).
                 if (!(CloudOnboarding.deferXtreamSync && a.cloud.kind == "XTREAM")) sync.request(id, force = true)
@@ -528,7 +546,27 @@ class CloudSyncManager @Inject constructor(
             }
         }
         runCatching { applyPrefs(cfg) }
-        return Summary(added, updated, removed, pending)
+        notifyMediaFailures(failed)
+        return Summary(added, updated, removed, pending, failed.size)
+    }
+
+    /** Ids cloud des échecs déjà annoncés : un message par source et par lancement, pas un toast à chaque synchro. */
+    private val announcedFailures = HashSet<String>()
+
+    /**
+     * Ajoute une source multimédia reçue du site ; null (et source notée en échec) si le serveur est injoignable, refuse ou
+     * si la configuration est incomplète. Nouvel essai à la prochaine synchro (l'ETag n'est pas retenu, voir [sync]).
+     */
+    private suspend inline fun mediaAdd(c: CloudProvider, failed: MutableList<CloudProvider>, add: () -> Long): Long? =
+        try { add().also { com.ultratv.tv.nativeapp.UtvLog.i(com.ultratv.tv.nativeapp.UtvLog.CLOUD, "ajout ${c.kind} '${c.name}': ok") } }
+        catch (e: kotlinx.coroutines.CancellationException) { throw e }
+        catch (t: Throwable) { failed += c; com.ultratv.tv.nativeapp.UtvLog.w(com.ultratv.tv.nativeapp.UtvLog.CLOUD, "ajout ${c.kind} '${c.name}' échoué: ${com.ultratv.tv.nativeapp.UtvLog.why(t)} (réessai à la prochaine synchro)"); null }
+
+    private suspend fun notifyMediaFailures(failed: List<CloudProvider>) {
+        val fresh = failed.filter { announcedFailures.add(it.id) }
+        if (fresh.isEmpty()) return
+        val names = fresh.joinToString(", ") { it.name.ifBlank { it.kind } }
+        com.ultratv.tv.nativeapp.ui.common.Toaster.err(com.ultratv.tv.nativeapp.i18n.cloudMediaFailedText(com.ultratv.tv.nativeapp.i18n.AppLang.fromCode(runCatching { prefs.flow.first().language }.getOrDefault("")), names))
     }
 
     /** Source locale vue par la fusion ; portail Stalker : MAC à part, identifiant et mot de passe du portail dépaquetés. */

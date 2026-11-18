@@ -470,6 +470,10 @@ interface MovieDao {
     @Query("SELECT COUNT(*) FROM movie WHERE providerId = :pid AND categoryId = :cat")
     suspend fun countInCategory(pid: Long, cat: String): Int
 
+    /** Derniers ajoutés d'une bibliothèque (rangée courte de « Mes bibliothèques »). */
+    @Query("SELECT * FROM movie WHERE providerId = :pid AND categoryId = :cat ORDER BY addedKey DESC LIMIT :limit")
+    suspend fun latestInCategory(pid: Long, cat: String, limit: Int): List<MovieEntity>
+
     /** Films « à la une » (rotation) : les mieux notés qui ont une affiche. */
     @Query("SELECT * FROM movie WHERE providerId = :pid AND poster IS NOT NULL AND poster != '' AND rating IS NOT NULL AND rating <= 10 ORDER BY rating DESC LIMIT :limit")
     fun observeHeroes(pid: Long, limit: Int): Flow<List<MovieEntity>>
@@ -639,6 +643,10 @@ interface SeriesDao {
     /** Nombre de séries d'une catégorie (« Mes bibliothèques » : dossiers d'un partage NAS). */
     @Query("SELECT COUNT(*) FROM series WHERE providerId = :pid AND categoryId = :cat")
     suspend fun countInCategory(pid: Long, cat: String): Int
+
+    /** Derniers ajoutées d'une bibliothèque (rangée courte de « Mes bibliothèques »). */
+    @Query("SELECT * FROM series WHERE providerId = :pid AND categoryId = :cat ORDER BY addedKey DESC LIMIT :limit")
+    suspend fun latestInCategory(pid: Long, cat: String, limit: Int): List<SeriesEntity>
 
     /** Séries « à la une » (rotation) : les mieux notées qui ont une image paysage. */
     @Query("SELECT * FROM series WHERE providerId = :pid AND backdrop IS NOT NULL AND backdrop != '' AND rating IS NOT NULL AND rating <= 10 ORDER BY rating DESC LIMIT :limit")

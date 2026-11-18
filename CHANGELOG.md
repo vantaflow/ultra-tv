@@ -6,6 +6,67 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Corrigé
 - Bureau : la boucle de chargement en lecture convertie (après une à deux minutes de lecture, la vidéo patinait jusqu'à la fermeture/réouverture, sans cesse) — la conversion était servie à pleine vitesse : le tampon du lecteur se remplissait, il cessait de lire, ffmpeg restait bloqué et son fournisseur coupait sa connexion devenue inactive. La conversion est servie au rythme réel de la lecture (`-re` côté ffmpeg) — plus d'interruption si la source coupe les connexions inactives, et la lecture ne tire plus des dizaines de giga-octets du compte à chaque séance.
+## [1.3.55] — 2026-11-17 (Android) · Bureau 1.2.71 · Worker
+
+## Bureau 1.2.70 — 2026-11-17
+
+### Corrigé
+- Bureau : films et séries sans son quand le MP4 est refusé (HTTP 551) puis lus en MKV : la sonde ffmpeg est refaite sur l'adresse courante et l'audio est converti en AAC (remux), même si la sonde est impossible ; le container_extension annoncé passe avant un .mp4 deviné ; « Ouvrir dans VLC » reçoit l'adresse qui fonctionne (#202)
+- Tableau de bord : le QR code d'appairage scanné sur la TV ouvre directement la confirmation quand on est déjà connecté sur le téléphone (cookie de session SameSite=Lax au lieu de Strict).
+- Sans compte, la carte des Réglages › Sources propose d'envoyer une source depuis le téléphone (QR vers /envoyer, OK affiche le code) au lieu d'un QR vers la page de connexion ; les QR et adresses d'envoi et d'appairage affichent le site ultratv.dpdns.org et plus l'adresse de l'API
+
+## [1.3.54] — 2026-11-17 (Android)
+
+### Modifié
+- Fiche série (TV) : « Aller à l'épisode » retiré, seul « Télécharger la saison » reste ; Haut et Bas suivent l'ordre de l'écran (onglets de saison, puis Télécharger la saison, puis épisodes).
+### Corrigé
+- Fiche film (TV) : Haut depuis « Titres similaires » remonte sur la distribution juste au-dessus, et non plus sur « Lecture ».
+- Admin › Journaux : messages sur plusieurs lignes, identifiants et empreintes réduits ; le tableau ne déborde plus.
+
+## [1.3.53] — 2026-11-17 (Android)
+
+### Corrigé
+- Fiche série (TV) : tous les onglets de saison restent accessibles (rangée pleine largeur qui défile, barre « Aller à l'épisode » / « Télécharger » sur sa ligne), Gauche/Droite passent à la saison voisine, Haut depuis le premier épisode va à l'onglet de la saison active, Bas mène au premier épisode, Gauche depuis la première saison revient à la colonne de gauche
+
+## [1.3.52] — 2026-11-17 (Android)
+
+### Corrigé
+- Fiche série (TV) : Droite depuis le dernier élément d'une ligne de la colonne gauche (Lecture, étoile, dernier acteur) mène à l'épisode à reprendre (ou au premier), Gauche depuis un épisode revient sur « Lecture » ; plus de descente vers l'acteur ; noms de la distribution sur deux lignes à interligne normal et cellules alignées
+
+## [1.3.51] — 2026-11-17 (Android) · Bureau 1.2.69 · Worker
+
+### Corrigé
+- Sport : le football du jour (scores des directs hors ligues suivies, ex. qualifications CAN) est lu directement chez ESPN depuis la TV, avec un User-Agent honnête, une requête par minute au plus et un recul en cas d'erreur ; la feuille d'un match ESPN est lue de la même façon. La route du Worker reste en secours (ESPN bloque les adresses Cloudflare).
+- Télécommande : les flèches vont à l'élément le plus proche dans leur direction (navigation 2D), sans passer au bouton suivant ; redirections forcées retirées de la fiche série, du catalogue, de la recherche et du bandeau du Direct
+
+## [1.3.50] — 2026-11-17 (Android) · Worker
+
+### Ajouté
+- Accueil : une rangée « Ajouts récents · serveur » par serveur Plex, Jellyfin, Emby ou NAS visible du profil (20 titres au plus, bibliothèques masquées exclues) et reprises de lecture des serveurs mêlées à « Reprendre la lecture »
+### Modifié
+- Tableau de bord, serveurs multimédias : un clic sur un serveur Plex l'ajoute (sans bouton Add), liste des serveurs configurés (type, badge, date, appareils, partage, suppression), retour sur la carte avec un message clair et refus des doublons (Plex, Jellyfin, Emby, NAS)
+- Tableau de bord : les serveurs Jellyfin, Emby, Plex et NAS ne sont plus listés en double dans « Sources » ; ils n'apparaissent que dans la carte « Media servers ».
+
+### Corrigé
+- Tableau de bord : sur les cartes des serveurs multimédias et des sources Stalker, la note passe au-dessus des boutons ; Partager et Supprimer restent alignés sur une ligne.
+- Synchro cloud : un même serveur Plex ajouté deux fois sur le site n'est plus lié deux fois, supprimer l'un des deux ne retire plus la source de la TV, une source du site absente de la TV est rajoutée même après une suppression (première lecture complète à chaque lancement), journal UtvCloud toujours écrit, même en 304
+- Fiche série (TV) : Droite depuis « Reprendre », les boutons ou la distribution mène directement à l'épisode en cours, sans parcourir les acteurs un par un.
+
+## [1.3.49] — 2026-11-17 (Android) · Bureau 1.2.68 · Worker
+
+### Corrigé
+- Plex, Jellyfin, Emby et NAS : « Mes bibliothèques » dans le menu latéral, rangées courtes par serveur avec « Tout voir », serveurs choisissables dans Films et Séries, indexation toujours faite (même si Films/Séries IPTV sont désactivés), serveur ajouté sur le site réessayé à chaque synchro avec message d'erreur, un même serveur Plex lié sur la TV et le site n'est plus dupliqué, liste des serveurs Plex du site mieux présentée
+- Bureau : la lecture n'affichait aucune image quand la vidéo est en MPEG-2, en HEVC sans décodeur matériel ou en H.264 10 bits / 4:2:2 ; avec ffmpeg, la vidéo est maintenant convertie en H.264 (1080p maximum) et le son AAC reste converti à part. Une seule conversion ffmpeg reste vivante par hôte
+- Bureau : le message d'échec de lecture indique la vraie cause (code HTTP du fournisseur, codec vidéo non pris en charge, serveur injoignable) au lieu de toujours évoquer la limite de connexions ; en cas de refus 403 / 458 / 509, l'autre format (m3u8 ou ts) est essayé avant de conclure
+- Bureau : sans User-Agent choisi dans la source, les flux sont demandés avec celui de VLC (les fournisseurs refusent souvent celui d'Electron et de ffmpeg)
+- Bureau : sans ffmpeg complet (Linux : encodeur H.264 absent du ffmpeg embarqué), le message dit comment l'installer (apt / dnf install ffmpeg, brew install ffmpeg sous macOS)
+- Playlist M3U : les fichiers vidéo (.mp4, .mkv, .avi…), les chemins /movie/ et /series/ et les types tvg-type / group-title VOD sont rangés dans Films et Séries et lus comme de la VOD (position, durée, reprise) au lieu d'être pris pour des chaînes du Direct, pour un lien comme pour un fichier local
+- Bureau, VOD : un film ou un épisode que Chromium ne lit pas (conteneur MKV / AVI, audio AC-3 / E-AC-3 / DTS) est remuxé par ffmpeg (vidéo copiée, audio AAC) avec sa durée, ou converti en H.264 si la vidéo est illisible ; le diagnostic couvre aussi la VOD
+
+### Ajouté
+- Bureau : « Ouvrir dans VLC » pour le direct, les films et les séries (panneau Lecteur et message d'échec), avec le User-Agent et le Referer de la source ; VLC est détecté dans Program Files et le registre (Windows), /Applications (macOS), le PATH, flatpak et snap (Linux)
+- Bibliothèques Plex, Jellyfin, Emby et NAS : serveurs et bibliothèques visibles par profil (synchronisés avec les appareils), « Tout voir » ouvre la bibliothèque choisie, journaux de diagnostic UtvCloud/UtvMedia/UtvSync/UtvSport/UtvPlay sans secret
+- Bureau : journal de lecture détaillé (format, conteneur, codecs sondés, décision de repli, code HTTP, redirections, User-Agent, délai jusqu'à la première image, erreurs du lecteur) dans le dossier des journaux, rotation à 5 Mo sur 3 fichiers, identifiants et jetons masqués ; bouton « Ouvrir le dossier des journaux » dans Réglages › À propos et dans le message d'échec
 
 ## [1.3.48] — 2026-11-17 (Android)
 

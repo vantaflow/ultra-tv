@@ -214,3 +214,21 @@ class AnonPingPlanTest {
         assertFalse(AnonPingPlan.post(OkHttpClient(), base, "abc-123", "1.2.83", "android-tv", "SKYWORTH 4K"))
     }
 }
+
+class SiteAddressTest {
+    private val api = listOf("https://tv.weedy.dpdns.org", "https://tv.weedy.dpdns.org/", "https://ultratv-config.khalilbenaz.workers.dev")
+
+    @org.junit.Test fun `envoi et appairage pointent vers le site quand l'API est la notre`() {
+        for (b in api) {
+            org.junit.Assert.assertEquals("https://ultratv.dpdns.org/envoyer?c=ABC123", WebSendLogic.sendUrl(b, "abc123"))
+            org.junit.Assert.assertEquals("ultratv.dpdns.org/envoyer", WebSendLogic.shortAddress(b))
+            org.junit.Assert.assertEquals("https://ultratv.dpdns.org/pair?code=K7Q2M9XF", com.ultratv.tv.nativeapp.ui.settings.pairingUrl(b, "k7q2-m9xf"))
+        }
+    }
+
+    @org.junit.Test fun `hote personnalise conserve`() {
+        org.junit.Assert.assertEquals("https://w.example.com/envoyer?c=ABC123", WebSendLogic.sendUrl("https://w.example.com/", "abc123"))
+        org.junit.Assert.assertEquals("w.example.com/envoyer", WebSendLogic.shortAddress("https://w.example.com"))
+        org.junit.Assert.assertEquals("https://w.example.com/pair?code=K7Q2M9XF", com.ultratv.tv.nativeapp.ui.settings.pairingUrl("https://w.example.com", "K7Q2M9XF"))
+    }
+}

@@ -66,7 +66,7 @@ describe("serveurs multimédias : tableau de bord → appareil", () => {
     const dev = await pairDevice(acct);
     const r = await addProvider(acct, { kind: "JELLYFIN", name: "Maison", url: "http://192.168.1.20:8096", apikey: "abc" });
     expect(r.status).toBe(302);
-    expect(r.headers.get("location")).toBe("/?m=added");
+    expect(r.headers.get("location")).toBe("/?m=srvadded&k=JELLYFIN&s=Maison#serveurs");
     const cfg = await (await call("/api/config", { ip: dev.ip, headers: bearer(dev.token) })).json();
     expect(cfg.providers.find((p) => p.kind === "JELLYFIN")).toMatchObject({ name: "Maison", url: "http://192.168.1.20:8096", apiKey: "abc" });
   });
@@ -94,14 +94,77 @@ describe("serveurs multimédias : tableau de bord → appareil", () => {
     expect((await (await post("/plex/check")).json()).state).toBe("wait");
     validated = true;
     const checked = await (await post("/plex/check")).json();
-    expect(checked).toEqual({ state: "ok", servers: [{ id: "m1", name: "Salon", owned: true }] });
+    expect(checked).toEqual({ state: "ok", servers: [{ id: "m1", name: "Salon", owned: true, conn: "local", added: false }] });
     expect(JSON.stringify(checked)).not.toContain("token");
     const r = await addProvider(acct, { kind: "PLEX", server: "m1" });
-    expect(r.headers.get("location")).toBe("/?m=added");
+    expect(r.headers.get("location")).toBe("/?m=srvadded&k=PLEX&s=Salon#serveurs");
     const cfg = await (await call("/api/config", { ip: dev.ip, headers: bearer(dev.token) })).json();
     expect(cfg.providers.find((p) => p.kind === "PLEX")).toMatchObject({ name: "Salon", username: "m1", password: "srv-token", plex: { owned: true } });
     // PIN consommé : un second ajout échoue proprement.
     expect((await addProvider(acct, { kind: "PLEX", server: "m1" })).headers.get("location")).toBe("/?e=plex#serveurs");
+  });
+
+  it("Plex : serveur déjà ajouté refusé en doublon, message et ligne « déjà ajouté »", async () => {
+    const acct = await newAccount();
+    await pairDevice(acct, "Salon");
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const u = String(input?.url || input);
+      if (u.startsWith("https://plex.tv/api/v2/pins?")) return ok({ id: 42, code: "ABCD" });
+      if (u === "https://plex.tv/api/v2/pins/42") return ok({ id: 42, code: "ABCD", authToken: "acct-token" });
+      if (u.startsWith("https://plex.tv/api/v2/resources")) return ok([{ name: "JDM Plex Server", provides: "server", clientIdentifier: "m1", owned: true, accessToken: "srv-token", connections: [{ uri: "http://192.168.1.5:32400", local: true }] }]);
+      throw new Error(`inattendu : ${u}`);
+    });
+    const post = (p) => call(p, { method: "POST", ip: acct.ip, cookie: acct.cookie, form: { csrf: acct.csrf } });
+    await post("/plex/pin");
+    expect((await (await post("/plex/check")).json()).servers[0].added).toBe(false);
+    const first = await addProvider(acct, { kind: "PLEX", server: "m1" });
+    expect(first.headers.get("location")).toBe("/?m=srvadded&k=PLEX&s=JDM%20Plex%20Server#serveurs");
+    await post("/plex/pin");
+    const again = await (await post("/plex/check")).json();
+    expect(again.servers[0].added).toBe(true);
+    const dup = await addProvider(acct, { kind: "PLEX", server: "m1" });
+    expect(dup.headers.get("location")).toBe("/?m=srvdup&k=PLEX&s=JDM%20Plex%20Server#serveurs");
+    const html = await (await call("/?l=fr&m=srvadded&k=PLEX&s=JDM%20Plex%20Server", { ip: acct.ip, cookie: acct.cookie })).text();
+    expect(html).toContain("JDM Plex Server ajouté");
+  });
+
+  it("liste des serveurs configurés : nom, type, badge, date, suppression et appareils", async () => {
+    const acct = await newAccount();
+    await pairDevice(acct, "Salon");
+    await addProvider(acct, { kind: "JELLYFIN", name: "Maison", url: "http://192.168.1.20:8096", apikey: "abc" });
+    await addProvider(acct, { kind: "NAS", name: "Mon NAS", url: "smb://nas/films" });
+    const html = await (await call("/?l=fr", { ip: acct.ip, cookie: acct.cookie })).text();
+    const list = html.slice(html.indexOf('class="msrv-list"'));
+    expect(list).toContain("Maison");
+    expect(list).toContain("JELLYFIN");
+    expect(list).toContain("Mon NAS");
+    expect(list).toContain("Ajouté le");
+    expect(list).toContain("/delete");
+    expect(list).toContain("Tous les appareils");
+    expect(list).toContain("/assign");
+    expect(html.indexOf('<ul class="msrv-list"')).toBeLessThan(html.indexOf('name="mtab"'));
+  });
+
+  it("Jellyfin, Emby, NAS : doublon refusé (adresse normalisée), message et onglet de retour", async () => {
+    const acct = await newAccount();
+    const cases = [
+      ["JELLYFIN", { url: "http://Jf.local:8096/", username: "Anna", apikey: "" }, { url: "http://jf.local:8096", username: "anna", apikey: "" }, { url: "http://jf.local:8096", username: "bob" }],
+      ["EMBY", { url: "http://emby.local:80/", apikey: "k1" }, { url: "http://EMBY.local", apikey: "k1" }, null],
+      ["NAS", { url: "smb://NAS/Films/" }, { url: "smb://nas/films", username: "autre" }, { url: "smb://nas/series" }],
+    ];
+    for (const [kind, first, same, other] of cases) {
+      const r1 = await addProvider(acct, { kind, name: `${kind}1`, ...first });
+      expect(r1.headers.get("location")).toBe(`/?m=srvadded&k=${kind}&s=${kind}1#serveurs`);
+      const r2 = await addProvider(acct, { kind, name: `${kind}2`, ...same });
+      expect(r2.headers.get("location")).toBe(`/?m=srvdup&k=${kind}&s=${kind}2#serveurs`);
+      if (other) expect((await addProvider(acct, { kind, name: `${kind}3`, ...other })).headers.get("location")).toBe(`/?m=srvadded&k=${kind}&s=${kind}3#serveurs`);
+    }
+    const html = await (await call("/?l=fr&m=srvdup&k=NAS&s=NAS2", { ip: acct.ip, cookie: acct.cookie })).text();
+    expect(html).toContain("NAS2 est déjà ajouté");
+    expect(html).toMatch(/id="t-nas" checked/);
+    const list = html.slice(html.indexOf('class="msrv-list"'));
+    for (const n of ["JELLYFIN1", "EMBY1", "NAS1"]) expect(list).toContain(n);
+    expect(list).not.toContain("JELLYFIN2");
   });
 
   it("le panneau « Serveurs multimédias » est sur le tableau de bord", async () => {

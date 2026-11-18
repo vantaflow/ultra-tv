@@ -87,6 +87,8 @@
     <string name="ds_loading_label">Ladataan…</string>
     <string name="ds_searching_label">Haetaan…</string>
     <string name="ds_dashboard_scan">Skannaa puhelimellasi</string>
+    <string name="ds_dashboard_send_title">Lähetä lähde puhelimesta</string>
+    <string name="ds_dashboard_send_hint">Saat koodin painamalla OK, skannaa sitten QR-koodi puhelimellasi</string>
     <string name="ds_pair_scan_auto">Skannaa puhelimellasi yhdistääksesi automaattisesti</string>
     <string name="ds_pair_device_label">Hallintapaneelissa näkyvä nimi</string>
     <string name="ds_search_pill">Haku</string>
@@ -1828,4 +1830,5 @@
     <string name="sport_ok_hint">OK ottelussa: ottelukortti tai toisto</string>
     <string name="sport_no_events">Ei vielä kohokohtia.</string>
     <string name="sport_table_hidden">Sarjataulukko piilotettu spoilerittomassa tilassa.</string>
+    <string name="mlib_cloud_failed">Verkkosivulta lisättyä kirjastoa “%1$s” ei saatu yhdistettyä. TV yrittää uudelleen seuraavassa synkronoinnissa. Tarkista, että palvelin on tavoitettavissa.</string>
 </resources>

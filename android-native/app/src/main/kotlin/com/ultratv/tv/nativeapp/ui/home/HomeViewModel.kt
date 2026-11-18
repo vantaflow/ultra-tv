@@ -94,6 +94,8 @@ class HomeViewModel @Inject constructor(
     private val liveZap: com.ultratv.tv.nativeapp.data.repo.LiveZapContext,
     private val fanart: com.ultratv.tv.nativeapp.data.extmeta.FanartRepository,
     private val tvMaze: com.ultratv.tv.nativeapp.data.extmeta.TvMazeRepository,
+    private val profileRepo: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
+    private val categoryDao: com.ultratv.tv.nativeapp.data.db.CategoryDao,
 ) : ViewModel() {
 
     /** Garde les éléments dont la catégorie n'est pas masquée pour le PROFIL COURANT (catégories par profil). */
@@ -118,8 +120,19 @@ class HomeViewModel @Inject constructor(
 
     private val pid: Flow<Long?> = providers.map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }.distinctUntilChanged()
 
-    val continueWatching: StateFlow<List<WatchHistoryEntity>> = pid
-        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else history.continueWatching(id, 12) }
+    /** Serveurs multimédias / NAS visibles pour le profil courant, dans l'ordre des sources ; vide = aucune rangée de serveur. */
+    private val libraryProviders: Flow<List<ProviderEntity>> = combine(providers, profileRepo.currentSources) { ps, names ->
+        com.ultratv.tv.nativeapp.data.profile.ProfileSourcesRules.visible(ps, names)
+            .filter { com.ultratv.tv.nativeapp.data.mediaserver.MediaServer.isMediaKind(it.kind) || com.ultratv.tv.nativeapp.data.nas.Nas.isNasKind(it.kind) } to names
+    }.distinctUntilChanged().map { it.first }
+
+    /** Reprises des serveurs (base locale seulement, 12 par serveur au plus) ; la position serveur est relue à la lecture. */
+    private val libraryResume: Flow<List<WatchHistoryEntity>> = libraryProviders.flatMapLatest { ps ->
+        if (ps.isEmpty()) flowOf(emptyList()) else combine(ps.map { history.continueWatching(it.id, 12) }) { it.toList().flatten() }
+    }
+
+    val continueWatching: StateFlow<List<WatchHistoryEntity>> = combine(pid
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else history.continueWatching(id, 12) }, libraryResume) { a, b -> mergeResume(a, b, 12) }
         // Reçu d'un autre appareil sans adresse locale (épisode d'une série jamais ouverte ici) : pas de carte cliquable.
         // Épisode sans image (anciennes lignes) : affiche de la série.
         .map { l -> l.filter { it.streamUrl.isNotBlank() }.map { h ->
@@ -367,8 +380,26 @@ class HomeViewModel @Inject constructor(
     /** Disposition de l'accueil (ordre / rangées masquées) : seule une modification du réglage réémet. */
     private val homeLayout = prefsStore.flow.map { HomeLayout.parse(it.homeOrder, it.homeHidden) }.distinctUntilChanged()
 
+    /**
+     * « Ajoutés récemment · <serveur> » : par serveur visible, 10 films + 10 séries récents (requêtes LIMIT sur la base locale,
+     * jamais le catalogue entier), hors bibliothèques masquées pour le profil, mêlés et limités à 20.
+     */
+    private val libraryShelves: Flow<List<LibraryShelfUi>> = combine(libraryProviders, profileRepo.currentSources) { ps, names -> ps to names }
+        .flatMapLatest { (ps, names) ->
+            if (ps.isEmpty()) flowOf(emptyList()) else combine(ps.map { p ->
+                combine(catalog.latestMovies(p.id, 30).atMostEvery(1_000), catalog.latestSeries(p.id, 30).atMostEvery(1_000)) { m, s ->
+                    val hidden = (categoryDao.forProviderKind(p.id, "MOVIE") + categoryDao.forProviderKind(p.id, "SERIES"))
+                        .filter { !com.ultratv.tv.nativeapp.data.profile.ProfileSourcesRules.libraryVisible(names, p.name, it.name) }.map { it.remoteId }.toSet()
+                    fun <T> List<T>.vis(cat: (T) -> String?) = if (hidden.isEmpty()) this else filter { cat(it) !in hidden }
+                    val mc = m.vis { it.categoryId }.take(10).map { catalogPosterOf(com.ultratv.tv.nativeapp.ui.catalog.PosterItem(it.id, it.title, it.poster, it.year, it.rating), isShow = false) }
+                    val sc = s.vis { it.categoryId }.take(10).map { catalogPosterOf(com.ultratv.tv.nativeapp.ui.catalog.PosterItem(it.id, it.title, it.poster, it.year, it.rating), isShow = true) }
+                    LibraryShelfUi(p.id, p.name, interleaveCards(mc, sc, 20))
+                }
+            }) { composeLibraryShelves(it.toList()) }
+        }.flowOn(kotlinx.coroutines.Dispatchers.IO)
+
     val rows: StateFlow<HomeRows> = combine(
-        listOf(continueWatching, trakt, recentChannels, latestMovies, latestSeries, channels, showingFavorites, nowPlaying, homeLayout, topMovies, topSeries, because, counts, newEpisodes),
+        listOf(continueWatching, trakt, recentChannels, latestMovies, latestSeries, channels, showingFavorites, nowPlaying, homeLayout, topMovies, topSeries, because, counts, newEpisodes, libraryShelves),
     ) { a ->
         @Suppress("UNCHECKED_CAST") val resume = a[0] as List<WatchHistoryEntity>
         val t = a[1] as com.ultratv.tv.nativeapp.data.trakt.TraktRows
@@ -381,7 +412,9 @@ class HomeViewModel @Inject constructor(
         val homeCounts = a[12] as HomeCounts
         @Suppress("UNCHECKED_CAST") val fresh = a[13] as List<NewEpisodeCardUi>
         val clean: (String) -> String = { com.ultratv.tv.nativeapp.data.repo.TitleCleaner.historyTitle(it) }
+        @Suppress("UNCHECKED_CAST") val libs = a[14] as List<LibraryShelfUi>
         HomeRows(
+            libraries = libs,
             resume = resume.map { resumeCardOf(it, "", clean) }.distinctKeys { it.key }.oneCardPerTitle(),
             watchlist = t.watchlist.map(::traktPosterOf).distinctKeys { it.key },
             availableNow = t.recent.map(::traktPosterOf).distinctKeys { it.key },

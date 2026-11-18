@@ -66,7 +66,7 @@ import com.ultratv.tv.nativeapp.ui.settings.MediaLogo
  * Téléphone : sections empilées, rangées défilantes.
  */
 @Composable
-fun LibraryHubScreen(onOpenMovie: (Long) -> Unit, onOpenSeries: (Long) -> Unit, vm: LibraryHubViewModel = hiltViewModel()) {
+fun LibraryHubScreen(onOpenMovie: (Long) -> Unit, onOpenSeries: (Long) -> Unit, onSeeAll: (providerId: Long, series: Boolean, libraryId: String?) -> Unit = { _, _, _ -> }, vm: LibraryHubViewModel = hiltViewModel()) {
     val D = LocalDs.current
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     val rows by vm.rows.collectAsState()
@@ -84,14 +84,14 @@ fun LibraryHubScreen(onOpenMovie: (Long) -> Unit, onOpenSeries: (Long) -> Unit, 
             open != null -> NasDetailView(open, vm, touch)
             list.isEmpty() -> Text(D.mlibHubEmpty, fontFamily = Manrope, fontSize = if (touch) 14.sp else 26.spx, color = Ux.Text3)
             else -> LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(if (touch) 18.dp else 30.design)) {
-                items(list, key = { it.provider.id }) { r -> LibrarySection(r, touch, onOpenMovie, onOpenSeries) { nasOpen = r } }
+                items(list, key = { it.provider.id }) { r -> LibrarySection(r, touch, onOpenMovie, onOpenSeries, onSeeAll) { nasOpen = r } }
             }
         }
     }
 }
 
 @Composable
-private fun LibrarySection(r: LibraryRow, touch: Boolean, onOpenMovie: (Long) -> Unit, onOpenSeries: (Long) -> Unit, onOpenNas: () -> Unit) {
+private fun LibrarySection(r: LibraryRow, touch: Boolean, onOpenMovie: (Long) -> Unit, onOpenSeries: (Long) -> Unit, onSeeAll: (Long, Boolean, String?) -> Unit, onOpenNas: () -> Unit) {
     val D = LocalDs.current
     val isNas = Nas.isNasKind(r.provider.kind)
     Column(verticalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 14.design), modifier = Modifier.testTag("library-section")) {
@@ -111,8 +111,31 @@ private fun LibrarySection(r: LibraryRow, touch: Boolean, onOpenMovie: (Long) ->
         if (isNas) FocusSurface(onClick = onOpenNas, shape = RoundedCornerShape(if (touch) 14.dp else 18.design), bg = Color.Transparent, focusedScale = 1.0f, ringWidth = 4.design, modifier = Modifier.fillMaxWidth().testTag("nas-open")) { f -> header(f) }
         else header(false)
         if (touch) Text(D.mlibCounts(r.movies, r.series), fontFamily = Manrope, fontSize = 12.sp, color = Ux.Text3, maxLines = 1)
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(if (touch) 10.dp else 18.design)) {
-            items(r.tiles, key = { "${it.isSeries}:${it.id}" }) { t -> PosterTile(t, touch) { if (t.isSeries) onOpenSeries(t.id) else onOpenMovie(t.id) } }
+        r.shelves.forEach { sh ->
+            val label = when (sh.kind) {
+                ShelfKind.RESUME -> D.continueWatching
+                ShelfKind.RECENT -> D.catalogSortName(com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Sort.RECENT)
+                ShelfKind.MOVIES -> D.moviesTitle
+                ShelfKind.SERIES -> D.seriesTitle
+                ShelfKind.LIBRARY -> sh.title
+            }
+            Text(label, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = if (touch) 14.sp else 24.spx, color = Ux.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(if (touch) 10.dp else 18.design)) {
+                items(sh.tiles, key = { "${sh.kind}:${sh.title}:${it.isSeries}:${it.id}" }) { t -> PosterTile(t, touch) { if (t.isSeries) onOpenSeries(t.id) else onOpenMovie(t.id) } }
+                // « Tout voir » : grille paginée de Films / Séries filtrée sur ce serveur (catégories = bibliothèques, genre, année, tri).
+                sh.seeAllSeries?.let { ser -> item(key = "all:${sh.kind}:${sh.title}") { SeeAllTile(touch) { onSeeAll(r.provider.id, ser, sh.libraryId) } } }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SeeAllTile(touch: Boolean, onClick: () -> Unit) {
+    val D = LocalDs.current
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(if (touch) 12.dp else 20.design), bg = Ux.SurfaceDeep, focusedScale = 1.04f, ringWidth = 5.design,
+        modifier = Modifier.width(if (touch) 112.dp else 226.design).height(if (touch) 160.dp else 236.design).testTag("library-see-all")) { f ->
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(D.seeAll, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = if (touch) 14.sp else 24.spx, color = if (f) Ux.TextOnLight else Ux.Text)
         }
     }
 }

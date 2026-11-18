@@ -10,6 +10,7 @@ import com.ultratv.tv.nativeapp.data.db.SyncPart
  */
 object SyncPolicy {
     private const val HOUR = 3_600_000L
+    private val LIBRARY_KINDS = setOf("JELLYFIN", "EMBY", "PLEX", "NAS")
 
     data class Ttl(val liveMs: Long, val vodMs: Long, val seriesMs: Long, val epgMs: Long)
 
@@ -57,6 +58,9 @@ object SyncPolicy {
                 if (force || stale(p.lastSeriesSyncAt, ttl.seriesMs)) parts += SyncPart.SERIES
             }
         }
+        // Serveur multimédia / NAS : les réglages « Synchroniser films / séries » et « Wi-Fi seulement » concernent le catalogue IPTV
+        // (50 000 titres, facturé) ; ici la bibliothèque est personnelle et locale, elle est TOUJOURS indexée (sinon Plex restait vide).
+        if (p.kind in LIBRARY_KINDS) return parts
         // Contenus désactivés par l'utilisateur ; VOD / séries / guide seulement si le réseau le permet (non facturé) sauf demande explicite.
         return parts.filter { it in enabled && (heavyAllowed || force || it == SyncPart.LIVE) }
     }

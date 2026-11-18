@@ -63,8 +63,9 @@ export function candidates(source: Source, t: PlayTarget, opts: { liveFormat: "m
     if (opts.nativeHls) addNative(liveUrl(c, t.refId, "m3u8"));
     return out;
   }
+  // Le container_extension annoncé par l'API passe en premier : un .mp4 deviné pour un fichier mkv fait répondre 551 (#202).
   const exts = [t.ext || "mp4"];
-  if (opts.preferMp4 && exts[0] !== "mp4") exts.unshift("mp4");
+  if (opts.preferMp4 && !exts.includes("mp4")) exts.push("mp4");
   if (!exts.includes("mkv")) exts.push("mkv");
   const vod = (ext: string) => (t.kind === "movie" ? movieUrl(c, t.refId, ext) : episodeUrl(c, t.refId, ext));
   for (const ext of exts) add(vod(ext), "native", ext.toUpperCase());
@@ -73,6 +74,14 @@ export function candidates(source: Source, t: PlayTarget, opts: { liveFormat: "m
   add(vod("m3u8"), "hls", "M3U8");
   if (opts.nativeHls) addNative(vod("m3u8"));
   return out;
+}
+
+/** Playlist M3U : adresse d'un épisode, relue dans la fiche de la série rangée à la synchro (reprise depuis l'historique). */
+export async function m3uEpisodeUrl(t: PlayTarget): Promise<string | null> {
+  if (t.url) return t.url;
+  if (t.kind !== "episode" || t.seriesId == null) return null;
+  const info = (await db.details.get(`series:${t.sourceId}:${t.seriesId}`))?.json as { media?: Array<{ id: number; url: string }> } | undefined;
+  return info?.media?.find((e) => e.id === t.refId)?.url ?? null;
 }
 
 // ---------------------------------------------------------------- portail Stalker

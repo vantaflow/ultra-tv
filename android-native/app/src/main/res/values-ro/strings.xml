@@ -93,6 +93,8 @@
     <string name="ds_loading_label">Se încarcă…</string>
     <string name="ds_searching_label">Se caută…</string>
     <string name="ds_dashboard_scan">Scanează cu telefonul</string>
+    <string name="ds_dashboard_send_title">Trimite o sursă de pe telefon</string>
+    <string name="ds_dashboard_send_hint">Apasă OK pentru a primi codul, apoi scanează codul QR cu telefonul</string>
     <string name="ds_pair_scan_auto">Scanează cu telefonul pentru asociere automată</string>
     <string name="ds_pair_device_label">Nume afișat în panou</string>
     <string name="ds_search_pill">Caută</string>
@@ -1902,4 +1904,5 @@
     <string name="sport_ok_hint">OK pe un meci: fișa meciului sau redare</string>
     <string name="sport_no_events">Încă nu există faze importante.</string>
     <string name="sport_table_hidden">Clasament ascuns în modul fără spoilere.</string>
+    <string name="mlib_cloud_failed">Biblioteca „%1$s” adăugată de pe site nu a putut fi conectată. Televizorul va reîncerca la următoarea sincronizare. Verificați dacă serverul este accesibil.</string>
 </resources>

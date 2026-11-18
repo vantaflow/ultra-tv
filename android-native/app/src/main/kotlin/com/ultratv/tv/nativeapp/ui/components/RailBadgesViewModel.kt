@@ -11,6 +11,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -22,6 +23,7 @@ class RailBadgesViewModel @Inject constructor(
     providers: ProviderRepository,
     catalog: CatalogRepository,
     recordings: RecordingDao,
+    profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
 ) : ViewModel() {
     @OptIn(ExperimentalCoroutinesApi::class)
     val favorites: StateFlow<Int> = providers.observeProviders()
@@ -29,6 +31,12 @@ class RailBadgesViewModel @Inject constructor(
         .flatMapLatest { id -> if (id == null) flowOf(0) else catalog.allFavoritesCount(id) }
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    /** Au moins une source Jellyfin, Emby, Plex ou NAS : l'entrée « Mes bibliothèques » apparaît dans le menu. */
+    val hasLibraries: StateFlow<Boolean> = combine(providers.observeProviders(), profiles.currentSources) { ps, names ->
+        hasLibrarySource(com.ultratv.tv.nativeapp.data.profile.ProfileSourcesRules.visible(ps, names).map { it.kind })
+    }.distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     val recording: StateFlow<Int> = recordings.observeRunningCount().distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
@@ -43,3 +51,7 @@ internal fun railBadge(route: String, favorites: Int, recording: Int, runningLab
 
 /** Pastille d'accent sur l'icône (menu replié) : enregistrement en cours. */
 internal fun railDot(route: String, recording: Int): Boolean = route == "recordings" && recording > 0
+
+/** Vrai si l'une des sources est un serveur multimédia (Jellyfin, Emby, Plex) ou un partage NAS. */
+internal fun hasLibrarySource(kinds: List<String>): Boolean =
+    kinds.any { com.ultratv.tv.nativeapp.data.mediaserver.MediaServer.isMediaKind(it) || com.ultratv.tv.nativeapp.data.nas.Nas.isNasKind(it) }

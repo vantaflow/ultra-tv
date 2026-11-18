@@ -38,7 +38,7 @@ import type { SeriesInfo } from "@/net/xtream";
 import { LiveReconnect } from "./reconnect";
 import { effectivePreferred, trackLabel } from "./trackChoice";
 import { PlayerEngine, type PlayState, type Stats, type Tracks } from "./engine";
-import { stalkerCandidate, candidates, mediaClientFor, mediaItemIdOf, mediaPlayback, nasCandidate, type Candidate } from "./resolve";
+import { m3uEpisodeUrl, stalkerCandidate, candidates, mediaClientFor, mediaItemIdOf, mediaPlayback, nasCandidate, type Candidate } from "./resolve";
 import { isMediaType, type MediaApi, type ReportKind } from "@/net/mediaServer";
 import { isTv } from "@/lib/tv";
 import { STALKER_UA } from "@/net/stalker";
@@ -49,7 +49,9 @@ import { sendToDevice } from "@/cloud/handoff";
 import { useUi } from "@/state/ui";
 import { startScrobble, type Scrobbler } from "./trakt";
 import { loadSkips, skipOfferAt, type SkipSegment } from "./skip";
-import { clampSeek, parseTxInfo, TX_LABEL, txClock, txInfoUrl, txSubUrl, txUrl, type TxInfo, type TxState } from "./transcode";
+import { canDecodeHevc, clampSeek, parseTxDiag, parseTxInfo, TX_LABEL, txClock, txDiagUrl, txInfoUrl, txSubUrl, txUrl, type TxDiag, type TxInfo, type TxState } from "./transcode";
+import { classifyFailure, planAudioRepair, planFallback, type Failure } from "./failure";
+import { playLog, urlInfo } from "./playlog";
 import { parseVtt, shiftCues, type Cue } from "./subtitles";
 import type { PlayTarget } from "./resolve";
 import { EpisodesPanel } from "./EpisodesPanel";
@@ -73,6 +75,18 @@ async function isOsFullscreen(): Promise<boolean> {
   const b = bridge();
   if (b?.isFullscreen) return !!(await b.isFullscreen());
   return !!document.fullscreenElement;
+}
+
+/** Texte de la cause réelle de l'échec, dans la langue de l'interface. */
+function failureText(f: Failure | null, t: (k: never, v?: Record<string, string | number>) => string): string {
+  const tr = t as (k: string, v?: Record<string, string | number>) => string;
+  switch (f?.kind) {
+    case "account": return tr("player.errAccount", { status: f.status });
+    case "http": return tr("player.errHttp", { status: f.status || "?" });
+    case "codec": return tr("player.errCodec", { codec: f.codec || "?" }) + (f.install ? " " + tr("player.errCodecInstall", { cmd: f.install }) : "");
+    case "network": return tr("player.errNetwork");
+    default: return tr("player.errorHint");
+  }
 }
 
 export function PlayerHost() {
@@ -157,6 +171,19 @@ export function PlayerHost() {
   liveRef.current = live;
   const [reconnecting, setReconnecting] = useState(false);
   /** Limite de connexions simultanées du fournisseur atteinte : compteurs x/y si connus (null dedans = inconnus). */
+  /** Cause réelle de l'échec (statut HTTP, codec…) quand ce n'est pas la limite de connexions chiffrée. */
+  const [failure, setFailure] = useState<Failure | null>(null);
+  /** Dernier statut HTTP refusé par le fournisseur pendant cette lecture. */
+  const statusRef = useRef<number | null>(null);
+  /** Conversion vidéo H.264 déjà tentée pour cette lecture. */
+  const videoTriedRef = useRef(false);
+  const diagRef = useRef<TxDiag | null>(null);
+  /** Horodatage (performance.now) du démarrage de la lecture en cours : délai jusqu'à la première image. */
+  const startAtRef = useRef(0);
+  const tryVideoRef = useRef<(() => Promise<boolean>) | null>(null);
+  const repairAudioRef = useRef<((silent: boolean) => Promise<boolean>) | null>(null);
+  /** Dernière adresse (hors conversion) qui a réellement démarré : celle qu'on donne à VLC. */
+  const goodUrlRef = useRef<string | null>(null);
   const [limit, setLimit] = useState<{ a: number; b: number } | null | false>(false);
   /** Nouvelle tentative unique après une limite de connexions (le fournisseur compte parfois encore l'ancienne). */
   const limitRetriedRef = useRef(false);
@@ -174,16 +201,30 @@ export function PlayerHost() {
     const v = videoRef.current!;
     const recon = new LiveReconnect({
       reload: () => { const c = candRef.current; const a = c.list[c.i]; if (a) void startCandidate(a); },
-      giveUp: () => { setReconnecting(false); setError(true); setState("error"); },
+      giveUp: () => { setReconnecting(false); void finalFail(); },
       onReconnecting: () => setReconnecting(true),
     });
     reconRef.current = recon;
     const eng = new PlayerEngine(v, transportSync, {
-      onState: (s) => { setState(s); scrobRef.current?.onState(s, v.currentTime, v.duration); if (s === "playing") { setError(false); setReconnecting(false); } recon.onState(s, liveRef.current); },
+      onState: (s) => { setState(s); scrobRef.current?.onState(s, v.currentTime, v.duration); if (s === "playing") { setError(false); setReconnecting(false); { const cc = candRef.current.list[candRef.current.i]; if (cc && cc.label !== TX_LABEL) goodUrlRef.current = cc.url; } if (startAtRef.current) { playLog("play.firstFrame", { ms: Math.round(performance.now() - startAtRef.current), width: v.videoWidth, height: v.videoHeight, duration: Number.isFinite(v.duration) ? Math.round(v.duration) : null }); startAtRef.current = 0; } } recon.onState(s, liveRef.current); },
       onError: (_code, status) => {
-        // Limite de connexions : inutile d'enchaîner les replis (chacun rouvrirait une connexion refusée).
-        if (isConnectionLimit({ status })) { void onLimit(); return; }
+        { const cc = candRef.current.list[candRef.current.i]; playLog("play.error", { code: _code, status: status ?? null, format: cc?.format, label: cc?.label, index: candRef.current.i, of: candRef.current.list.length, ...(cc ? urlInfo(cc.url) : {}) }); }
+        if (status) statusRef.current = status;
+        // Refus du fournisseur (403, 458…) : souvent un User-Agent ou un format refusé, pas seulement la limite de connexions.
+        // On essaie d'abord l'autre format (m3u8 / ts) ; la limite n'est annoncée qu'au dernier candidat.
+        if (isConnectionLimit({ status })) {
+          const c = candRef.current;
+          if (c.i + 1 < c.list.length) { eng.stop(); fallback(); return; }
+          void onLimit();
+          return;
+        }
         if (recon.onError(liveRef.current)) return;
+        // Bureau : image illisible (MPEG-2, HEVC sans décodeur, H.264 10 bits…) → on sonde avec ffmpeg et on convertit la vidéo.
+        if (status === undefined && !videoTriedRef.current && bridge()?.transcode) {
+          eng.stop();
+          void tryVideoFallback().then((handled) => { if (engineRef.current === eng && !handled) fallback(); });
+          return;
+        }
         if (status === undefined && !probedRef.current && (_code.startsWith("media:") || _code === "mpegts")) {
           // Échec sans statut (lecture native, MPEG-TS) : on libère la connexion, puis on sonde le fournisseur.
           probedRef.current = true;
@@ -200,14 +241,123 @@ export function PlayerHost() {
       if (c.i + 1 < c.list.length) {
         c.i += 1;
         const a = c.list[c.i]!;
+        playLog("play.decision", { decision: "autre format", to: a.label, format: a.format });
+        diagRef.current = null; // le diagnostic d'un autre format ne vaut pas pour celui-ci
         void startCandidate(a);
       } else {
         // Les replis ont échoué après un candidat qui jouait sans son : mieux vaut l'image sans son que l'erreur.
         const back = revertToSilent(silentIdxRef.current, c.list.length);
-        if (back >= 0) { c.i = back; skipProbeRef.current = true; setNoAudio(true); void startCandidate(c.list[back]!); return; }
-        setError(true); setState("error");
+        if (back >= 0) {
+          c.i = back; skipProbeRef.current = true;
+          // Bureau : remux avec audio AAC plutôt que l'image sans son (sonde refaite sur l'adresse de ce candidat).
+          void (repairAudioRef.current?.(true) ?? Promise.resolve(false)).then((done) => { if (!done) { setNoAudio(true); void startCandidate(c.list[back]!); } });
+          return;
+        }
+        void finalFail();
       }
     };
+    /** Cause réelle de l'échec : statut HTTP du fournisseur, sinon diagnostic ffmpeg (bureau) ; puis écran d'erreur. */
+    const finalFail = async () => {
+      eng.stop();
+      let status = statusRef.current;
+      let diag: TxDiag | null = diagRef.current;
+      if (!status && !diag && bridge()?.transcode) diag = await runDiag();
+      if (!status && !diag?.status) { try { status = (await probeCurrent()).status ?? null; } catch { /* inconnu */ } }
+      if (engineRef.current !== eng) return;
+      const f = classifyFailure({ status, diag, platform: bridge()?.platform });
+      playLog("play.failed", { failure: f.kind, status: "status" in f ? f.status : status ?? null, codec: "codec" in f ? f.codec : undefined, diag: diag?.reason, container: diag?.container });
+      setFailure(f);
+      setError(true); setState("error");
+    };
+    /** Adresse d'origine du candidat COURANT (jamais le premier essayé, qui a pu être refusé : 551) ; conversion en cours : sa source. */
+    const currentOrig = (): string | undefined => {
+      const c = candRef.current;
+      const cur = c.list[c.i];
+      if (txRef.current && cur?.label === TX_LABEL) return txRef.current.orig;
+      if (cur && cur.label !== TX_LABEL && cur.format !== "hlsn") return cur.url;
+      return c.list.find((x) => x.label !== TX_LABEL && x.format !== "hlsn")?.url;
+    };
+    /**
+     * Son d'un film / épisode : sonde ffmpeg sur l'adresse courante (refaite après chaque changement de format), puis remux avec
+     * audio AAC. Sonde impossible mais MKV ou « image sans son » : remux quand même. Renvoie true si la conversion est lancée.
+     */
+    const repairAudio = async (silent: boolean): Promise<boolean> => {
+      const tg = usePlayer.getState().target;
+      const base = bridge()?.proxyBase;
+      const c = candRef.current;
+      const cur = c.list[c.i];
+      if (!tg || !base || !cur || cur.label === TX_LABEL || cur.format === "hlsn" || !bridge()?.transcode) return false;
+      if (tg.kind === "live" && !tg.replay) return false;
+      const url = cur.url;
+      diagRef.current = null;
+      const d = await runDiag(url);
+      if (engineRef.current !== eng) return true;
+      const ext = urlInfo(url).ext;
+      const plan = planAudioRepair(d, { vod: true, ext, silent, canRemux: true });
+      playLog("play.probe", { host: urlInfo(url).host, ext, label: cur.label, reason: d?.reason ?? "indisponible", status: d?.status ?? null, container: d?.container, codec: d?.codec, audio: d?.audio });
+      playLog("play.decision", { decision: plan === "convert" ? "conversion vidéo" : plan === "remux" ? "remux + audio AAC" : plan === "needEncoder" ? "conversion impossible (pas d'encodeur)" : "aucune", cause: silent ? "image sans son" : "changement de format", sonde: d?.reason ?? "impossible", ext });
+      if (!plan) return false;
+      if (plan === "needEncoder") { setFailure(classifyFailure({ diag: d, platform: bridge()?.platform })); setError(true); setState("error"); return true; }
+      const v = videoRef.current;
+      const convert = plan === "convert";
+      const offset = v?.currentTime ?? 0;
+      const duration = d?.duration || (v && Number.isFinite(v.duration) ? v.duration : 0);
+      txRef.current = { orig: url, offset, duration, ...(convert ? { video: true } : {}) };
+      skipProbeRef.current = true;
+      c.list = [...c.list, { url: txUrl(base, url, offset, false, 0, convert), format: "ts", label: TX_LABEL }];
+      c.i = c.list.length - 1;
+      void startCandidate(c.list[c.i]!);
+      return true;
+    };
+    repairAudioRef.current = repairAudio;
+    /** Diagnostic ffmpeg du flux d'origine (connexion du lecteur déjà fermée). */
+    const runDiag = async (url?: string): Promise<TxDiag | null> => {
+      const base = bridge()?.proxyBase;
+      const cur = url ?? currentOrig();
+      if (!base || !cur) return null;
+      try {
+        const r = await fetch(txDiagUrl(base, cur, canDecodeHevc()), { headers: proxyHeaders() });
+        if (!r.ok) return null;
+        const d = parseTxDiag(await r.json());
+        diagRef.current = d;
+        return d;
+      } catch { return null; }
+    };
+    /** Vidéo illisible : relance la lecture avec une conversion H.264 (ffmpeg). Renvoie true si l'écran a été pris en charge. */
+    const tryVideoFallback = async (): Promise<boolean> => {
+      if (videoTriedRef.current) return false;
+      videoTriedRef.current = true;
+      const d = await runDiag();
+      if (engineRef.current !== eng || !d) return false;
+      if (d.reason === "http" && d.status) statusRef.current = d.status;
+      const tg = usePlayer.getState().target;
+      const isLive = tg?.kind === "live" && !tg.replay;
+      const plan = planFallback(d, { vod: !isLive });
+      playLog("play.decision", { decision: plan === "convert" ? "conversion vidéo" : plan === "remux" ? "remux" : plan === "needEncoder" ? "conversion impossible (pas d'encodeur)" : "aucune", codec: d.codec, container: d.container, audio: d.audio, reason: d.reason, status: d.status, durationS: Math.round(d.duration) });
+      if (!plan) return false;
+      const base = bridge()?.proxyBase;
+      const v = videoRef.current;
+      const c = candRef.current;
+      const curC = c.list[c.i];
+      const orig = txRef.current?.orig ?? (curC && curC.label !== TX_LABEL && curC.format !== "hlsn" ? curC.url : c.list.find((x) => x.label !== TX_LABEL && x.format !== "hlsn")?.url);
+      if (plan === "needEncoder" || !base || !orig) {
+        setFailure(classifyFailure({ diag: d, platform: bridge()?.platform }));
+        setError(true); setState("error");
+        return true;
+      }
+      // "convert" : réencodage H.264 ; "remux" : conteneur / audio seulement (MKV, AC-3…), vidéo copiée telle quelle.
+      const convert = plan === "convert";
+      const offset = isLive ? 0 : v?.currentTime ?? 0;
+      const duration = isLive ? 0 : d.duration || (v && Number.isFinite(v.duration) ? v.duration : 0);
+      const tx: TxState = { orig, offset, duration, ...(convert ? { video: true } : {}) };
+      txRef.current = tx;
+      skipProbeRef.current = true;
+      c.list = [...c.list, { url: txUrl(base, orig, offset, isLive, 0, convert), format: "ts", label: TX_LABEL }];
+      c.i = c.list.length - 1;
+      void startCandidate(c.list[c.i]!);
+      return true;
+    };
+    tryVideoRef.current = tryVideoFallback;
     /** Sonde le flux courant (connexion précédente déjà fermée) : statut et début du corps de la réponse. */
     const probeCurrent = async () => {
       const c = candRef.current.list[candRef.current.i];
@@ -239,7 +389,9 @@ export function PlayerHost() {
         try { counts = limitCounts(connCounts((await handshake(await currentTransport(), credsOf(src))).user_info)); } catch { /* compteurs inconnus */ }
       }
       if (engineRef.current !== eng) return;
-      setLimit(counts); setError(true); setState("error");
+      // Compteurs connus : « Limite atteinte (x/y) » ; sinon on affiche le code HTTP réel du fournisseur.
+      if (counts) setLimit(counts); else setFailure(classifyFailure({ status: statusRef.current ?? 403 }));
+      setError(true); setState("error");
     };
     engineRef.current = eng;
     eng.uiLang = usePrefs.getState().lang;
@@ -278,6 +430,23 @@ export function PlayerHost() {
     return requestHeaders(transportSync(), { userAgent: src?.userAgent || (src?.type === "stalker" ? STALKER_UA : null), referer: src?.referer || null });
   }, []);
 
+  /** « Ouvrir dans VLC » : adresse d'origine du flux, identité (User-Agent / Referer) de la source. */
+  const openInVlc = useCallback(async () => {
+    const tg = usePlayer.getState().target;
+    const src = useSources.getState().list.find((x) => x.id === tg?.sourceId);
+    // L'adresse qui fonctionne (conteneur réellement lu), sinon celle du candidat courant : jamais la première essayée si elle a échoué.
+    const cc = candRef.current.list[candRef.current.i];
+    const orig = txRef.current?.orig ?? goodUrlRef.current ?? (cc && cc.format !== "hlsn" ? cc.url : candRef.current.list.find((x) => x.label !== TX_LABEL && x.format !== "hlsn")?.url);
+    const b = bridge();
+    const lang = usePrefs.getState().lang;
+    if (!b?.openInVlc || !orig) return;
+    let ok = false;
+    try { ok = await b.openInVlc({ url: orig, userAgent: src?.userAgent || (src?.type === "stalker" ? STALKER_UA : null), referer: src?.referer || null, title: tg?.title ?? null }); } catch { /* refusé */ }
+    playLog("play.decision", { decision: "VLC", ok });
+    if (ok) engineRef.current?.stop();
+    else useUi.getState().toast(translate(lang, "player.vlcFailed"));
+  }, []);
+
   const startCandidate = useCallback(async (c: Candidate) => {
     const tg = usePlayer.getState().target;
     const src = useSources.getState().list.find((s) => s.id === tg?.sourceId);
@@ -287,6 +456,12 @@ export function PlayerHost() {
     resumeAtRef.current = null;
     const isTx = c.label === TX_LABEL;
     if (!isTx) txRef.current = null;
+    startAtRef.current = performance.now();
+    playLog("play.start", {
+      kind: tg.kind === "live" && !tg.replay ? "live" : tg.replay ? "replay" : "vod", sourceType: src.type, format: c.format, label: c.label, index: candRef.current.i,
+      container: isTx ? "mpegts(ffmpeg)" : urlInfo(c.url).ext, ...urlInfo(c.url), userAgent: src.userAgent ? "source" : "repli VLC", referer: !!src.referer,
+      transcode: isTx ? (txRef.current?.video ? "vidéo H.264 + audio AAC" : "remux + audio AAC") : "aucune", resumeAt: Math.round(resume ?? tg.startAt ?? 0),
+    });
     await engineRef.current.load({
       url: c.url, format: c.format, live: tg.kind === "live" && !tg.replay,
       // Conversion du bureau : MPEG-TS continu sans durée annoncée — ouvert comme un flux continu, sinon MSE
@@ -301,8 +476,9 @@ export function PlayerHost() {
     reconRef.current?.reset();
     setReconnecting(false);
     clearTimeout(limitTimerRef.current);
-    limitRetriedRef.current = false; probedRef.current = false;
-    setLimit(false);
+    limitRetriedRef.current = false; probedRef.current = false; goodUrlRef.current = null;
+    statusRef.current = null; videoTriedRef.current = false; diagRef.current = null;
+    setLimit(false); setFailure(null);
     if (!target || !source) { engineRef.current?.stop(); return; }
     setTracks(NO_TRACKS);
     setXinfo(null); xinfoKeyRef.current = ""; setXAudio(0); setXText(-1); setSubFail(false); subCuesRef.current = null; applySubs();
@@ -362,6 +538,22 @@ export function PlayerHost() {
       }).catch(() => { if (!dead) { setError(true); setState("error"); } });
       return () => { dead = true; };
     }
+    if (source.type === "m3u" && target.kind === "episode" && !target.url) {
+      // Playlist M3U : l'épisode est un fichier de la playlist ; son adresse vient de la fiche de la série.
+      let dead = false;
+      engineRef.current?.stop();
+      setState("loading");
+      silentIdxRef.current = null; skipProbeRef.current = false; resumeAtRef.current = null;
+      setNoAudio(false);
+      void m3uEpisodeUrl(target).then((u) => {
+        if (dead) return;
+        const l = u ? candidates(source, { ...target, url: u }, { liveFormat: prefs.liveFormat, preferMp4: prefs.preferMp4, nativeHls: isTv() }) : [];
+        if (!l[0]) { setError(true); setState("error"); return; }
+        candRef.current = { list: l, i: 0 };
+        void startCandidate(l[0]);
+      }).catch(() => { if (!dead) { setError(true); setState("error"); } });
+      return () => { dead = true; };
+    }
     const list = candidates(source, target, { liveFormat: prefs.liveFormat, preferMp4: prefs.preferMp4, nativeHls: isTv() });
     candRef.current = { list, i: 0 };
     silentIdxRef.current = null; skipProbeRef.current = false; resumeAtRef.current = null;
@@ -379,6 +571,24 @@ export function PlayerHost() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target?.refId, target?.kind, target?.replay?.start, nonce, source?.id]);
 
+  // Bureau : lecture « en cours » mais aucune image (0×0) alors que des données arrivent (HEVC sans décodeur, MPEG-2…) :
+  // on sonde avec ffmpeg et on relance avec une conversion vidéo.
+  useEffect(() => {
+    if (state !== "playing" || !target || !bridge()?.transcode || videoTriedRef.current || txRef.current?.video) return;
+    const to = setTimeout(() => {
+      const v = videoRef.current;
+      if (!v || v.videoWidth > 0 || v.readyState < 2 || videoTriedRef.current) return;
+      engineRef.current?.stop();
+      void tryVideoRef.current?.().then((handled) => {
+        if (handled) return;
+        const c = candRef.current;
+        if (c.i + 1 < c.list.length) { c.i += 1; void startCandidate(c.list[c.i]!); } else { setFailure(classifyFailure({ status: statusRef.current, diag: diagRef.current, platform: bridge()?.platform })); setError(true); setState("error"); }
+      });
+    }, 6000);
+    return () => clearTimeout(to);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, target?.refId, target?.kind]);
+
   // Sonde audio (VOD) : image qui défile mais aucun octet audio décodé -> candidat suivant, à la même position.
   useEffect(() => {
     if (state !== "playing" || !target || (target.kind === "live" && !bridge()?.transcode) || skipProbeRef.current) return;
@@ -392,6 +602,18 @@ export function PlayerHost() {
       if (verdict !== "silent") return;
       const c = candRef.current;
       if (silentIdxRef.current === null) silentIdxRef.current = c.i;
+      // Bureau avec ffmpeg : on sonde l'adresse COURANTE puis on remuxe l'audio en AAC tout de suite (les autres formats, souvent refusés, viennent après).
+      if (target.kind !== "live" && bridge()?.transcode && repairAudioRef.current && c.list[c.i]?.label !== TX_LABEL) {
+        skipProbeRef.current = true;
+        void repairAudioRef.current(true).then((done) => {
+          if (done) return;
+          const n = nextAudioFallback(c.list.length, c.i);
+          if (n < 0) { setNoAudio(true); return; }
+          c.i = n; resumeAtRef.current = v.currentTime > 1 ? v.currentTime : null; skipProbeRef.current = false;
+          void startCandidate(c.list[n]!);
+        });
+        return;
+      }
       const nx = nextAudioFallback(c.list.length, c.i);
       if (nx < 0) {
         skipProbeRef.current = true;
@@ -402,6 +624,7 @@ export function PlayerHost() {
           const isLive = target.kind === "live" && !target.replay;
           const tx: TxState = { orig: cur.url, offset: isLive ? 0 : v.currentTime, duration: isLive || !Number.isFinite(v.duration) ? 0 : v.duration };
           txRef.current = tx;
+          playLog("play.decision", { decision: "conversion audio", reason: "image sans son (AC-3 / E-AC-3 / DTS)" });
           c.list = [...c.list, { url: txUrl(base, tx.orig, tx.offset, isLive), format: "ts", label: TX_LABEL }];
           c.i = c.list.length - 1;
           void startCandidate(c.list[c.i]!);
@@ -1076,8 +1299,10 @@ export function PlayerHost() {
         <div className="pstate">
           <div className="msg">
             <b>{limit !== false ? (limit ? t("player.limit", limit) : t("player.limitNoCount")) : t(drmBlocked ? "player.drmUnsupported" : "player.error")}</b>
-            {!drmBlocked && limit === false && <p style={{ margin: "0.5rem 0 1rem", color: "#c4c4cc", fontSize: "0.875rem" }}>{t("player.errorHint")}</p>}
+            {!drmBlocked && limit === false && <p style={{ margin: "0.5rem 0 1rem", color: "#c4c4cc", fontSize: "0.875rem" }}>{failureText(failure, t)}</p>}
             {!drmBlocked && <button className="btn primary sm" onClick={() => { candRef.current.i = 0; usePlayer.getState().reload(); }}>{t("player.retry")}</button>}
+            {!drmBlocked && bridge()?.vlc && <button className="btn sm" style={{ marginLeft: "0.5rem" }} onClick={() => void openInVlc()}>{t("player.openVlc")}</button>}
+            {!drmBlocked && bridge()?.openLogsDir && <button className="btn sm" style={{ marginLeft: "0.5rem" }} onClick={() => void bridge()?.openLogsDir?.()}>{t("player.openLogs")}</button>}
           </div>
         </div>
       )}
@@ -1340,6 +1565,7 @@ export function PlayerHost() {
                     : otherDevices.map((d) => <button key={d.id} className="opt" onClick={() => void sendTo(d)}>{d.name}{d.model ? <span className="h">{d.model}</span> : null}</button>)}
                 </>
               )}
+              {bridge()?.vlc && <button className="opt" onClick={() => void openInVlc()}>{t("player.openVlc")}</button>}
               <div className="grp-t">{t("player.shortcuts")}</div>
               <div className="hotkeys">
                 <span><span className="kbd">{t("key.space")}</span></span><span>{t("player.sk.space")}</span>

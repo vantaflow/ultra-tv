@@ -127,6 +127,8 @@ class DesignStrings(val lang: AppLang) {
     val loadingLabel get() = tx(R.string.ds_loading_label)
     val searchingLabel get() = tx(R.string.ds_searching_label)
     val dashboardScan get() = tx(R.string.ds_dashboard_scan)
+    val dashboardSendTitle get() = tx(R.string.ds_dashboard_send_title)
+    val dashboardSendHint get() = tx(R.string.ds_dashboard_send_hint)
     val pairScanAuto get() = tx(R.string.ds_pair_scan_auto)
     val pairDeviceLabel get() = tx(R.string.ds_pair_device_label)
     val searchPill get() = tx(R.string.ds_search_pill)

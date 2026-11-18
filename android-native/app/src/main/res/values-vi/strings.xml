@@ -88,6 +88,8 @@
     <string name="ds_loading_label">Đang tải…</string>
     <string name="ds_searching_label">Đang tìm…</string>
     <string name="ds_dashboard_scan">Quét bằng điện thoại</string>
+    <string name="ds_dashboard_send_title">Gửi nguồn từ điện thoại</string>
+    <string name="ds_dashboard_send_hint">Nhấn OK để lấy mã, rồi quét mã QR bằng điện thoại của bạn</string>
     <string name="ds_pair_scan_auto">Quét bằng điện thoại để ghép nối tự động</string>
     <string name="ds_pair_device_label">Tên hiển thị trên bảng điều khiển</string>
     <string name="ds_search_pill">Tìm kiếm</string>
@@ -1863,4 +1865,5 @@
     <string name="sport_ok_hint">OK trên một trận: thẻ trận hoặc phát</string>
     <string name="sport_no_events">Chưa có diễn biến chính.</string>
     <string name="sport_table_hidden">Bảng xếp hạng bị ẩn ở chế độ không spoiler.</string>
+    <string name="mlib_cloud_failed">Không kết nối được thư viện “%1$s” đã thêm từ trang web. TV sẽ thử lại ở lần đồng bộ tiếp theo. Hãy kiểm tra máy chủ có truy cập được không.</string>
 </resources>

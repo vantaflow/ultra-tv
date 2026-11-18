@@ -15,6 +15,7 @@ enum class HomeBlock(val sections: List<HomeSectionId>) {
     TRAKT_UP_NEXT(listOf(HomeSectionId.TRAKT_UP_NEXT)),
     TRAKT_AVAILABLE(listOf(HomeSectionId.TRAKT_AVAILABLE)),
     NEW_EPISODES(listOf(HomeSectionId.NEW_EPISODES)),
+    LIBRARIES(LIBRARY_SECTIONS),
     TRAKT_WATCHLIST(listOf(HomeSectionId.TRAKT_WATCHLIST)),
     TRAKT_RECOMMENDED(listOf(HomeSectionId.TRAKT_RECOMMENDED)),
     TRAKT_TRENDING(listOf(HomeSectionId.TRAKT_TRENDING)),

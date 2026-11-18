@@ -60,6 +60,14 @@ class CloudLinkStore @Inject constructor(@ApplicationContext ctx: Context) {
 
     fun etag(): String? = sp.getString("etag", null)
     fun setEtag(v: String?) { sp.edit().putString("etag", v).apply() }
+    /**
+     * Une fois : les versions antérieures retenaient l'ETag même quand un serveur multimédia (Plex, Jellyfin, Emby, NAS) du site
+     * n'avait pas pu être ajouté, qui n'était alors plus jamais réessayé. Oublier cet ETag force une relecture complète.
+     */
+    fun migrateEtag() {
+        if (sp.getInt("etag_schema", 0) >= 3) return
+        sp.edit().remove("etag").putInt("etag_schema", 3).apply()
+    }
     /** Oublie la version connue : la prochaine synchro relit tout (appairage, changement de Worker). */
     fun resetVersion() { sp.edit().remove("etag").apply() }
 

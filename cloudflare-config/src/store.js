@@ -238,6 +238,17 @@ export function parseProvider(form, origin = null) {
  * machine, `password` = jeton du SERVEUR (pas celui du compte), `url` = meilleure connexion ; toutes les connexions
  * suivent pour que l'appareil choisisse celle qui répond chez lui.
  */
+/** Clé d'identité d'un serveur multimédia (adresse normalisée + utilisateur) : sert à refuser les doublons. */
+export function mediaKey(p) {
+  let u = String(p.url || "").trim().toLowerCase();
+  try {
+    const x = new URL(u);
+    const port = x.port && !((x.protocol === "http:" && x.port === "80") || (x.protocol === "https:" && x.port === "443")) ? `:${x.port}` : "";
+    u = `${x.protocol}//${x.hostname}${port}${x.pathname.replace(/\/+$/, "")}`;
+  } catch { u = u.replace(/\/+$/, ""); }
+  return `${p.kind}|${u}|${p.kind === "NAS" ? "" : String(p.username || "").trim().toLowerCase()}`;
+}
+
 export function parsePlexProvider(server, name = "") {
   const conns = Array.isArray(server?.conns) ? server.conns.filter((c) => c && validUrl(c.uri)) : [];
   if (!server?.id || !server?.token || !conns.length) return { error: "plex" };

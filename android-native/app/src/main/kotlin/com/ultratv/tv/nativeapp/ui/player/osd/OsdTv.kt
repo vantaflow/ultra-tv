@@ -194,9 +194,8 @@ internal fun LiveDot(size: Dp, color: Color, modifier: Modifier = Modifier) {
 private fun TvRecents(state: LiveOsdState, focus: LiveOsdFocus, onRecent: (String) -> Unit, onStage: (OsdStage) -> Unit) {
     val shown = state.recents.take(OsdText.RECENTS_SHOWN)
     Column(
-        Modifier.fillMaxWidth().onFocusChanged { if (it.hasFocus) onStage(OsdStage.RECENTS) }
-            // Bas (ou Retour, voir LiveOsdLogic.backEffect) : retour à la barre de commandes. Gauche / Droite : la rangée.
-            .focusProperties { down = focus.bar },
+        // Navigation 2D : Bas atteint la barre de commandes située dessous (Retour : voir LiveOsdLogic.backEffect).
+        Modifier.fillMaxWidth().onFocusChanged { if (it.hasFocus) onStage(OsdStage.RECENTS) },
         verticalArrangement = Arrangement.spacedBy(12.design),
     ) {
         Text(

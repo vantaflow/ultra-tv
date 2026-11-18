@@ -234,7 +234,7 @@ describe("XSS, CSRF, en-têtes", () => {
     const r = await call("/signup", { method: "POST", ip, form: { login, password: strongPw, confirm: strongPw } });
     const sc = r.headers.get("set-cookie");
     expect(sc).toMatch(/^__Host-utv_sess=/);
-    expect(sc).toMatch(/HttpOnly/); expect(sc).toMatch(/Secure/); expect(sc).toMatch(/SameSite=Strict/); expect(sc).toMatch(/Path=\//);
+    expect(sc).toMatch(/HttpOnly/); expect(sc).toMatch(/Secure/); expect(sc).toMatch(/SameSite=Lax/); expect(sc).toMatch(/Path=\//);
     expect(sc).not.toMatch(/Domain=/i);
   });
   it("POST_providers_sansCsrf_403", async () => {

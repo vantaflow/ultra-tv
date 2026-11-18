@@ -144,10 +144,12 @@ export function readCookie(req, name) {
 }
 
 export function sessionCookieHeader(value) {
-  return `${COOKIE}=${value}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${SESSION_SECONDS}`;
+  // Lax (et non Strict) : un lien ouvert depuis une autre appli (QR scanné sur la TV, appareil photo) arrive avec la
+  // session, donc /pair?code=… s'ouvre directement. Les modifications restent en POST avec jeton anti-CSRF et Origin vérifié.
+  return `${COOKIE}=${value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_SECONDS}`;
 }
 export function clearCookieHeader() {
-  return `${COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`;
+  return `${COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
 }
 
 export function assertSessionSecret(secret) {

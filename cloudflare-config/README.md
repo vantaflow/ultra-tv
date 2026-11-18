@@ -216,6 +216,12 @@ printf %s "$KEY" | npx vercel env add RELAY_KEY production
 npx vercel deploy --prod
 ```
 
+## Serveur de secours (Vercel)
+
+`backup/` (projet Vercel `utv-backup`) rejoue le même Worker, en lecture seule, quand Cloudflare est en panne : lecture
+de `/api/config`, des annonces et de l'état partagé. Les applis y basculent seulement sur panne ou 5xx. Plan, sécurité,
+limites et mise en service : `docs/plan-secours-vercel.md`.
+
 ## Rotation des secrets et des jetons
 
 | Élément | Comment | Effet |

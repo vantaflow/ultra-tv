@@ -18,6 +18,14 @@ export interface UltraTvBridge {
   proxyBase: string;
   /** Conversion audio AC-3 / DTS → AAC par ffmpeg (route /tx du proxy) disponible. */
   transcode?: boolean;
+  /** Conversion vidéo en H.264 (ffmpeg avec encodeur) disponible. */
+  videoTranscode?: boolean;
+  /** VLC détecté sur l'ordinateur. */
+  vlc?: boolean;
+  /** Journal de lecture (fichier rotatif du bureau) et ouverture de son dossier. */
+  log?(name: string, fields?: Record<string, unknown>): void;
+  openLogsDir?(): Promise<boolean>;
+  openInVlc?(req: { url: string; userAgent?: string | null; referer?: string | null; title?: string | null }): Promise<boolean>;
   secretsSecure?: boolean;
   encrypt(plain: string): Promise<string>;
   decrypt(cipher: string): Promise<string>;

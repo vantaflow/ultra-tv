@@ -89,6 +89,8 @@
     <string name="ds_loading_label">جارٍ التحميل…</string>
     <string name="ds_searching_label">جارٍ البحث…</string>
     <string name="ds_dashboard_scan">امسح الرمز بهاتفك</string>
+    <string name="ds_dashboard_send_title">إرسال مصدر من الهاتف</string>
+    <string name="ds_dashboard_send_hint">اضغط موافق للحصول على الرمز، ثم امسح رمز QR بهاتفك</string>
     <string name="ds_pair_scan_auto">امسح الرمز بهاتفك للاقتران تلقائيًا</string>
     <string name="ds_pair_device_label">الاسم الظاهر في لوحة التحكم</string>
     <string name="ds_search_pill">بحث</string>
@@ -1963,4 +1965,5 @@
         <item quantity="many">يسمح اشتراكك بـ %1$s اتصالات: كلها مشغولة بتسجيلات في ذلك الوقت</item>
         <item quantity="other">يسمح اشتراكك بـ %1$s اتصالات: كلها مشغولة بتسجيلات في ذلك الوقت</item>
     </plurals>
+    <string name="mlib_cloud_failed">تعذّر الاتصال بالمكتبة «%1$s» المضافة من الموقع. سيعيد التلفاز المحاولة عند المزامنة التالية. تحقق من إمكانية الوصول إلى الخادم.</string>
 </resources>

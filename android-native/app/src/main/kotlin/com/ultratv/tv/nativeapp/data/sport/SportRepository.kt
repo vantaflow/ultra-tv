@@ -60,6 +60,7 @@ class SportRepository @Inject constructor(
             val otherChannels = others.map { it.channelId }.distinct().chunked(CHUNK).flatMap { channelDao.byIds(it) }.associateBy { it.id }
             val onOthers = others.mapNotNull { p -> otherChannels[p.channelId]?.let { c -> SportEntry(c, p, false, true) } }
             val data = SportData(entries = onSport + onOthers, channels = sport, hasGuide = hasGuide)
+            com.ultratv.tv.nativeapp.UtvLog.i(com.ultratv.tv.nativeapp.UtvLog.SPORT, "rattachement guide: chaînesSport=${sport.size} programmesSport=${onSport.size} autres=${onOthers.size} guide=${hasGuide}")
             dataCache = DataCache(pid, ep, nowMs, data)
             data
         }

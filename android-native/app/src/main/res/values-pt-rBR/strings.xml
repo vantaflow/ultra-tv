@@ -92,6 +92,8 @@
     <string name="ds_loading_label">Carregando…</string>
     <string name="ds_searching_label">Pesquisando…</string>
     <string name="ds_dashboard_scan">Escaneie com o celular</string>
+    <string name="ds_dashboard_send_title">Enviar uma fonte pelo celular</string>
+    <string name="ds_dashboard_send_hint">Pressione OK para obter o código e escaneie o QR com o celular</string>
     <string name="ds_pair_scan_auto">Escaneie com o celular para parear automaticamente</string>
     <string name="ds_pair_device_label">Nome exibido no painel</string>
     <string name="ds_search_pill">Pesquisar</string>
@@ -1901,4 +1903,5 @@
     <string name="sport_ok_hint">OK em um jogo: súmula ou reprodução</string>
     <string name="sport_no_events">Ainda sem lances importantes.</string>
     <string name="sport_table_hidden">Classificação oculta no modo sem spoilers.</string>
+    <string name="mlib_cloud_failed">Não foi possível conectar a biblioteca “%1$s” adicionada pelo site. A TV tentará de novo na próxima sincronização. Verifique se o servidor está acessível.</string>
 </resources>

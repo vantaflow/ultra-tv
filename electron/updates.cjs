@@ -29,7 +29,7 @@ function isMacSigned() {
 }
 
 const REPO = "vantaflow/ultra-tv";
-const DOWNLOAD_BASE = "https://tv.weedy.dpdns.org/download";
+const DOWNLOAD_BASE = "https://ultratv.dpdns.org/download";
 
 /**
  * Linux installé par un paquet système (.deb / .rpm) : pas de variable APPIMAGE (posée par le lanceur de l'AppImage).

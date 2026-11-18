@@ -90,6 +90,8 @@
     <string name="ds_loading_label">Ładowanie…</string>
     <string name="ds_searching_label">Wyszukiwanie…</string>
     <string name="ds_dashboard_scan">Zeskanuj telefonem</string>
+    <string name="ds_dashboard_send_title">Wyślij źródło z telefonu</string>
+    <string name="ds_dashboard_send_hint">Naciśnij OK, aby otrzymać kod, a następnie zeskanuj kod QR telefonem</string>
     <string name="ds_pair_scan_auto">Zeskanuj telefonem, aby sparować automatycznie</string>
     <string name="ds_pair_device_label">Nazwa widoczna w panelu</string>
     <string name="ds_search_pill">Szukaj</string>
@@ -1839,4 +1841,5 @@
     <string name="sport_ok_hint">OK na meczu: karta meczu lub odtwarzanie</string>
     <string name="sport_no_events">Na razie brak najważniejszych momentów.</string>
     <string name="sport_table_hidden">Tabela ukryta w trybie bez spoilerów.</string>
+    <string name="mlib_cloud_failed">Nie udało się połączyć z biblioteką „%1$s” dodaną ze strony. Telewizor ponowi próbę przy następnej synchronizacji. Sprawdź, czy serwer jest osiągalny.</string>
 </resources>

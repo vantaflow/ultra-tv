@@ -81,6 +81,8 @@
     <string name="ds_loading_label">Cargando…</string>
     <string name="ds_searching_label">Buscando…</string>
     <string name="ds_dashboard_scan">Escanea con tu teléfono</string>
+    <string name="ds_dashboard_send_title">Enviar una fuente desde el teléfono</string>
+    <string name="ds_dashboard_send_hint">Pulsa OK para obtener el código y escanea el QR con tu teléfono</string>
     <string name="ds_pair_scan_auto">Escanea con tu teléfono para vincular automáticamente</string>
     <string name="ds_pair_device_label">Nombre mostrado en el panel</string>
     <string name="ds_search_pill">Buscar</string>
@@ -1899,4 +1901,5 @@
         <item quantity="many">Tu suscripción permite %1$s conexiones: todas están ocupadas por grabaciones a esa hora</item>
         <item quantity="other">Tu suscripción permite %1$s conexiones: todas están ocupadas por grabaciones a esa hora</item>
     </plurals>
+    <string name="mlib_cloud_failed">No se pudo conectar la biblioteca «%1$s» añadida desde el sitio web. El televisor lo intentará de nuevo en la próxima sincronización. Comprueba que el servidor sea accesible.</string>
 </resources>

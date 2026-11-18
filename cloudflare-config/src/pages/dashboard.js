@@ -64,7 +64,9 @@ export function dashboardPage(n, { acct, providers, csrf, err, ok, admin = false
   const csrfInput = `<input type="hidden" name="csrf" value="${e(csrf)}"/>`;
   const devices = acct.devices || [];
   const when = (ms) => (ms ? frDate(ms, lang) : "");
-  const provRows = providers.map((p) => {
+  // Serveurs multimédias : listés seulement dans leur carte « Media servers », pas en double dans les sources IPTV.
+  const iptv = providers.filter((p) => !MEDIA_KINDS.includes(p.kind));
+  const provRows = iptv.map((p) => {
     const sh = sharing(p, devices, csrfInput, lang);
     const origin = p.originName ? t.srcs.addedFrom(p.originName === "dashboard" ? t.srcs.fromDash : e(p.originName)) : t.srcs.unknownOrigin;
     return `
@@ -76,13 +78,11 @@ ${xtreamCredsOf(p) ? `<div class="acct card-meta mt10" data-id="${e(p.id)}" aria
 ${p.kind === "STALKER" ? `<div class="card-meta mt10"><span class="muted">${e(t.srcs.stalkerSub)}</span></div>` : ""}
 <div class="reveal-box mt10" id="lk-${e(p.id)}" hidden><label class="mt0" for="lki-${e(p.id)}">${e(t.srcs.iptvLink)}</label>
 <div class="row"><input id="lki-${e(p.id)}" readonly spellcheck="false" autocomplete="off"/><button type="button" class="secondary copy-link" data-for="lki-${e(p.id)}">${e(t.srcs.copy)}</button></div></div>
+${p.managed === "reseller" ? `<div class="card-meta mt10"><span class="muted small">${e(t.srcs.resellerCredsNote)}</span></div>`
+    : MEDIA_KINDS.includes(p.kind) ? `<div class="card-meta mt10"><span class="muted small">${e(t.srcs.mediaNoLink)}</span></div>`
+    : p.kind === "STALKER" ? `<div class="card-meta mt10"><span class="muted small">${e(t.srcs.stalkerNoLink)}</span></div>` : ""}
 <div class="actions">${sh.form}
-${p.managed === "reseller"
-    ? `<span class="muted small">${e(t.srcs.resellerCredsNote)}</span>`
-    : `${MEDIA_KINDS.includes(p.kind)
-    ? `<span class="muted small">${e(t.srcs.mediaNoLink)}</span>`
-    : p.kind === "STALKER"
-    ? `<span class="muted small">${e(t.srcs.stalkerNoLink)}</span>`
+${p.managed === "reseller" ? "" : `${MEDIA_KINDS.includes(p.kind) || p.kind === "STALKER" ? ""
     : `<button type="button" class="secondary reveal-link" data-id="${e(p.id)}" aria-controls="lk-${e(p.id)}" aria-expanded="false">${e(t.srcs.showLink)}</button>`}
 <form method="post" action="/providers/${e(p.id)}/delete" data-confirm="${e(t.srcs.delProvConfirm)}">${csrfInput}<button class="danger" type="submit">${e(t.srcs.deleteBtn)}</button></form>`}</div></article>`;
   }).join("");
@@ -94,17 +94,37 @@ ${d.edition === "pro" ? licenseLine(d.license, Date.now(), lang) : ""}
 <label class="mt0" for="rn-${e(d.id)}">${e(t.devs.nameLabel)}</label><input id="rn-${e(d.id)}" name="name" maxlength="40" value="${e(d.name)}"/>
 <div class="row"><button type="submit">${e(t.devs.rename)}</button></div></form></details>
 <form method="post" action="/devices/${e(d.id)}/revoke" data-confirm="${e(t.devs.revokeConfirm)}">${csrfInput}<button class="danger" type="submit">${e(t.devs.revoke)}</button></form></div></article>`).join("");
-  const msg = (err && dMsg.err[err] && notice("err", dMsg.err[err])) || (ok && dMsg.ok[ok] && notice("ok", dMsg.ok[ok])) || "";
+  // Plex : le message de l'ajout s'affiche dans la carte « Media servers », pas en haut de page.
+  const plexOk = ok === "srvadded" || ok === "srvdup";
+  let srvKind = "";
+  try { srvKind = (new URL(url, "https://x").searchParams.get("k") || "").toUpperCase(); } catch { /* ignoré */ }
+  if (!MEDIA_KINDS.includes(srvKind)) srvKind = "JELLYFIN";
+  let plexName = "Plex";
+  try { plexName = (new URL(url, "https://x").searchParams.get("s") || "Plex").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 64) || "Plex"; } catch { /* adresse illisible : nom par défaut */ }
+  const plexMsg = plexOk ? notice("ok", ok === "srvadded" ? t.add.mPlexAdded(plexName) : t.add.mPlexDup(plexName)) : "";
+  const msg = (err && dMsg.err[err] && notice("err", dMsg.err[err])) || (!plexOk && ok && dMsg.ok[ok] && notice("ok", dMsg.ok[ok])) || "";
+  const mediaRows = providers.filter((p) => MEDIA_KINDS.includes(p.kind)).map((p) => { const sh = sharing(p, devices, csrfInput, lang); return `
+<li class="msrv"><span class="nm">${e(p.name)}</span><span class="chip">${e(p.kind)}</span>${p.kind === "PLEX" ? `<span class="chip${p.plex?.owned ? " all" : ""}">${e(p.plex?.owned ? t.add.mPlexOwner : t.add.mPlexSharedBadge)}</span>` : ""}${p.createdAt ? `<span class="muted small dt">${e(t.add.mAddedOn(when(p.createdAt)))}</span>` : ""}
+<form method="post" action="/providers/${e(p.id)}/delete" data-confirm="${e(t.srcs.delProvConfirm)}">${csrfInput}<button class="danger" type="submit">${e(t.srcs.deleteBtn)}</button></form>
+<div class="msrv-dev">${sh.chips}${sh.form}</div></li>`; }).join("");
 
   const cJs = t.clientJs;
-  const plexJs = `(function(){var go=document.getElementById('plex-go');if(!go)return;var st=document.getElementById('plex-st'),list=document.getElementById('plex-list'),add=document.getElementById('plex-add'),timer=null;
+  const plexJs = `(function(){var go=document.getElementById('plex-go');if(!go)return;var form=document.getElementById('form-plex'),st=document.getElementById('plex-st'),list=document.getElementById('plex-list'),timer=null;
 function post(p){return fetch(p,{method:'POST',credentials:'same-origin',headers:{'content-type':'application/x-www-form-urlencoded'},body:'csrf='+encodeURIComponent(${JSON.stringify(csrf)})}).then(function(r){if(!r.ok)throw new Error(String(r.status));return r.json();});}
 function fail(){clearInterval(timer);timer=null;go.disabled=false;st.textContent=${JSON.stringify(t.add.mPlexFail)};}
-function show(servers){clearInterval(timer);timer=null;go.disabled=false;list.querySelectorAll('label').forEach(function(l){l.remove();});
- if(!servers.length){st.textContent=${JSON.stringify(t.add.mPlexNone)};return;}st.textContent='';
- servers.forEach(function(s,i){var l=document.createElement('label'),r=document.createElement('input');r.type='radio';r.name='server';r.value=s.id;r.required=true;if(i===0)r.checked=true;l.appendChild(r);l.appendChild(document.createTextNode(' '+s.name+(s.owned?'':' ('+${JSON.stringify(t.add.mPlexShared)}+')')));list.appendChild(l);});
- list.hidden=false;add.hidden=false;}
-go.addEventListener('click',function(){var w=window.open('about:blank','plexauth');go.disabled=true;st.textContent=${JSON.stringify(t.add.mPlexWaiting)};list.hidden=true;add.hidden=true;
+function chip(txt,cls){var c=document.createElement('span');c.className='chip'+(cls?' '+cls:'');c.textContent=txt;return c;}
+function show(servers){clearInterval(timer);timer=null;go.disabled=false;list.querySelectorAll('.plex-row').forEach(function(l){l.remove();});
+ if(!servers.length){st.textContent=${JSON.stringify(t.add.mPlexNone)};return;}
+ if(servers.length===1&&!servers[0].added){st.textContent=${JSON.stringify(t.add.mPlexAdding)};var h=document.createElement('input');h.type='hidden';h.name='server';h.value=servers[0].id;form.appendChild(h);form.submit();return;}
+ st.textContent=${JSON.stringify(t.add.mPlexHint)};
+ servers.forEach(function(s){var b=document.createElement('button'),n=document.createElement('span');
+  b.type='submit';b.name='server';b.value=s.id;b.className='plex-row';if(s.added)b.disabled=true;n.className='nm';n.textContent=s.name;b.appendChild(n);
+  b.appendChild(chip(s.owned?${JSON.stringify(t.add.mPlexOwner)}:${JSON.stringify(t.add.mPlexSharedBadge)},s.owned?'all':''));
+  b.appendChild(chip(s.conn==='local'?${JSON.stringify(t.add.mPlexConnLocal)}:s.conn==='relay'?${JSON.stringify(t.add.mPlexConnRelay)}:${JSON.stringify(t.add.mPlexConnRemote)}));
+  if(s.added)b.appendChild(chip(${JSON.stringify(t.add.mPlexAlready)},'acc'));
+  list.appendChild(b);});
+ list.hidden=false;}
+go.addEventListener('click',function(){var w=window.open('about:blank','plexauth');go.disabled=true;st.textContent=${JSON.stringify(t.add.mPlexWaiting)};list.hidden=true;
  post('/plex/pin').then(function(j){if(!j.auth)throw new Error('pin');if(w)w.location=j.auth;else window.open(j.auth,'plexauth');var n=0;
   timer=setInterval(function(){if(++n>300)return fail();post('/plex/check').then(function(c){if(c.state==='ok')show(c.servers||[]);else if(c.state==='expired')fail();}).catch(function(){});},3000);
  }).catch(function(){if(w)w.close();fail();});});})();`;
@@ -226,7 +246,7 @@ ${pairForm(csrfInput, "", lang)}</section>
 ${listbar("dev-list", cJs.searchDevPh)}
 <div class="cards c2 mt16" id="dev-list">${devRows || `<div class="empty"><div class="badge-ico">${ico("tv")}</div><strong>${e(t.devs.emptyTitle)}</strong><span class="small">${e(t.devs.emptySub)}</span></div>`}</div>
 
-<div class="section-h" id="sources"><div class="sh-t"><h2 id="h-src">${e(t.srcs.title)} <span class="count">${providers.length}</span></h2><p class="muted small">${e(t.srcs.sub)}</p></div><a class="button secondary" href="#ajouter">${ico("plus")}${e(t.srcs.addBtn)}</a></div>
+<div class="section-h" id="sources"><div class="sh-t"><h2 id="h-src">${e(t.srcs.title)} <span class="count">${iptv.length}</span></h2><p class="muted small">${e(t.srcs.sub)}</p></div><a class="button secondary" href="#ajouter">${ico("plus")}${e(t.srcs.addBtn)}</a></div>
 ${listbar("prov-list", cJs.searchSrcPh)}
 <div class="cards c2" id="prov-list">${provRows || `<div class="empty"><div class="badge-ico">${ico("list")}</div><strong>${e(t.srcs.emptyTitle)}</strong><span class="small">${e(t.srcs.emptySub)}</span></div>`}</div>
 ${profilesPanel(acct, providers, csrfInput, lang)}
@@ -252,7 +272,8 @@ ${profilesPanel(acct, providers, csrfInput, lang)}
 <p class="secure">${ico("lock")}<span>${e(t.add.secureNote)}</span></p></section>
 
 <section class="panel mt16" id="serveurs" aria-labelledby="h-media"><h2 id="h-media">${e(t.add.mTitle)}</h2><p class="sub">${e(t.add.mSub)}</p>
-<div class="tabbed"><input type="radio" name="mtab" id="t-jf" checked aria-label="Jellyfin"/><input type="radio" name="mtab" id="t-emby" aria-label="Emby"/><input type="radio" name="mtab" id="t-plex" aria-label="Plex"/><input type="radio" name="mtab" id="t-nas" aria-label="NAS"/><div class="seg" aria-hidden="true"><label for="t-jf">Jellyfin</label><label for="t-emby">Emby</label><label for="t-plex">Plex</label><label for="t-nas">NAS</label></div>
+${plexMsg}${mediaRows ? `<h3 class="msrv-h">${e(t.add.mSrvTitle)}</h3><ul class="msrv-list">${mediaRows}</ul>` : ""}
+<div class="tabbed"><input type="radio" name="mtab" id="t-jf"${!plexOk || srvKind === "JELLYFIN" ? " checked" : ""} aria-label="Jellyfin"/><input type="radio" name="mtab" id="t-emby"${plexOk && srvKind === "EMBY" ? " checked" : ""} aria-label="Emby"/><input type="radio" name="mtab" id="t-plex"${plexOk && srvKind === "PLEX" ? " checked" : ""} aria-label="Plex"/><input type="radio" name="mtab" id="t-nas"${plexOk && srvKind === "NAS" ? " checked" : ""} aria-label="NAS"/><div class="seg" aria-hidden="true"><label for="t-jf">Jellyfin</label><label for="t-emby">Emby</label><label for="t-plex">Plex</label><label for="t-nas">NAS</label></div>
 ${["JELLYFIN", "EMBY"].map((k) => { const f = k === "JELLYFIN" ? "jf" : "emby"; return `<form method="post" action="/providers" id="form-${f}">${csrfInput}<input type="hidden" name="kind" value="${k}"/>
 <label for="${f}n">${e(t.add.nameLabel)} <span class="hint">${e(t.add.optional)}</span></label><input id="${f}n" name="name" maxlength="64" placeholder="${k === "JELLYFIN" ? "Jellyfin" : "Emby"}"/>
 <label for="${f}u">${e(t.add.mServerUrl)}</label><input id="${f}u" name="url" type="url" required maxlength="2048" placeholder="http://192.168.1.20:${k === "JELLYFIN" ? "8096" : "8096"}" autocapitalize="none" spellcheck="false"/>
@@ -265,7 +286,7 @@ ${["JELLYFIN", "EMBY"].map((k) => { const f = k === "JELLYFIN" ? "jf" : "emby"; 
 <div class="row"><button type="button" class="secondary" id="plex-go">${e(t.add.mPlexConnect)}</button></div>
 <p class="muted small" id="plex-st" aria-live="polite"></p>
 <fieldset class="plex-servers" id="plex-list" hidden><legend>${e(t.add.mPlexPick)}</legend></fieldset>
-<div class="row" id="plex-add" hidden><button type="submit">${ico("plus")}${e(t.add.addSubmit)}</button></div></form>
+</form>
 <form method="post" action="/providers" id="form-nas">${csrfInput}<input type="hidden" name="kind" value="NAS"/>
 <label for="nn">${e(t.add.nameLabel)} <span class="hint">${e(t.add.optional)}</span></label><input id="nn" name="name" maxlength="64" placeholder="NAS"/>
 <label for="nu">${e(t.add.mNasAddr)}</label><input id="nu" name="url" required maxlength="1024" placeholder="smb://192.168.1.10/Films" autocapitalize="none" spellcheck="false"/>

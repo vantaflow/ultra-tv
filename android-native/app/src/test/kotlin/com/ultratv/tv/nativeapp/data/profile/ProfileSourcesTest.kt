@@ -49,4 +49,32 @@ class ProfileSourcesTest {
         assertEquals(listOf("A", "B", "C"), ProfileSourcesRules.decode(ProfileSourcesRules.encode(listOf("A", "B", "C"))))
         assertEquals(null, ProfileSourcesRules.decode(""))
     }
+
+    @Test fun sourcePlexAjoutee_sansChoixDeProfil_estVisible_etAvecChoixElleEstFiltreeJusquAEnsureVisible() {
+        val xt = p(1, "STRONG", active = true); val plex = p(2, "JDM Plex Server").copy(kind = "PLEX")
+        assertEquals(listOf(1L, 2L), ProfileSourcesRules.visible(listOf(xt, plex), null).map { it.id })
+        // Le profil avait choisi ses sources : la nouvelle source est masquée tant que son nom n'est pas ajouté au choix.
+        assertEquals(listOf(1L), ProfileSourcesRules.visible(listOf(xt, plex), listOf("STRONG")).map { it.id })
+        assertEquals(listOf(1L, 2L), ProfileSourcesRules.visible(listOf(xt, plex), listOf("STRONG", "JDM Plex Server")).map { it.id })
+    }
+
+    @Test fun bibliothequesMasquees_parProfil_dansLaListeDesSources() {
+        val R = ProfileSourcesRules
+        var names: List<String>? = null
+        assertTrue(R.libraryVisible(names, "JDM Plex", "Anime"))
+        names = R.toggleLibrary(names, "JDM Plex", "Anime")                 // masque
+        assertEquals(listOf("!JDM Plex/Anime"), names)
+        assertTrue(!R.libraryVisible(names, "jdm plex", "ANIME"))            // sans casse
+        assertEquals(null, R.sourceNames(names))                            // aucune source choisie = toutes
+        val xt = p(1, "STRONG"); val plex = p(2, "JDM Plex").copy(kind = "PLEX")
+        assertEquals(listOf(1L, 2L), ProfileSourcesRules.visible(listOf(xt, plex), names).map { it.id })
+        // Choix de sources + bibliothèque masquée : les deux sont conservés par les bascules.
+        val both = R.toggle(listOf("STRONG", "JDM Plex"), names, "STRONG")
+        assertEquals(listOf("JDM Plex", "!JDM Plex/Anime"), both)
+        assertEquals(listOf(2L), ProfileSourcesRules.visible(listOf(xt, plex), both).map { it.id })
+        assertEquals(null, R.toggleLibrary(R.toggleLibrary(null, "S", "L"), "S", "L"))   // réaffichée : plus rien
+        // Aller-retour JSON de la synchro des profils.
+        val back = ProfileSyncLogic.parse(ProfileSyncLogic.toJson(listOf(SharedProfile("Papa", 1, false, 5, s = both)))).first().s
+        assertEquals(both, back)
+    }
 }

@@ -19,7 +19,7 @@ const crypto = require("node:crypto");
 const zlib = require("node:zlib");
 const { pipeline } = require("node:stream");
 const nasMod = require("./nas.cjs");
-const { parseTranscodePath, serveTranscode, serveStreamInfo, serveSubtitle } = require("./transcode.cjs");
+const { parseTranscodePath, serveTranscode, serveStreamInfo, serveSubtitle, serveDiagnosis } = require("./transcode.cjs");
 
 const MAX_MANIFEST_BYTES = 2 * 1024 * 1024;
 const MAX_POST_BYTES = 2 * 1024 * 1024;
@@ -272,10 +272,21 @@ function decodeBody(buf, encoding) {
   return null;
 }
 
-function createProxyServer({ allowedOrigin, token, onError, lookup, ffmpeg = null, nas = null } = {}) {
+/** User-Agent de repli : les fournisseurs IPTV refusent souvent celui de Chromium / Electron, pas celui de VLC. */
+const FALLBACK_UA = "VLC/3.0.20 LibVLC/3.0.20";
+function effectiveUserAgent(chosen, browser) {
+  if (chosen) return String(chosen);
+  return browser && !/electron|ultra[\s-]?tv|chrome\//i.test(browser) ? String(browser) : FALLBACK_UA;
+}
+
+function createProxyServer({ allowedOrigin, token, onError, lookup, ffmpeg = null, videoFfmpeg = null, nas = null, log = null } = {}) {
   if (!allowedOrigin) throw new Error("allowedOrigin requis");
   const secret = token || crypto.randomBytes(24).toString("base64url");
   const report = typeof onError === "function" ? onError : () => {};
+  // Journal de lecture (logger.cjs) : jamais d'identifiants (le journal masque les adresses), une ligne par anomalie.
+  const jlog = typeof log === "function" ? log : () => {};
+  // Premières réponses réussies déjà journalisées, par hôte et type de flux (évite une ligne par segment).
+  const seenOk = new Set();
 
   // Tolerance TLS limitee a ce chemin : agent dedie, jamais de switch global.
   // `lookup` : DNS personnalisé (dns.cjs) ; absent = DNS du système.
@@ -352,8 +363,7 @@ function createProxyServer({ allowedOrigin, token, onError, lookup, ffmpeg = nul
     for (const name of FORWARD_REQ_HEADERS) {
       if (req.headers[name]) h[name] = req.headers[name];
     }
-    const ua = req.headers["x-ut-ua"] || req.headers["user-agent"];
-    if (ua) h["user-agent"] = ua;
+    h["user-agent"] = effectiveUserAgent(req.headers["x-ut-ua"], req.headers["user-agent"]);
     const ref = req.headers["x-ut-referer"];
     if (ref) h["referer"] = ref;
     // Portail Stalker : Cookie (MAC), Authorization (jeton) et X-User-Agent relayés sous un nom neutre (liste fermée).
@@ -407,6 +417,7 @@ function createProxyServer({ allowedOrigin, token, onError, lookup, ffmpeg = nul
       const status = up.statusCode || 0;
       const loc = up.headers.location;
       if ([301, 302, 303, 307, 308].includes(status) && loc) {
+        (state.hops ||= []).push({ status, from: current.origin, to: String(loc).slice(0, 300) });
         up.resume();
         let next;
         try {
@@ -490,6 +501,7 @@ function createProxyServer({ allowedOrigin, token, onError, lookup, ffmpeg = nul
       if (req.method !== "GET") return fail(res, req, 405);
       // Liste des pistes et sous-titres : lecture de l'en-tête seule, sans libérer le flux en cours.
       if (tx.kind === "info") return serveStreamInfo(req, res, { ffmpeg, target: txTarget, headers: corsHeaders(req) });
+      if (tx.kind === "diag") return serveDiagnosis(req, res, { ffmpeg, target: txTarget, headers: corsHeaders(req), hevc: tx.hevc, canEncode: !!videoFfmpeg, log: jlog });
       if (tx.kind === "sub") return serveSubtitle(req, res, { ffmpeg, target: txTarget, s: tx.s, headers: corsHeaders(req), report });
       // Comptes à connexion unique : l'ancien flux du même hôte est libéré avant que ffmpeg ouvre le sien.
       await releaseEntry(activeLive.get(txTarget.host.toLowerCase()));
@@ -503,7 +515,10 @@ function createProxyServer({ allowedOrigin, token, onError, lookup, ffmpeg = nul
       const cur = { stop: null };
       const curStop = () => { try { cur.stop?.(); } catch { /* déjà parti */ } };
       txActive.set(txKey, curStop);
-      return serveTranscode(req, res, { ffmpeg, target: txTarget, ss: tx.ss, live: tx.live, audio: tx.a, headers: corsHeaders(req), report, onSpawn: (stop) => {
+      // Conversion vidéo H.264 : ffmpeg avec encodeur (embarqué si possible, sinon celui du système) ; sans lui, 501.
+      if (tx.video === "h264" && !videoFfmpeg) { txActive.delete(txKey); return fail(res, req, 501); }
+      const useFfmpeg = tx.video === "h264" ? videoFfmpeg.path : ffmpeg;
+      return serveTranscode(req, res, { log: jlog, ffmpeg: useFfmpeg, video: tx.video, encoder: videoFfmpeg?.encoder, target: txTarget, ss: tx.ss, live: tx.live, audio: tx.a, headers: corsHeaders(req), report, onSpawn: (stop) => {
         if (cur.stop) stop(); // remplacée déjà : partie aussitôt née
         else cur.stop = stop;
       } });
@@ -541,7 +556,19 @@ function createProxyServer({ allowedOrigin, token, onError, lookup, ffmpeg = nul
     try {
       const body = req.method === "POST" ? await readBody(req, MAX_POST_BYTES) : undefined;
       const headers = upstreamHeaders(req, req.method, body ? body.length : undefined);
+      const t0 = Date.now();
       const { up, finalUrl } = await fetchFollowing(target, req.method, headers, body, state);
+      {
+        const st = up.statusCode || 0;
+        const kind = `${finalUrl.host}|${/\.m3u8(?:$|\?)/i.test(finalUrl.pathname) ? "hls" : /\.ts$/i.test(finalUrl.pathname) ? "ts" : "file"}`;
+        if (st >= 400 || state.hops?.length || !seenOk.has(kind)) {
+          if (st < 400 && seenOk.size < 500) seenOk.add(kind);
+          jlog("proxy.upstream", {
+            method: req.method, status: st, host: finalUrl.host, url: finalUrl.href, redirects: state.hops || [], range: !!req.headers.range,
+            userAgent: headers["user-agent"], referer: !!headers.referer, contentType: up.headers["content-type"] || null, ms: Date.now() - t0,
+          });
+        }
+      }
       state.upRes = up;
       if (state.aborted) {
         up.destroy();
@@ -552,6 +579,7 @@ function createProxyServer({ allowedOrigin, token, onError, lookup, ffmpeg = nul
       if (state.aborted) return;
       const code = (err && err.code) || "EUPSTREAM";
       report(code);
+      jlog("proxy.error", { code, host: target.host, url: target.href, redirects: state.hops || [], userAgent: req.headers["x-ut-ua"] ? "source" : "repli" });
       if (code === "SELF") return fail(res, req, 400);
       if (code === "TOOLARGE") return fail(res, req, 413);
       if (code === "ETIMEDOUT") return fail(res, req, 504);
@@ -672,4 +700,6 @@ module.exports = {
   looksLikeHlsManifest,
   rewriteManifest,
   createProxyServer,
+  effectiveUserAgent,
+  FALLBACK_UA,
 };

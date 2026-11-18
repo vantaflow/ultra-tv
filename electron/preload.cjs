@@ -23,6 +23,8 @@ contextBridge.exposeInMainWorld("ultratv", {
   version: String(boot.version || ""),
   proxyBase: String(boot.proxyBase || ""),
   transcode: !!boot.transcode,
+  videoTranscode: !!boot.videoTranscode,
+  vlc: !!boot.vlc,
   secretsSecure: !!boot.secretsSecure,
   cloudRequest: (req) => ipcRenderer.invoke("ut:cloud:request", req),
   encrypt: (plain) => ipcRenderer.invoke("ut:encrypt", plain),
@@ -36,6 +38,11 @@ contextBridge.exposeInMainWorld("ultratv", {
   getAutoUpdate: () => ipcRenderer.invoke("ut:update:auto:get"),
   setAutoUpdate: (value) => ipcRenderer.invoke("ut:update:auto:set", !!value),
   onUpdateStatus: (cb) => subscribe("ut:update:status", cb),
+  // Lecteur externe : VLC détecté par le main, qui valide l'adresse.
+  openInVlc: (req) => ipcRenderer.invoke("ut:vlc:open", req && typeof req === "object" ? { url: String(req.url), userAgent: req.userAgent ? String(req.userAgent) : null, referer: req.referer ? String(req.referer) : null, title: req.title ? String(req.title) : null } : null),
+  // Journal de lecture (fichier rotatif, identifiants masqués par le main) et ouverture de son dossier.
+  log: (name, fields) => { try { ipcRenderer.send("ut:log", String(name).slice(0, 64), fields && typeof fields === "object" ? { ...fields } : {}); } catch { /* ignoré */ } },
+  openLogsDir: () => ipcRenderer.invoke("ut:logs:open"),
   openExternal: (url) => ipcRenderer.invoke("ut:open-external", String(url)),
   setTitleBarTheme: (isDark) => ipcRenderer.invoke("ut:titlebar-theme", !!isDark),
   // DNS personnalise : le main valide et normalise le reglage ; testDns ne recoit qu'un nom d'hote.

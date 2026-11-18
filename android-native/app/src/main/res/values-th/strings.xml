@@ -88,6 +88,8 @@
     <string name="ds_loading_label">กำลังโหลด…</string>
     <string name="ds_searching_label">กำลังค้นหา…</string>
     <string name="ds_dashboard_scan">สแกนด้วยโทรศัพท์ของคุณ</string>
+    <string name="ds_dashboard_send_title">ส่งแหล่งที่มาจากโทรศัพท์</string>
+    <string name="ds_dashboard_send_hint">กด OK เพื่อรับรหัส แล้วสแกน QR ด้วยโทรศัพท์ของคุณ</string>
     <string name="ds_pair_scan_auto">สแกนด้วยโทรศัพท์เพื่อจับคู่อัตโนมัติ</string>
     <string name="ds_pair_device_label">ชื่อที่แสดงบนแดชบอร์ด</string>
     <string name="ds_search_pill">ค้นหา</string>
@@ -1863,4 +1865,5 @@
     <string name="sport_ok_hint">ตกลงที่แมตช์: ข้อมูลแมตช์หรือเล่น</string>
     <string name="sport_no_events">ยังไม่มีช่วงเด็ด</string>
     <string name="sport_table_hidden">ซ่อนตารางคะแนนในโหมดไม่สปอยล์</string>
+    <string name="mlib_cloud_failed">เชื่อมต่อคลัง “%1$s” ที่เพิ่มจากเว็บไซต์ไม่สำเร็จ ทีวีจะลองใหม่เมื่อซิงก์ครั้งถัดไป โปรดตรวจสอบว่าเซิร์ฟเวอร์เข้าถึงได้</string>
 </resources>

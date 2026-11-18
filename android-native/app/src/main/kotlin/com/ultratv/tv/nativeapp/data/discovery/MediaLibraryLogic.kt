@@ -95,6 +95,28 @@ object MediaLibraryLogic {
     /** Affiche de la rangée d'un serveur : [progress] > 0 pour un titre en cours de lecture. */
     data class Tile(val isSeries: Boolean, val id: Long, val title: String, val poster: String?, val progress: Float)
 
+    /** Affiches par rangée de « Mes bibliothèques » ; au plus [LIBRARY_SHELVES] rangées « bibliothèque » par serveur. */
+    const val SHELF_MAX = 20
+    const val LIBRARY_SHELVES = 6
+
+    /**
+     * Rangées d'un serveur dans l'ordre : Reprendre, Ajoutés récemment, Films, Séries, puis ses bibliothèques. Une rangée vide est
+     * omise ; la rangée « récents » qui reprendrait exactement « Films » ou « Séries » seuls (serveur sans l'autre type) est omise.
+     */
+    fun shelfPlan(
+        resume: List<Tile>, recent: List<Tile>, movies: List<Tile>, series: List<Tile>, libraries: List<com.ultratv.tv.nativeapp.ui.library.Shelf>,
+    ): List<com.ultratv.tv.nativeapp.ui.library.Shelf> {
+        val k = com.ultratv.tv.nativeapp.ui.library.ShelfKind.entries
+        val dupRecent = (movies.isEmpty() || series.isEmpty()) && recent.map { it.isSeries to it.id } == (movies + series).map { it.isSeries to it.id }
+        return buildList {
+            if (resume.isNotEmpty()) add(com.ultratv.tv.nativeapp.ui.library.Shelf(k[0], "", resume, null))
+            if (recent.isNotEmpty() && !dupRecent) add(com.ultratv.tv.nativeapp.ui.library.Shelf(k[1], "", recent, null))
+            if (movies.isNotEmpty()) add(com.ultratv.tv.nativeapp.ui.library.Shelf(k[2], "", movies, false))
+            if (series.isNotEmpty()) add(com.ultratv.tv.nativeapp.ui.library.Shelf(k[3], "", series, true))
+            addAll(libraries)
+        }
+    }
+
     /** Rangée d'affiches : titres en cours d'abord, puis derniers ajouts, sans doublon, au plus [max]. */
     fun pickTiles(progressed: List<Tile>, latest: List<Tile>, max: Int): List<Tile> =
         (progressed + latest).distinctBy { it.isSeries to it.id }.take(max)

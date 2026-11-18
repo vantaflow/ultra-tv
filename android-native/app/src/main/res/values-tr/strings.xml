@@ -87,6 +87,8 @@
 <string name="ds_loading_label">Yükleniyor…</string>
 <string name="ds_searching_label">Aranıyor…</string>
 <string name="ds_dashboard_scan">Telefonunuzla tarayın</string>
+    <string name="ds_dashboard_send_title">Telefondan kaynak gönder</string>
+    <string name="ds_dashboard_send_hint">Kodu almak için Tamam\'a basın, ardından QR kodunu telefonunuzla tarayın</string>
 <string name="ds_pair_scan_auto">Otomatik eşleştirmek için telefonunuzla tarayın</string>
 <string name="ds_pair_device_label">Panoda görünen ad</string>
 <string name="ds_search_pill">Ara</string>
@@ -1825,4 +1827,5 @@
 <string name="sport_ok_hint">Bir maçta Tamam: maç kartı veya oynatma</string>
 <string name="sport_no_events">Henüz önemli an yok.</string>
 <string name="sport_table_hidden">Puan durumu spoiler\'sız modda gizli.</string>
+    <string name="mlib_cloud_failed">Web sitesinden eklenen “%1$s” kütüphanesine bağlanılamadı. TV bir sonraki eşitlemede yeniden deneyecek. Sunucuya erişilebildiğini kontrol edin.</string>
 </resources>

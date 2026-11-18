@@ -22,6 +22,13 @@ object WorkerFallbackLogic {
         return if (host == PRIMARY_HOST || host == LEGACY_HOST) "https://$SITE_HOST" else workerBase
     }
 
+    /** Cible du QR de la carte des Réglages › Sources : appairé → racine du site (tableau de bord) ; non appairé → page
+     *  d'envoi d'une source sans compte (/envoyer), car la racine renvoie vers /login. */
+    fun dashboardQrTarget(workerBase: String, paired: Boolean): String {
+        val base = siteBase(workerBase).trimEnd('/')
+        return if (paired) base else "$base/envoyer"
+    }
+
     /** Dernier hôte qui a répondu (mémoire du processus) ; null = aucun encore. */
     @Volatile var lastWorking: String? = null
 
@@ -47,8 +54,37 @@ object WorkerFallbackLogic {
 class WorkerFallbackInterceptor : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val req = chain.request()
+        if (WorkerFallbackLogic.alternate(req.url.host) == null) return chain.proceed(req)
+        // Lectures de la liste blanche : secours Vercel en dernier recours. Écritures et autres routes : jamais.
+        if (!BackupFailover.eligible(req.method, req.url.encodedPath)) return viaHosts(chain, req)
+        val breaker = BackupFailover.breaker
+        val triedFirst = breaker.preferBackup()
+        if (triedFirst) tryBackup(chain, req)?.let { return it }
+        var resp: Response? = null
+        var err: IOException? = null
+        try { resp = viaHosts(chain, req) } catch (e: IOException) { err = e }
+        if (resp != null && !BackupFailover.isOutageStatus(resp.code)) { breaker.success(); return resp }
+        breaker.failure()
+        if (!triedFirst && !chain.call().isCanceled()) {
+            tryBackup(chain, req)?.let { resp?.close(); return it }
+        }
+        return resp ?: throw err!!
+    }
+
+    /** Requête rejouée sur le secours ; null si le secours ne répond pas correctement (le jeton ne part que vers cet hôte fixe). */
+    private fun tryBackup(chain: Interceptor.Chain, req: okhttp3.Request): Response? {
+        val url = req.url.newBuilder().scheme("https").host(BackupFailover.HOST).port(443).build()
+        val c = chain.withConnectTimeout(BackupFailover.TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS)
+            .withReadTimeout(BackupFailover.TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS)
+        return try {
+            val r = c.proceed(req.newBuilder().url(url).build())
+            if (BackupFailover.accepted(r.code)) r else { r.close(); null }
+        } catch (e: IOException) { null }
+    }
+
+    /** Repli domaine <-> workers.dev (panne réseau seulement), comme avant le secours. */
+    private fun viaHosts(chain: Interceptor.Chain, req: okhttp3.Request): Response {
         val requested = req.url.host
-        if (WorkerFallbackLogic.alternate(requested) == null) return chain.proceed(req)
         val first = WorkerFallbackLogic.preferredHost(requested, WorkerFallbackLogic.lastWorking)
         val firstReq = if (first == requested.lowercase()) req else req.newBuilder().url(WorkerFallbackLogic.withHost(req.url, first)).build()
         try {

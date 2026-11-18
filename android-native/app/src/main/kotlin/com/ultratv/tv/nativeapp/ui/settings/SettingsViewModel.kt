@@ -77,6 +77,9 @@ class SettingsViewModel @Inject constructor(
     fun setSearchAllSources(on: Boolean) { viewModelScope.launch { profileRepo.setSearchAll(on) } }
 
 
+    /** Films et séries indexés d'une source multimédia (null avant la lecture). */
+    suspend fun mediaCounts(providerId: Long) = repo.mediaCounts(providerId)
+
     // ---- « Guide de cette source » (adresse EPG propre à une source) ----
 
     fun customGuide(providerId: Long) = limits.customEpg(providerId)
@@ -469,6 +472,8 @@ class SettingsViewModel @Inject constructor(
      */
     private suspend fun finishMediaAdd(id: Long) {
         makeDefaultIfNone(id)
+        // Le profil courant a peut-être choisi ses sources : la nouvelle bibliothèque doit y figurer.
+        runCatching { profileSources.ensureVisible(id) }
         val libs = repo.mediaLibraryChoices(id)
         if (libs != null && libs.size > 1) _pendingLibs.value = PendingLibraries(id, libs)
         else sync.request(id, force = true)

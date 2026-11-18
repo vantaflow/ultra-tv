@@ -91,6 +91,8 @@
     <string name="ds_loading_label">Laster…</string>
     <string name="ds_searching_label">Søker…</string>
     <string name="ds_dashboard_scan">Skann med telefonen</string>
+    <string name="ds_dashboard_send_title">Send en kilde fra telefonen</string>
+    <string name="ds_dashboard_send_hint">Trykk OK for å få koden, og skann deretter QR-koden med telefonen</string>
     <string name="ds_pair_scan_auto">Skann med telefonen for automatisk paring</string>
     <string name="ds_pair_device_label">Navn vist på dashbordet</string>
     <string name="ds_search_pill">Søk</string>
@@ -1883,4 +1885,5 @@
     <string name="sport_ok_hint">OK på en kamp: kampark eller avspilling</string>
     <string name="sport_no_events">Ingen høydepunkter ennå.</string>
     <string name="sport_table_hidden">Tabellen er skjult i modus uten spoilere.</string>
+    <string name="mlib_cloud_failed">Biblioteket «%1$s» som ble lagt til fra nettstedet, kunne ikke kobles til. TV-en prøver igjen ved neste synkronisering. Sjekk at serveren er tilgjengelig.</string>
 </resources>
