@@ -508,7 +508,10 @@ class PlaybackSession(
                     val line = "live frozen (${detector.reason(now)}) engine=${combo.engine} decoder=${combo.decoder} played=${if (playedSinceMs == 0L) 0 else (now - playedSinceMs) / 1000}s"
                     android.util.Log.i("UltraPlay", line); com.ultratv.tv.nativeapp.RemoteLog.warn("play", line)
                     val played = if (playedSinceMs == 0L) 0L else now - playedSinceMs
-                    if (PlaybackPlanner.frozenMeansDecoder(played, combo.decoder) && fallbackAfter(PlayErrorKind.DECODER) != null) {
+                    // Gel juste après une bascule de fréquence de l'écran : la sortie vidéo, pas le décodeur — on recharge
+                    // avec la MÊME combinaison (le décodage logiciel rendrait tout lent sans rien réparer).
+                    val afterSwitch = DisplayModeGate.lastSwitchMs > 0 && now - DisplayModeGate.lastSwitchMs < PlaybackPlanner.EARLY_FREEZE_MS
+                    if (!afterSwitch && PlaybackPlanner.frozenMeansDecoder(played, combo.decoder) && fallbackAfter(PlayErrorKind.DECODER) != null) {
                         onError(PlayErrorKind.DECODER); return@launch
                     }
                     reconnectLive(); return@launch
