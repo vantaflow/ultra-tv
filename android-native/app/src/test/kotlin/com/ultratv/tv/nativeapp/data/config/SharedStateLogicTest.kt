@@ -6,6 +6,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SharedStateLogicTest {
+    @Test fun profilSansNom_devientPrincipal_commeLeBureau() {
+        val ps = listOf(1L to "", 2L to "  Enfants ")
+        assertEquals("Principal", SharedStateLogic.nameOf(ps).getValue(1L))
+        assertEquals("Enfants", SharedStateLogic.nameOf(ps).getValue(2L))
+        assertEquals(1L, SharedStateLogic.idOf(ps)["principal"])
+        assertEquals(2L, SharedStateLogic.idOf(ps)["enfants"])
+    }
     private fun f(r: String, on: Boolean = true, at: Long = 100) = SharedFav("Principal", "LIVE", r, on, at)
 
     @Test fun local_ajout_devientOnMaintenant() {
