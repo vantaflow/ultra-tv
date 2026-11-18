@@ -242,6 +242,7 @@
   "DesignStrings.getExtraGuide()": "Guide complémentaire",
   "DesignStrings.getExtraGuideHint()": "Complète les chaînes sans programme chez votre source",
   "DesignStrings.getExtraGuideOff()": "Désactivé",
+  "DesignStrings.getFavAllSources()": "Toutes les sources",
   "DesignStrings.getFavHint()": "Appui long sur OK : retirer des favoris",
   "DesignStrings.getFavoriteChannels()": "Chaînes favorites",
   "DesignStrings.getFeatured()": "À la une",

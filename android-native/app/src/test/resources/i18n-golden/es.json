@@ -242,6 +242,7 @@
   "DesignStrings.getExtraGuide()": "Guía complementaria",
   "DesignStrings.getExtraGuideHint()": "Completa los canales sin programa en su fuente",
   "DesignStrings.getExtraGuideOff()": "Desactivada",
+  "DesignStrings.getFavAllSources()": "Todas las fuentes",
   "DesignStrings.getFavHint()": "Pulsación larga en OK: quitar de favoritos",
   "DesignStrings.getFavoriteChannels()": "Canales favoritos",
   "DesignStrings.getFeatured()": "Destacado",
