@@ -35,6 +35,17 @@ class InMemoryChannelPlaybackMemory : ChannelPlaybackMemory {
 class PrefsChannelPlaybackMemory @Inject constructor(@ApplicationContext ctx: Context) : ChannelPlaybackMemory {
     private val sp = ctx.getSharedPreferences("channel_playback", Context.MODE_PRIVATE)
 
+    init {
+        // Une fois : oubli des combinaisons retenues jusqu'à la 1.3.61. Une bascule de fréquence de l'écran (noir HDMI)
+        // passait pour « aucune image » et faisait retenir décodage logiciel ou VLC pour la chaîne : lent ensuite pour
+        // toujours. Les langues audio retenues sont gardées.
+        if (!sp.getBoolean(RESET_KEY, false)) {
+            val e = sp.edit()
+            sp.all.keys.filter { it.startsWith("c:") }.forEach { e.remove(it) }
+            e.putBoolean(RESET_KEY, true).apply()
+        }
+    }
+
     override fun combo(channelKey: String) = Combo.decode(sp.getString("c:$channelKey", null))
     override fun bufferPreset(channelKey: String) = sp.getString("b:$channelKey", null)?.let { runCatching { BufferPreset.valueOf(it) }.getOrNull() }
 
@@ -61,5 +72,5 @@ class PrefsChannelPlaybackMemory @Inject constructor(@ApplicationContext ctx: Co
         e.apply()
     }
 
-    private companion object { const val MAX = 500 }
+    private companion object { const val MAX = 500; const val RESET_KEY = "combo_reset_1361" }
 }

@@ -574,9 +574,13 @@ class PlaybackSession(
     private fun armBlackPictureCheck(e: PlayerEngine) {
         blackJob = scope.launch {
             delay(3_000)
+            // Bascule de fréquence de l'écran en cours (HDMI noir 1 à 3 s) : on attend qu'elle soit finie avant de juger.
+            var waits = 0
+            while (DisplayModeGate.settling() && waits++ < 3) delay(DisplayModeGate.SETTLE_MS / 2)
             repeat(3) { i ->
                 val px = FrameProbe.sample(e.view) ?: return@launch
                 if (!FrameProbe.isBlack(px)) return@launch
+                if (DisplayModeGate.settling()) return@launch   // noir dû à une bascule survenue pendant la mesure : pas une panne
                 if (i < 2) delay(1_500)
             }
             if (engine === e && e.hasVideo) {
