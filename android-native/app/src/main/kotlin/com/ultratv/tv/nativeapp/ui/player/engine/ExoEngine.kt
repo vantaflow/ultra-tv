@@ -439,7 +439,9 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
      */
     private fun detectedFrameRate(): Float? {
         if (!firstFrameRendered) return null
-        FrameRatePolicy.snap(fpsEstimator.estimate())?.let { return it }
+        // Direct : cadence DÉCLARÉE seulement (comportement d'avant la mesure, 1.3.4x). Mesurer puis basculer l'écran en
+        // pleine lecture, à chaque chaîne, figeait l'image sur certains écrans (sortie vidéo perdue jusqu'au zapping).
+        if (!config.isLive) FrameRatePolicy.snap(fpsEstimator.estimate())?.let { return it }
         return FrameRatePolicy.snap(player.videoFormat?.frameRate?.takeIf { it > 0f })
     }
 

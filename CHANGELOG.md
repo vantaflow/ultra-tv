@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Direct qui se fige puis écran noir au lancement d'une chaîne, puis lenteur : en direct, la fréquence de l'écran ne change plus en pleine lecture d'après une cadence mesurée (seulement d'après la cadence déclarée par le flux, comme avant le 16/11). Et un gel juste après un changement de fréquence recharge la chaîne avec le même décodeur au lieu de passer au décodage logiciel.
+
 ## [1.3.62] — 2026-11-18 (Android)
 
 ### Corrigé
