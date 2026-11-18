@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Bureau : la boucle de chargement en lecture convertie (après une à deux minutes de lecture, la vidéo patinait jusqu'à la fermeture/réouverture, sans cesse) — la conversion était servie à pleine vitesse : le tampon du lecteur se remplissait, il cessait de lire, ffmpeg restait bloqué et son fournisseur coupait sa connexion devenue inactive. La conversion est servie au rythme réel de la lecture (`-re` côté ffmpeg) — plus d'interruption si la source coupe les connexions inactives, et la lecture ne tire plus des dizaines de giga-octets du compte à chaque séance.
+
 ## [1.3.48] — 2026-11-17 (Android)
 
 ### Ajouté
