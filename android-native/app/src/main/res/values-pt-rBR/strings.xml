@@ -1922,4 +1922,13 @@
     <string name="mc_badge">Manual</string>
     <string name="mc_bad_url">Endereço inválido</string>
     <string name="ds_fav_all_sources">Todas as fontes</string>
+    <!-- data/config/MediaFailure.kt -->
+    <string name="mlib_err_lan">“%1$s” (%2$s) não está acessível nesta TV: a TV não está na mesma rede local que o servidor. Se houver uma VPN ativa, permita o acesso à rede local ou informe no site o endereço remoto do servidor.</string>
+    <string name="mlib_err_timeout">“%1$s” (%2$s) não responde. Verifique se o servidor está ligado e acessível pela TV.</string>
+    <string name="mlib_err_refused">“%1$s” (%2$s) recusou a conexão. Verifique o endereço e a porta no site e se o servidor está em execução.</string>
+    <string name="mlib_err_auth">“%1$s” recusou o usuário ou a senha. Verifique-os no site.</string>
+    <string name="mlib_err_host">O endereço de “%1$s” (%2$s) não foi encontrado. Verifique-o no site.</string>
+    <string name="mlib_err_notfound">Nada foi encontrado no endereço de “%1$s” (%2$s). Verifique-o no site.</string>
+    <string name="mlib_err_tls">“%1$s” (%2$s): a conexão segura falhou (certificado). Tente o endereço http.</string>
+    <string name="mlib_err_retry">Nova tentativa em %1$d min.</string>
 </resources>

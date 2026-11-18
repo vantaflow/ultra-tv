@@ -1914,4 +1914,13 @@
     <string name="mc_badge">Manual</string>
     <string name="mc_bad_url">Invalid address</string>
     <string name="ds_fav_all_sources">All sources</string>
+    <!-- data/config/MediaFailure.kt -->
+    <string name="mlib_err_lan">“%1$s” (%2$s) can’t be reached from this TV: the TV is not on the same local network as the server. If a VPN is on, allow local network access, or use the server’s remote address on the website.</string>
+    <string name="mlib_err_timeout">“%1$s” (%2$s) is not responding. Check that the server is on and reachable from the TV.</string>
+    <string name="mlib_err_refused">“%1$s” (%2$s) refused the connection. Check the address and port on the website, and that the server is running.</string>
+    <string name="mlib_err_auth">“%1$s” rejected the username or password. Check them on the website.</string>
+    <string name="mlib_err_host">The address of “%1$s” (%2$s) could not be found. Check it on the website.</string>
+    <string name="mlib_err_notfound">Nothing was found at the address of “%1$s” (%2$s). Check it on the website.</string>
+    <string name="mlib_err_tls">“%1$s” (%2$s): the secure connection failed (certificate). Try the http address.</string>
+    <string name="mlib_err_retry">Next attempt in %1$d min.</string>
 </resources>

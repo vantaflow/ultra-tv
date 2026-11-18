@@ -606,6 +606,7 @@ class CloudSyncManager @Inject constructor(
         catch (e: kotlinx.coroutines.CancellationException) { throw e }
         catch (t: Throwable) {
             failed += c; mediaRetry.failed(c.id, now)
+            failureReasons[c.id] = MediaFailure.reason(t, c.url, MediaFailure.deviceIpv4())
             com.ultratv.tv.nativeapp.UtvLog.w(com.ultratv.tv.nativeapp.UtvLog.CLOUD, "ajout ${c.kind} '${c.name}' échoué: ${com.ultratv.tv.nativeapp.UtvLog.why(t)} (nouvel essai plus tard, délai croissant)"); null
         }
     }
@@ -613,11 +614,20 @@ class CloudSyncManager @Inject constructor(
     /** Serveurs multimédias injoignables : délais croissants entre les essais (voir [MediaRetry]). */
     private val mediaRetry = MediaRetry()
 
+    /** Cause du dernier échec de chaque serveur du compte (message affiché). */
+    private val failureReasons = HashMap<String, MediaFailure.Reason>()
+
+    /** Un message par serveur et par lancement : la cause précise (autre réseau, pas de réponse, identifiants…) et le prochain essai. */
     private suspend fun notifyMediaFailures(failed: List<CloudProvider>) {
         val fresh = failed.filter { announcedFailures.add(it.id) }
         if (fresh.isEmpty()) return
-        val names = fresh.joinToString(", ") { it.name.ifBlank { it.kind } }
-        com.ultratv.tv.nativeapp.ui.common.Toaster.err(com.ultratv.tv.nativeapp.i18n.cloudMediaFailedText(com.ultratv.tv.nativeapp.i18n.AppLang.fromCode(runCatching { prefs.flow.first().language }.getOrDefault("")), names))
+        val lang = com.ultratv.tv.nativeapp.i18n.AppLang.fromCode(runCatching { prefs.flow.first().language }.getOrDefault(""))
+        val now = System.currentTimeMillis()
+        val text = fresh.joinToString("\n") { c ->
+            com.ultratv.tv.nativeapp.i18n.cloudMediaErrorText(lang, failureReasons[c.id] ?: MediaFailure.Reason.OTHER,
+                c.name.ifBlank { c.kind }, MediaFailure.hostOf(c.url), mediaRetry.minutesLeft(c.id, now))
+        }
+        com.ultratv.tv.nativeapp.ui.common.Toaster.err(text)
     }
 
     /** Source locale vue par la fusion ; portail Stalker : MAC à part, identifiant et mot de passe du portail dépaquetés. */

@@ -1884,4 +1884,13 @@
     <string name="mc_badge">Thủ công</string>
     <string name="mc_bad_url">Địa chỉ không hợp lệ</string>
     <string name="ds_fav_all_sources">Tất cả nguồn</string>
+    <!-- data/config/MediaFailure.kt -->
+    <string name="mlib_err_lan">Không thể truy cập “%1$s” (%2$s) từ TV này: TV không cùng mạng cục bộ với máy chủ. Nếu VPN đang bật, hãy cho phép truy cập mạng cục bộ, hoặc nhập địa chỉ từ xa của máy chủ trên trang web.</string>
+    <string name="mlib_err_timeout">“%1$s” (%2$s) không phản hồi. Hãy kiểm tra máy chủ đang bật và truy cập được từ TV.</string>
+    <string name="mlib_err_refused">“%1$s” (%2$s) đã từ chối kết nối. Hãy kiểm tra địa chỉ và cổng trên trang web, và máy chủ đang chạy.</string>
+    <string name="mlib_err_auth">“%1$s” đã từ chối tên người dùng hoặc mật khẩu. Hãy kiểm tra trên trang web.</string>
+    <string name="mlib_err_host">Không tìm thấy địa chỉ của “%1$s” (%2$s). Hãy kiểm tra trên trang web.</string>
+    <string name="mlib_err_notfound">Không tìm thấy gì tại địa chỉ của “%1$s” (%2$s). Hãy kiểm tra trên trang web.</string>
+    <string name="mlib_err_tls">“%1$s” (%2$s): kết nối bảo mật thất bại (chứng chỉ). Hãy thử địa chỉ http.</string>
+    <string name="mlib_err_retry">Thử lại sau %1$d phút.</string>
 </resources>

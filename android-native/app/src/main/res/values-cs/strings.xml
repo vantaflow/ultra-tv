@@ -1887,4 +1887,13 @@
     <string name="mc_badge">Ruční</string>
     <string name="mc_bad_url">Neplatná adresa</string>
     <string name="ds_fav_all_sources">Všechny zdroje</string>
+    <!-- data/config/MediaFailure.kt -->
+    <string name="mlib_err_lan">„%1$s“ (%2$s) není z této TV dostupný: TV není ve stejné místní síti jako server. Pokud je zapnutá VPN, povolte přístup do místní sítě, nebo na webu zadejte vzdálenou adresu serveru.</string>
+    <string name="mlib_err_timeout">„%1$s“ (%2$s) neodpovídá. Zkontrolujte, že je server zapnutý a z TV dostupný.</string>
+    <string name="mlib_err_refused">„%1$s“ (%2$s) odmítl připojení. Zkontrolujte na webu adresu a port a že server běží.</string>
+    <string name="mlib_err_auth">„%1$s“ odmítl uživatelské jméno nebo heslo. Zkontrolujte je na webu.</string>
+    <string name="mlib_err_host">Adresu „%1$s“ (%2$s) se nepodařilo najít. Zkontrolujte ji na webu.</string>
+    <string name="mlib_err_notfound">Na adrese „%1$s“ (%2$s) se nic nenašlo. Zkontrolujte ji na webu.</string>
+    <string name="mlib_err_tls">„%1$s“ (%2$s): zabezpečené připojení selhalo (certifikát). Zkuste adresu http.</string>
+    <string name="mlib_err_retry">Další pokus za %1$d min.</string>
 </resources>

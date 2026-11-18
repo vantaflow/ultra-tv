@@ -1849,4 +1849,13 @@
     <string name="mc_badge">Käsin lisätty</string>
     <string name="mc_bad_url">Virheellinen osoite</string>
     <string name="ds_fav_all_sources">Kaikki lähteet</string>
+    <!-- data/config/MediaFailure.kt -->
+    <string name="mlib_err_lan">”%1$s” (%2$s) ei ole tavoitettavissa tästä televisiosta: televisio ei ole samassa lähiverkossa kuin palvelin. Jos VPN on päällä, salli lähiverkon käyttö tai anna verkkosivustolla palvelimen etäosoite.</string>
+    <string name="mlib_err_timeout">”%1$s” (%2$s) ei vastaa. Tarkista, että palvelin on päällä ja tavoitettavissa televisiosta.</string>
+    <string name="mlib_err_refused">”%1$s” (%2$s) hylkäsi yhteyden. Tarkista osoite ja portti verkkosivustolla sekä se, että palvelin on käynnissä.</string>
+    <string name="mlib_err_auth">”%1$s” hylkäsi käyttäjätunnuksen tai salasanan. Tarkista ne verkkosivustolla.</string>
+    <string name="mlib_err_host">Kohteen ”%1$s” osoitetta (%2$s) ei löytynyt. Tarkista se verkkosivustolla.</string>
+    <string name="mlib_err_notfound">Kohteen ”%1$s” osoitteesta (%2$s) ei löytynyt mitään. Tarkista se verkkosivustolla.</string>
+    <string name="mlib_err_tls">”%1$s” (%2$s): suojattu yhteys epäonnistui (varmenne). Kokeile http-osoitetta.</string>
+    <string name="mlib_err_retry">Uusi yritys %1$d min kuluttua.</string>
 </resources>

@@ -23,6 +23,9 @@ class MediaRetry {
     /** Un serveur en attente dont le délai est écoulé : la prochaine synchro relit la configuration en entier. */
     @Synchronized fun anyDue(now: Long) = states.values.any { now >= it.nextAt }
 
+    /** Minutes avant le prochain essai de [id] (au moins 1), ou null s'il n'est pas en attente. */
+    @Synchronized fun minutesLeft(id: String, now: Long): Int? = states[id]?.let { ((it.nextAt - now + 59_999) / 60_000).toInt().coerceAtLeast(1) }
+
     @Synchronized fun pendingIds(): Set<String> = states.keys.toSet()
 
     /** Oublie les serveurs retirés du compte (sinon une relecture complète serait demandée indéfiniment). */

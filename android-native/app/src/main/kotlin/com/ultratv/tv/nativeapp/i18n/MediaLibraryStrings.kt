@@ -52,3 +52,21 @@ fun DesignStrings.mlibCounts(movies: Int, series: Int) = tx(R.string.mlib_counts
 
 /** Serveur multimédia ajouté depuis le site mais non connecté par l'appareil (affiché en toast, réessayé à la synchro suivante). */
 fun cloudMediaFailedText(lang: AppLang, names: String): String = I18n.string(lang, R.string.mlib_cloud_failed, names)
+
+/**
+ * Serveur du compte non connecté : cause précise et prochain essai (voir [com.ultratv.tv.nativeapp.data.config.MediaFailure]).
+ * Cause inconnue : texte général d'avant.
+ */
+fun cloudMediaErrorText(lang: AppLang, reason: com.ultratv.tv.nativeapp.data.config.MediaFailure.Reason, name: String, host: String, retryMin: Int?): String {
+    val main = when (reason) {
+        com.ultratv.tv.nativeapp.data.config.MediaFailure.Reason.OTHER_NETWORK -> I18n.string(lang, R.string.mlib_err_lan, name, host)
+        com.ultratv.tv.nativeapp.data.config.MediaFailure.Reason.NO_ANSWER -> I18n.string(lang, R.string.mlib_err_timeout, name, host)
+        com.ultratv.tv.nativeapp.data.config.MediaFailure.Reason.REFUSED -> I18n.string(lang, R.string.mlib_err_refused, name, host)
+        com.ultratv.tv.nativeapp.data.config.MediaFailure.Reason.AUTH -> I18n.string(lang, R.string.mlib_err_auth, name)
+        com.ultratv.tv.nativeapp.data.config.MediaFailure.Reason.HOST_NOT_FOUND -> I18n.string(lang, R.string.mlib_err_host, name, host)
+        com.ultratv.tv.nativeapp.data.config.MediaFailure.Reason.NOT_FOUND -> I18n.string(lang, R.string.mlib_err_notfound, name, host)
+        com.ultratv.tv.nativeapp.data.config.MediaFailure.Reason.TLS -> I18n.string(lang, R.string.mlib_err_tls, name, host)
+        com.ultratv.tv.nativeapp.data.config.MediaFailure.Reason.OTHER -> return I18n.string(lang, R.string.mlib_cloud_failed, name)
+    }
+    return if (retryMin != null && retryMin > 0) main + " " + I18n.string(lang, R.string.mlib_err_retry, retryMin) else main
+}

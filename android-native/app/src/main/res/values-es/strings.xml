@@ -1920,4 +1920,13 @@
     <string name="mc_badge">A mano</string>
     <string name="mc_bad_url">Dirección no válida</string>
     <string name="ds_fav_all_sources">Todas las fuentes</string>
+    <!-- data/config/MediaFailure.kt -->
+    <string name="mlib_err_lan">«%1$s» (%2$s) no es accesible desde esta TV: la TV no está en la misma red local que el servidor. Si hay una VPN activa, permite el acceso a la red local o indica en la web la dirección remota del servidor.</string>
+    <string name="mlib_err_timeout">«%1$s» (%2$s) no responde. Comprueba que el servidor está encendido y accesible desde la TV.</string>
+    <string name="mlib_err_refused">«%1$s» (%2$s) rechazó la conexión. Comprueba la dirección y el puerto en la web, y que el servidor está en marcha.</string>
+    <string name="mlib_err_auth">«%1$s» rechazó el usuario o la contraseña. Compruébalos en la web.</string>
+    <string name="mlib_err_host">No se encontró la dirección de «%1$s» (%2$s). Compruébala en la web.</string>
+    <string name="mlib_err_notfound">No se encontró nada en la dirección de «%1$s» (%2$s). Compruébala en la web.</string>
+    <string name="mlib_err_tls">«%1$s» (%2$s): falló la conexión segura (certificado). Prueba la dirección http.</string>
+    <string name="mlib_err_retry">Nuevo intento en %1$d min.</string>
 </resources>

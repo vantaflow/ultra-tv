@@ -1929,4 +1929,13 @@
     <string name="mc_badge">Manuelle</string>
     <string name="mc_bad_url">Adresse invalide</string>
     <string name="ds_fav_all_sources">Toutes les sources</string>
+    <!-- data/config/MediaFailure.kt -->
+    <string name="mlib_err_lan">« %1$s » (%2$s) est injoignable depuis cette TV : elle n’est pas sur le même réseau local que le serveur. Si un VPN est actif, autorisez l’accès au réseau local, ou indiquez sur le site l’adresse distante du serveur.</string>
+    <string name="mlib_err_timeout">« %1$s » (%2$s) ne répond pas. Vérifiez que le serveur est allumé et joignable depuis la TV.</string>
+    <string name="mlib_err_refused">« %1$s » (%2$s) a refusé la connexion. Vérifiez l’adresse et le port sur le site, et que le serveur est démarré.</string>
+    <string name="mlib_err_auth">« %1$s » a refusé l’identifiant ou le mot de passe. Vérifiez-les sur le site.</string>
+    <string name="mlib_err_host">L’adresse de « %1$s » (%2$s) est introuvable. Vérifiez-la sur le site.</string>
+    <string name="mlib_err_notfound">Rien n’a été trouvé à l’adresse de « %1$s » (%2$s). Vérifiez-la sur le site.</string>
+    <string name="mlib_err_tls">« %1$s » (%2$s) : la connexion sécurisée a échoué (certificat). Essayez l’adresse en http.</string>
+    <string name="mlib_err_retry">Nouvel essai dans %1$d min.</string>
 </resources>
