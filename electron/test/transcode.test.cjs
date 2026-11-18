@@ -304,6 +304,29 @@ test("firstPts : premier PTS d'un paquet TS, : base de la conversion", () => {
   pes[13] = (Number(v & 0x7fn) << 1) | 1;
   p.set(pes, 8);
   assert.ok(Math.abs(firstPts(p) - 1234.567) < 0.001);
+  // PTS_DTS_flags = « 11 » (image avec B-frames) : la timeline du lecteur se cale sur le DTS.
+  const dts90k = pts90k - 11250; // 0.125 s de délai de B-frames
+  const d = BigInt(dts90k);
+  const p2 = Buffer.alloc(188);
+  p2[0] = 0x47;
+  const pes2 = Buffer.alloc(24);
+  pes2[0] = 0; pes2[1] = 0; pes2[2] = 1; pes2[3] = 0xe0;
+  pes2[4] = 0; pes2[5] = 18;
+  pes2[6] = 0x80;
+  pes2[7] = 0xc0; // PTS_DTS_flags = « 11 »
+  pes2[8] = 10;
+  pes2[9] = 0x20 | (Number((v >> 30n) & 0x7n) << 1) | 1;
+  pes2[10] = Number((v >> 22n) & 0xffn);
+  pes2[11] = (Number((v >> 15n) & 0x7fn) << 1) | 1;
+  pes2[12] = Number((v >> 7n) & 0xffn);
+  pes2[13] = (Number(v & 0x7fn) << 1) | 1;
+  pes2[14] = 0x10 | (Number((d >> 30n) & 0x7n) << 1) | 1;
+  pes2[15] = Number((d >> 22n) & 0xffn);
+  pes2[16] = (Number((d >> 15n) & 0x7fn) << 1) | 1;
+  pes2[17] = Number((d >> 7n) & 0xffn);
+  pes2[18] = (Number(d & 0x7fn) << 1) | 1;
+  p2.set(pes2, 8);
+  assert.ok(Math.abs(firstPts(p2) - (pts90k - 11250) / 90000) < 0.001, "image avec B-frames : DTS servi, pas le PTS");
   // Pas de PES, ou flux non aligné sur des paquets de 188 octets : null.
   assert.strictEqual(firstPts(Buffer.alloc(376, 0x42)), null);
   assert.strictEqual(firstPts(Buffer.from("zz")), null);
