@@ -445,7 +445,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
 
     /** Adapte la fréquence de l'écran à celle de la vidéo (24/25/50 ips…), si l'option est active et la cadence connue. */
     private fun applyFrameRate() {
-        if (!config.autoFrameRate || released) return
+        if (!config.autoFrameRate || released || !DisplayModeGate.fullscreen) return   // aperçu du Direct : jamais de bascule
         val act = (ctx as? Activity) ?: return
         val fps = detectedFrameRate() ?: return   // inconnue : on ne change rien
         if (fps == afrFps) return
@@ -461,6 +461,10 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
     }
 
     @Volatile private var released = false
+
+    /** Aperçu passé en plein écran : la cadence déjà connue est appliquée maintenant (sinon rien ne la redemanderait). */
+    private val gateListener: () -> Unit = { mainHandler.post { afrFps = null; applyFrameRate() } }
+    init { DisplayModeGate.addListener(gateListener) }
 
     /**
      * Libération au zapping (moteur recréé) et en quittant le lecteur. Avant : `playerView.player = null` PUIS
@@ -479,6 +483,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
     override fun release() {
         if (released) return
         released = true
+        DisplayModeGate.removeListener(gateListener)
         mainHandler.removeCallbacksAndMessages(null)
         runCatching { player.removeListener(listener) }
         runCatching { player.release() }
