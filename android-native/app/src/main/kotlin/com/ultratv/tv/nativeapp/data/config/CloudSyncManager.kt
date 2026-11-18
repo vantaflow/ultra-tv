@@ -117,7 +117,7 @@ class CloudSyncManager @Inject constructor(
             val firstFullFetch = !fullFetchDone
             fullFetchDone = true
             val flushed = flushPendingDeletes(base)
-            val fetched = source.withToken(base) { t -> client.fetch(base, t, if (force || flushed || firstFullFetch) null else links.etag()) }
+            val fetched = source.withToken(base) { t -> client.fetch(base, t, if (force || flushed || firstFullFetch || mediaRetry.anyDue(System.currentTimeMillis())) null else links.etag()) }
             // Demande « Reprendre sur cet appareil » déposée par un autre appareil : en-tête de la réponse (200 comme 304).
             handoffs.note(fetched.handoff)
             if (fetched.notModified) {
@@ -134,11 +134,13 @@ class CloudSyncManager @Inject constructor(
             val cfg = CloudSyncLogic.withoutPendingDeletes(CloudSyncLogic.parseConfig(fetched.body), links.pendingDeletes())
             links.saveDevices(cfg.selfId, cfg.devices)
             val summary = apply(cfg)
+            mediaRetry.retain(cfg.providers.map { it.id }.toSet())
             // Configuration reçue d'un autre appareil : cadence rapide pendant 10 min.
             if (summary.added + summary.updated + summary.removed > 0 || summary.pending.isNotEmpty()) cadence.noteChange()
-            // Serveur multimédia du site non ajouté : ETag non retenu, la configuration est relue (et réessayée) à la prochaine synchro.
-            if (summary.failedMedia == 0) links.setEtag(fetched.etag)
-            com.ultratv.tv.nativeapp.UtvLog.i(com.ultratv.tv.nativeapp.UtvLog.CLOUD, "synchro: +${summary.added} ~${summary.updated} -${summary.removed} échecsMedia=${summary.failedMedia} etag=${if (summary.failedMedia == 0) "retenu" else "NON retenu"}")
+            // ETag toujours retenu : un serveur multimédia injoignable est réessayé selon SON délai (MediaRetry, relecture
+            // complète quand il est écoulé), plus en relisant et réappliquant toute la configuration toutes les 2 minutes.
+            links.setEtag(fetched.etag)
+            com.ultratv.tv.nativeapp.UtvLog.i(com.ultratv.tv.nativeapp.UtvLog.CLOUD, "synchro: +${summary.added} ~${summary.updated} -${summary.removed} échecsMedia=${summary.failedMedia} enAttente=${mediaRetry.pendingIds().size}")
             links.lastSyncAt = System.currentTimeMillis()
             stateScope.launch { syncSharedState() }
             _state.value = CloudSyncState(
@@ -596,10 +598,20 @@ class CloudSyncManager @Inject constructor(
      * Ajoute une source multimédia reçue du site ; null (et source notée en échec) si le serveur est injoignable, refuse ou
      * si la configuration est incomplète. Nouvel essai à la prochaine synchro (l'ETag n'est pas retenu, voir [sync]).
      */
-    private suspend inline fun mediaAdd(c: CloudProvider, failed: MutableList<CloudProvider>, add: () -> Long): Long? =
-        try { add().also { com.ultratv.tv.nativeapp.UtvLog.i(com.ultratv.tv.nativeapp.UtvLog.CLOUD, "ajout ${c.kind} '${c.name}': ok") } }
+    private suspend inline fun mediaAdd(c: CloudProvider, failed: MutableList<CloudProvider>, add: () -> Long): Long? {
+        val now = System.currentTimeMillis()
+        // Serveur injoignable récemment : pas de nouvel essai (ni attente réseau) avant la fin de son délai.
+        if (!mediaRetry.allowed(c.id, now)) return null
+        return try { add().also { mediaRetry.succeeded(c.id); com.ultratv.tv.nativeapp.UtvLog.i(com.ultratv.tv.nativeapp.UtvLog.CLOUD, "ajout ${c.kind} '${c.name}': ok") } }
         catch (e: kotlinx.coroutines.CancellationException) { throw e }
-        catch (t: Throwable) { failed += c; com.ultratv.tv.nativeapp.UtvLog.w(com.ultratv.tv.nativeapp.UtvLog.CLOUD, "ajout ${c.kind} '${c.name}' échoué: ${com.ultratv.tv.nativeapp.UtvLog.why(t)} (réessai à la prochaine synchro)"); null }
+        catch (t: Throwable) {
+            failed += c; mediaRetry.failed(c.id, now)
+            com.ultratv.tv.nativeapp.UtvLog.w(com.ultratv.tv.nativeapp.UtvLog.CLOUD, "ajout ${c.kind} '${c.name}' échoué: ${com.ultratv.tv.nativeapp.UtvLog.why(t)} (nouvel essai plus tard, délai croissant)"); null
+        }
+    }
+
+    /** Serveurs multimédias injoignables : délais croissants entre les essais (voir [MediaRetry]). */
+    private val mediaRetry = MediaRetry()
 
     private suspend fun notifyMediaFailures(failed: List<CloudProvider>) {
         val fresh = failed.filter { announcedFailures.add(it.id) }

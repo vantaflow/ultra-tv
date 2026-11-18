@@ -810,7 +810,7 @@ class ProviderRepository @Inject constructor(
         val base = MediaServer.normalizeServerUrl(server) ?: throw IllegalArgumentException("url")
         val t0 = System.nanoTime()
         val login = try { mediaServer.login(base, username.trim(), password, apiKey) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (t: Throwable) {
-            com.ultratv.tv.nativeapp.UtvLog.w(com.ultratv.tv.nativeapp.UtvLog.MEDIA, "$kind ${com.ultratv.tv.nativeapp.UtvLog.maskUrl(base)}: connexion refusée (${com.ultratv.tv.nativeapp.UtvLog.why(t)})"); throw t
+            com.ultratv.tv.nativeapp.UtvLog.w(com.ultratv.tv.nativeapp.UtvLog.MEDIA, "$kind ${com.ultratv.tv.nativeapp.UtvLog.maskUrl(base)}: ${if (t is java.net.SocketTimeoutException) "injoignable (délai dépassé)" else "connexion refusée"} (${com.ultratv.tv.nativeapp.UtvLog.why(t)})"); throw t
         }
         com.ultratv.tv.nativeapp.UtvLog.i(com.ultratv.tv.nativeapp.UtvLog.MEDIA, "$kind ${com.ultratv.tv.nativeapp.UtvLog.maskUrl(base)}: connecté (${com.ultratv.tv.nativeapp.UtvLog.ms(t0)} ms)")
         providerDao.findByIdentity(kind, base, login.userId)?.let { existing ->
