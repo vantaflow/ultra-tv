@@ -189,6 +189,13 @@ interface ChannelDao {
     @Query("DELETE FROM channel WHERE providerId = :pid AND categoryId IN (:ids)")
     suspend fun deleteForCategories(pid: Long, ids: List<String>)
 
+    /** Numéros séquentiels d'une catégorie, dans leur ordre (resserrés après un masquage, voir ChannelSeq.compact). */
+    @Query("SELECT id, seq FROM channel WHERE providerId = :pid AND categoryId IS :cat AND isSeparator = 0 AND junk = 0 AND seq > 0 ORDER BY seq, id")
+    suspend fun seqsInCategory(pid: Long, cat: String?): List<SeqRow>
+
+    @Query("UPDATE channel SET seq = :seq WHERE id = :id")
+    suspend fun setSeq(id: Long, seq: Int)
+
     /** Chaînes masquées par l'utilisateur : retirées de la base (voir HiddenChannelsStore). */
     @Query("DELETE FROM channel WHERE providerId = :pid AND remoteId IN (:ids)")
     suspend fun deleteByRemoteIds(pid: Long, ids: List<String>)
@@ -1065,6 +1072,7 @@ enum class SyncPart { LIVE, VOD, SERIES, EPG }
 
 data class EpgMapping(val id: Long, val epgChannelId: String)
 data class ChannelIdRow(val id: Long, val remoteId: String)
+data class SeqRow(val id: Long, val seq: Int)
 data class EpgTitle(val id: Long, val title: String, val epgChannelId: String?, val country: String? = null)
 
 data class RawPassword(val id: Long, val raw: String)
