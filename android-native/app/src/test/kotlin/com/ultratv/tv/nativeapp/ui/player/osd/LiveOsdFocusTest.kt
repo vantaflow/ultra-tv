@@ -34,8 +34,8 @@ import org.robolectric.annotation.Config
 class LiveOsdFocusTest {
     @get:Rule val rule = createComposeRule()
 
-    /** #85 : ouvert depuis le bandeau (OK / Bas), l'OSD pose le focus sur la barre APRÈS sa composition. */
-    @Test fun ouvertureDepuisLeBandeau_poseLeFocusSurLaBarre() {
+    /** #85 : ouvert depuis le bandeau (OK / Bas), l'OSD pose le focus sur « Plus » APRÈS sa composition. */
+    @Test fun ouvertureDepuisLeBandeau_poseLeFocusSurPlus() {
         I18n.init(ApplicationProvider.getApplicationContext())
         val lang = AppLang.English
         val full = LiveOsdRenderTest.state(lang)
@@ -44,51 +44,50 @@ class LiveOsdFocusTest {
         rule.setContent {
             CompositionLocalProvider(LocalDs provides designStringsFor(lang), LocalStrings provides stringsFor(lang), LocalTouch provides false) {
                 Box(Modifier.fillMaxSize().background(Color.Black)) {
-                    LiveOsd(full.copy(expanded = expanded.value), focus, onAction = {}, onRecent = {})
+                    LiveOsd(full.copy(expanded = expanded.value), focus, onAction = {}, onRecent = {}, moreLabel = "More")
                 }
             }
         }
         rule.waitForIdle()
-        rule.onNodeWithText("Pause").assertDoesNotExist()       // bandeau seul : pas de barre
+        rule.onNodeWithText("More").assertDoesNotExist()       // bandeau seul : ni « Plus » ni commandes
+        rule.onNodeWithText("Pause").assertDoesNotExist()
         rule.runOnIdle { expanded.value = true }
         rule.waitForIdle()
-        rule.onNodeWithText("Pause").assertIsFocused()
+        rule.onNodeWithText("More").assertIsFocused()
+        rule.onNodeWithText("Pause").assertDoesNotExist()      // commandes derrière « Plus »
     }
 
-    @Test fun dpad_atteintChaqueBoutonDeLaBarre_puisMonteAuxRecentsEtRedescend() {
+    /** OSD allégé : « Plus » ouvre les commandes (toutes atteignables), Retour les referme, Gauche mène aux récentes. */
+    @Test fun plus_ouvreLesCommandes_puisRetourEtRecentes() {
         I18n.init(ApplicationProvider.getApplicationContext())
         val lang = AppLang.English
         val st = LiveOsdRenderTest.state(lang)
         val focus = LiveOsdFocus()
         rule.setContent {
             CompositionLocalProvider(LocalDs provides designStringsFor(lang), LocalStrings provides stringsFor(lang), LocalTouch provides false) {
-                Box(Modifier.fillMaxSize().background(Color.Black)) { LiveOsd(st, focus, onAction = {}, onRecent = {}) }
+                Box(Modifier.fillMaxSize().background(Color.Black)) { LiveOsd(st, focus, onAction = {}, onRecent = {}, moreLabel = "More") }
             }
         }
         rule.waitForIdle()
-        // Focus initial : premier bouton de la barre (Lecture/Pause).
+        rule.onNodeWithText("More").assertIsFocused()
+        rule.onRoot().performKeyInput { pressKey(Key.Enter) }
+        rule.waitForIdle()
         rule.onNodeWithText("Pause").assertIsFocused()
-        val labels = st.actions.drop(1).map { a -> a.label }
-        for (label in labels) {
+        for (label in st.actions.drop(1).map { it.label }) {
             rule.onRoot().performKeyInput { pressKey(Key.DirectionRight) }
             rule.waitForIdle()
             rule.onNodeWithText(label).assertIsFocused()
         }
-        // Retour au début de la barre, puis Haut : rangée des récents.
-        repeat(labels.size) { rule.onRoot().performKeyInput { pressKey(Key.DirectionLeft) }; rule.waitForIdle() }
-        rule.onNodeWithText("Pause").assertIsFocused()
-        rule.onRoot().performKeyInput { pressKey(Key.DirectionUp) }
+        // Retour : le panneau se ferme, le focus revient sur « Plus ».
+        rule.onRoot().performKeyInput { pressKey(Key.Back) }
         rule.waitForIdle()
-        rule.onNodeWithText("Nova 1").assertIsFocused()
-        // Haut depuis les récents : le focus reste (l'étage du haut n'est pas focalisable).
-        rule.onRoot().performKeyInput { pressKey(Key.DirectionUp) }
+        rule.onNodeWithText("Pause").assertDoesNotExist()
+        rule.onNodeWithText("More").assertIsFocused()
+        // Gauche : dernière chaîne récente (même rangée).
+        rule.onRoot().performKeyInput { pressKey(Key.DirectionLeft) }
         rule.waitForIdle()
-        rule.onNodeWithText("Nova 1").assertIsFocused()
-        // Bas : retour à la barre.
-        rule.onRoot().performKeyInput { pressKey(Key.DirectionDown) }
-        rule.waitForIdle()
-        var onBar = false
-        for (a in st.actions) if (runCatching { rule.onNodeWithText(a.label).assertIsFocused() }.isSuccess) onBar = true
-        assertTrue("le focus doit revenir dans la barre", onBar)
+        var onRecent = false
+        for (r in st.recents) if (runCatching { rule.onNodeWithText(r.name).assertIsFocused() }.isSuccess) onRecent = true
+        assertTrue("Gauche depuis « Plus » doit mener aux récentes", onRecent)
     }
 }

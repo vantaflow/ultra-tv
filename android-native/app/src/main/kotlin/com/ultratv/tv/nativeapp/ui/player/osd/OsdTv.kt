@@ -38,6 +38,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.key
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -81,42 +85,119 @@ private fun letter(px: Float) = (px / 2f).sp
 @Composable
 internal fun TvOsd(
     state: LiveOsdState, focus: LiveOsdFocus, onAction: (OsdActionId) -> Unit, onRecent: (String) -> Unit, onStage: (OsdStage) -> Unit,
-    onNextAction: (OsdNextAction) -> Unit = {},
+    onNextAction: (OsdNextAction) -> Unit = {}, moreLabel: String = "",
 ) {
+    // OSD allégé (retour utilisateurs) : une carte compacte en bas (chaîne, programme, heure) ; au-dessus, les chaînes
+    // récentes et « Plus ». Les commandes (pistes, sous-titres, guide, enregistrer…), la soirée et « Ensuite » sont
+    // derrière « Plus ». Retour ferme d'abord ce panneau.
+    var more by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val moreButton = androidx.compose.runtime.remember { FocusRequester() }
+    androidx.compose.runtime.LaunchedEffect(more) {
+        if (!more) return@LaunchedEffect
+        repeat(30) { if (runCatching { focus.bar.requestFocus() }.getOrDefault(false)) return@LaunchedEffect; androidx.compose.runtime.withFrameNanos { } }
+    }
     Box(Modifier.fillMaxSize()) {
-        // Voile haut très léger : lisibilité de l'identité sur n'importe quelle image.
-        Box(Modifier.align(Alignment.TopStart).fillMaxWidth().height(260.design).background(Brush.verticalGradient(listOf(Color(0x990A0C10), Color.Transparent))))
-        TvIdentity(state, Modifier.align(Alignment.TopStart).padding(start = 72.design, top = 56.design))
-        Text(
-            state.clock, color = P.text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 40.spx, maxLines = 1,
-            modifier = Modifier.align(Alignment.TopEnd).padding(end = 72.design, top = 56.design),
+        // Voile du bas : juste assez pour lire la carte sur n'importe quelle image.
+        Box(
+            Modifier.align(Alignment.BottomStart).fillMaxWidth().height(if (more) 620.design else 420.design)
+                .background(Brush.verticalGradient(0f to Color.Transparent, 0.35f to Color(0x990A0C10), 1f to Color(0xCC0A0C10))),
         )
-        if (state.expanded) {
-            // Voile du bas : 660 px à 74 %, lisière douce en haut (un bord net couperait l'image en deux).
-            Box(
-                Modifier.align(Alignment.BottomStart).fillMaxWidth().height(660.design)
-                    .background(Brush.verticalGradient(0f to Color.Transparent, 0.14f to Color(0xBD0A0C10), 1f to Color(0xBD0A0C10))),
-            )
-            Column(
-                Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(start = 72.design, end = 72.design, bottom = 56.design),
-                verticalArrangement = Arrangement.spacedBy(26.design),
-            ) {
-                if (state.recents.isNotEmpty()) TvRecents(state, focus, onRecent, onStage)
-                if (state.programme != null || state.next != null) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(40.design)) {
-                    Box(Modifier.weight(1f)) { state.programme?.let { TvProgramme(state, it) } }
-                    state.next?.let { NextCard(state, it, onNextAction, onStage) }
-                }
-                state.hint?.let {
-                    Text(it, color = P.text3, fontFamily = Manrope, fontSize = 16.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
+        Column(
+            Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(start = 72.design, end = 72.design, bottom = 48.design)
+                .onPreviewKeyEvent { ev ->
+                    if (more && (ev.key == androidx.compose.ui.input.key.Key.Back || ev.key == androidx.compose.ui.input.key.Key.Escape)) {
+                        if (ev.type == androidx.compose.ui.input.key.KeyEventType.KeyUp) { more = false; runCatching { moreButton.requestFocus() } }
+                        true
+                    } else false
+                },
+            verticalArrangement = Arrangement.spacedBy(20.design),
+        ) {
+            if (state.expanded && more) {
+                if (state.next != null) state.next.let { NextCard(state, it, onNextAction, onStage) }
                 if (state.ribbon.isNotEmpty()) TvRibbon(state.ribbon)
                 TvDock(state, focus, onAction, onStage)
             }
-        } else if (state.hint != null) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-            Text(
-                state.hint, color = P.text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1,
-                modifier = Modifier.padding(bottom = 54.design).clip(RoundedCornerShape(30.design)).background(Color(0xCC0A0C10)).padding(horizontal = 28.design, vertical = 14.design),
-            )
+            if (state.expanded) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.design)) {
+                Box(Modifier.weight(1f)) { if (state.recents.isNotEmpty()) TvRecents(state, focus, onRecent, onStage) }
+                MoreButton(moreLabel, more, Modifier.focusRequester(moreButton).then(if (more) Modifier else Modifier.focusRequester(focus.bar))) { more = !more }
+            }
+            CompactCard(state)
+            if (!state.expanded) state.hint?.let {
+                Text(it, color = P.text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.align(Alignment.CenterHorizontally))
+            }
+        }
+    }
+}
+
+/** Bouton « Plus » : ouvre / ferme le panneau des commandes. */
+@Composable
+private fun MoreButton(label: String, open: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    FocusSurface(
+        onClick = onClick, shape = RoundedCornerShape(30.design), bg = if (open) P.button else DOCK_BG, focusedBg = Ux.Accent, focusedScale = 1f, ringWidth = 0.dp,
+        modifier = modifier.height(60.design),
+    ) { f ->
+        Row(Modifier.height(60.design).padding(horizontal = 24.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
+            DIcon(if (open) "M6 6l12 12M18 6L6 18" else "M5 12h.01M12 12h.01M19 12h.01", 22.design, if (f) Color.White else P.text, strokeWidth = if (open) 2f else 3.5f)
+            Text(label.ifBlank { "+" }, color = if (f) Color.White else P.text, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 20.spx, maxLines = 1, softWrap = false)
+        }
+    }
+}
+
+/**
+ * Carte compacte : [numéro · logo · chaîne] | [programme : titre, état + horaires + progression + reste, résumé sur une
+ * ligne, « Ensuite »] | [heure, date, qualité]. Non focalisable.
+ */
+@Composable
+private fun CompactCard(state: LiveOsdState) {
+    val ch = state.channel
+    val prog = state.programme
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(28.design)).background(CHIP_BG).border(1.design, Color(0x14F4F5F7), RoundedCornerShape(28.design))
+            .padding(horizontal = 36.design, vertical = 26.design),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(28.design),
+    ) {
+        ch.number?.takeIf { it > 0 }?.let {
+            Text(it.toString(), color = P.text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 44.spx, maxLines = 1, softWrap = false)
+        }
+        if (!ch.logo.isNullOrBlank()) LogoBox(ch.logo, ch.name, Modifier.size(width = 120.design, height = 72.design), radius = 14, pad = 8, bg = P.text)
+        else Box(Modifier.size(72.design).clip(RoundedCornerShape(14.design)).background(P.text), contentAlignment = Alignment.Center) {
+            Text(OsdText.initials(ch.name), color = P.focusText, fontFamily = Sora, fontWeight = FontWeight.ExtraBold, fontSize = 22.spx, maxLines = 1)
+        }
+        Column(Modifier.widthIn(max = 380.design), verticalArrangement = Arrangement.spacedBy(6.design)) {
+            Text(ch.name, color = P.text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            val tags = listOfNotNull(ch.badge, if (state.favorite && state.favoriteWord.isNotBlank()) state.favoriteWord else null)
+            if (tags.isNotEmpty()) Text(tags.joinToString(" · "), color = P.text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Box(Modifier.width(1.design).height(110.design).background(P.line))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.design)) {
+            Text(prog?.title ?: ch.name, color = P.text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 30.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.design)) {
+                if (state.badge.timeshift) OutlinePill(state.badge.text) else LivePill(state.badge.text)
+                prog?.timeRange?.let { Text(it, color = P.text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 20.spx, maxLines = 1, softWrap = false) }
+                prog?.progress?.let { p ->
+                    Box(Modifier.width(140.design).height(6.design).clip(CircleShape).background(Color(0x33F4F5F7))) {
+                        Box(Modifier.fillMaxHeight().fillMaxWidth(p.fraction.coerceIn(0f, 1f)).background(Ux.Accent))
+                    }
+                    p.remainingLabel?.let { Text(it, color = P.text2, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1, softWrap = false) }
+                }
+            }
+            prog?.description?.takeIf { it.isNotBlank() }?.let {
+                Text(it, color = P.text2, fontFamily = Manrope, fontSize = 19.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            val nextLine = state.next?.let { listOf(state.nextWord, it.range.substringBefore(" ").substringBefore("–"), it.title).filter { s -> s.isNotBlank() }.joinToString("  ") } ?: prog?.thenLine
+            nextLine?.takeIf { it.isNotBlank() }?.let { Text(it, color = P.text3, fontFamily = Manrope, fontSize = 19.spx, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        }
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.design)) {
+            Text(state.clock, color = P.text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 44.spx, maxLines = 1, softWrap = false)
+            val date = androidx.compose.runtime.remember(state.clock) {
+                runCatching {
+                    val loc = java.util.Locale.getDefault()
+                    java.text.SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(loc, "EEEdMMM"), loc).format(java.util.Date())
+                }.getOrDefault("")
+            }
+            if (date.isNotBlank()) Text(date, color = P.text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1, softWrap = false)
+            val tech = listOfNotNull(ch.quality, OsdText.hdrLabel(ch.hdr))
+            if (tech.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(8.design)) { tech.forEach { OutlinePill(it) } }
         }
     }
 }
