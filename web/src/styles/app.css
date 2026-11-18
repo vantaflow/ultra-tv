@@ -461,6 +461,14 @@ html.platform-darwin .player.full .ptop { padding-inline-start: 6rem; }
 .pside .subshift { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.35rem; }
 .pside .subshift .opt { width: 2.75rem; flex: none; justify-content: center; }
 .pside .subshift .v { flex: 1; text-align: center; font-weight: 700; color: #F4F5F7; font-variant-numeric: tabular-nums; }
+.pside .row2 { display: flex; gap: 0.5rem; }
+.pside .row2 .opt { flex: 1; justify-content: center; }
+/* Sous-titres : taille et style depuis les réglages (rendu HTML5 ::cue). */
+.player.subs-small video::cue { font-size: 0.85em; }
+.player.subs-large video::cue { font-size: 1.25em; }
+.player.subs-xlarge video::cue { font-size: 1.5em; }
+.player.subsb-outline video::cue { text-shadow: 0 0 4px #000, 1px 1px 2px #000, -1px 1px 2px #000, 1px -1px 2px #000, -1px -1px 2px #000; }
+.player.subsb-box video::cue { background: rgba(10, 12, 16, 0.75); text-shadow: none; }
 .pside .opt:hover { background: #1C2029; }
 .pside .opt[aria-checked="true"] { background: #1C2029; color: #F4F5F7; box-shadow: inset 0 0 0 2px var(--accent); }
 .pside .opt .h { color: #A9AFBC; font-size: 0.75rem; font-weight: 500; }
