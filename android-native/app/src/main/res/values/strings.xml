@@ -1896,4 +1896,5 @@
         <item quantity="other">Your subscription allows %1$s connections: they are all taken by recordings at that time</item>
     </plurals>
     <string name="mlib_cloud_failed">The library “%1$s” added from the website could not be connected. The TV will try again at the next sync. Check that the server is reachable.</string>
+    <string name="ds_fav_all_sources">All sources</string>
 </resources>

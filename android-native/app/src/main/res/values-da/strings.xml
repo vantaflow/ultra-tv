@@ -1886,4 +1886,5 @@
     <string name="sport_no_events">Ingen højdepunkter endnu.</string>
     <string name="sport_table_hidden">Stillingen er skjult i tilstanden uden spoilere.</string>
     <string name="mlib_cloud_failed">Biblioteket “%1$s”, der blev tilføjet fra webstedet, kunne ikke tilsluttes. TV\'et prøver igen ved næste synkronisering. Kontrollér, at serveren kan nås.</string>
+    <string name="ds_fav_all_sources">Alle kilder</string>
 </resources>

@@ -172,6 +172,7 @@
   "fav.exportDone": "ส่งออกช่องแล้ว: {n}",
   "fav.exportNone": "ไม่มีช่องโปรดที่ส่งออกได้: ลิงก์ของแหล่งที่มานี้ใช้ได้ภายใน Ultra TV เท่านั้น",
   "fav.exportFailed": "ส่งออกล้มเหลว",
+  "fav.allSources": "ทุกแหล่งที่มา",
   "player.live": "สด",
   "player.pause": "หยุดชั่วคราว",
   "player.back10": "ย้อนกลับ 10 วินาที",

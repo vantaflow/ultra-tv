@@ -218,6 +218,7 @@ class DesignStrings(val lang: AppLang) {
     val featured get() = tx(R.string.ds_featured)
     val continueWatching get() = tx(R.string.ds_continue_watching)
     val favoriteChannels get() = tx(R.string.ds_favorite_channels)
+    val favAllSources get() = tx(R.string.ds_fav_all_sources)
     val homeEmpty get() = tx(R.string.ds_home_empty)
     val homeNoSource get() = tx(R.string.ds_home_no_source)
     val syncCloud get() = tx(R.string.ds_sync_cloud)

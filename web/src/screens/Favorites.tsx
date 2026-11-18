@@ -3,16 +3,19 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "@/db/db";
 import { getOrder, resetOrder, saveOrder } from "@/db/channelOrder";
-import type { ChannelRow, Kind, Source } from "@/db/types";
+import type { ChannelRow, FavoriteRow, Kind, Source } from "@/db/types";
+import { favoritesOf } from "@/db/queries";
 import { useFavorites } from "@/hooks/data";
 import { useNowNext } from "@/hooks/epg";
 import { useReorderDnd } from "@/hooks/reorder";
 import { useT } from "@/i18n";
+import { concatBySource, dropHidden, hiddenKey, mixActive, canMixFavorites, type MixedChan } from "@/lib/favoritesMix";
+import { visibleSources } from "@/lib/profileSources";
 import { FAVORITES_SCOPE, commitMove, mergeOrder, startMove, stepMove, type MoveSession } from "@/lib/channelOrder";
 import { usePlayer } from "@/player/store";
 import { channelTarget } from "@/player/targets";
 import { usePrefs } from "@/state/prefs";
-import { useActiveSource } from "@/state/sources";
+import { useActiveSource, useSources } from "@/state/sources";
 import { useUi } from "@/state/ui";
 import { buildM3u, countExportable, m3uFileName, type M3uEntry } from "@/lib/m3uExport";
 import { Modal, QBadge, StateCard } from "@/ui/common";
@@ -20,25 +23,106 @@ import { Img } from "@/ui/Img";
 import { PosterCard } from "@/ui/Poster";
 import { NoSource } from "./states";
 
-function Chan({ source, c, extra, extraCls = "", onMenu, moving }: { source: Source; c: ChannelRow; extra?: object; extraCls?: string; onMenu?: () => void; moving?: boolean }) {
+function Chan({ source, c, extra, extraCls = "", onMenu, moving, badge, onPlay }: { source: Source; c: ChannelRow; extra?: object; extraCls?: string; onMenu?: () => void; moving?: boolean; badge?: string; onPlay?: () => void }) {
   const nn = useNowNext(source, c.epg, c.streamId, false);
   return (
-    <button className={`chan-row${extraCls}${moving ? " moving" : ""}`} data-chan={c.streamId} style={{ height: 62, background: "var(--surface)" }} onClick={() => usePlayer.getState().open(channelTarget(source, c), "full", FAVORITES_SCOPE)} onContextMenu={onMenu ? (e) => { e.preventDefault(); onMenu(); } : undefined} {...extra}>
+    <button className={`chan-row${extraCls}${moving ? " moving" : ""}`} data-chan={c.streamId} style={{ height: 62, background: "var(--surface)" }} onClick={onPlay ?? (() => usePlayer.getState().open(channelTarget(source, c), "full", FAVORITES_SCOPE))} onContextMenu={onMenu ? (e) => { e.preventDefault(); onMenu(); } : undefined} {...extra}>
       <span className="num mono">{c.num}</span>
       <span className="logo"><Img src={c.logo} contain /></span>
-      <span className="grow" style={{ display: "flex", flexDirection: "column", gap: 2 }}><span className="nm ellipsis">{c.display}</span><span className="sub ellipsis">{nn.now?.title ?? ""}</span></span>
+      <span className="grow" style={{ display: "flex", flexDirection: "column", gap: 2 }}><span className="nm ellipsis">{c.display}</span><span className="sub ellipsis">{[badge, nn.now?.title].filter(Boolean).join(" · ")}</span></span>
       <QBadge q={c.q} />
     </button>
   );
 }
 
-export function Favorites() {
-  const source = useActiveSource();
-  if (!source) return <NoSource />;
-  return <Inner source={source} />;
+/** Puce « Toutes les sources » : affichée seulement avec 2 sources visibles ou plus, mémorisée par profil. */
+function AllSourcesChip({ on }: { on: boolean }) {
+  const t = useT();
+  const profile = usePrefs((st) => st.profileId);
+  return (
+    <button className="chip" aria-pressed={on} onClick={() => { const st = usePrefs.getState(); st.set({ favAll: { ...st.favAll, [profile]: !on } }); }}>{t("fav.allSources")}</button>
+  );
 }
 
-function Inner({ source }: { source: Source }) {
+export function Favorites() {
+  const source = useActiveSource();
+  const list = useSources((s) => s.list);
+  const names = usePrefs((s) => (s.profiles.find((p) => p.id === s.profileId) ?? s.profiles[0])?.sources);
+  const chosen = usePrefs((s) => s.favAll[s.profileId]);
+  if (!source) return <NoSource />;
+  const visible = visibleSources(list, names);
+  const can = canMixFavorites(visible.length);
+  if (mixActive(chosen, visible.length)) return <Mixed sources={visible} />;
+  return <Inner source={source} chip={can ? <AllSourcesChip on={false} /> : null} />;
+}
+
+/** Vue « Toutes les sources » : favoris de toutes les sources visibles du profil ; chaque élément porte sa source. */
+function Mixed({ sources }: { sources: Source[] }) {
+  const t = useT();
+  const nav = useNavigate();
+  const profile = usePrefs((st) => st.profileId);
+  const [tab, setTab] = useState<Kind | "all">("all");
+  const key = sources.map((s) => `${s.id}:${s.cid}`).join(",");
+  // Seuls les favoris sont lus (et leurs chaînes, une par une) : jamais un catalogue entier.
+  const favs = useLiveQuery(async () => (await Promise.all(sources.map((s) => favoritesOf(profile, s.id!)))).flat(), [profile, key]) ?? [];
+  const chans = useLiveQuery(async () => {
+    const hiddenRows = await db.profileHidden.where("sourceId").anyOf(sources.map((s) => s.id!)).toArray();
+    const hidden = new Set<string>();
+    for (const r of hiddenRows) if (r.profile === profile && r.kind === "live") for (const id of r.ids) hidden.add(hiddenKey(r.sourceId, id));
+    const groups = await Promise.all(sources.map(async (s) => {
+      const rows = (await Promise.all((await favoritesOf(profile, s.id!, "live")).map((f) => db.channels.where("[sourceId+streamId]").equals([s.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c);
+      const ord = mergeOrder(rows, await getOrder(profile, s.id!, FAVORITES_SCOPE), (c) => c.streamId);
+      return { sourceId: s.id!, items: ord.map((c): MixedChan => ({ sourceId: s.id!, cid: s.cid, name: s.name, c })) };
+    }));
+    return dropHidden(concatBySource(groups), hidden);
+  }, [profile, key]) ?? [];
+  const byId = new Map(sources.map((s) => [s.id!, s] as const));
+  const nameOf = (id: number) => byId.get(id)?.name ?? "";
+  const vod = (k: "movie" | "series"): FavoriteRow[] => favs.filter((f) => f.kind === k && byId.has(f.sourceId));
+  const total = chans.length + vod("movie").length + vod("series").length;
+  const count = (k: Kind) => (k === "live" ? chans.length : vod(k).length);
+  const label = (k: Kind) => t(k === "live" ? "nav.live" : k === "movie" ? "nav.movies" : "nav.series");
+  // La fiche d'un film / d'une série s'ouvre sur la source active : on la bascule sur celle de l'élément.
+  const open = (f: FavoriteRow) => {
+    if (usePrefs.getState().activeSourceId !== f.sourceId) usePrefs.getState().set({ activeSourceId: f.sourceId });
+    nav(`/${f.kind === "movie" ? "movie" : "serie"}/${f.refId}`);
+  };
+  const chanGrid = (
+    <div className="grid-x" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(22rem, 1fr))", gap: 8 }}>
+      {chans.map((m) => <Chan key={`${m.sourceId}:${m.c.streamId}`} source={byId.get(m.sourceId)!} c={m.c} badge={m.name} onPlay={() => usePlayer.getState().open(channelTarget(byId.get(m.sourceId)!, m.c), "full", FAVORITES_SCOPE, chans)} />)}
+    </div>
+  );
+  const posters = (k: "movie" | "series") => (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(9.5rem, 1fr))", gap: 20 }}>
+      {vod(k).map((f) => <PosterCard key={f.key} title={f.name} meta={nameOf(f.sourceId)} image={f.image} fav onClick={() => open(f)} />)}
+    </div>
+  );
+  return (
+    <div className="page">
+      <div className="page-head"><h1>{t("fav.title")}</h1></div>
+      <div className="chips" role="tablist">
+        <AllSourcesChip on />
+        <button className="chip" role="tab" aria-selected={tab === "all"} onClick={() => setTab("all")}>{t("common.all")} <span className="n">{total}</span></button>
+        {(["live", "movie", "series"] as const).map((k) => (
+          <button key={k} className="chip" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>{label(k)} <span className="n">{count(k)}</span></button>
+        ))}
+      </div>
+      {total === 0 ? (
+        <StateCard icon="heart" title={t("fav.emptyTitle")} body={t("fav.emptyBody")} actions={<button className="btn primary" onClick={() => nav("/live")}>{t("fav.browse")}</button>} />
+      ) : tab === "all" ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.75rem" }}>
+          {chans.length > 0 && <section><h2 className="section-title">{label("live")} <span className="muted">{chans.length}</span></h2>{chanGrid}</section>}
+          {count("movie") > 0 && <section><h2 className="section-title">{label("movie")} <span className="muted">{count("movie")}</span></h2>{posters("movie")}</section>}
+          {count("series") > 0 && <section><h2 className="section-title">{label("series")} <span className="muted">{count("series")}</span></h2>{posters("series")}</section>}
+        </div>
+      ) : count(tab) === 0 ? (
+        <p className="muted">{t("fav.emptyTitle")}</p>
+      ) : tab === "live" ? chanGrid : posters(tab)}
+    </div>
+  );
+}
+
+function Inner({ source, chip }: { source: Source; chip?: React.ReactNode }) {
   const t = useT();
   const nav = useNavigate();
   // « Tout » par défaut : tous les favoris classés par section (chaînes, films, séries).
@@ -151,6 +235,7 @@ function Inner({ source }: { source: Source }) {
         </Modal>
       )}
       <div className="chips" role="tablist">
+        {chip}
         <button className="chip" role="tab" aria-selected={tab === "all"} onClick={() => setTab("all")}>{t("common.all")} <span className="n">{all.length}</span></button>
         {(["live", "movie", "series"] as const).map((k) => (
           <button key={k} className="chip" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>

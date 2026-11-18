@@ -1966,4 +1966,5 @@
         <item quantity="other">يسمح اشتراكك بـ %1$s اتصالات: كلها مشغولة بتسجيلات في ذلك الوقت</item>
     </plurals>
     <string name="mlib_cloud_failed">تعذّر الاتصال بالمكتبة «%1$s» المضافة من الموقع. سيعيد التلفاز المحاولة عند المزامنة التالية. تحقق من إمكانية الوصول إلى الخادم.</string>
+    <string name="ds_fav_all_sources">كل المصادر</string>
 </resources>
