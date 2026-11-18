@@ -342,12 +342,17 @@ private fun SeasonTabs(
     val scope = rememberCoroutineScope()
     val reqs = remember(seasons) { seasons.map { FocusRequester() } }
     LaunchedEffect(Unit) { val i = seasons.indexOf(active); if (i > 2) state.scrollToItem(i - 1) }
-    // Gauche/Droite : saison voisine, avec défilement si elle n'est pas encore composée (10 saisons et plus).
+    // Gauche/Droite : saison voisine. La rangée ne bouge PAS si la saison est déjà à l'écran (le focus suffit, et la liste
+    // ne fait que le défilement minimal pour une saison coupée au bord). Avant : animateScrollToItem(to) plaçait chaque
+    // saison en première position, toute la rangée glissait à chaque pas. Saison pas encore composée (10 saisons et plus) :
+    // on décale d'UNE saison seulement.
     fun step(from: Int, delta: Int) {
         val to = from + delta
         if (to !in seasons.indices) return
         scope.launch {
-            state.animateScrollToItem(to)
+            if (state.layoutInfo.visibleItemsInfo.none { it.index == to }) {
+                if (delta > 0) state.animateScrollToItem(state.firstVisibleItemIndex + 1) else state.animateScrollToItem(to)
+            }
             repeat(10) {
                 androidx.compose.runtime.withFrameNanos { }
                 if (runCatching { reqs[to].requestFocus() }.getOrDefault(false)) return@launch
