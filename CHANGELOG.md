@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.62] — 2026-11-18 (Android)
+
 ### Corrigé
 - Première chaîne figée puis écran noir, et lecture lente ensuite : le noir de 1 à 3 s pendant le changement de fréquence de l'écran était pris pour une panne de décodeur, et l'appli passait en décodage logiciel puis sur VLC, retenus pour la chaîne. Ce noir est maintenant ignoré, et les choix de décodeur retenus à tort sont oubliés une fois à la mise à jour.
 
