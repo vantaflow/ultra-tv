@@ -4,6 +4,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## Bureau 1.2.73 — 2026-11-18
+
+### Ajouté
+- Bureau : jauge de volume verticale (avec le pourcentage) au survol de l'icône son, et croix de fermeture sur le panneau latéral du lecteur.
+
+### Corrigé
+- Bureau : les sous-titres des fichiers convertis ne dérivent plus après une reprise ou un saut. Vidéo et sous-titres gardent les temps du fichier, et les repères s'alignent sur la vraie image-clé de départ de la conversion, y compris quand ils viennent du cache. Les repères qui se chevauchaient ne s'empilent plus sur deux lignes.
+
 ## [1.3.57] — 2026-11-18 (Android)
 
 ### Modifié
