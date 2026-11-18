@@ -117,7 +117,8 @@ internal fun TvOsd(
                 if (state.ribbon.isNotEmpty()) TvRibbon(state.ribbon)
                 TvDock(state, focus, onAction, onStage)
             }
-            if (state.expanded) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.design)) {
+            // Aligné en bas : « Plus » sur la même ligne que les puces des récentes (le titre « RÉCENTES » est au-dessus).
+            if (state.expanded) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.design)) {
                 Box(Modifier.weight(1f)) { if (state.recents.isNotEmpty()) TvRecents(state, focus, onRecent, onStage) }
                 MoreButton(moreLabel, more, Modifier.focusRequester(moreButton).then(if (more) Modifier else Modifier.focusRequester(focus.bar))) { more = !more }
             }
@@ -133,10 +134,10 @@ internal fun TvOsd(
 @Composable
 private fun MoreButton(label: String, open: Boolean, modifier: Modifier, onClick: () -> Unit) {
     FocusSurface(
-        onClick = onClick, shape = RoundedCornerShape(30.design), bg = if (open) P.button else DOCK_BG, focusedBg = Ux.Accent, focusedScale = 1f, ringWidth = 0.dp,
-        modifier = modifier.height(60.design),
+        onClick = onClick, shape = RoundedCornerShape(18.design), bg = if (open) P.button else CHIP_BG, focusedBg = Ux.Accent, focusedScale = 1f, ringWidth = 0.dp,
+        modifier = modifier.height(72.design),
     ) { f ->
-        Row(Modifier.height(60.design).padding(horizontal = 24.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
+        Row(Modifier.height(72.design).padding(horizontal = 28.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
             DIcon(if (open) "M6 6l12 12M18 6L6 18" else "M5 12h.01M12 12h.01M19 12h.01", 22.design, if (f) Color.White else P.text, strokeWidth = if (open) 2f else 3.5f)
             Text(label.ifBlank { "+" }, color = if (f) Color.White else P.text, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 20.spx, maxLines = 1, softWrap = false)
         }
@@ -184,8 +185,16 @@ private fun CompactCard(state: LiveOsdState) {
             prog?.description?.takeIf { it.isNotBlank() }?.let {
                 Text(it, color = P.text2, fontFamily = Manrope, fontSize = 19.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            val nextLine = state.next?.let { listOf(state.nextWord, it.range.substringBefore(" ").substringBefore("–"), it.title).filter { s -> s.isNotBlank() }.joinToString("  ") } ?: prog?.thenLine
-            nextLine?.takeIf { it.isNotBlank() }?.let { Text(it, color = P.text3, fontFamily = Manrope, fontSize = 19.spx, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            // Programme suivant : libellé « ENSUITE » marqué, horaires puis titre (lisible d'un coup d'œil).
+            val next = state.next
+            if (next != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.design)) {
+                if (state.nextWord.isNotBlank()) Text(
+                    state.nextWord.uppercase(), color = P.text3, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 15.spx, letterSpacing = letter(1.5f), maxLines = 1, softWrap = false,
+                    modifier = Modifier.clip(RoundedCornerShape(8.design)).background(Color(0x1FF4F5F7)).padding(horizontal = 10.design, vertical = 3.design),
+                )
+                Text(next.range, color = P.text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 19.spx, maxLines = 1, softWrap = false)
+                Text(next.title, color = P.text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            } else prog?.thenLine?.takeIf { it.isNotBlank() }?.let { Text(it, color = P.text3, fontFamily = Manrope, fontSize = 19.spx, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.design)) {
             Text(state.clock, color = P.text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 44.spx, maxLines = 1, softWrap = false)
