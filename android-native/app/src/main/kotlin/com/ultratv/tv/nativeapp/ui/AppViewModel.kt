@@ -23,7 +23,10 @@ import javax.inject.Inject
 class AppViewModel @Inject constructor(
     private val store: UserPreferencesStore,
     @ApplicationContext private val context: Context,
+    profileNumbering: com.ultratv.tv.nativeapp.data.repo.ProfileNumbering,
 ) : ViewModel() {
+    /** Numérotation du profil courant (fournie à toute l'interface par ChannelDisplay). */
+    val numbering: StateFlow<com.ultratv.tv.nativeapp.data.repo.ChannelNumbering> = profileNumbering.state
     val prefs: StateFlow<UserPrefs> = store.flow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UserPrefs())
 

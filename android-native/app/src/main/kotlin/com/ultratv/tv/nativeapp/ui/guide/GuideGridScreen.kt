@@ -539,7 +539,7 @@ private fun GuidePreviewPane(sel: androidx.compose.runtime.State<Pair<ChannelEnt
     }
     Box(modifier.clip(RoundedCornerShape(24.design)).background(Ux.Tone), contentAlignment = Alignment.Center) {
         if (channel != null) {
-            val logo: @Composable () -> Unit = { ChannelBigMark(channel, com.ultratv.tv.nativeapp.ui.common.shownChannelNumber(channel.seq, channel.num), Modifier.fillMaxSize(), radius = 24, pad = 80, bg = Ux.Tone) }
+            val logo: @Composable () -> Unit = { ChannelBigMark(channel, com.ultratv.tv.nativeapp.ui.common.shownChannelNumber(channel), Modifier.fillMaxSize(), radius = 24, pad = 80, bg = Ux.Tone) }
             if (session != null && shared != null) com.ultratv.tv.nativeapp.ui.live.SharedVideo(session, shared, logo) else logo()
         }
     }
@@ -583,7 +583,7 @@ private fun GuideRow(
     Row(Modifier.fillMaxWidth().height(84.designT)) {
         // Cellule de la chaîne (maquette) : numéro, logo 48 et nom dans une carte arrondie, 8 px avant les programmes.
         Row(Modifier.width(nameColPx.design).fillMaxHeight().padding(end = 8.design).clip(RoundedCornerShape(18.design)).background(Ux.Card2).padding(horizontal = 14.design), verticalAlignment = Alignment.CenterVertically) {
-            com.ultratv.tv.nativeapp.ui.common.shownChannelNumber(c.seq, c.num)?.let { n ->
+            com.ultratv.tv.nativeapp.ui.common.shownChannelNumber(c)?.let { n ->
                 Text(n.toString(), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1, softWrap = false, textAlign = androidx.compose.ui.text.style.TextAlign.End, modifier = Modifier.width(40.design))
                 Spacer(Modifier.width(14.design))
             }
@@ -892,7 +892,7 @@ private fun TouchGuideRow(c: ChannelEntity, progs: List<EpgEntity>, windowStart:
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (LocalChannelDisplay.current.showLogos) LogoBox(c.logo, c.title, Modifier.width(40.dp).height(28.dp), radius = 12, pad = 3)
-            else com.ultratv.tv.nativeapp.ui.common.shownChannelNumber(c.seq, c.num)?.let { n -> Text(n.toString(), color = Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1, softWrap = false) }
+            else com.ultratv.tv.nativeapp.ui.common.shownChannelNumber(c)?.let { n -> Text(n.toString(), color = Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1, softWrap = false) }
             Text(c.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         }
     }

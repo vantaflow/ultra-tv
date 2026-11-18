@@ -432,6 +432,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun Root(vm: AppViewModel = hiltViewModel()) {
     val prefs by vm.prefs.collectAsState()
+    val numbering by vm.numbering.collectAsState()
     val ctxForDevice = androidx.compose.ui.platform.LocalContext.current
     val lang = com.ultratv.tv.nativeapp.i18n.AppLang.fromCode(prefs.language)
     // Chiffres et heures dans la langue de l'appli, pas celle de l'appareil (avant toute mise en forme de ce rendu).
@@ -457,7 +458,7 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
         com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings provides com.ultratv.tv.nativeapp.ui.mobile.mobileStringsFor(lang),
         com.ultratv.tv.nativeapp.ui.sport.LocalSportEnabled provides prefs.sportSection,
         com.ultratv.tv.nativeapp.ui.mobile.LocalBottomTabs provides prefs.bottomTabs,
-        com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay provides com.ultratv.tv.nativeapp.ui.common.ChannelDisplay(prefs.showChannelLogos, com.ultratv.tv.nativeapp.ui.common.GuideNameWidth.NORMAL, prefs.showChannelNumbers),   // réglage retiré : largeur normale pour tous
+        com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay provides com.ultratv.tv.nativeapp.ui.common.ChannelDisplay(prefs.showChannelLogos, com.ultratv.tv.nativeapp.ui.common.GuideNameWidth.NORMAL, prefs.showChannelNumbers, numbering),   // réglage retiré : largeur normale pour tous
         androidx.compose.ui.platform.LocalLayoutDirection provides direction,
         com.ultratv.tv.nativeapp.ui.design.LocalAnimations provides com.ultratv.tv.nativeapp.ui.design.Animations.resolve(
             com.ultratv.tv.nativeapp.ui.design.AnimationLevel.parse(prefs.animations), adaptive.auto.uiEffects,

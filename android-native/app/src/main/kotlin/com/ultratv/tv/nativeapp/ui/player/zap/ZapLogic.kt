@@ -1,6 +1,7 @@
 package com.ultratv.tv.nativeapp.ui.player.zap
 
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
+import com.ultratv.tv.nativeapp.data.repo.ChannelNumbering
 
 /** Logique pure du zapping : saut des séparateurs, résolution d'un numéro, liste des récentes. */
 object ZapLogic {
@@ -21,13 +22,16 @@ object ZapLogic {
         return null
     }
 
-    /** Numéro affiché d'une chaîne : séquentiel stable dans la catégorie, à défaut celui du fournisseur. */
-    fun numberOf(c: ChannelEntity): Int = if (c.seq > 0) c.seq else c.num
+    /**
+     * Numéro affiché d'une chaîne : séquentiel stable dans la catégorie, à défaut celui du fournisseur. [numbering] :
+     * numérotation du profil (chaînes qu'il masque retirées des numéros) ; sans lui, numéro global.
+     */
+    fun numberOf(c: ChannelEntity, numbering: ChannelNumbering = ChannelNumbering.NONE): Int = numbering.numberOf(c)
 
-    /** Index de la chaîne portant ce numéro dans la liste en cours (la catégorie parcourue), ou null. */
-    fun byNumber(channels: List<ChannelEntity>, number: Int): Int? {
+    /** Index de la chaîne portant ce numéro AFFICHÉ (selon [numbering]) dans la liste en cours (la catégorie parcourue), ou null. */
+    fun byNumber(channels: List<ChannelEntity>, number: Int, numbering: ChannelNumbering = ChannelNumbering.NONE): Int? {
         if (number <= 0) return null
-        val i = channels.indexOfFirst { isZappable(it) && numberOf(it) == number }
+        val i = channels.indexOfFirst { isZappable(it) && numbering.numberOf(it) == number }
         return if (i >= 0) i else null
     }
 
