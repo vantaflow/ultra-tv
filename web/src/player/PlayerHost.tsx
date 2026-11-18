@@ -11,7 +11,7 @@ import { qualityLabel } from "@/lib/channelName";
 import { ribbonSegments, type RibbonSeg } from "./ribbon";
 import { Img } from "@/ui/Img";
 import { VList, arrayRows, type VListHandle } from "@/ui/Virtual";
-import { db } from "@/db/db";
+import { db, getSetting, setSetting } from "@/db/db";
 import type { ChannelRow } from "@/db/types";
 import { histKey } from "@/db/queries";
 import { useNowNext } from "@/hooks/epg";
@@ -132,8 +132,20 @@ export function PlayerHost() {
   const [xAudio, setXAudio] = useState(0);
   const [xText, setXText] = useState(-1);
   const [subFail, setSubFail] = useState(false);
+  /** Extraction en cours (panel : « chargement… ») : la sélection reste cochée, les repères arrivent petit à petit. */
+  const [subLoading, setSubLoading] = useState(false);
+  /** Extraction en vol : jeton (la dernière sélection engagée gagne) + annulation (le proxy arrête son ffmpeg). */
+  const subReqRef = useRef<{ token: number; abort: AbortController } | null>(null);
+  /** Piste texte choisie (miroir d'état : les sauts relancent l'extraction à la nouvelle position). */
+  const xTextRef = useRef(-1);
   const subCuesRef = useRef<Cue[] | null>(null);
   const subTrackRef = useRef<TextTrack | null>(null);
+  /** Mémoire des pistes du média courant (audio / sous-titre choisis) : réappliquée à la réouverture de l'épisode. */
+  const txMemRef = useRef<{ a: number; s: number } | null>(null);
+  const txMemKeyRef = useRef("");
+  const txMemAppliedRef = useRef(false);
+  /** Accès tardif à selectSub (startCandidate est défini avant) : pour réactiver le sous-titre mémorisé. */
+  const selectSubRef = useRef<((i: number) => void) | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [ui, setUi] = useState(true);
   const [panel, setPanel] = useState<null | "tracks" | "display" | "player" | "stats" | "channels" | "episodes">(null);
@@ -302,9 +314,11 @@ export function PlayerHost() {
       const convert = plan === "convert";
       const offset = v?.currentTime ?? 0;
       const duration = d?.duration || (v && Number.isFinite(v.duration) ? v.duration : 0);
-      txRef.current = { orig: url, offset, duration, ...(convert ? { video: true } : {}) };
+      const audio = txMemRef.current?.a ?? 0;
+      txRef.current = { orig: url, offset, duration, audio, ...(convert ? { video: true } : {}) };
       skipProbeRef.current = true;
-      c.list = [...c.list, { url: txUrl(base, url, offset, false, 0, convert), format: "ts", label: TX_LABEL }];
+      setXAudio(audio);
+      c.list = [...c.list, { url: txUrl(base, url, offset, false, audio, convert), format: "ts", label: TX_LABEL }];
       c.i = c.list.length - 1;
       void startCandidate(c.list[c.i]!);
       return true;
@@ -349,10 +363,12 @@ export function PlayerHost() {
       const convert = plan === "convert";
       const offset = isLive ? 0 : v?.currentTime ?? 0;
       const duration = isLive ? 0 : d.duration || (v && Number.isFinite(v.duration) ? v.duration : 0);
-      const tx: TxState = { orig, offset, duration, ...(convert ? { video: true } : {}) };
+      const audio = isLive ? 0 : txMemRef.current?.a ?? 0;
+      const tx: TxState = { orig, offset, duration, audio, ...(convert ? { video: true } : {}) };
       txRef.current = tx;
       skipProbeRef.current = true;
-      c.list = [...c.list, { url: txUrl(base, orig, offset, isLive, 0, convert), format: "ts", label: TX_LABEL }];
+      setXAudio(audio);
+      c.list = [...c.list, { url: txUrl(base, orig, offset, isLive, audio, convert), format: "ts", label: TX_LABEL }];
       c.i = c.list.length - 1;
       void startCandidate(c.list[c.i]!);
       return true;
@@ -398,7 +414,7 @@ export function PlayerHost() {
     eng.preferredAudio = effectivePreferred([], usePrefs.getState().lang);
     v.volume = usePrefs.getState().volume;
     v.muted = usePrefs.getState().muted;
-    return () => { recon.dispose(); clearTimeout(limitTimerRef.current); eng.stop(); engineRef.current = null; };
+    return () => { recon.dispose(); clearTimeout(limitTimerRef.current); subReqRef.current?.abort.abort(); subReqRef.current = null; eng.stop(); engineRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -462,6 +478,12 @@ export function PlayerHost() {
       container: isTx ? "mpegts(ffmpeg)" : urlInfo(c.url).ext, ...urlInfo(c.url), userAgent: src.userAgent ? "source" : "repli VLC", referer: !!src.referer,
       transcode: isTx ? (txRef.current?.video ? "vidéo H.264 + audio AAC" : "remux + audio AAC") : "aucune", resumeAt: Math.round(resume ?? tg.startAt ?? 0),
     });
+    // Première candidate de conversion de l'ouverture : le sous-titre mémorisé de l'épisode est réactivé
+    // (instantané s'il est déjà en cache, extraction rapide sinon — elle part de la position courante).
+    if (isTx && !txMemAppliedRef.current) {
+      txMemAppliedRef.current = true;
+      if (txMemRef.current && txMemRef.current.s >= 0) selectSubRef.current?.(txMemRef.current.s);
+    }
     await engineRef.current.load({
       url: c.url, format: c.format, live: tg.kind === "live" && !tg.replay,
       // Conversion du bureau : MPEG-TS continu sans durée annoncée — ouvert comme un flux continu, sinon MSE
@@ -479,9 +501,21 @@ export function PlayerHost() {
     limitRetriedRef.current = false; probedRef.current = false; goodUrlRef.current = null;
     statusRef.current = null; videoTriedRef.current = false; diagRef.current = null;
     setLimit(false); setFailure(null);
+    // Extraction de sous-titres en vol : fermée à chaque changement de média et à la fermeture du lecteur (le proxy arrête son ffmpeg).
+    subReqRef.current?.abort.abort(); subReqRef.current = null;
     if (!target || !source) { engineRef.current?.stop(); return; }
     setTracks(NO_TRACKS);
-    setXinfo(null); xinfoKeyRef.current = ""; setXAudio(0); setXText(-1); setSubFail(false); subCuesRef.current = null; applySubs();
+    setXinfo(null); xinfoKeyRef.current = ""; setXAudio(0); setXText(-1); xTextRef.current = -1; setSubFail(false); setSubLoading(false); subCuesRef.current = null; applySubs();
+    // Mémoire des pistes de cet épisode (audio / sous-titre choisis la fois précédente) : réappliquée quand la
+    // conversion démarre — la piste audio est demandée dès la création de la candidate, le sous-titre est
+    // réactivé (instantané si déjà en cache). VOD seulement.
+    txMemKeyRef.current = target.kind !== "live" ? `${target.kind}#${target.refId}` : "";
+    txMemRef.current = null;
+    txMemAppliedRef.current = false;
+    const memKey = txMemKeyRef.current;
+    if (memKey) void getSetting<Record<string, { a: number; s: number; at: number }>>("tx.tracks", {})
+      .then((m) => { if (txMemKeyRef.current === memKey && m[memKey]) txMemRef.current = { a: m[memKey]!.a, s: m[memKey]!.s }; })
+      .catch(() => undefined);
     setPanel(null);
     setCur({ t: 0, d: 0, buf: 0 });
     window.clearTimeout(scrubTimer.current); scrubRef.current = null; setScrub(null);
@@ -622,11 +656,14 @@ export function PlayerHost() {
         const cur = c.list[c.i];
         if (base && cur && cur.label !== TX_LABEL) {
           const isLive = target.kind === "live" && !target.replay;
-          const tx: TxState = { orig: cur.url, offset: isLive ? 0 : v.currentTime, duration: isLive || !Number.isFinite(v.duration) ? 0 : v.duration };
+          // Piste audio mémorisée de l'épisode (choix précédent) : la conversion démarre dessus directement.
+          const audio = isLive ? 0 : (txMemRef.current?.a ?? 0);
+          const tx: TxState = { orig: cur.url, offset: isLive ? 0 : v.currentTime, duration: isLive || !Number.isFinite(v.duration) ? 0 : v.duration, audio };
           txRef.current = tx;
           playLog("play.decision", { decision: "conversion audio", reason: "image sans son (AC-3 / E-AC-3 / DTS)" });
-          c.list = [...c.list, { url: txUrl(base, tx.orig, tx.offset, isLive), format: "ts", label: TX_LABEL }];
+          c.list = [...c.list, { url: txUrl(base, tx.orig, tx.offset, isLive, audio), format: "ts", label: TX_LABEL }];
           c.i = c.list.length - 1;
+          setXAudio(audio);
           void startCandidate(c.list[c.i]!);
           return;
         }
@@ -870,6 +907,93 @@ export function PlayerHost() {
     const v = videoRef.current!;
     if (v.paused) void v.play().catch(() => undefined); else v.pause();
   }, []);
+  /** Mémorise les pistes choisies de l'épisode courant (audio / sous-titre) : borné aux 60 derniers épisodes. */
+  const rememberTracks = useCallback((patch: { a?: number; s?: number }) => {
+    const key = txMemKeyRef.current;
+    if (!key) return;
+    void getSetting<Record<string, { a: number; s: number; at: number }>>("tx.tracks", {})
+      .then((m) => {
+        const cur = { a: patch.a ?? txMemRef.current?.a ?? 0, s: patch.s ?? txMemRef.current?.s ?? -1, at: Date.now() };
+        txMemRef.current = cur;
+        const kept = Object.entries({ ...m, [key]: cur }).sort((x, y) => y[1].at - x[1].at).slice(0, 60);
+        return setSetting("tx.tracks", Object.fromEntries(kept) as Record<string, { a: number; s: number; at: number }>);
+      })
+      .catch(() => undefined);
+  }, []);
+  /**
+   * Choix d'un sous-titre texte du fichier (-1 = aucun) : extraction WebVTT par ffmpeg EN PARTANT DE LA POSITION
+   * DE LECTURE — les sous-titres sont entrelacés dans un MKV/MP4, sans `-ss` la position courante n'est atteinte
+   * qu'après une longue lecture du fichier (mesuré : plusieurs minutes sur un épisode de 2 Go). Le WebVTT arrive
+   * au fil de l'extraction et les repères s'affichent dès qu'ils sortent (replacés en temps absolus du fichier).
+   * Chaque sélection annule la précédente : seule la dernière engagée s'applique. Les repères sont conservés en
+   * cache (par média et piste) : re-regarder ou revenir en arrière ne relance pas l'extraction de zéro.
+   */
+  const selectSub = useCallback((i: number) => {
+    const base = bridge()?.proxyBase;
+    const orig = originUrl();
+    subReqRef.current?.abort.abort();
+    setSubFail(false);
+    if (i < 0 || !base || !orig) { subReqRef.current = null; subCuesRef.current = null; xTextRef.current = -1; setXText(-1); setSubLoading(false); applySubs(); rememberTracks({ s: -1 }); return; }
+    xTextRef.current = i;
+    rememberTracks({ s: i });
+    setXText(i);
+    setSubLoading(true);
+    const req = { token: (subReqRef.current?.token ?? 0) + 1, abort: new AbortController() };
+    subReqRef.current = req;
+    // Extraction qui part de la position courante de la conversion (0 = lecture native : le fichier est lu du début).
+    const ss = txRef.current ? txRef.current.offset : 0;
+    const rebase = (cues: Cue[]): Cue[] => cues.map((c) => ({ start: c.start + ss, end: c.end + ss, text: c.text }));
+    void getSetting<Record<string, { cues: Cue[]; from: number; at: number }>>("tx.subsCache", {})
+      .then(async (m) => {
+        // Cache qui couvre la position courante : instantané, sans extraction.
+        const hit = m[`${orig}#${i}`];
+        if (subReqRef.current?.token !== req.token) return;
+        if (hit && hit.cues.length > 0 && hit.from <= ss + 5) {
+          subCuesRef.current = hit.cues;
+          setSubLoading(false);
+          applySubs();
+          return;
+        }
+        const r = await fetch(txSubUrl(base, orig, i, ss), { headers: proxyHeaders(), signal: req.abort.signal });
+        if (!r.ok || !r.body) throw new Error("sub");
+        const reader = r.body.getReader();
+        const dec = new TextDecoder();
+        let buf = "";
+        let last = 0;
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += dec.decode(value, { stream: true });
+          const now = Date.now();
+          if (now - last < 400) continue; // re-analyse au plus ~2,5 fois par seconde
+          last = now;
+          const cues = rebase(parseVtt(buf));
+          if (subReqRef.current?.token !== req.token) return; // remplaçée : on ne touche plus à rien
+          if (cues.length > 0) { subCuesRef.current = cues; applySubs(); }
+        }
+        const cues = rebase(parseVtt(buf + dec.decode()));
+        if (subReqRef.current?.token !== req.token) return;
+        setSubLoading(false);
+        if (cues.length === 0) throw new Error("empty");
+        subCuesRef.current = cues; applySubs();
+        // Cache (borné) : la prochaine ouverture de ce média/piste sera instantanée.
+        const entry = { [`${orig}#${i}`]: { cues, from: ss, at: Date.now() } };
+        // Relu au moment d'écrire : l'instantané du début est périmé après plusieurs minutes d'extraction.
+        try {
+          const fresh = await getSetting<Record<string, { cues: Cue[]; from: number; at: number }>>("tx.subsCache", {});
+          const next = { ...fresh, ...entry };
+          const kept = Object.entries(next).sort((a, b) => b[1].at - a[1].at).slice(0, 40);
+          await setSetting("tx.subsCache", Object.fromEntries(kept) as Record<string, { cues: Cue[]; from: number; at: number }>);
+        } catch { /* cache indisponible : les sous-titres restent affichés */ }
+      })
+      .catch(() => {
+        if (subReqRef.current?.token !== req.token) return; // remplaçée : la nouvelle sélection gère son état
+        subCuesRef.current = null; xTextRef.current = -1; setXText(-1); setSubFail(true); setSubLoading(false); applySubs();
+      });
+  }, [originUrl, applySubs, proxyHeaders, rememberTracks]);
+  /** Accès tardif à selectSub depuis startCandidate (définie avant dans le composant). */
+  useEffect(() => { selectSubRef.current = selectSub; });
+
   /** Saut à une position (s). Conversion audio en cours : le flux n'est pas cherchable, la conversion repart de là. */
   const seekTo = useCallback((sec: number) => {
     const v = videoRef.current!;
@@ -879,13 +1003,14 @@ export function PlayerHost() {
       const ss = clampSeek(sec, tx.duration);
       txRef.current = { ...tx, offset: ss };
       const c = candRef.current;
-      c.list = c.list.map((x, k) => (k === c.i ? { ...x, url: txUrl(base, tx.orig, ss, false, tx.audio ?? 0) } : x));
+      c.list = c.list.map((x, k) => (k === c.i ? { ...x, url: txUrl(base, tx.orig, ss, false, tx.audio ?? 0, !!tx.video) } : x));
       void startCandidate(c.list[c.i]!);
-      applySubs();
+      // Sous-titre choisi : l'extraction est relancée à la nouvelle position (instantané si elle est en cache).
+      if (xTextRef.current >= 0) selectSub(xTextRef.current); else applySubs();
       return;
     }
     if (Number.isFinite(v.duration)) v.currentTime = Math.max(0, Math.min(v.duration, sec));
-  }, [startCandidate, applySubs]);
+  }, [startCandidate, applySubs, selectSub]);
   /** Liste des pistes, demandée au proxy à l'ouverture du panneau (une connexion brève au fournisseur, pas pendant la lecture normale). */
   useEffect(() => {
     const base = bridge()?.proxyBase;
@@ -911,34 +1036,19 @@ export function PlayerHost() {
     const prev = txRef.current;
     const { t: pos } = txClock(prev, v.currentTime, v.duration);
     const duration = prev?.duration ?? (Number.isFinite(v.duration) ? v.duration : 0);
-    const tx: TxState = { orig, offset: pos, duration, audio: i };
+    const tx: TxState = { orig, offset: pos, duration, audio: i, ...(prev?.video ? { video: true } : {}) };
     txRef.current = tx;
     skipProbeRef.current = true;
-    const cand: Candidate = { url: txUrl(base, orig, pos, false, i), format: "ts", label: TX_LABEL };
+    const cand: Candidate = { url: txUrl(base, orig, pos, false, i, !!prev?.video), format: "ts", label: TX_LABEL };
     const at = c.list.findIndex((x) => x.label === TX_LABEL);
     if (at >= 0) { c.list = c.list.map((x, k) => (k === at ? cand : x)); c.i = at; }
     else { c.list = [...c.list, cand]; c.i = c.list.length - 1; }
     setXAudio(i);
+    rememberTracks({ a: i });
     void startCandidate(cand);
     applySubs();
-  }, [originUrl, startCandidate, applySubs]);
+  }, [originUrl, startCandidate, applySubs, rememberTracks]);
 
-  /** Choix d'un sous-titre texte du fichier (-1 = aucun) : extrait en WebVTT par ffmpeg puis posé sur la vidéo. */
-  const selectSub = useCallback((i: number) => {
-    const base = bridge()?.proxyBase;
-    const orig = originUrl();
-    setSubFail(false);
-    if (i < 0 || !base || !orig) { subCuesRef.current = null; setXText(-1); applySubs(); return; }
-    setXText(i);
-    void fetch(txSubUrl(base, orig, i), { headers: proxyHeaders() })
-      .then((r) => (r.ok ? r.text() : Promise.reject(new Error("sub"))))
-      .then((txt) => {
-        const cues = parseVtt(txt);
-        if (cues.length === 0) throw new Error("empty");
-        subCuesRef.current = cues; applySubs();
-      })
-      .catch(() => { subCuesRef.current = null; setXText(-1); setSubFail(true); applySubs(); });
-  }, [originUrl, applySubs, proxyHeaders]);
 
   const seekBy = useCallback((s: number) => {
     const v = videoRef.current!;
@@ -1520,6 +1630,7 @@ export function PlayerHost() {
                   <div className="grp-t">{t("player.subtitles")}</div>
                   <button className="opt" role="radio" aria-checked={xText === -1} onClick={() => selectSub(-1)}>{t("player.off")}</button>
                   {xinfo.subs.map((a) => <button key={a.i} className="opt" role="radio" aria-checked={xText === a.i} onClick={() => selectSub(a.i)}>{a.title || trackLabel({ lang: a.lang }, a.i, usePrefs.getState().lang)}<span className="h">{a.lang}</span></button>)}
+                  {subLoading && <div className="muted" role="status">{t("player.subtitlesLoading")}</div>}
                   {subFail && <div className="muted" role="status">{t("player.subtitlesFailed")}</div>}
                 </>
               )}

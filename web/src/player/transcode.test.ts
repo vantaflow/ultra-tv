@@ -15,6 +15,8 @@ describe("conversion audio (bureau)", () => {
     expect(txUrl("http://x/t/", "http://h/a.mkv", 0, false, 0)).not.toContain("a=");
     expect(txInfoUrl("http://x/t/", "http://h/a.mkv").startsWith("http://x/t/txi/")).toBe(true);
     expect(txSubUrl("http://x/t/", "http://h/a.mkv", 3).endsWith("?s=3")).toBe(true);
+    expect(txSubUrl("http://x/t/", "http://h/a.mkv", 3, 1346).endsWith("&ss=1346")).toBe(true);
+    expect(txSubUrl("http://x/t/", "http://h/a.mkv", 3, 0)).not.toContain("ss=");
   });
   it("réponse /txi validée", () => {
     expect(parseTxInfo(null)).toBeNull();

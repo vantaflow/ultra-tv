@@ -243,6 +243,7 @@
   "player.reconnecting": "إعادة الاتصال…",
   "player.noTracks": "لا توجد مسارات بديلة",
   "player.subtitlesFailed": "تعذّر استخراج هذه الترجمة.",
+  "player.subtitlesLoading": "جارٍ استخراج الترجمة… تصل الأسطر الأولى خلال ثوانٍ.",
   "player.shortcuts": "الاختصارات",
   "player.sk.space": "تشغيل / إيقاف مؤقت",
   "player.sk.arrows": "رجوع / تقديم 10 ثوانٍ (الفيديو)",

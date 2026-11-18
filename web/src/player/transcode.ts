@@ -47,8 +47,10 @@ export function clampSeek(target: number, duration: number): number {
 
 /** Adresse de la liste des pistes d'un média (le proxy lit l'en-tête avec ffmpeg). */
 export const txInfoUrl = (proxyBase: string, orig: string): string => `${proxyBase}txi/${b64url(orig)}`;
-/** Adresse d'un sous-titre texte (index dans les sous-titres du fichier), servi en WebVTT. */
-export const txSubUrl = (proxyBase: string, orig: string, s: number): string => `${proxyBase}txs/${b64url(orig)}?s=${Math.max(0, Math.floor(s))}`;
+/** Adresse d'un sous-titre texte (index dans les sous-titres du fichier), servi en WebVTT.
+ * `ss` : extraction qui part de là (lecture en cours) — sans lui, l'extraction relit le fichier depuis le début. */
+export const txSubUrl = (proxyBase: string, orig: string, s: number, ss = 0): string =>
+  `${proxyBase}txs/${b64url(orig)}?s=${Math.max(0, Math.floor(s))}${ss > 0 ? `&ss=${Math.round(ss)}` : ""}`;
 
 /** Diagnostic d'un flux qui ne s'affiche pas (le proxy sonde avec ffmpeg) ; `hevc` : Chromium sait décoder le HEVC ici. */
 export const txDiagUrl = (proxyBase: string, orig: string, hevc: boolean): string => `${proxyBase}txd/${b64url(orig)}?hevc=${hevc ? 1 : 0}`;
