@@ -356,6 +356,7 @@
   "set.catsChannels": "Kanavat",
   "set.chTitle": "Kanavat: {name}",
   "set.chHint": "Järjestys on aktiivisen profiilin oma. Piilotettu kanava katoaa kaikkialta; sen näyttäminen uudelleen synkronoi lähteen uudelleen.",
+  "set.chProfileHint": "Tämä asetus koskee vain nykyistä profiilia: muut profiilit säilyttävät omat kanavansa ja kategoriajärjestyksensä.",
   "set.chVisible": "Näkyvissä",
   "set.chHidden": "Piilotettu",
   "set.chEmpty": "Tässä luokassa ei ole kanavia.",

@@ -365,6 +365,7 @@
   "set.catsChannels": "Chaînes",
   "set.chTitle": "Chaînes : {name}",
   "set.chHint": "L’ordre est propre au profil actif. Une chaîne masquée disparaît partout ; la réafficher relance une synchronisation de la source.",
+  "set.chProfileHint": "Ce choix ne concerne que le profil actuel : les autres profils gardent leurs propres chaînes et leur ordre de catégories.",
   "set.chVisible": "Visible",
   "set.chHidden": "Masquée",
   "set.chEmpty": "Aucune chaîne dans cette catégorie.",

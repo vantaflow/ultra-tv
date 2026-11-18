@@ -4,6 +4,7 @@ import { channelsFrom } from "@/db/queries";
 import { FAVORITES_SCOPE, neighborOf } from "@/lib/channelOrder";
 import { mixedNeighbor, type MixedChan } from "@/lib/favoritesMix";
 import { usePrefs } from "@/state/prefs";
+import { viewOf } from "@/state/channelView";
 import type { PlayTarget } from "./resolve";
 import type { RecentChannel } from "./liveOsd";
 
@@ -63,12 +64,15 @@ export const usePlayer = create<PlayerStore>((set, get) => ({
         target: {
           ...target, sourceId: m.sourceId, cid: m.cid, refId: m.c.streamId, title: m.c.display, subtitle: undefined, image: m.c.logo, url: m.c.url, replay: undefined,
           protectedStream: !!m.c.drm,
-          channel: { ord: m.c.ord, catExt: m.c.catExt, num: m.c.num, epg: m.c.epg, archive: !!m.c.archive, q: m.c.q, logo: m.c.logo },
+          channel: { ord: m.c.ord, catExt: m.c.catExt, num: viewOf(m.sourceId).num(m.c), epg: m.c.epg, archive: !!m.c.archive, q: m.c.q, logo: m.c.logo },
         },
       }));
       return;
     }
     const ord = target.channel.ord;
+    // Chaînes masquées par le profil courant : jamais atteintes par le zapping (même Set en mémoire que les listes).
+    const view = viewOf(target.sourceId);
+    const visible = (c: { sep: 0 | 1; streamId: number }) => !c.sep && (!view.keep || view.keep(c));
     // Zapping dans la catégorie de la chaîne en cours (même lancée depuis l'accueil ou la recherche).
     const cat = zapCat === FAVORITES_SCOPE ? target.channel.catExt ?? null : zapCat ?? target.channel.catExt ?? null;
     // Liste réordonnée par l'utilisateur (favoris, ou catégorie avec un ordre personnel) : la file suit l'ordre affiché.
@@ -78,8 +82,8 @@ export const usePlayer = create<PlayerStore>((set, get) => ({
     const next = inQueue
       ? neighborOf(queue!, target.refId, dir, (c) => c.streamId)
       : dir > 0
-        ? await channelsFrom(target.cid, cat, ord + 1, Infinity).filter((c) => !c.sep).first()
-        : await channelsFrom(target.cid, cat, -1, ord - 1).reverse().filter((c) => !c.sep).first();
+        ? await channelsFrom(target.cid, cat, ord + 1, Infinity).filter(visible).first()
+        : await channelsFrom(target.cid, cat, -1, ord - 1).reverse().filter(visible).first();
     if (!next) return;
     set((s) => ({
       nonce: s.nonce + 1,
@@ -87,7 +91,7 @@ export const usePlayer = create<PlayerStore>((set, get) => ({
       mode,
       target: {
         ...target, refId: next.streamId, title: next.display, subtitle: undefined, image: next.logo, url: next.url, replay: undefined,
-        channel: { ord: next.ord, catExt: next.catExt, num: next.num, epg: next.epg, archive: !!next.archive, q: next.q, logo: next.logo },
+        channel: { ord: next.ord, catExt: next.catExt, num: view.num(next), epg: next.epg, archive: !!next.archive, q: next.q, logo: next.logo },
       },
       zapCat: s.zapCat,
     }));

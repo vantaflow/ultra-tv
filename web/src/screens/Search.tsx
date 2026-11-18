@@ -12,6 +12,8 @@ import { normText } from "@/lib/text";
 import { letterIndex, orderResults, relevance, SEARCH_SORTS, validRating, type SearchSort } from "@/lib/searchRank";
 import { usePlayer } from "@/player/store";
 import { channelTarget } from "@/player/targets";
+import { loadChannelView } from "@/db/profileChannels";
+import { useChannelViews } from "@/state/channelView";
 import { usePrefs } from "@/state/prefs";
 import { useActiveSource, useSources } from "@/state/sources";
 import { QBadge, Seg, hhmm } from "@/ui/common";
@@ -44,7 +46,7 @@ const LIMIT = 400;
 const PREVIEW = 12;
 
 /** Guide TV : programmes en cours ou à venir dont le titre correspond, une ligne par chaîne (le plus proche). */
-async function searchPrograms(cid: number, nq: string): Promise<{ p: ProgramRow; c: ChannelRow }[]> {
+async function searchPrograms(cid: number, nq: string, keep: ((c: ChannelRow) => boolean) | null = null): Promise<{ p: ProgramRow; c: ChannelRow }[]> {
   const now = Date.now();
   const hits = await db.programs.where("[sourceId+end]").between([cid, now], [cid, now + 7 * 864e5])
     .filter((p) => normText(p.title).includes(nq)).limit(400).toArray();
@@ -54,7 +56,7 @@ async function searchPrograms(cid: number, nq: string): Promise<{ p: ProgramRow;
   for (const p of hits) {
     if (seen.has(p.epg)) continue;
     seen.add(p.epg);
-    const c = await db.channels.where("[sourceId+epg]").equals([cid, p.epg]).filter((x) => !x.sep).first();
+    const c = await db.channels.where("[sourceId+epg]").equals([cid, p.epg]).filter((x) => !x.sep && (!keep || keep(x))).first();
     if (c) out.push({ p, c });
     if (out.length >= 60) break;
   }
@@ -75,6 +77,9 @@ function Inner({ source, sources }: { source: Source; sources: Source[] }) {
   const profile = usePrefs((s) => s.profileId);
   // Génération de catalogue (`sourceId` des lignes) → source : nom court de la pastille et source à activer à l'ouverture.
   const byCid = useMemo(() => new Map(sources.map((s) => [s.cid, s])), [sources]);
+  // Numéro affiché d'une chaîne pour le profil courant (selon sa source).
+  const views = useChannelViews((st) => st.views);
+  const numOf = (c: ChannelRow) => { const id = byCid.get(c.sourceId)?.id; return (id != null ? views.get(id)?.num(c) : undefined) ?? c.num; };
   const badge = (cid: number) => (multi ? sourceBadge(byCid.get(cid)?.name ?? "") : null);
   const sourceKey = sources.map((s) => `${s.id}:${s.cid}`).join(",");
   useEffect(() => { input.current?.focus(); }, []);
@@ -92,11 +97,13 @@ function Inner({ source, sources }: { source: Source; sources: Source[] }) {
       const [hLive, hMovie, hSeries] = s.id != null
         ? await Promise.all([hiddenCategoryIds(profile, s.id, "live"), hiddenCategoryIds(profile, s.id, "movie"), hiddenCategoryIds(profile, s.id, "series")])
         : [new Set<string>(), new Set<string>(), new Set<string>()];
+      // Chaînes masquées par le profil courant : ni dans les chaînes, ni dans le guide.
+      const cv = await loadChannelView(profile, s);
       let [channels, movies, series, programs] = await Promise.all([
-        searchByWords(db.channels, s.cid, nq, LIMIT, (c) => !c.sep && !hLive.has(c.catExt)),
+        searchByWords(db.channels, s.cid, nq, LIMIT, (c) => !c.sep && !hLive.has(c.catExt) && (!cv.keep || cv.keep(c))),
         searchByWords(db.movies, s.cid, nq, LIMIT, hMovie.size ? (m) => !hMovie.has(m.catExt) : undefined),
         searchByWords(db.series, s.cid, nq, LIMIT, hSeries.size ? (m) => !hSeries.has(m.catExt) : undefined),
-        searchPrograms(s.cid, nq).catch(() => []),
+        searchPrograms(s.cid, nq, cv.keep).catch(() => []),
       ]);
       // Aucun film ni série : repli tolérant aux fautes de frappe (« brekin bad » → Breaking Bad).
       let fuzzy = false;
@@ -246,7 +253,7 @@ function Inner({ source, sources }: { source: Source; sources: Source[] }) {
             {lim(view.channels).map((c) => (
               <button key={c.id} className="chan-row" style={{ height: 72, background: "var(--surface)", borderRadius: "1.125rem", padding: "0 1.25rem" }} onClick={() => playChannel(c)}>
                 <span className="logo" style={{ width: "3.5rem", height: "2.5rem" }}><Img src={c.logo} contain /></span>
-                <span className="grow"><span className="nm ellipsis" style={{ display: "block" }}>{c.display}</span><span className="sub">{c.num}{badge(c.sourceId) ? ` · ${badge(c.sourceId)}` : ""}</span></span>
+                <span className="grow"><span className="nm ellipsis" style={{ display: "block" }}>{c.display}</span><span className="sub">{numOf(c)}{badge(c.sourceId) ? ` · ${badge(c.sourceId)}` : ""}</span></span>
                 <QBadge q={c.q} />
               </button>
             ))}
@@ -265,7 +272,7 @@ function Inner({ source, sources }: { source: Source; sources: Source[] }) {
                   <span className="logo" style={{ width: "3.5rem", height: "2.5rem" }}><Img src={c.logo} contain /></span>
                   <span className="grow" style={{ minWidth: 0 }}>
                     <span className="nm ellipsis" style={{ display: "block" }}>{p.title}</span>
-                    <span className="sub ellipsis" style={{ display: "block" }}>{live ? t("search.onAir") : at} · {c.num} {c.display}{badge(c.sourceId) ? ` · ${badge(c.sourceId)}` : ""}</span>
+                    <span className="sub ellipsis" style={{ display: "block" }}>{live ? t("search.onAir") : at} · {numOf(c)} {c.display}{badge(c.sourceId) ? ` · ${badge(c.sourceId)}` : ""}</span>
                   </span>
                   {live && <span className="badge-live">{t("search.liveBadge")}</span>}
                 </button>

@@ -218,6 +218,26 @@ export interface HiddenChannelRow {
   name: string;
 }
 
+/** Chaîne masquée par UN profil (comme sur Android) : reste dans le catalogue tant qu'un autre profil l'affiche. `hiddenChannels` = masquées par TOUS. */
+export interface ProfileHiddenChannelRow {
+  key: string;
+  profile: string;
+  /** Identifiant réel de la source (et non la génération de catalogue). */
+  sourceId: number;
+  streamId: number;
+  catExt: string | null;
+  name: string;
+}
+
+/** Ordre des catégories d'un type pour un profil / une source (identifiants de catégorie du fournisseur, dans l'ordre). La colonne `ord` reflète le profil courant. */
+export interface ProfileCatOrderRow {
+  key: string;
+  profile: string;
+  sourceId: number;
+  kind: Kind;
+  ids: string[];
+}
+
 export interface HistoryRow {
   key: string;
   profile: string;

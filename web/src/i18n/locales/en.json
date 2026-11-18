@@ -360,6 +360,7 @@
   "set.catsChannels": "Channels",
   "set.chTitle": "Channels: {name}",
   "set.chHint": "The order is specific to the active profile. A hidden channel disappears everywhere; showing it again re-syncs the source.",
+  "set.chProfileHint": "This only applies to the current profile: other profiles keep their own channels and category order.",
   "set.chVisible": "Visible",
   "set.chHidden": "Hidden",
   "set.chEmpty": "No channels in this category.",

@@ -361,6 +361,7 @@
   "set.catsChannels": "Canale",
   "set.chTitle": "Canale: {name}",
   "set.chHint": "Ordinea este specifică profilului activ. Un canal ascuns dispare peste tot; afișarea lui din nou resincronizează sursa.",
+  "set.chProfileHint": "Această setare se aplică doar profilului curent: celelalte profiluri își păstrează propriile canale și ordinea categoriilor.",
   "set.chVisible": "Vizibil",
   "set.chHidden": "Ascuns",
   "set.chEmpty": "Niciun canal în această categorie.",

@@ -7,6 +7,7 @@ import type { CategoryRow, Kind } from "@/db/types";
 import { pHiddenToWire, type PHiddenLocal, type PHiddenWire } from "@/lib/profileCategories";
 import type { CloudPrefs } from "./client";
 import { identityMapper, type IdMapper } from "./idmap";
+import { hiddenByAll, mergeRemote, type PHiddenChLocal, type PHiddenChWire } from "@/lib/channelHiding";
 
 /** Portée de l'ordre des favoris : identique des deux côtés (Android : « __fav__ »). */
 const FAV_SCOPE = "__fav__";
@@ -113,7 +114,103 @@ export function planChOrder(
   return { put: [...put.values()], remove, foreign };
 }
 
-export interface PrefsExtra { map?: IdMapper; hidden?: HiddenLocal[]; chOrder?: ChOrderLocal[]; pHidden?: PHiddenLocal[]; keepHidden?: HiddenWire[]; keepChOrder?: ChOrderWire[]; keepPHidden?: PHiddenWire[] }
+/**
+ * Chaînes masquées PAR profil -> format partagé (`pHiddenCh`, profil = NOM). [rows] : seulement les chaînes que le profil est seul à masquer.
+ * Une entrée par profil (même nom sans casse : fusionnées, dédoublonnées) ; [keep] : entrées reçues non interprétées (profil inconnu ici,
+ * identifiants sans équivalent local) renvoyées telles quelles, sauf si le profil les masque déjà. Plafonds du Worker respectés.
+ */
+export function pHiddenChToWire(rows: PHiddenChLocal[], keep: PHiddenChWire[] = [], map: IdMapper = identityMapper): PHiddenChWire[] {
+  const m = new Map<string, { p: string; ch: HiddenWire[]; seen: Set<string> }>();
+  const slot = (name: string) => {
+    const p = name.trim().slice(0, MAX_PROFILE_NAME);
+    if (!p) return null;
+    const k = p.toLowerCase();
+    let e = m.get(k);
+    if (!e) { e = { p, ch: [], seen: new Set() }; m.set(k, e); }
+    return e;
+  };
+  const add = (e: { ch: HiddenWire[]; seen: Set<string> }, h: HiddenWire) => { if (e.ch.length < MAX_HIDDEN && !e.seen.has(h.i)) { e.seen.add(h.i); e.ch.push(h); } };
+  for (const r of rows) {
+    const e = slot(r.profile);
+    if (!e) continue;
+    for (const h of hiddenToWire(r.items, [], map)) add(e, h);
+  }
+  for (const k of keep) { const e = slot(k.p); if (e) for (const h of k.ch) add(e, h); }
+  return [...m.values()].filter((e) => e.ch.length).map((e) => ({ p: e.p, ch: e.ch })).slice(0, MAX_CHORDER);
+}
+
+/**
+ * Entrées `pHiddenCh` reçues -> chaînes masquées en propre de chaque profil LOCAL (clé = identifiant du profil, rattaché par nom sans casse ;
+ * un profil sans entrée n'a aucune chaîne propre). [foreign] : profils inconnus ici et identifiants sans équivalent local, à renvoyer tels quels.
+ */
+export function planPHiddenCh(received: PHiddenChWire[], profiles: { id: string; name: string }[], map: IdMapper = identityMapper): { byProfile: Map<string, Set<number>>; infos: Map<number, HiddenLocal>; foreign: PHiddenChWire[] } {
+  const low = (n: string) => n.trim().toLowerCase();
+  const byProfile = new Map<string, Set<number>>(profiles.map((p) => [p.id, new Set<number>()]));
+  const infos = new Map<number, HiddenLocal>();
+  const foreign: PHiddenChWire[] = [];
+  for (const e of received) {
+    const mine = profiles.filter((p) => low(p.name) === low(e.p));
+    if (!mine.length) { foreign.push(e); continue; }
+    const lost: HiddenWire[] = [];
+    for (const h of e.ch) {
+      const n = map.inn("live", h.i);
+      if (n == null) { lost.push(h); continue; }
+      infos.set(n, { streamId: n, catExt: h.c != null ? map.catIn("live", h.c) : null, name: h.n ?? "" });
+      for (const p of mine) byProfile.get(p.id)!.add(n);
+    }
+    if (lost.length) foreign.push({ p: e.p, ch: lost });
+  }
+  return { byProfile, infos, foreign };
+}
+
+/**
+ * Chaînes masquées reçues (`hidden` = par tous, `pHiddenCh` = par profil) -> ce que masque désormais chaque profil local (mêmes règles
+ * que ChannelHidingRules.mergeRemote d'Android). [local] : profil local (identifiant) -> ses chaînes masquées ; seuls les profils dont la
+ * liste change sont dans `replace`. `foreignHidden` / `foreignPHiddenCh` : entrées non interprétables à renvoyer (null = champ non reçu).
+ */
+export function planChannelPrefs(
+  prefs: Pick<CloudPrefs, "hidden" | "pHiddenCh">,
+  local: ReadonlyMap<string, ReadonlyMap<number, HiddenLocal>>,
+  profiles: { id: string; name: string }[],
+  map: IdMapper = identityMapper,
+): { replace: Map<string, HiddenLocal[]>; foreignHidden: HiddenWire[] | null; foreignPHiddenCh: PHiddenChWire[] | null } {
+  const mine = new Map<string, Set<number>>(profiles.map((p) => [p.id, new Set(local.get(p.id)?.keys() ?? [])]));
+  const infos = new Map<number, HiddenLocal>();
+  for (const m of local.values()) for (const [id, h] of m) infos.set(id, h);
+  let remoteAll: Set<number>;
+  let foreignH: HiddenWire[] | null = null;
+  if (prefs.hidden) {
+    const list = hiddenFromWire(prefs.hidden, map);
+    for (const h of list) infos.set(h.streamId, h);
+    remoteAll = new Set(list.map((h) => h.streamId));
+    foreignH = foreignHidden(prefs.hidden, map);
+  } else remoteAll = hiddenByAll(mine); // champ absent : les chaînes masquées par tous ici le restent
+  let partialIds: Map<string, Set<number>> | null = null;
+  let foreignP: PHiddenChWire[] | null = null;
+  if (prefs.pHiddenCh) {
+    const p = planPHiddenCh(prefs.pHiddenCh, profiles, map);
+    for (const [id, h] of p.infos) infos.set(id, h);
+    partialIds = p.byProfile;
+    foreignP = p.foreign;
+  }
+  const merged = mergeRemote(mine, remoteAll, partialIds);
+  const replace = new Map<string, HiddenLocal[]>();
+  for (const [id, want] of merged) {
+    const had = mine.get(id)!;
+    if (want.size === had.size && [...want].every((x) => had.has(x))) continue;
+    replace.set(id, [...want].map((i) => infos.get(i) ?? { streamId: i, catExt: null, name: "" }));
+  }
+  return { replace, foreignHidden: foreignH, foreignPHiddenCh: foreignP };
+}
+
+export interface PrefsExtra {
+  map?: IdMapper; hidden?: HiddenLocal[]; chOrder?: ChOrderLocal[]; pHidden?: PHiddenLocal[]; keepHidden?: HiddenWire[]; keepChOrder?: ChOrderWire[]; keepPHidden?: PHiddenWire[];
+  /** Chaînes masquées en propre par profil (nom) et ordre des catégories par profil (nom ; ids = extId locaux). */
+  pHiddenCh?: PHiddenChLocal[]; keepPHiddenCh?: PHiddenChWire[];
+  pOrder?: PHiddenLocal[]; keepPOrder?: PHiddenWire[];
+  /** Ordre du PREMIER profil (champ historique `order`, lu par les anciens appareils) ; absent pour un type = ordre des catégories chargées. */
+  legacyOrder?: Partial<Record<Kind, string[]>>;
+}
 
 /** Local -> prefs à publier. `order` : catégories de chaque type triées comme affichées (`ord`). */
 export function toPrefs(langs: string[] | null, cats: CatLike[], updatedAt: number, extra: PrefsExtra = {}): Omit<CloudPrefs, "by"> {
@@ -126,6 +223,8 @@ export function toPrefs(langs: string[] | null, cats: CatLike[], updatedAt: numb
     if (l.length < MAX_IDS) l.push(map.catOut(c.kind, c.extId));
   }
   for (const k of KINDS) {
+    const first = extra.legacyOrder?.[k];
+    if (first?.length) { order[k] = first.filter(validId).map((x) => map.catOut(k, x)).slice(0, MAX_IDS); continue; }
     order[k] = cats.map((c, i) => ({ c, i })).filter((x) => x.c.kind === k && validId(x.c.extId))
       .sort((a, b) => (a.c.ord ?? 0) - (b.c.ord ?? 0) || a.i - b.i).map((x) => map.catOut(k, x.c.extId)).slice(0, MAX_IDS);
   }
@@ -133,6 +232,8 @@ export function toPrefs(langs: string[] | null, cats: CatLike[], updatedAt: numb
   if (extra.hidden) out.hidden = hiddenToWire(extra.hidden, extra.keepHidden, map);
   if (extra.chOrder) out.chOrder = chOrderToWire(extra.chOrder, extra.keepChOrder, map);
   if (extra.pHidden) out.pHidden = pHiddenToWire(extra.pHidden, extra.keepPHidden, MAX_CHORDER, MAX_IDS, MAX_PROFILE_NAME);
+  if (extra.pHiddenCh) out.pHiddenCh = pHiddenChToWire(extra.pHiddenCh, extra.keepPHiddenCh, map);
+  if (extra.pOrder) out.pOrder = pHiddenToWire(extra.pOrder, extra.keepPOrder, MAX_CHORDER, MAX_IDS, MAX_PROFILE_NAME);
   return out;
 }
 

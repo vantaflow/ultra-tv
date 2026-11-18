@@ -3,8 +3,9 @@ import { wordKeys } from "@/lib/text";
 import type { Recording, Reminder } from "@/lib/schedule";
 import type {
   CategoryRow, ChannelOrderRow, ChannelRow, DetailRow, FavoriteRow, HiddenChannelRow, HistoryRow, ManualChannelRow, MovieRow,
-  ProgramRow, ProfileHiddenRow, SeriesRow, SettingRow, Source,
+  ProgramRow, ProfileCatOrderRow, ProfileHiddenChannelRow, ProfileHiddenRow, SeriesRow, SettingRow, Source,
 } from "./types";
+import { globalToProfiles, profileIdsFromPrefs } from "@/lib/channelHiding";
 
 export class UltraTvDb extends Dexie {
   sources!: Table<Source, number>;
@@ -23,6 +24,8 @@ export class UltraTvDb extends Dexie {
   hiddenChannels!: Table<HiddenChannelRow, string>;
   profileHidden!: Table<ProfileHiddenRow, string>;
   manualChannels!: Table<ManualChannelRow, string>;
+  profileHiddenChannels!: Table<ProfileHiddenChannelRow, string>;
+  profileCatOrder!: Table<ProfileCatOrderRow, string>;
 
   constructor(name = "ultratv-desktop") {
     super(name);
@@ -71,6 +74,29 @@ export class UltraTvDb extends Dexie {
     // v7 : chaînes ajoutées à la main par source (table neuve, aucune donnée à convertir : vide au départ).
     this.version(7).stores({
       manualChannels: "&key, sourceId",
+    });
+    // v8 : chaînes masquées et ordre des catégories PAR PROFIL (comme sur Android). `hiddenChannels` garde le sens « masquées par TOUS les profils ».
+    // Migration : les chaînes masquées globales passent à tous les profils existants (rien ne réapparaît) et l'ordre actuel des catégories
+    // (`ord`, celui de tous jusqu'ici) devient l'ordre de chaque profil.
+    this.version(8).stores({
+      profileHiddenChannels: "&key, [profile+sourceId], sourceId",
+      profileCatOrder: "&key, [profile+sourceId], sourceId",
+    }).upgrade(async (tx) => {
+      let raw: string | null = null;
+      try { raw = typeof localStorage !== "undefined" ? localStorage.getItem("ultratv.prefs.v1") : null; } catch { /* stockage indisponible */ }
+      const profiles = profileIdsFromPrefs(raw);
+      const hidden = await tx.table("hiddenChannels").toArray();
+      if (hidden.length) await tx.table("profileHiddenChannels").bulkPut(globalToProfiles(hidden, profiles));
+      for (const s of await tx.table("sources").toArray() as Source[]) {
+        if (!s.cid || s.id == null) continue;
+        const cats = await tx.table("categories").where("[sourceId+kind]").between([s.cid, ""], [s.cid, "\uffff"]).toArray();
+        const rows: ProfileCatOrderRow[] = [];
+        for (const kind of ["live", "movie", "series"] as const) {
+          const ids = cats.filter((c: { kind: string }) => c.kind === kind).sort((a: { ord: number }, b: { ord: number }) => a.ord - b.ord).map((c: { extId: string }) => c.extId);
+          if (ids.length) for (const profile of profiles) rows.push({ key: `${profile}:${s.id}:${kind}`, profile, sourceId: s.id, kind, ids });
+        }
+        if (rows.length) await tx.table("profileCatOrder").bulkPut(rows);
+      }
     });
   }
 }

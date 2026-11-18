@@ -1,6 +1,7 @@
-// Chaînes masquées par l'utilisateur, par source. Comme sur Android, une chaîne masquée est SUPPRIMÉE de la table des chaînes
-// (après chaque synchro du catalogue et à l'application) : elle disparaît ainsi du Direct, des favoris, du guide, de la recherche et du zapping.
-// La réafficher = la retirer de la liste, puis relancer la synchro de la source.
+// Chaînes masquées par TOUS les profils, par source (table `hiddenChannels`). Comme sur Android, une chaîne masquée par tous est SUPPRIMÉE
+// de la table des chaînes (après chaque synchro du catalogue et à l'application). Ce que masque UN seul profil est dans
+// `profileHiddenChannels` (db/profileChannels.ts, qui tient cette table à jour) et filtré à la lecture.
+// La réafficher pour un profil = la retirer de sa liste, puis relancer la synchro de la source si elle avait été supprimée.
 
 import { db } from "./db";
 import type { HiddenChannelRow } from "./types";
@@ -34,9 +35,10 @@ export async function replaceHidden(sourceId: number, rows: { streamId: number; 
  * Supprime de la génération de catalogue [cid] les chaînes masquées de la source [sourceId], et corrige l'effectif des catégories.
  * Retourne le nombre de chaînes réellement retirées (à déduire du total du Direct).
  */
-export async function removeHiddenFromCatalog(cid: number, sourceId: number): Promise<number> {
+export async function removeHiddenFromCatalog(cid: number, sourceId: number, only?: ReadonlySet<number>): Promise<number> {
   if (!cid) return 0;
-  const hidden = await listHidden(sourceId);
+  // [only] : se limite à ces chaînes (celles qui viennent de devenir masquées par tous), sans relire toute la liste dans le catalogue.
+  const hidden = (await listHidden(sourceId)).filter((h) => !only || only.has(h.streamId));
   if (!hidden.length) return 0;
   const perCat = new Map<string, number>();
   let removed = 0;

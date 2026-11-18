@@ -6,11 +6,11 @@ import { db, getSetting, setSetting } from "@/db/db";
 import { saveSource } from "@/db/sources";
 import { categoriesOf, channelsCol } from "@/db/queries";
 import { getOrder, saveOrder } from "@/db/channelOrder";
-import { addHidden, listHidden, removeHidden, removeHiddenFromCatalog } from "@/db/hidden";
+import { hideChannels, listProfileHiddenChannels, saveProfileCatOrder, showChannels } from "@/db/profileChannels";
 import { mergeOrder, moveBy } from "@/lib/channelOrder";
 import { isManualStreamId, listManual, manualStreamId } from "@/db/manual";
 import { ManualChannelModal } from "./ManualChannelModal";
-import type { CategoryRow, ChannelRow, HiddenChannelRow, Kind, ManualChannelRow, Source } from "@/db/types";
+import type { CategoryRow, ChannelRow, Kind, ManualChannelRow, Source } from "@/db/types";
 import { LANGS, useT, type Key, type Lang } from "@/i18n";
 import { normText } from "@/lib/text";
 import { bridge, currentTransport, defaultProxy, getProxySetting, isElectron, setProxySetting } from "@/net/transport";
@@ -449,8 +449,9 @@ function CategoriesPane() {
   // Déplacer / trier n'a de sens que sur la liste complète du type (pas filtrée).
   const canMove = !nq;
   // Déplacement dans la liste AFFICHÉE (actives d'abord) : la catégorie bouge d'un cran à l'écran.
-  const move = async (c: CategoryRow, delta: number) => { if (await moveCategory(shown, c.id!, delta) && source.id != null) notePrefsChanged(source.id); };
-  const sortAZ = async () => { if (await sortCategoriesAZ(sameKind) && source.id != null) notePrefsChanged(source.id); };
+  // L'ordre des catégories est celui du profil courant : enregistré pour lui (les autres profils gardent le leur).
+  const move = async (c: CategoryRow, delta: number) => { if (await moveCategory(shown, c.id!, delta) && source.id != null) { await saveProfileCatOrder(profile, source.id, source.cid, kind); notePrefsChanged(source.id); } };
+  const sortAZ = async () => { if (await sortCategoriesAZ(sameKind) && source.id != null) { await saveProfileCatOrder(profile, source.id, source.cid, kind); notePrefsChanged(source.id); } };
   // Affiche / masque pour le profil courant ; le téléchargement suit (voir lib/profileCategories). La publication est déclenchée par l'écriture.
   const setMany = async (rows: CategoryRow[], v: 0 | 1) => { if (source.id != null) await setCategoriesVisible(source.id, profile, profileIds, kind, rows, !!v); };
   const counts = { live: all.filter((c) => c.kind === "live").length, movie: all.filter((c) => c.kind === "movie").length, series: all.filter((c) => c.kind === "series").length };
@@ -458,6 +459,7 @@ function CategoriesPane() {
     <>
       <h2>{t("set.categories")}</h2>
       <p className="lead">{t("set.catsNote")}</p>
+      <p className="muted">{t("set.chProfileHint")}</p>
       <div className="chips" role="tablist">
         {(["live", "movie", "series"] as const).map((k) => <button key={k} className="chip" role="tab" aria-selected={kind === k} onClick={() => setKind(k)}>{t(k === "live" ? "nav.live" : k === "movie" ? "nav.movies" : "nav.series")} <span className="n">{counts[k]}</span></button>)}
       </div>
@@ -509,10 +511,13 @@ function ChannelsModal({ source, cat, onClose }: { source: Source; cat: Category
   const data = useLiveQuery(async () => {
     const rows: ChannelRow[] = await channelsCol(source.cid, cat.extId).filter((c) => !c.sep).toArray();
     const order = await getOrder(profile, sid, cat.extId);
-    const hid: HiddenChannelRow[] = (await listHidden(sid)).filter((h) => h.catExt === cat.extId);
-    const shown: ChanItem[] = mergeOrder(rows, order, (c) => c.streamId).map((c) => ({ streamId: c.streamId, name: c.display || c.name, hidden: false }));
+    // Masquées par le profil courant seulement : les autres profils les voient encore.
+    const hid = (await listProfileHiddenChannels(sid)).filter((h) => h.profile === profile && h.catExt === cat.extId);
+    const hidIds = new Set(hid.map((h) => h.streamId));
+    const shown: ChanItem[] = mergeOrder(rows.filter((c) => !hidIds.has(c.streamId)), order, (c) => c.streamId).map((c) => ({ streamId: c.streamId, name: c.display || c.name, hidden: false }));
     return [...shown, ...hid.map((h) => ({ streamId: h.streamId, name: h.name, hidden: true }))];
   }, [source.cid, cat.extId, profile, sid]);
+  const profileIds = usePrefs((p) => p.profiles).map((x) => x.id);
   // Chaînes ajoutées à la main de cette catégorie : OK / « Modifier » ouvre leur fiche (modifier, supprimer).
   const manual = useLiveQuery(() => listManual(sid), [sid]) ?? [];
   const [editing, setEditing] = useState<ManualChannelRow | null>(null);
@@ -527,15 +532,16 @@ function ChannelsModal({ source, cat, onClose }: { source: Source; cat: Category
   };
   const setVisible = async (c: ChanItem, on: boolean) => {
     if (on) {
-      await removeHidden(sid, [c.streamId]);
-      reshown.current = true; // elle revient à la prochaine synchro de la source
-      setBack((b) => [...b.filter((x) => x.streamId !== c.streamId), { ...c, hidden: false }]);
+      const r = await showChannels(sid, source.cid, profile, profileIds, [c.streamId]);
+      // Encore au catalogue (un autre profil l'affichait) : elle réapparaît tout de suite ; sinon elle revient à la prochaine synchro de la source.
+      if (r.reshow) {
+        reshown.current = true;
+        setBack((b) => [...b.filter((x) => x.streamId !== c.streamId), { ...c, hidden: false }]);
+      }
     } else {
       setBack((b) => b.filter((x) => x.streamId !== c.streamId));
-      await addHidden(sid, [{ streamId: c.streamId, catExt: cat.extId, name: c.name }]);
-      const removed = await removeHiddenFromCatalog(source.cid, sid);
-      const cur = await db.sources.get(sid);
-      if (removed && cur) await db.sources.update(sid, { counts: { ...cur.counts, live: Math.max(0, cur.counts.live - removed) } });
+      // Retirée du catalogue (et du total du Direct) seulement si tous les profils la masquent.
+      await hideChannels(sid, source.cid, profile, profileIds, [{ streamId: c.streamId, catExt: cat.extId, name: c.name }]);
     }
     notePrefsChanged(sid);
   };
@@ -545,7 +551,7 @@ function ChannelsModal({ source, cat, onClose }: { source: Source; cat: Category
   };
   return (
     <Modal title={t("set.chTitle", { name: cat.label })} onClose={close} wide foot={<button className="btn primary" onClick={close}>{t("common.close")}</button>}>
-      <p className="muted">{t("set.chHint")}</p>
+      <p className="muted">{t("set.chProfileHint")}</p>
       <div style={{ height: "min(26rem, 50vh)", display: "flex", flexDirection: "column", minHeight: 0 }}>
         {data && !list.length ? <p className="muted">{t("set.chEmpty")}</p> : (
           <VList rows={arrayRows(list)} rowH={52} className="vlist" label={t("set.catsChannels")}

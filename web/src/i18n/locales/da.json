@@ -356,6 +356,7 @@
   "set.catsChannels": "Kanaler",
   "set.chTitle": "Kanaler: {name}",
   "set.chHint": "Rækkefølgen er specifik for den aktive profil. En skjult kanal forsvinder overalt; når du viser den igen, synkroniseres kilden på ny.",
+  "set.chProfileHint": "Denne indstilling gælder kun den aktuelle profil: andre profiler beholder deres egne kanaler og kategorirækkefølge.",
   "set.chVisible": "Synlig",
   "set.chHidden": "Skjult",
   "set.chEmpty": "Ingen kanaler i denne kategori.",

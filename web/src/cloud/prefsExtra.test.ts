@@ -41,6 +41,7 @@ afterAll(() => { w.close(); setCloudHttp(null); });
 
 beforeEach(async () => {
   await db.categories.clear(); await db.sources.clear(); await db.channels.clear(); await db.channelOrder.clear(); await db.hiddenChannels.clear();
+  await db.profileHiddenChannels.clear(); await db.profileCatOrder.clear();
   await db.settings.delete(`cloud.prefsAt.${ID}`);
   await setPrefsSync(true);
   usePrefs.setState({ profiles: [{ id: "main", name: "", color: "#000" }, { id: "p2", name: "Enfants", color: "#111" }] });
@@ -132,5 +133,49 @@ describe("application des champs facultatifs", () => {
     expect((await db.categories.toArray()).sort((a, b) => a.ord - b.ord).map((c) => c.extId)).toEqual(["10", "11", "12"]);
     expect((await listHidden(sid)).length).toBe(1);
     expect(await getOrder("main", sid, "10")).toEqual([2, 1]);
+  });
+});
+
+describe("réglages par profil (chaînes masquées et ordre des catégories)", () => {
+  const base = { langs: null, disabled: { live: [], movie: [], series: [] }, updatedAt: 99 };
+  it("publie hidden (par tous), pHiddenCh (en propre, par nom), pOrder et order = ordre du premier profil", async () => {
+    const { hideChannels, putProfileCatOrders } = await import("@/db/profileChannels");
+    await hideChannels(sid, 4, "main", ["main", "p2"], [{ streamId: 1, catExt: "10", name: "c1" }, { streamId: 3, catExt: "11", name: "c3" }]);
+    await hideChannels(sid, 4, "p2", ["main", "p2"], [{ streamId: 3, catExt: "11", name: "c3" }]);
+    await putProfileCatOrders(sid, [{ profile: "main", kind: "live", ids: ["12", "10", "11"] }, { profile: "p2", kind: "live", ids: ["11", "12", "10"] }]);
+    expect(await publishPrefs(sid)).toBe("sent");
+    const p = w.providers[0]!.prefs!;
+    expect(p.hidden).toEqual([{ i: "3", c: "11", n: "c3" }]);
+    expect(p.pHiddenCh).toEqual([{ p: "Principal", ch: [{ i: "1", c: "10", n: "c1" }] }]);
+    expect(p.pOrder).toEqual(expect.arrayContaining([{ p: "Principal", k: "live", ids: ["12", "10", "11"] }, { p: "Enfants", k: "live", ids: ["11", "12", "10"] }]));
+    expect(p.order!.live).toEqual(["12", "10", "11"]);
+    // La chaîne masquée par tous a quitté le catalogue ; celle d'un seul profil y est restée.
+    expect((await db.channels.toArray()).map((c) => c.streamId).sort()).toEqual([1, 2, 4]);
+  });
+  it("applique pHiddenCh et pOrder par nom de profil ; l'ordre du profil courant va dans ord", async () => {
+    usePrefs.setState({ profileId: "p2" });
+    const { hiddenChannelIds } = await import("@/db/profileChannels");
+    const resync = await applyPrefsTo((await getSource(sid))!, {
+      ...base,
+      hidden: [],
+      pHiddenCh: [{ p: "Principal", ch: [{ i: "1", c: "10", n: "c1" }] }, { p: "Enfants", ch: [{ i: "2", c: "10", n: "c2" }] }],
+      order: { live: ["12", "10", "11"], movie: [], series: [] },
+      pOrder: [{ p: "Principal", k: "live", ids: ["12", "10", "11"] }, { p: "Enfants", k: "live", ids: ["11", "10", "12"] }],
+    });
+    expect(resync).toBe(false);
+    expect([...await hiddenChannelIds("main", sid)]).toEqual([1]);
+    expect([...await hiddenChannelIds("p2", sid)]).toEqual([2]);
+    // Rien n'est supprimé : aucune chaîne n'est masquée par tous les profils.
+    expect((await db.channels.toArray()).map((c) => c.streamId).sort()).toEqual([1, 2, 3, 4]);
+    // Profil courant = Enfants.
+    expect((await db.categories.toArray()).sort((a, b) => a.ord - b.ord).map((c) => c.extId)).toEqual(["11", "10", "12"]);
+    usePrefs.setState({ profileId: "main" });
+  });
+  it("ancien appareil (order seul, sans pOrder) : le même ordre est appliqué à chaque profil", async () => {
+    const { listProfileCatOrders } = await import("@/db/profileChannels");
+    await applyPrefsTo((await getSource(sid))!, { ...base, order: { live: ["12", "10", "11"], movie: [], series: [] } });
+    const rows = await listProfileCatOrders(sid);
+    expect(rows.map((r) => r.profile).sort()).toEqual(["main", "p2"]);
+    for (const r of rows) expect(r.ids).toEqual(["12", "10", "11"]);
   });
 });

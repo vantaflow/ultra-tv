@@ -2,7 +2,8 @@
 // Aucune requête réseau, sauf les écussons d'équipes (Worker, appareil appairé seulement). Même stratégie qu'Android
 // (SportRepository) : chaînes de sport détectées une fois (catégories, puis noms), guide lu par fenêtre de temps pour ces
 // chaînes, pré-filtre des titres borné pour les autres ; résultat gardé 5 min par génération de catalogue.
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useChannelView } from "@/state/channelView";
 import { cloudAvailable, sportsTeamGet } from "@/cloud/client";
 import { getToken, useCloud } from "@/cloud/service";
 import { db } from "@/db/db";
@@ -79,7 +80,14 @@ export function useSportData(source: Source | undefined, enabled = true): SportD
     return () => { dead = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source?.cid, enabled, tick]);
-  return state && state.cid === source?.cid ? state.data : null;
+  // Le cache est partagé entre profils : les chaînes masquées par le profil courant sont écartées à la lecture.
+  const cv = useChannelView(source);
+  const data = state && state.cid === source?.cid ? state.data : null;
+  return useMemo(() => {
+    const keep = cv.keep;
+    if (!data || !keep) return data;
+    return { ...data, entries: data.entries.filter((e) => keep(e.channel)), channels: data.channels.filter((c) => keep(c)) };
+  }, [data, cv]);
 }
 
 // ───────────────────────── Écussons ─────────────────────────

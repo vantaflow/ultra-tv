@@ -366,6 +366,7 @@
   "set.catsChannels": "Kanály",
   "set.chTitle": "Kanály: {name}",
   "set.chHint": "Pořadí je specifické pro aktivní profil. Skrytý kanál zmizí všude; jeho opětovné zobrazení znovu synchronizuje zdroj.",
+  "set.chProfileHint": "Toto nastavení platí jen pro aktuální profil: ostatní profily si ponechají vlastní kanály a pořadí kategorií.",
   "set.chVisible": "Viditelné",
   "set.chHidden": "Skryto",
   "set.chEmpty": "V této kategorii nejsou žádné kanály.",
