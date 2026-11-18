@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Modifié
+- Numéros de chaînes : les chaînes masquées ne comptent plus. Masquer les chaînes 1 et 2 fait de la 3 la chaîne 1, dans la liste comme à la télécommande. Les playlists M3U sans tvg-chno reçoivent aussi des numéros, utilisables au zapping.
+
 ## [1.3.56] — 2026-11-18 (Android)
 
 ## Bureau 1.2.72 — 2026-11-18

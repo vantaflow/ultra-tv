@@ -168,6 +168,9 @@ class ProviderRepository @Inject constructor(
                 .filter { it.categoryId == null || it.categoryId in enabledCats }
                 .map { c -> c.copy(lang = LanguageDetector.forItem(c.name, c.categoryId?.let { langByCat[it] }.orEmpty())) }
                 .let { withoutHidden(it) }
+                // Sans tvg-chno, numéro séquentiel par catégorie APRÈS le retrait des masquées (sinon aucun numéro au zapping).
+                // Une playlist qui numérote ses chaînes garde ses numéros.
+                .let { if (it.any { c -> c.num > 0 }) it else ChannelSeq().assign(it) }
             // Suppression + réinsertion dans UNE transaction : atomique (jamais de catalogue vide
             // si on coupe au milieu) et une seule invalidation Room au lieu d'une par lot.
             db.withTransaction {
@@ -1181,7 +1184,7 @@ class ProviderRepository @Inject constructor(
             onDownloaded()
             db.withTransaction {
                 spec.deleteAll(p.id)
-                val seqState = ChannelSeq()
+                val seqState = ChannelSeq(hiddenChannels.ids(p.id))   // masquées : aucun numéro
                 seq.filter { all || spec.catOf(it) == null || spec.catOf(it) in enabledSet }
                     .map { spec.withLang(it, langByCat[spec.catOf(it)].orEmpty()) }
                     .forEachBatchAhead(adaptive.state.value.auto.insertBatch) { batch ->
@@ -1197,7 +1200,7 @@ class ProviderRepository @Inject constructor(
 
     private suspend fun <T : Any> insertCategory(p: ProviderEntity, spec: PartSpec<T>, id: String, items: List<T>, langByCat: Map<String, String>): Int {
         val withLang = items.map { spec.withLang(it, langByCat[id].orEmpty()) }
-        val rows = @Suppress("UNCHECKED_CAST") (if (withLang.firstOrNull() is com.ultratv.tv.nativeapp.data.db.ChannelEntity) ChannelSeq().assign(withLang as List<com.ultratv.tv.nativeapp.data.db.ChannelEntity>) as List<T> else withLang)
+        val rows = @Suppress("UNCHECKED_CAST") (if (withLang.firstOrNull() is com.ultratv.tv.nativeapp.data.db.ChannelEntity) ChannelSeq(hiddenChannels.ids(p.id)).assign(withLang as List<com.ultratv.tv.nativeapp.data.db.ChannelEntity>) as List<T> else withLang)
         db.withTransaction { spec.deleteCat(p.id, id); rows.chunked(1_000).forEach { spec.insert(it) } }
         return rows.size
     }

@@ -100,7 +100,13 @@ class CategoryManager @Inject constructor(
     suspend fun hideChannels(pid: Long, items: List<com.ultratv.tv.nativeapp.data.prefs.HiddenChannel>) {
         if (items.isEmpty()) return
         hidden.add(pid, items)
-        items.map { it.id }.chunked(500).forEach { channelDao.deleteByRemoteIds(pid, it) }
+        db.withTransaction {
+            items.map { it.id }.chunked(500).forEach { channelDao.deleteByRemoteIds(pid, it) }
+            // Numéros resserrés tout de suite : masquer les chaînes 1 et 2 fait de la 3 la chaîne 1 (liste et télécommande).
+            items.map { it.cat }.distinct().forEach { cat ->
+                ChannelSeq.compact(channelDao.seqsInCategory(pid, cat).map { it.id to it.seq }).forEach { (id, n) -> channelDao.setSeq(id, n) }
+            }
+        }
     }
 
     /** Réaffiche des chaînes : retirées de la liste, leurs catégories rechargées. */
