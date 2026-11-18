@@ -747,6 +747,11 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     // Code parental : une chaîne verrouillée n'est lancée qu'après le code (zapping, numéro, liste, télécommande du téléphone).
     val pinPending by vm.guard.pending.collectAsState()
     DisposableEffect(Unit) { onDispose { vm.guard.endSession() } }
+    // Fréquence de l'écran adaptée à la vidéo seulement ici ; rendue au système en quittant le lecteur (voir DisplayModeGate).
+    DisposableEffect(Unit) {
+        com.ultratv.tv.nativeapp.ui.player.engine.DisplayModeGate.enter()
+        onDispose { com.ultratv.tv.nativeapp.ui.player.engine.DisplayModeGate.exit(context) }
+    }
     val zapPreview by zap.preview.collectAsState()
     val zapRecent by zap.recent.collectAsState()
     LaunchedEffect(item) { zap.onPlaying(item) }

@@ -86,3 +86,30 @@ class FrameRateEstimator(private val samplesNeeded: Int = 48) {
         const val MAX_GAP_US = 250_000L
     }
 }
+
+/**
+ * Fréquence de l'écran adaptée à la vidéo SEULEMENT dans le lecteur plein écran, et rendue au système en le quittant.
+ * Avant : l'aperçu du Direct changeait déjà le mode, et rien ne le rendait — après une vidéo à 25 i/s, un écran 120 Hz
+ * restait en 50 Hz dans toute l'appli (défilement saccadé, « tout est devenu lent »).
+ */
+object DisplayModeGate {
+    @Volatile var fullscreen = false
+        private set
+    private val listeners = java.util.concurrent.CopyOnWriteArraySet<() -> Unit>()
+
+    fun addListener(l: () -> Unit) { listeners += l }
+    fun removeListener(l: () -> Unit) { listeners -= l }
+
+    /** Entrée dans le lecteur plein écran : les moteurs en cours réévaluent la cadence (aperçu devenu plein écran). */
+    fun enter() { fullscreen = true; listeners.forEach { it() } }
+
+    /** Sortie du lecteur : le mode d'affichage revient au choix du système (fréquence native de l'écran). */
+    fun exit(ctx: android.content.Context) {
+        fullscreen = false
+        var c: android.content.Context? = ctx
+        while (c is android.content.ContextWrapper && c !is android.app.Activity) c = c.baseContext
+        val w = (c as? android.app.Activity)?.window ?: return
+        val lp = w.attributes
+        if (lp.preferredDisplayModeId != 0) { lp.preferredDisplayModeId = 0; w.attributes = lp }
+    }
+}

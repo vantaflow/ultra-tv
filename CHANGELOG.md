@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Affichage saccadé après une vidéo : avec la fréquence d'image automatique, l'écran passait par exemple de 120 Hz à 50 Hz pour une vidéo à 25 i/s et y restait dans toute l'appli. La fréquence n'est plus adaptée que dans le lecteur plein écran (plus dans l'aperçu du Direct) et l'écran retrouve sa fréquence d'origine en quittant le lecteur.
+
 ## [1.3.60] — 2026-11-18 (Android)
 
 ### Corrigé
