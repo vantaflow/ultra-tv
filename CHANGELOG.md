@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Fiche d'une série : passer d'une saison à l'autre ne fait plus glisser toute la rangée des saisons ; elle ne bouge que si la saison visée est hors de l'écran.
+
 ## Bureau 1.2.75 — 2026-11-18
 
 ### Ajouté
