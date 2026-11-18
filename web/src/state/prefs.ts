@@ -52,6 +52,10 @@ export interface Prefs {
   volume: number;
   muted: boolean;
   fit: "contain" | "cover" | "fill";
+  /** Taille des sous-titres (::cue) : petite, normale, grande, très grande ; local à l'appareil. */
+  subsSize: "small" | "normal" | "large" | "xlarge";
+  /** Style des sous-titres : contour (par défaut) ou fond demi-opaque ; local à l'appareil. */
+  subsStyle: "outline" | "box";
   /** Animations : « auto » suit le réglage « réduire les animations » du système. */
   animations: "auto" | "off" | "subtle" | "normal";
   liveCat: Record<string, string>;
@@ -84,7 +88,7 @@ const defaults = (): Prefs => ({
   theme: "auto", accent: DEFAULT_ACCENT, lang: detectLang(), deviceLang: detectLang(), timeFormat: "auto", activeSourceId: null, searchAll: false, favAll: {},
   profiles: [{ id: "main", name: "", color: PROFILE_COLORS[0]! }], profileId: "main", askProfile: false,
   autoPreview: true, autoplayNext: true, preferMp4: true, liveFormat: "m3u8", syncOn: "launch",
-  volume: 1, muted: false, fit: "contain", animations: "auto", liveCat: {}, channelLogos: true, guideCol: "normal",
+  volume: 1, muted: false, fit: "contain", subsSize: "normal", subsStyle: "outline", animations: "auto", liveCat: {}, channelLogos: true, guideCol: "normal",
   dns: { mode: "system", dohPreset: "cloudflare", dohUrl: "", primary: "", secondary: "" },
   sportSection: false, sportLeagues: {}, sportNoSpoiler: {}, optimizeImages: true, railCollapsed: false, startScreen: "home", lastScreen: "/",
 });
