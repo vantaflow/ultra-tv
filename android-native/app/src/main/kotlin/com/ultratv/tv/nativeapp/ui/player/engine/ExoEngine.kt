@@ -457,7 +457,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         fun info(m: android.view.Display.Mode) = DisplayModeInfo(m.modeId, m.refreshRate, m.physicalWidth, m.physicalHeight)
         val id = FrameRatePolicy.chooseMode(fps, info(cur), display.supportedModes.map(::info)) ?: return
         val lp = act.window.attributes
-        if (lp.preferredDisplayModeId != id) { lp.preferredDisplayModeId = id; act.window.attributes = lp }
+        if (lp.preferredDisplayModeId != id) { lp.preferredDisplayModeId = id; act.window.attributes = lp; DisplayModeGate.noteSwitch() }
     }
 
     @Volatile private var released = false

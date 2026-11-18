@@ -95,6 +95,20 @@ class FrameRateEstimator(private val samplesNeeded: Int = 48) {
 object DisplayModeGate {
     @Volatile var fullscreen = false
         private set
+
+    /**
+     * Instant (ms) de la dernière bascule de mode demandée. Une bascule HDMI noircit l'écran 1 à 3 s : le contrôle
+     * « image noire » ne doit pas la prendre pour une panne de décodeur (sinon repli logiciel, puis VLC : tout devient lent).
+     */
+    @Volatile var lastSwitchMs = 0L
+        private set
+
+    fun noteSwitch(nowMs: Long = System.currentTimeMillis()) { lastSwitchMs = nowMs }
+
+    /** Vrai si une bascule a eu lieu il y a moins de [SETTLE_MS] : l'écran peut encore être noir. */
+    fun settling(nowMs: Long = System.currentTimeMillis()) = lastSwitchMs > 0 && nowMs - lastSwitchMs < SETTLE_MS
+
+    const val SETTLE_MS = 8_000L
     private val listeners = java.util.concurrent.CopyOnWriteArraySet<() -> Unit>()
 
     fun addListener(l: () -> Unit) { listeners += l }

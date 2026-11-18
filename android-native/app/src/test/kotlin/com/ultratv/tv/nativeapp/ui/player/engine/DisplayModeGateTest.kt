@@ -21,3 +21,11 @@ class DisplayModeGateTest {
         } finally { DisplayModeGate.removeListener(l) }
     }
 }
+
+class DisplayModeSettleTest {
+    @Test fun `noir HDMI juste après une bascule`() {
+        DisplayModeGate.noteSwitch(1_000)
+        assertTrue(DisplayModeGate.settling(1_000 + DisplayModeGate.SETTLE_MS - 1))
+        assertFalse(DisplayModeGate.settling(1_000 + DisplayModeGate.SETTLE_MS))
+    }
+}
