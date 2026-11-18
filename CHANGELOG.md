@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.59] — 2026-11-18 (Android)
+
 ### Corrigé
 - Décodage matériel : sur certains boîtiers (Google TV Streamer), une chaîne jouait une seconde puis se figeait. Le mode Matériel ne concerne plus que la vidéo : l'audio (AC-3, E-AC-3, MP2…) reste décodé par FFmpeg comme en mode Logiciel. Et un direct qui se fige juste après son démarrage passe à un autre décodeur au lieu de se reconnecter en boucle.
 
