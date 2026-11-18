@@ -286,23 +286,26 @@ function subtitleArgs(url, { s = 0, ss = 0, userAgent = null, referer = null } =
   return a;
 }
 
-/** Premier horodatage (PTS) d'un flux MPEG-TS (en secondes) ou null (fonction pure, testée) : celui du premier
- * paquet média servi — c'est le début réel de la conversion, calé sur une image-clé, que le lecteur reçoit au
- * temps 0 de sa timeline. Le proxy le communique aux sous-titres pour qu'ils s'alignent sur la vidéo. */
+/** Premier horodatage (DTS quand il est là, sinon PTS) d'un flux MPEG-TS (en secondes) ou null (fonction pure,
+ * testée) : celui du premier paquet média servi — la timeline du lecteur se cale sur le DTS de l'image-clé ; le
+ * PTS seul l'anticipe du délai des B-frames (jusqu'à ~0,2 s de sous-titres en avance). */
 function firstPts(ts) {
   const b = Buffer.isBuffer(ts) ? ts : Buffer.from(String(ts), "binary");
   for (let p = 0; p + 188 <= b.length; ) {
     if (b[p] !== 0x47) { p += 1; continue; } // resynchronisation : le flux peut commencer non aligné
     // Code de début de PES (00 00 01 suivi d'un flux audio/vidéo) n'importe où dans le paquet TS.
-    for (let i = p; i + 14 <= p + 188; i++) {
+    for (let i = p; i + 20 <= p + 188; i++) {
       if (b[i] !== 0 || b[i + 1] !== 0 || b[i + 2] !== 1) continue;
       const sid = b[i + 3];
       const isMedia = (sid >= 0xc0 && sid <= 0xdf) || (sid >= 0xe0 && sid <= 0xef);
       if (!isMedia) continue;
       const flags = b[i + 7];
-      if ((flags & 0x80) === 0 || (flags >> 6) !== 0b10) continue; // PTS_DTS_flags = « 10 »
       const pts = ((b[i + 9] >> 1) & 0x07) * 0x40000000 + (b[i + 10] << 22) + ((b[i + 11] >> 1) << 15) + (b[i + 12] << 7) + (b[i + 13] >> 1);
-      return pts / 90000;
+      if ((flags & 0xc0) === 0x80) return pts / 90000; // PTS_DTS_flags = « 10 » : PTS seul
+      if ((flags & 0xc0) === 0xc0) { // PTS_DTS_flags = « 11 » : PTS puis DTS — la timeline se cale sur le DTS
+        const dts = ((b[i + 14] >> 1) & 0x07) * 0x40000000 + (b[i + 15] << 22) + ((b[i + 16] >> 1) << 15) + (b[i + 17] << 7) + (b[i + 18] >> 1);
+        return Math.min(pts, dts) / 90000;
+      }
     }
     p += 188;
   }
