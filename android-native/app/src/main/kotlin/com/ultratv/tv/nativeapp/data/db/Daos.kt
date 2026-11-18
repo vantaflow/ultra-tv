@@ -144,7 +144,8 @@ interface ChannelDao {
     @Query("SELECT id, title, epgChannelId, country FROM channel WHERE providerId = :pid AND isSeparator = 0")
     suspend fun epgTitles(pid: Long): List<EpgTitle>
 
-    @Query("SELECT id FROM channel WHERE providerId = :pid AND title = :title AND isSeparator = 0")
+    // LIMIT : un titre vide ou très courant (« FR », « HD ») ramenait des milliers d'identifiants (OOM sur les TV à 128 Mo).
+    @Query("SELECT id FROM channel WHERE providerId = :pid AND title = :title AND isSeparator = 0 LIMIT 8")
     suspend fun idsByTitle(pid: Long, title: String): List<Long>
 
     /** Atomic position update. Swap two channels by calling twice in a transaction. */

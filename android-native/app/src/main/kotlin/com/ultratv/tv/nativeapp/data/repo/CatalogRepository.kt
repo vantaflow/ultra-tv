@@ -365,7 +365,7 @@ class CatalogRepository @Inject constructor(
         if (rows.isEmpty()) (TimeshiftChannels.parse(ch.title) ?: (ch.title.trim() to 0)).let { (base, h) ->
             val shift = h * 3_600_000L
             val now = System.currentTimeMillis()
-            val baseIds = channelDao.idsByTitle(p.id, base).filter { it != ch.id }
+            val baseIds = if (base.isBlank()) emptyList() else channelDao.idsByTitle(p.id, base).filter { it != ch.id }
             for (bid in baseIds) {
                 var src = epgDao.rangeForChannels(listOf(bid), now - shift - 30 * 60_000, now + 6 * 3_600_000L)
                 if (src.isEmpty()) { refreshShortEpg(bid); src = epgDao.rangeForChannels(listOf(bid), now - shift - 30 * 60_000, now + 6 * 3_600_000L) }

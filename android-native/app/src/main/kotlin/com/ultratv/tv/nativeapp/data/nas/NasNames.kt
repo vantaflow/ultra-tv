@@ -50,7 +50,8 @@ object NasNames {
     private val SEASON_FOLDER = Regex("""(?i)^\s*(?:season|saison|staffel|temporada|stagione|s)[ ._\-]*(\d{1,2})\s*$""")
     private val LEADING_EPISODE = Regex("""(?i)^\s*(?:episode|épisode|ep|e)?[ ._\-]*(\d{1,3})(?![\p{L}\p{N}])[ ._\-]*""")
     private val TRAILING_PART = Regex("""(?i)[ ._\-]*\b(?:cd|disc|disk|part|pt)[ ._\-]?\d\s*$""")
-    private val BRACKETS = Regex("""\[[^\]]*]|\{[^}]*}""")
+    // Crochets et accolades fermants échappés : le moteur de regex d'Android (ICU) refuse un « ] » ou un « } » nu.
+    private val BRACKETS = Regex("""\[[^\]]*\]|\{[^}]*\}""")
     private val MULTI_SPACE = Regex("""\s{2,}""")
     private val EDGE_JUNK = Regex("""^[\s\-–.]+|[\s\-–.(\[]+$""")
 

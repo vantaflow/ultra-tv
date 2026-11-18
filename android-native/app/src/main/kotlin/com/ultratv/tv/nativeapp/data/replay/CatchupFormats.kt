@@ -99,5 +99,7 @@ object CatchupFormats {
         }
     }
 
-    private val TOKEN = Regex("""\$?\{(\w+)(?::(\d+))?}""")
+    // Accolade fermante échappée : le moteur de regex d'Android (ICU) refuse un « } » nu, que la JVM des tests accepte.
+    // Sans échappement, l'initialisation de l'objet échoue sur l'appareil et toute synchro M3U plante (NoClassDefFoundError).
+    private val TOKEN = Regex("""\$?\{(\w+)(?::(\d+))?\}""")
 }
