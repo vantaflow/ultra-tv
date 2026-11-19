@@ -4,6 +4,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.68] — 2026-11-19 (Android)
+
+### Corrigé
+- Téléphone : le direct est de nouveau fluide (depuis la 1.3.67, la lecture « Auto » visait la résolution physique de l'écran, souvent 1440p, au lieu de 1080p ; ce calcul est désormais réservé aux TV)
+- Téléphone : les rangées cochées dans Affichage › Rangées de l'accueil s'affichent toutes (dernières chaînes regardées, derniers films et séries ajoutés, Top 10, ajoutés récemment des serveurs)
+
 ## [Bureau 1.2.76] — 2026-11-19
 
 ### Corrigé
