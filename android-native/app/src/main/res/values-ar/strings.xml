@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Généré par tools/i18n/migrate.py puis maintenu à la main. Source : values/ (anglais, repli). -->
-<resources xmlns:tools="http://schemas.android.com/tools">
-
+<!-- Généré par tools/i18n/migrate.py puis maintenu à la main. Source : values/ (anglais, repli). --><resources xmlns:tools="http://schemas.android.com/tools">
     <!-- i18n/DesignStrings.kt -->
     <string name="ds_rail_profile">الملف الشخصي</string>
     <string name="ds_rail_switch_profile">تبديل الملف</string>
@@ -484,7 +482,6 @@
     <string name="ds_hold_to_reorder">اضغط مطولًا: ترتيب</string>
     <string name="ds_syncing">جارٍ المزامنة</string>
     <string name="ds_mode_scheduled_desc">كل ليلة %1$s:00</string>
-
     <!-- i18n/DesignStringsB1.kt -->
     <string name="dsb1_act_replay">المشاهدة من البداية</string>
     <string name="dsb1_act_replay_hint">إعادة من المصدر</string>
@@ -573,7 +570,6 @@
         <item quantity="many">%1$s حلقة</item>
         <item quantity="other">%1$s حلقة</item>
     </plurals>
-
     <!-- i18n/DirectGuideStrings.kt -->
     <string name="dg_next_word">بعد ذلك</string>
     <string name="dg_now_badge">الآن</string>
@@ -612,7 +608,6 @@
     <string name="dg_guide_name_width_name_narrow">ضيّق</string>
     <string name="dg_guide_name_width_name_normal">عادي</string>
     <string name="dg_guide_name_width_name_wide">عريض</string>
-
     <!-- i18n/GuideStrings.kt -->
     <string name="guide_guide_custom_option">عنوان مخصص…</string>
     <string name="guide_guide_custom_label">مخصص · %1$s</string>
@@ -642,7 +637,6 @@
     <string name="guide_source_guide_mode_hint_complete">يُستخدم للقنوات التي بقيت بلا برنامج.</string>
     <string name="guide_source_value_replaces">يستبدل · %1$s</string>
     <string name="guide_source_value_completes">يُكمل · %1$s</string>
-
     <!-- i18n/HomeV2Strings.kt -->
     <string name="home2_home_more_info">مزيد من المعلومات</string>
     <string name="home2_home_live_now">مباشر</string>
@@ -686,7 +680,6 @@
         <item quantity="many">%1$s مفضلة</item>
         <item quantity="other">%1$s مفضلة</item>
     </plurals>
-
     <!-- i18n/PersonStrings.kt -->
     <string name="person_person_role_acting">ممثل</string>
     <string name="person_person_role_directing">مخرج</string>
@@ -698,7 +691,6 @@
     <string name="person_person_in_playlist">في قائمتك · %1$s</string>
     <string name="person_person_badge_movie">فيلم</string>
     <string name="person_person_badge_series">مسلسل</string>
-
     <!-- i18n/PersonalizationStrings.kt -->
     <string name="perso_personalization">التخصيص</string>
     <string name="perso_accent_color">لون التمييز</string>
@@ -751,7 +743,6 @@
         <item quantity="many">%1$s قسمًا</item>
         <item quantity="other">%1$s قسمًا</item>
     </plurals>
-
     <!-- i18n/PhoneSendStrings.kt -->
     <string name="phone_card_phone">من الهاتف</string>
     <string name="phone_card_phone_desc">أرسل المصدر من هاتف أو حاسوب دون الكتابة بالتحكم عن بعد</string>
@@ -767,7 +758,6 @@
     <string name="phone_phone_waiting">بانتظار الهاتف · ينتهي خلال %1$s</string>
     <string name="phone_phone_failed">تعذّر إنشاء الرمز أو انتهت صلاحيته. اطلب رمزًا جديدًا.</string>
     <string name="phone_phone_received">تم استلام المصدر من هاتفك</string>
-
     <!-- i18n/RemoteStrings.kt -->
     <string name="remote_remote_title">جهاز تحكم على الهاتف</string>
     <string name="remote_remote_hint">ابحث وتحكّم بالجهاز من هاتفك عبر شبكة Wi-Fi نفسها</string>
@@ -786,7 +776,6 @@
     <string name="remote_remote_failed">تعذّر تشغيل جهاز التحكم. حاول مجددًا.</string>
     <string name="remote_remote_scan_hint">امسح الرمز بهاتفك</string>
     <string name="remote_remote_status_on">جاهز · بانتظار الهاتف</string>
-
     <!-- i18n/SimpleStrings.kt -->
     <string name="simple_title">ماذا تريد أن تفعل؟</string>
     <string name="simple_tile_live">التلفاز المباشر</string>
@@ -839,7 +828,6 @@
     <string name="simple_profile_off">الوضع المبسّط: معطّل</string>
     <string name="simple_on">مفعّل</string>
     <string name="simple_off">معطّل</string>
-
     <!-- i18n/TraktStrings.kt -->
     <string name="trakt_trakt_add_watchlist">أضف إلى قائمة المشاهدة على Trakt</string>
     <string name="trakt_trakt_remove_watchlist">إزالة من قائمة المشاهدة على Trakt</string>
@@ -871,7 +859,6 @@
     <string name="trakt_tracking_unsupported">لا تستطيع هذه الخدمة إزالة عنوان من قائمة المشاهدة</string>
     <string name="trakt_available_from_list">متوفر من قائمتك</string>
     <string name="trakt_available_channel">توفر عناوين قائمة المشاهدة</string>
-
     <!-- i18n/CatalogCategoryStrings.kt -->
     <string name="cat_catalog_categories_title_1">الأفلام · الفئات</string>
     <string name="cat_catalog_categories_title_2">المسلسلات · الفئات</string>
@@ -905,7 +892,6 @@
     <string name="cat_genre_name_war">حرب</string>
     <string name="cat_genre_name_western">وسترن</string>
     <string name="cat_genre_name_other">أخرى</string>
-
     <!-- ui/player/PlayerExtraStrings.kt -->
     <string name="pex_recent">الأخيرة</string>
     <string name="pex_zap_hint">رجوع: القناة السابقة · ▲▼ تنقّل · 0-9 رقم</string>
@@ -986,7 +972,6 @@
     <string name="pex_previous_episode">الحلقة السابقة</string>
     <string name="pex_close">إغلاق</string>
     <string name="pex_sleep_stops_in">الإيقاف بعد %1$s ث</string>
-
     <!-- ui/memory/MemoryStrings.kt -->
     <string name="mem_title">الذاكرة والتخزين</string>
     <string name="mem_subtitle">تحرير مساحة والحفاظ على سرعة التطبيق</string>
@@ -1062,7 +1047,6 @@
     <string name="mem_economy_hint">صور أقل في الذاكرة، بلا تلاشٍ، وبلا معاينة فيديو في البث المباشر عند التلقائي</string>
     <string name="mem_optimize_images">تحسين الصور</string>
     <string name="mem_optimize_images_hint">تمر صور Fanart.tv وTVmaze عبر wsrv.nl (WebP أخف). عند الإيقاف تُحمَّل مباشرة.</string>
-
     <!-- ui/downloads/DownloadStrings.kt -->
     <string name="dl_nav_title">التنزيلات</string>
     <string name="dl_download">تنزيل</string>
@@ -1102,7 +1086,6 @@
     <string name="dl_notif_channel">التنزيلات</string>
     <string name="dl_notif_progress">%1$s قيد التنزيل · %2$s٪</string>
     <string name="dl_notif_starting">جارٍ تحضير التنزيلات…</string>
-
     <!-- ui/profile/ProfileStrings.kt -->
     <string name="prof_who_watching">من يشاهد؟</string>
     <string name="prof_add">إضافة</string>
@@ -1148,7 +1131,6 @@
         <item>سماوي</item>
         <item>ليموني</item>
     </string-array>
-
     <!-- ui/settings/CloudSyncStrings.kt -->
     <string name="cloud_group">حساب السحابة</string>
     <string name="cloud_synced_with_cloud">متزامن مع السحابة</string>
@@ -1185,7 +1167,6 @@
     <string name="cloud_removal_body">لم يعد «%1$s» مشتركًا مع هذا الجهاز. يعتمد عليه %2$s من المفضلة أو التسجيلات.</string>
     <string name="cloud_remove_anyway">إزالة</string>
     <string name="cloud_keep_local">إبقاء محليًا</string>
-
     <!-- ui/settings/DnsStrings.kt -->
     <string name="dns_group">الشبكة</string>
     <string name="dns_server">خادم DNS</string>
@@ -1210,7 +1191,6 @@
     <string name="dns_test_failed">فشل التحليل</string>
     <string name="dns_vlc_note">لا يُطبَّق على مشغّل VLC</string>
     <string name="dns_scope_note">يُطبَّق على الكتالوج والدليل والصور والسحابة وبثوث الفيديو في ExoPlayer. يبقى مشغّل VLC على DNS النظام. إذا لم يستجب الخادم خلال ثانيتين، يُستخدم DNS النظام.</string>
-
     <!-- ui/account/AccountScreen.kt -->
     <string name="acct_title">الاشتراك</string>
     <string name="acct_sub">اشتراك IPTV الخاص بك كما يُبلغ عنه مزوّدك.</string>
@@ -1231,7 +1211,6 @@
     <string name="acct_offline">تعذّر الوصول إلى المزوّد. حاول لاحقًا.</string>
     <string name="acct_no_source">لا يوجد مصدر.</string>
     <string name="acct_no_xtream">هذا النوع من المصادر لا يوفّر معلومات الاشتراك.</string>
-
     <!-- ui/live/LivePreview.kt -->
     <string name="lp_row">معاينة الفيديو في البث المباشر</string>
     <string name="lp_hint">تُعرض القناة المحددة بجانب القائمة؛ زر OK للانتقال الفوري إلى ملء الشاشة</string>
@@ -1242,7 +1221,6 @@
     <string name="lp_on">مفعّل</string>
     <string name="lp_off">معطّل</string>
     <string name="lp_seconds">%1$s ث</string>
-
     <!-- i18n/Strings.kt -->
     <string name="str_nav_home">الرئيسية</string>
     <string name="str_nav_live">البث المباشر</string>
@@ -1547,7 +1525,6 @@
     <string name="common_confirm">تأكيد</string>
     <string name="common_dismiss">إهمال</string>
     <string name="common_change">تغيير</string>
-
     <!-- ui/mobile/MobileStrings.kt -->
     <string name="mob_tab_more">المزيد</string>
     <string name="mob_more_title">المزيد</string>
@@ -1597,7 +1574,6 @@
     <string name="mob_from_cloud">من السحابة</string>
     <string name="mob_open_dashboard">فتح لوحة التحكم</string>
     <string name="mob_dashboard_address">عنوان لوحة التحكم</string>
-
     <!-- Lien « Aider à traduire » (Réglages › Langue) -->
     <string name="translate_help">ساعد في ترجمة Ultra TV</string>
     <string name="translate_help_sub">لغتك غير متوفرة أو تحتوي على خطأ؟</string>
@@ -1621,7 +1597,7 @@
     <string name="osd_history">السجل</string>
     <string name="osd_history_empty">لا توجد قنوات حديثة بعد</string>
     <string name="osd_remaining">المتبقي %1$s</string>
-    <string name="osd_banner_hint">OK القنوات  ·  ▲▼ الأوامر  ·  ◀ ▶ السابقة / التالية  ·  0-9 الرقم</string>
+    <string name="osd_banner_hint">OK القنوات · ▲▼ الأوامر · ◀ ▶ السابقة / التالية · 0-9 الرقم</string>
     <string name="osd_drawer_all">كل القنوات</string>
     <string name="osd_no_previous">لا توجد قناة سابقة</string>
     <string name="osd_drawer_hint">OK للتبديل · ▲▼ تصفح · ◀ الفئات · ▶ القنوات · ‹ إغلاق</string>
@@ -1639,7 +1615,6 @@
     <string name="cor_down">تحريك لأسفل</string>
     <string name="cor_done">تم</string>
     <string name="cor_cancel">إلغاء</string>
-
     <!-- Rubrique Sport -->
     <string name="sport_nav">الرياضة</string>
     <string name="sport_setting_label">قسم الرياضة</string>
@@ -1827,7 +1802,6 @@
     <string name="st_unlock_extra">+30 دقيقة</string>
     <string name="st_unlock_today">لهذا اليوم (مرة واحدة)</string>
     <string name="st_warn">تنتهي المشاهدة بعد %1$d د</string>
-
     <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
     <string name="handoff_title">هل تريد المتابعة على هذا الجهاز؟</string>
     <string name="handoff_body">%1$s يرسل إليك: %2$s</string>
@@ -1890,7 +1864,6 @@
     <string name="mlib_counts">%1$d أفلام · %2$d مسلسلات</string>
     <string name="mlib_nas_folders">المجلدات</string>
     <string name="mlib_nas_auto">تم التعرف تلقائيًا</string>
-
     <!-- Espace Sport : compétitions, classements, feuille de match, mode sans spoiler -->
     <string name="sport_mode_tv">دليل التلفزيون</string>
     <string name="sport_mode_leagues">المسابقات</string>

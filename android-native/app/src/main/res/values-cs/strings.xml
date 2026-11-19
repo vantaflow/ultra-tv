@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Premier jet (traduction automatique relue), à relire sur Weblate -->
-<resources xmlns:tools="http://schemas.android.com/tools">
+<!-- Premier jet (traduction automatique relue), à relire sur Weblate --><resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">UTV</string>
     <string name="nav_home">Domů</string>
     <string name="nav_live">Živá TV</string>
@@ -17,7 +16,7 @@
     <plurals name="ds_seasons_count">
         <item quantity="one">%1$s sezóna</item>
         <item quantity="few">%1$s sezóny</item>
-        <item quantity="many">%1$s sezóny</item>
+        <item quantity="many">%1$s sezón</item>
         <item quantity="other">%1$s sezón</item>
     </plurals>
     <string name="ds_episode_tag">S%1$s E%2$s</string>
@@ -52,7 +51,7 @@
     <plurals name="ds_locked_count_line">
         <item quantity="one">%1$s zamčený kanál</item>
         <item quantity="few">%1$s zamčené kanály</item>
-        <item quantity="many">%1$s zamčeného kanálu</item>
+        <item quantity="many">%1$s zamčených kanálů</item>
         <item quantity="other">%1$s zamčených kanálů</item>
     </plurals>
     <string name="ds_search_results_count">VÝSLEDKY · %1$s</string>
@@ -129,7 +128,7 @@
     <plurals name="ds_sync_skipped_categories">
         <item quantity="one">Synchronizace dokončena · %1$s kategorie přeskočena (portál neodpověděl)</item>
         <item quantity="few">Synchronizace dokončena · %1$s kategorie přeskočeny (portál neodpověděl)</item>
-        <item quantity="many">Synchronizace dokončena · %1$s kategorie přeskočeno (portál neodpověděl)</item>
+        <item quantity="many">Synchronizace dokončena · %1$s kategorií přeskočeno (portál neodpověděl)</item>
         <item quantity="other">Synchronizace dokončena · %1$s kategorií přeskočeno (portál neodpověděl)</item>
     </plurals>
     <string name="ds_dismiss">OK</string>
@@ -291,13 +290,13 @@
     <plurals name="ds_sections">
         <item quantity="one">%1$s sekce</item>
         <item quantity="few">%1$s sekce</item>
-        <item quantity="many">%1$s sekce</item>
+        <item quantity="many">%1$s sekcí</item>
         <item quantity="other">%1$s sekcí</item>
     </plurals>
     <plurals name="ds_channels">
         <item quantity="one">%1$s kanál</item>
         <item quantity="few">%1$s kanály</item>
-        <item quantity="many">%1$s kanálu</item>
+        <item quantity="many">%1$s kanálů</item>
         <item quantity="other">%1$s kanálů</item>
     </plurals>
     <string name="ds_settings_title">Nastavení</string>
@@ -315,13 +314,13 @@
     <plurals name="ds_movies_of">
         <item quantity="one">%1$s film</item>
         <item quantity="few">%1$s filmy</item>
-        <item quantity="many">%1$s filmu</item>
+        <item quantity="many">%1$s filmů</item>
         <item quantity="other">%1$s filmů</item>
     </plurals>
     <plurals name="ds_series_of">
         <item quantity="one">%1$s seriál</item>
         <item quantity="few">%1$s seriály</item>
-        <item quantity="many">%1$s seriálu</item>
+        <item quantity="many">%1$s seriálů</item>
         <item quantity="other">%1$s seriálů</item>
     </plurals>
     <string name="ds_locked_title">Zamčený kanál</string>
@@ -497,7 +496,7 @@
     <plurals name="dsb1_rec_scheduled" tools:ignore="ImpliedQuantity">
         <item quantity="one">Nahrávka naplánována</item>
         <item quantity="few">%1$s nahrávky naplánovány</item>
-        <item quantity="many">%1$s nahrávky naplánováno</item>
+        <item quantity="many">%1$s nahrávek naplánováno</item>
         <item quantity="other">%1$s nahrávek naplánováno</item>
     </plurals>
     <string name="dsb1_rec_no_space">Na nahrání není dost volného místa</string>
@@ -556,7 +555,7 @@
     <plurals name="dsb1_episodes_count">
         <item quantity="one">%1$s epizoda</item>
         <item quantity="few">%1$s epizody</item>
-        <item quantity="many">%1$s epizody</item>
+        <item quantity="many">%1$s epizod</item>
         <item quantity="other">%1$s epizod</item>
     </plurals>
     <string name="dg_next_word">Další</string>
@@ -635,25 +634,25 @@
     <plurals name="home2_home_channels_count">
         <item quantity="one">%1$s kanál</item>
         <item quantity="few">%1$s kanály</item>
-        <item quantity="many">%1$s kanálu</item>
+        <item quantity="many">%1$s kanálů</item>
         <item quantity="other">%1$s kanálů</item>
     </plurals>
     <plurals name="home2_home_movies_count">
         <item quantity="one">%1$s film</item>
         <item quantity="few">%1$s filmy</item>
-        <item quantity="many">%1$s filmu</item>
+        <item quantity="many">%1$s filmů</item>
         <item quantity="other">%1$s filmů</item>
     </plurals>
     <plurals name="home2_home_series_count">
         <item quantity="one">%1$s seriál</item>
         <item quantity="few">%1$s seriály</item>
-        <item quantity="many">%1$s seriálu</item>
+        <item quantity="many">%1$s seriálů</item>
         <item quantity="other">%1$s seriálů</item>
     </plurals>
     <plurals name="home2_home_favorites_count">
         <item quantity="one">%1$s oblíbený</item>
         <item quantity="few">%1$s oblíbené</item>
-        <item quantity="many">%1$s oblíbeného</item>
+        <item quantity="many">%1$s oblíbených</item>
         <item quantity="other">%1$s oblíbených</item>
     </plurals>
     <string name="person_person_role_acting">Herec</string>
@@ -704,13 +703,13 @@
     <plurals name="perso_channel_count">
         <item quantity="one">%1$s kanál</item>
         <item quantity="few">%1$s kanály</item>
-        <item quantity="many">%1$s kanálu</item>
+        <item quantity="many">%1$s kanálů</item>
         <item quantity="other">%1$s kanálů</item>
     </plurals>
     <plurals name="perso_section_count">
         <item quantity="one">%1$s sekce</item>
         <item quantity="few">%1$s sekce</item>
-        <item quantity="many">%1$s sekce</item>
+        <item quantity="many">%1$s sekcí</item>
         <item quantity="other">%1$s sekcí</item>
     </plurals>
     <string name="phone_card_phone">Z vašeho telefonu</string>
@@ -1551,7 +1550,7 @@
     <string name="osd_history">Historie</string>
     <string name="osd_history_empty">Zatím žádné nedávné kanály</string>
     <string name="osd_remaining">zbývá %1$s</string>
-    <string name="osd_banner_hint">OK Kanály  ·  ▲▼ Ovládání  ·  ◀ ▶ Předchozí / další  ·  0-9 Číslo</string>
+    <string name="osd_banner_hint">OK Kanály · ▲▼ Ovládání · ◀ ▶ Předchozí / další · 0-9 Číslo</string>
     <string name="osd_drawer_all">Všechny kanály</string>
     <string name="osd_no_previous">Žádný předchozí kanál</string>
     <string name="osd_drawer_hint">OK přepnout · ▲▼ procházet · ◀ kategorie · ▶ kanály · ‹ zavřít</string>
@@ -1600,7 +1599,7 @@
     <plurals name="set2_sources_count">
         <item quantity="one">%1$d zdroj</item>
         <item quantity="few">%1$d zdroje</item>
-        <item quantity="many">%1$d zdroje</item>
+        <item quantity="many">%1$d zdrojů</item>
         <item quantity="other">%1$d zdrojů</item>
     </plurals>
     <string name="set2_ago">před %1$s</string>
@@ -1624,7 +1623,7 @@
     <plurals name="uxv2_sources">
         <item quantity="one">%1$s zdroj</item>
         <item quantity="few">%1$s zdroje</item>
-        <item quantity="many">%1$s zdroje</item>
+        <item quantity="many">%1$s zdrojů</item>
         <item quantity="other">%1$s zdrojů</item>
     </plurals>
     <string name="ds_catalog_sort_name_title">A–Z</string>
@@ -1746,7 +1745,6 @@
     <string name="st_unlock_extra">+30 minut</string>
     <string name="st_unlock_today">Pro dnešek (jednou)</string>
     <string name="st_warn">Sledování skončí za %1$d min</string>
-
     <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
     <string name="handoff_title">Pokračovat na tomto zařízení?</string>
     <string name="handoff_body">%1$s vám posílá: %2$s</string>
@@ -1809,7 +1807,6 @@
     <string name="mlib_counts">%1$d filmů · %2$d seriálů</string>
     <string name="mlib_nas_folders">Složky</string>
     <string name="mlib_nas_auto">Rozpoznáno automaticky</string>
-
     <!-- Espace Sport : compétitions, classements, feuille de match, mode sans spoiler -->
     <string name="sport_mode_tv">TV program</string>
     <string name="sport_mode_leagues">Soutěže</string>
@@ -1843,7 +1840,7 @@
     <plurals name="sport_matches_count">
         <item quantity="one">%1$d zápas</item>
         <item quantity="few">%1$d zápasy</item>
-        <item quantity="many">%1$d zápasu</item>
+        <item quantity="many">%1$d zápasů</item>
         <item quantity="other">%1$d zápasů</item>
     </plurals>
     <string name="sport_upcoming_short">Brzy</string>

@@ -203,7 +203,7 @@
   "player.engine": "MOTOR",
   "player.error": "Avspillingen mislyktes.",
   "player.drmUnsupported": "Beskyttet strøm støttes ikke på datamaskin",
-  "player.errorHint": "Strømmen kunne ikke spilles av. Prøv igjen, sjekk kilden eller åpne den i en annen spiller.",
+  "player.errorHint": "Kilden kan ha nådd grensen for samtidige tilkoblinger, eller strømmen er utilgjengelig.",
   "player.retry": "Prøv igjen",
   "player.openVlc": "Åpne i VLC",
   "player.openLogs": "Åpne loggmappen",

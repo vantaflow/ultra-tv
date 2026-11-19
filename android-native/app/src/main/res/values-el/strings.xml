@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Premier jet (traduction automatique relue), à relire sur Weblate -->
-<!-- Généré par tools/i18n/migrate.py puis maintenu à la main. Source : values/ (anglais, repli). -->
-<resources xmlns:tools="http://schemas.android.com/tools">
+<!-- Premier jet (traduction automatique relue), à relire sur Weblate --><!-- Généré par tools/i18n/migrate.py puis maintenu à la main. Source : values/ (anglais, repli). --><resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Ressources Android historiques (manifeste, canaux de notification) : inchangées. -->
     <string name="app_name">UTV</string>
     <string name="nav_home">Αρχική</string>
@@ -11,7 +9,6 @@
     <string name="sync_notification">Ενημέρωση των καναλιών σας…</string>
     <string name="tv_favorites_channel">Αγαπημένα</string>
     <string name="search_hint">Αναζήτηση καναλιών, ταινιών και σειρών</string>
-
     <!-- i18n/DesignStrings.kt -->
     <string name="ds_rail_profile">Προφίλ</string>
     <string name="ds_rail_switch_profile">Αλλαγή προφίλ</string>
@@ -466,7 +463,6 @@
     <string name="ds_hold_to_reorder">Πατήστε παρατεταμένα: αναδιάταξη</string>
     <string name="ds_syncing">Συγχρονισμός</string>
     <string name="ds_mode_scheduled_desc">Κάθε βράδυ στις %1$s:00</string>
-
     <!-- i18n/DesignStringsB1.kt -->
     <string name="dsb1_act_replay">Παρακολούθηση από την αρχή</string>
     <string name="dsb1_act_replay_hint">Επανάληψη από την πηγή</string>
@@ -547,7 +543,6 @@
         <item quantity="one">%1$s επεισόδιο</item>
         <item quantity="other">%1$s επεισόδια</item>
     </plurals>
-
     <!-- i18n/DirectGuideStrings.kt -->
     <string name="dg_next_word">Επόμενο</string>
     <string name="dg_now_badge">ΤΩΡΑ</string>
@@ -582,7 +577,6 @@
     <string name="dg_guide_name_width_name_narrow">Στενή</string>
     <string name="dg_guide_name_width_name_normal">Κανονική</string>
     <string name="dg_guide_name_width_name_wide">Πλατιά</string>
-
     <!-- i18n/GuideStrings.kt -->
     <string name="guide_guide_custom_option">Προσαρμοσμένη διεύθυνση…</string>
     <string name="guide_guide_custom_label">Προσαρμοσμένη · %1$s</string>
@@ -612,7 +606,6 @@
     <string name="guide_source_guide_mode_hint_complete">Χρησιμοποιείται για κανάλια χωρίς εκπομπή.</string>
     <string name="guide_source_value_replaces">Αντικαθιστά · %1$s</string>
     <string name="guide_source_value_completes">Συμπληρώνει · %1$s</string>
-
     <!-- i18n/HomeV2Strings.kt -->
     <string name="home2_home_more_info">Περισσότερα</string>
     <string name="home2_home_live_now">Ζωντανά</string>
@@ -640,7 +633,6 @@
         <item quantity="one">%1$s αγαπημένο</item>
         <item quantity="other">%1$s αγαπημένα</item>
     </plurals>
-
     <!-- i18n/PersonStrings.kt -->
     <string name="person_person_role_acting">Ηθοποιός</string>
     <string name="person_person_role_directing">Σκηνοθέτης</string>
@@ -652,7 +644,6 @@
     <string name="person_person_in_playlist">Στη λίστα σας · %1$s</string>
     <string name="person_person_badge_movie">ΤΑΙΝΙΑ</string>
     <string name="person_person_badge_series">ΣΕΙΡΑ</string>
-
     <!-- i18n/PersonalizationStrings.kt -->
     <string name="perso_personalization">Εξατομίκευση</string>
     <string name="perso_accent_color">Χρώμα έμφασης</string>
@@ -697,7 +688,6 @@
         <item quantity="one">%1$s ενότητα</item>
         <item quantity="other">%1$s ενότητες</item>
     </plurals>
-
     <!-- i18n/PhoneSendStrings.kt -->
     <string name="phone_card_phone">Από το κινητό σας</string>
     <string name="phone_card_phone_desc">Στείλτε την πηγή από κινητό ή υπολογιστή, χωρίς πληκτρολόγηση με το τηλεχειριστήριο</string>
@@ -713,7 +703,6 @@
     <string name="phone_phone_waiting">Αναμονή για το κινητό · λήγει σε %1$s</string>
     <string name="phone_phone_failed">Ο κωδικός δεν δημιουργήθηκε ή έχει λήξει. Δοκιμάστε νέο κωδικό.</string>
     <string name="phone_phone_received">Η πηγή ελήφθη από το κινητό σας</string>
-
     <!-- i18n/RemoteStrings.kt -->
     <string name="remote_remote_title">Τηλεχειριστήριο στο κινητό</string>
     <string name="remote_remote_hint">Αναζητήστε και ελέγξτε τη συσκευή από το κινητό, στο ίδιο Wi-Fi</string>
@@ -732,7 +721,6 @@
     <string name="remote_remote_failed">Το τηλεχειριστήριο δεν ξεκίνησε. Δοκιμάστε ξανά.</string>
     <string name="remote_remote_scan_hint">Σαρώστε με το κινητό σας</string>
     <string name="remote_remote_status_on">Έτοιμο · αναμονή για το κινητό</string>
-
     <!-- i18n/SimpleStrings.kt -->
     <string name="simple_title">Τι θέλετε να κάνετε;</string>
     <string name="simple_tile_live">Ζωντανή τηλεόραση</string>
@@ -785,7 +773,6 @@
     <string name="simple_profile_off">Απλή λειτουργία: ανενεργή</string>
     <string name="simple_on">Ενεργό</string>
     <string name="simple_off">Ανενεργό</string>
-
     <!-- i18n/TraktStrings.kt -->
     <string name="trakt_trakt_add_watchlist">Προσθήκη στη λίστα παρακολούθησης Trakt</string>
     <string name="trakt_trakt_remove_watchlist">Αφαίρεση από τη λίστα παρακολούθησης Trakt</string>
@@ -817,7 +804,6 @@
     <string name="trakt_tracking_unsupported">Αυτή η υπηρεσία δεν μπορεί να αφαιρέσει έναν τίτλο από τη λίστα</string>
     <string name="trakt_available_from_list">Διαθέσιμο από τη λίστα σας</string>
     <string name="trakt_available_channel">Διαθεσιμότητα της λίστας παρακολούθησης</string>
-
     <!-- i18n/CatalogCategoryStrings.kt -->
     <string name="cat_catalog_categories_title_1">Ταινίες · Κατηγορίες</string>
     <string name="cat_catalog_categories_title_2">Σειρές · Κατηγορίες</string>
@@ -851,7 +837,6 @@
     <string name="cat_genre_name_war">Πολεμικό</string>
     <string name="cat_genre_name_western">Γουέστερν</string>
     <string name="cat_genre_name_other">Άλλο</string>
-
     <!-- ui/player/PlayerExtraStrings.kt -->
     <string name="pex_recent">ΠΡΟΣΦΑΤΑ</string>
     <string name="pex_zap_hint">Πίσω: προηγούμενο κανάλι · ▲▼ αλλαγή · 0-9 αριθμός</string>
@@ -932,7 +917,6 @@
     <string name="pex_previous_episode">Προηγούμενο επεισόδιο</string>
     <string name="pex_close">Κλείσιμο</string>
     <string name="pex_sleep_stops_in">Διακοπή σε %1$s δ</string>
-
     <!-- ui/memory/MemoryStrings.kt -->
     <string name="mem_title">Μνήμη και αποθήκευση</string>
     <string name="mem_subtitle">Ελευθερώστε χώρο και κρατήστε την εφαρμογή γρήγορη</string>
@@ -1008,7 +992,6 @@
     <string name="mem_economy_hint">Μικρότερη μνήμη εικόνων, χωρίς εφέ σταδιακής εμφάνισης, χωρίς προεπισκόπηση βίντεο Live στο Αυτόματο</string>
     <string name="mem_optimize_images">Βελτιστοποίηση εικόνων</string>
     <string name="mem_optimize_images_hint">Οι εικόνες από Fanart.tv και TVmaze περνούν από το wsrv.nl (ελαφρύτερο WebP). Απενεργοποιήστε για άμεση φόρτωση.</string>
-
     <!-- ui/downloads/DownloadStrings.kt -->
     <string name="dl_nav_title">Λήψεις</string>
     <string name="dl_download">Λήψη</string>
@@ -1048,7 +1031,6 @@
     <string name="dl_notif_channel">Λήψεις</string>
     <string name="dl_notif_progress">%1$s λήψεις σε εξέλιξη · %2$s%%</string>
     <string name="dl_notif_starting">Προετοιμασία λήψεων…</string>
-
     <!-- ui/profile/ProfileStrings.kt -->
     <string name="prof_who_watching">Ποιος παρακολουθεί;</string>
     <string name="prof_add">Προσθήκη</string>
@@ -1094,7 +1076,6 @@
         <item>Cyan</item>
         <item>Lime</item>
     </string-array>
-
     <!-- ui/settings/CloudSyncStrings.kt -->
     <string name="cloud_group">Λογαριασμός cloud</string>
     <string name="cloud_synced_with_cloud">Συγχρονισμένο με το cloud</string>
@@ -1131,7 +1112,6 @@
     <string name="cloud_removal_body">Το \"%1$s\" δεν είναι πλέον κοινόχρηστο με αυτήν τη συσκευή. %2$s αγαπημένο(α) ή εγγραφή(ές) εξαρτώνται από αυτό.</string>
     <string name="cloud_remove_anyway">Αφαίρεση</string>
     <string name="cloud_keep_local">Διατήρηση τοπικά</string>
-
     <!-- ui/settings/DnsStrings.kt -->
     <string name="dns_group">Δίκτυο</string>
     <string name="dns_server">Διακομιστής DNS</string>
@@ -1156,7 +1136,6 @@
     <string name="dns_test_failed">Η επίλυση απέτυχε</string>
     <string name="dns_vlc_note">Δεν εφαρμόζεται στο πρόγραμμα αναπαραγωγής VLC</string>
     <string name="dns_scope_note">Ισχύει για τον κατάλογο, τον οδηγό, τις εικόνες, το cloud και τις ροές βίντεο που παίζουν με το ExoPlayer. Το πρόγραμμα VLC διατηρεί το DNS του συστήματος. Αν ο διακομιστής δεν απαντήσει σε 2 δλ., χρησιμοποιείται το DNS του συστήματος.</string>
-
     <!-- ui/account/AccountScreen.kt -->
     <string name="acct_title">Συνδρομή</string>
     <string name="acct_sub">Η συνδρομή σας IPTV, όπως αναφέρεται από τον πάροχό σας.</string>
@@ -1177,7 +1156,6 @@
     <string name="acct_offline">Δεν ήταν δυνατή η επικοινωνία με τον πάροχο. Δοκιμάστε ξανά αργότερα.</string>
     <string name="acct_no_source">Δεν έχει ρυθμιστεί πηγή.</string>
     <string name="acct_no_xtream">Αυτός ο τύπος πηγής δεν παρέχει στοιχεία συνδρομής.</string>
-
     <!-- ui/live/LivePreview.kt -->
     <string name="lp_row">Προεπισκόπηση βίντεο στο Live TV</string>
     <string name="lp_hint">Το επιλεγμένο κανάλι παίζει δίπλα στη λίστα· το OK ανοίγει αμέσως πλήρη οθόνη</string>
@@ -1188,7 +1166,6 @@
     <string name="lp_on">Ενεργό</string>
     <string name="lp_off">Ανενεργό</string>
     <string name="lp_seconds">%1$s δλ.</string>
-
     <!-- i18n/Strings.kt -->
     <string name="str_nav_home">Αρχική</string>
     <string name="str_nav_live">Live TV</string>
@@ -1493,7 +1470,6 @@
     <string name="common_confirm">Επιβεβαίωση</string>
     <string name="common_dismiss">Απόρριψη</string>
     <string name="common_change">Αλλαγή</string>
-
     <!-- ui/mobile/MobileStrings.kt -->
     <string name="mob_tab_more">Περισσότερα</string>
     <string name="mob_more_title">Περισσότερα</string>
@@ -1543,7 +1519,6 @@
     <string name="mob_from_cloud">Από το cloud</string>
     <string name="mob_open_dashboard">Άνοιγμα του πίνακα ελέγχου</string>
     <string name="mob_dashboard_address">Διεύθυνση του πίνακα ελέγχου</string>
-
     <!-- Lien « Aider à traduire » (Réglages › Langue) -->
     <string name="translate_help">Βοηθήστε στη μετάφραση του Ultra TV</string>
     <string name="translate_help_sub">Λείπει η γλώσσα σας ή υπάρχει λάθος;</string>
@@ -1567,7 +1542,7 @@
     <string name="osd_history">Ιστορικό</string>
     <string name="osd_history_empty">Δεν υπάρχουν πρόσφατα κανάλια ακόμη</string>
     <string name="osd_remaining">απομένουν %1$s</string>
-    <string name="osd_banner_hint">OK Κανάλια  ·  ▲▼ Χειριστήρια  ·  ◀ ▶ Προηγούμενο / επόμενο  ·  0-9 Αριθμός</string>
+    <string name="osd_banner_hint">OK Κανάλια · ▲▼ Χειριστήρια · ◀ ▶ Προηγούμενο / επόμενο · 0-9 Αριθμός</string>
     <string name="osd_drawer_all">Όλα τα κανάλια</string>
     <string name="osd_no_previous">Δεν υπάρχει προηγούμενο κανάλι</string>
     <string name="osd_drawer_hint">OK αλλαγή · ▲▼ περιήγηση · ◀ κατηγορίες · ▶ κανάλια · ‹ κλείσιμο</string>
@@ -1585,7 +1560,6 @@
     <string name="cor_down">Μετακίνηση κάτω</string>
     <string name="cor_done">Τέλος</string>
     <string name="cor_cancel">Ακύρωση</string>
-
     <!-- Rubrique Sport -->
     <string name="sport_nav">Αθλητικά</string>
     <string name="sport_setting_label">Ενότητα αθλητικών</string>
@@ -1765,7 +1739,6 @@
     <string name="st_unlock_extra">+30 λεπτά</string>
     <string name="st_unlock_today">Για σήμερα (μία φορά)</string>
     <string name="st_warn">Η προβολή τελειώνει σε %1$d λεπτά</string>
-
     <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
     <string name="handoff_title">Συνέχεια σε αυτή τη συσκευή;</string>
     <string name="handoff_body">Ο/Η %1$s σας στέλνει: %2$s</string>
@@ -1828,7 +1801,6 @@
     <string name="mlib_counts">%1$d ταινίες · %2$d σειρές</string>
     <string name="mlib_nas_folders">Φάκελοι</string>
     <string name="mlib_nas_auto">Αναγνωρίστηκε αυτόματα</string>
-
     <!-- Espace Sport : compétitions, classements, feuille de match, mode sans spoiler -->
     <string name="sport_mode_tv">Πρόγραμμα TV</string>
     <string name="sport_mode_leagues">Διοργανώσεις</string>

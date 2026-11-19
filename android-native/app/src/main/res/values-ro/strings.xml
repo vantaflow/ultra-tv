@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Premier jet (traduction automatique relue), à relire sur Weblate -->
-<!-- Généré par tools/i18n/migrate.py puis maintenu à la main. Source : values/ (anglais, repli). -->
-<resources xmlns:tools="http://schemas.android.com/tools">
+<!-- Premier jet (traduction automatique relue), à relire sur Weblate --><!-- Généré par tools/i18n/migrate.py puis maintenu à la main. Source : values/ (anglais, repli). --><resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Ressources Android historiques (manifeste, canaux de notification) : inchangées. -->
     <string name="app_name">UTV</string>
     <string name="nav_home">Acasă</string>
@@ -11,7 +9,6 @@
     <string name="sync_notification">Se actualizează canalele tale…</string>
     <string name="tv_favorites_channel">Favorite</string>
     <string name="search_hint">Caută canale, filme și seriale</string>
-
     <!-- i18n/DesignStrings.kt -->
     <string name="ds_rail_profile">Profil</string>
     <string name="ds_rail_switch_profile">Schimbă profilul</string>
@@ -473,7 +470,6 @@
     <string name="ds_hold_to_reorder">Ține apăsat: reordonează</string>
     <string name="ds_syncing">Se sincronizează</string>
     <string name="ds_mode_scheduled_desc">În fiecare noapte la %1$s:00</string>
-
     <!-- i18n/DesignStringsB1.kt -->
     <string name="dsb1_act_replay">Vizionează de la început</string>
     <string name="dsb1_act_replay_hint">Reluare din sursă</string>
@@ -556,7 +552,6 @@
         <item quantity="few">%1$s episoade</item>
         <item quantity="other">%1$s de episoade</item>
     </plurals>
-
     <!-- i18n/DirectGuideStrings.kt -->
     <string name="dg_next_word">Următorul</string>
     <string name="dg_now_badge">ACUM</string>
@@ -592,7 +587,6 @@
     <string name="dg_guide_name_width_name_narrow">Îngustă</string>
     <string name="dg_guide_name_width_name_normal">Normală</string>
     <string name="dg_guide_name_width_name_wide">Lată</string>
-
     <!-- i18n/GuideStrings.kt -->
     <string name="guide_guide_custom_option">Adresă personalizată…</string>
     <string name="guide_guide_custom_label">Personalizat · %1$s</string>
@@ -622,7 +616,6 @@
     <string name="guide_source_guide_mode_hint_complete">Folosit pentru canalele rămase fără program.</string>
     <string name="guide_source_value_replaces">Înlocuiește · %1$s</string>
     <string name="guide_source_value_completes">Completează · %1$s</string>
-
     <!-- i18n/HomeV2Strings.kt -->
     <string name="home2_home_more_info">Mai multe informații</string>
     <string name="home2_home_live_now">Direct</string>
@@ -654,7 +647,6 @@
         <item quantity="few">%1$s favorite</item>
         <item quantity="other">%1$s de favorite</item>
     </plurals>
-
     <!-- i18n/PersonStrings.kt -->
     <string name="person_person_role_acting">Actor</string>
     <string name="person_person_role_directing">Regizor</string>
@@ -666,7 +658,6 @@
     <string name="person_person_in_playlist">În lista ta · %1$s</string>
     <string name="person_person_badge_movie">FILM</string>
     <string name="person_person_badge_series">SERIAL</string>
-
     <!-- i18n/PersonalizationStrings.kt -->
     <string name="perso_personalization">Personalizare</string>
     <string name="perso_accent_color">Culoare de accent</string>
@@ -713,7 +704,6 @@
         <item quantity="few">%1$s secțiuni</item>
         <item quantity="other">%1$s de secțiuni</item>
     </plurals>
-
     <!-- i18n/PhoneSendStrings.kt -->
     <string name="phone_card_phone">De pe telefon</string>
     <string name="phone_card_phone_desc">Trimite sursa de pe un telefon sau un computer, fără scris cu telecomanda</string>
@@ -729,7 +719,6 @@
     <string name="phone_phone_waiting">Se așteaptă telefonul · expiră în %1$s</string>
     <string name="phone_phone_failed">Codul nu a putut fi creat sau a expirat. Încearcă un cod nou.</string>
     <string name="phone_phone_received">Sursă primită de pe telefon</string>
-
     <!-- i18n/RemoteStrings.kt -->
     <string name="remote_remote_title">Telecomandă pe telefon</string>
     <string name="remote_remote_hint">Caută și controlează dispozitivul de pe telefon, în aceeași rețea Wi-Fi</string>
@@ -748,7 +737,6 @@
     <string name="remote_remote_failed">Telecomanda nu a putut porni. Încearcă din nou.</string>
     <string name="remote_remote_scan_hint">Scanează cu telefonul</string>
     <string name="remote_remote_status_on">Gata · se așteaptă telefonul</string>
-
     <!-- i18n/SimpleStrings.kt -->
     <string name="simple_title">Ce vrei să faci?</string>
     <string name="simple_tile_live">TV în direct</string>
@@ -801,7 +789,6 @@
     <string name="simple_profile_off">Mod simplu: dezactivat</string>
     <string name="simple_on">Activat</string>
     <string name="simple_off">Dezactivat</string>
-
     <!-- i18n/TraktStrings.kt -->
     <string name="trakt_trakt_add_watchlist">Adaugă la lista mea de urmărit Trakt</string>
     <string name="trakt_trakt_remove_watchlist">Elimină din lista mea de urmărit Trakt</string>
@@ -833,7 +820,6 @@
     <string name="trakt_tracking_unsupported">Acest serviciu nu poate elimina un titlu din listă</string>
     <string name="trakt_available_from_list">Disponibil din lista ta</string>
     <string name="trakt_available_channel">Disponibilitatea listei de vizionat</string>
-
     <!-- i18n/CatalogCategoryStrings.kt -->
     <string name="cat_catalog_categories_title_1">Filme · Categorii</string>
     <string name="cat_catalog_categories_title_2">Seriale · Categorii</string>
@@ -867,7 +853,6 @@
     <string name="cat_genre_name_war">Război</string>
     <string name="cat_genre_name_western">Western</string>
     <string name="cat_genre_name_other">Altele</string>
-
     <!-- ui/player/PlayerExtraStrings.kt -->
     <string name="pex_recent">RECENTE</string>
     <string name="pex_zap_hint">Înapoi: canalul anterior · ▲▼ schimbă · 0-9 număr</string>
@@ -948,7 +933,6 @@
     <string name="pex_previous_episode">Episodul anterior</string>
     <string name="pex_close">Închide</string>
     <string name="pex_sleep_stops_in">Oprire în %1$s s</string>
-
     <!-- ui/memory/MemoryStrings.kt -->
     <string name="mem_title">Memorie și stocare</string>
     <string name="mem_subtitle">Eliberează spațiu și păstrează aplicația rapidă</string>
@@ -1024,7 +1008,6 @@
     <string name="mem_economy_hint">Memorie de imagini mai mică, fără estompări, fără previzualizare video în TV în direct în modul Auto</string>
     <string name="mem_optimize_images">Optimizează imaginile</string>
     <string name="mem_optimize_images_hint">Imaginile Fanart.tv și TVmaze trec prin wsrv.nl (WebP mai ușor). Dezactivează pentru a le încărca direct.</string>
-
     <!-- ui/downloads/DownloadStrings.kt -->
     <string name="dl_nav_title">Descărcări</string>
     <string name="dl_download">Descarcă</string>
@@ -1064,7 +1047,6 @@
     <string name="dl_notif_channel">Descărcări</string>
     <string name="dl_notif_progress">%1$s se descarcă · %2$s%%</string>
     <string name="dl_notif_starting">Se pregătesc descărcările…</string>
-
     <!-- ui/profile/ProfileStrings.kt -->
     <string name="prof_who_watching">Cine se uită?</string>
     <string name="prof_add">Adaugă</string>
@@ -1110,7 +1092,6 @@
         <item>Cyan</item>
         <item>Lime</item>
     </string-array>
-
     <!-- ui/settings/CloudSyncStrings.kt -->
     <string name="cloud_group">Cont cloud</string>
     <string name="cloud_synced_with_cloud">Sincronizat cu cloudul</string>
@@ -1147,7 +1128,6 @@
     <string name="cloud_removal_body">\"%1$s\" nu mai este partajată cu acest dispozitiv. %2$s favorit(e) sau înregistrare(ări) depind de ea.</string>
     <string name="cloud_remove_anyway">Elimină oricum</string>
     <string name="cloud_keep_local">Păstrează local</string>
-
     <!-- ui/settings/DnsStrings.kt -->
     <string name="dns_group">Rețea</string>
     <string name="dns_server">Server DNS</string>
@@ -1172,7 +1152,6 @@
     <string name="dns_test_failed">Rezolvare eșuată</string>
     <string name="dns_vlc_note">Nu se aplică playerului VLC</string>
     <string name="dns_scope_note">Se aplică catalogului, ghidului, imaginilor, cloudului și fluxurilor video redate cu ExoPlayer. Playerul VLC păstrează DNS-ul sistemului. Dacă serverul nu răspunde în 2 s, se folosește DNS-ul sistemului.</string>
-
     <!-- ui/account/AccountScreen.kt -->
     <string name="acct_title">Abonament</string>
     <string name="acct_sub">Abonamentul tău IPTV, așa cum este raportat de furnizor.</string>
@@ -1193,7 +1172,6 @@
     <string name="acct_offline">Furnizorul nu a putut fi contactat. Încearcă din nou mai târziu.</string>
     <string name="acct_no_source">Nicio sursă configurată.</string>
     <string name="acct_no_xtream">Acest tip de sursă nu oferă detalii despre abonament.</string>
-
     <!-- ui/live/LivePreview.kt -->
     <string name="lp_row">Previzualizare video în TV în direct</string>
     <string name="lp_hint">Canalul selectat se redă lângă listă; OK trece instant pe tot ecranul</string>
@@ -1204,7 +1182,6 @@
     <string name="lp_on">Activat</string>
     <string name="lp_off">Dezactivat</string>
     <string name="lp_seconds">%1$s s</string>
-
     <!-- i18n/Strings.kt -->
     <string name="str_nav_home">Acasă</string>
     <string name="str_nav_live">TV în direct</string>
@@ -1509,7 +1486,6 @@
     <string name="common_confirm">Confirmă</string>
     <string name="common_dismiss">Respinge</string>
     <string name="common_change">Schimbă</string>
-
     <!-- ui/mobile/MobileStrings.kt -->
     <string name="mob_tab_more">Mai multe</string>
     <string name="mob_more_title">Mai multe</string>
@@ -1559,7 +1535,6 @@
     <string name="mob_from_cloud">Din cloud</string>
     <string name="mob_open_dashboard">Deschide panoul</string>
     <string name="mob_dashboard_address">Adresa panoului</string>
-
     <!-- Lien « Aider à traduire » (Réglages › Langue) -->
     <string name="translate_help">Ajută la traducerea Ultra TV</string>
     <string name="translate_help_sub">Limba ta lipsește sau are o greșeală?</string>
@@ -1583,7 +1558,7 @@
     <string name="osd_history">Istoric</string>
     <string name="osd_history_empty">Niciun canal recent încă</string>
     <string name="osd_remaining">%1$s rămase</string>
-    <string name="osd_banner_hint">OK Canale  ·  ▲▼ Comenzi  ·  ◀ ▶ Anterior / următor  ·  0-9 Număr</string>
+    <string name="osd_banner_hint">OK Canale · ▲▼ Comenzi · ◀ ▶ Anterior / următor · 0-9 Număr</string>
     <string name="osd_drawer_all">Toate canalele</string>
     <string name="osd_no_previous">Niciun canal anterior</string>
     <string name="osd_drawer_hint">OK schimbă · ▲▼ navighează · ◀ categorii · ▶ canale · ‹ închide</string>
@@ -1601,7 +1576,6 @@
     <string name="cor_down">Mută în jos</string>
     <string name="cor_done">Gata</string>
     <string name="cor_cancel">Anulează</string>
-
     <!-- Rubrique Sport -->
     <string name="sport_nav">Sport</string>
     <string name="sport_setting_label">Secțiunea Sport</string>
@@ -1783,7 +1757,6 @@
     <string name="st_unlock_extra">+30 de minute</string>
     <string name="st_unlock_today">Pentru azi (o dată)</string>
     <string name="st_warn">Vizionarea se termină în %1$d min</string>
-
     <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
     <string name="handoff_title">Continui pe acest dispozitiv?</string>
     <string name="handoff_body">%1$s îți trimite: %2$s</string>
@@ -1846,7 +1819,6 @@
     <string name="mlib_counts">%1$d filme · %2$d seriale</string>
     <string name="mlib_nas_folders">Foldere</string>
     <string name="mlib_nas_auto">Recunoscut automat</string>
-
     <!-- Espace Sport : compétitions, classements, feuille de match, mode sans spoiler -->
     <string name="sport_mode_tv">Ghid TV</string>
     <string name="sport_mode_leagues">Competiții</string>

@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Premier jet (traduction automatique relue), à relire sur Weblate -->
-<resources xmlns:tools="http://schemas.android.com/tools">
+<!-- Premier jet (traduction automatique relue), à relire sur Weblate --><resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Ressources Android historiques (manifeste, canaux de notification) : inchangées. -->
     <string name="app_name">UTV</string>
     <string name="nav_home">หน้าแรก</string>
@@ -10,7 +9,6 @@
     <string name="sync_notification">กำลังอัปเดตช่องของคุณ…</string>
     <string name="tv_favorites_channel">รายการโปรด</string>
     <string name="search_hint">ค้นหาช่อง ภาพยนตร์ และซีรีส์</string>
-
     <!-- i18n/DesignStrings.kt -->
     <string name="ds_rail_profile">โปรไฟล์</string>
     <string name="ds_rail_switch_profile">เปลี่ยนโปรไฟล์</string>
@@ -458,7 +456,6 @@
     <string name="ds_hold_to_reorder">กดค้าง: จัดลำดับใหม่</string>
     <string name="ds_syncing">กำลังซิงค์</string>
     <string name="ds_mode_scheduled_desc">ทุกคืนเวลา %1$s:00</string>
-
     <!-- i18n/DesignStringsB1.kt -->
     <string name="dsb1_act_replay">ดูตั้งแต่ต้น</string>
     <string name="dsb1_act_replay_hint">รีเพลย์จากแหล่งที่มา</string>
@@ -537,7 +534,6 @@
     <plurals name="dsb1_episodes_count">
         <item quantity="other">%1$s ตอน</item>
     </plurals>
-
     <!-- i18n/DirectGuideStrings.kt -->
     <string name="dg_next_word">ถัดไป</string>
     <string name="dg_now_badge">ตอนนี้</string>
@@ -571,7 +567,6 @@
     <string name="dg_guide_name_width_name_narrow">แคบ</string>
     <string name="dg_guide_name_width_name_normal">ปกติ</string>
     <string name="dg_guide_name_width_name_wide">กว้าง</string>
-
     <!-- i18n/GuideStrings.kt -->
     <string name="guide_guide_custom_option">ที่อยู่กำหนดเอง…</string>
     <string name="guide_guide_custom_label">กำหนดเอง · %1$s</string>
@@ -601,7 +596,6 @@
     <string name="guide_source_guide_mode_hint_complete">ใช้กับช่องที่ไม่มีรายการ</string>
     <string name="guide_source_value_replaces">แทนที่ · %1$s</string>
     <string name="guide_source_value_completes">เติม · %1$s</string>
-
     <!-- i18n/HomeV2Strings.kt -->
     <string name="home2_home_more_info">ข้อมูลเพิ่มเติม</string>
     <string name="home2_home_live_now">สด</string>
@@ -625,7 +619,6 @@
     <plurals name="home2_home_favorites_count">
         <item quantity="other">%1$s รายการโปรด</item>
     </plurals>
-
     <!-- i18n/PersonStrings.kt -->
     <string name="person_person_role_acting">นักแสดง</string>
     <string name="person_person_role_directing">ผู้กำกับ</string>
@@ -637,7 +630,6 @@
     <string name="person_person_in_playlist">ในเพลย์ลิสต์ของคุณ · %1$s</string>
     <string name="person_person_badge_movie">ภาพยนตร์</string>
     <string name="person_person_badge_series">ซีรีส์</string>
-
     <!-- i18n/PersonalizationStrings.kt -->
     <string name="perso_personalization">การปรับแต่ง</string>
     <string name="perso_accent_color">สีเน้น</string>
@@ -680,7 +672,6 @@
     <plurals name="perso_section_count">
         <item quantity="other">%1$s ส่วน</item>
     </plurals>
-
     <!-- i18n/PhoneSendStrings.kt -->
     <string name="phone_card_phone">จากโทรศัพท์ของคุณ</string>
     <string name="phone_card_phone_desc">ส่งแหล่งที่มาจากโทรศัพท์หรือคอมพิวเตอร์ ไม่ต้องพิมพ์ด้วยรีโมท</string>
@@ -696,7 +687,6 @@
     <string name="phone_phone_waiting">รอโทรศัพท์ · หมดอายุใน %1$s</string>
     <string name="phone_phone_failed">สร้างรหัสไม่ได้หรือรหัสหมดอายุ ลองขอรหัสใหม่</string>
     <string name="phone_phone_received">ได้รับแหล่งที่มาจากโทรศัพท์ของคุณแล้ว</string>
-
     <!-- i18n/RemoteStrings.kt -->
     <string name="remote_remote_title">รีโมทบนโทรศัพท์ของคุณ</string>
     <string name="remote_remote_hint">ค้นหาและควบคุมอุปกรณ์จากโทรศัพท์ของคุณ บน Wi-Fi เดียวกัน</string>
@@ -715,7 +705,6 @@
     <string name="remote_remote_failed">เริ่มรีโมทไม่ได้ ลองอีกครั้ง</string>
     <string name="remote_remote_scan_hint">สแกนด้วยโทรศัพท์ของคุณ</string>
     <string name="remote_remote_status_on">พร้อมแล้ว · รอโทรศัพท์</string>
-
     <!-- i18n/SimpleStrings.kt -->
     <string name="simple_title">คุณอยากทำอะไร?</string>
     <string name="simple_tile_live">ทีวีสด</string>
@@ -768,7 +757,6 @@
     <string name="simple_profile_off">โหมดง่าย: ปิด</string>
     <string name="simple_on">เปิด</string>
     <string name="simple_off">ปิด</string>
-
     <!-- i18n/TraktStrings.kt -->
     <string name="trakt_trakt_add_watchlist">เพิ่มในรายการที่ต้องการดูของฉันใน Trakt</string>
     <string name="trakt_trakt_remove_watchlist">ลบออกจากรายการที่ต้องการดูของฉันใน Trakt</string>
@@ -800,7 +788,6 @@
     <string name="trakt_tracking_unsupported">บริการนี้ไม่สามารถลบรายการออกจากรายการที่อยากดูได้</string>
     <string name="trakt_available_from_list">พร้อมดูจากรายการของคุณ</string>
     <string name="trakt_available_channel">ความพร้อมของรายการที่อยากดู</string>
-
     <!-- i18n/CatalogCategoryStrings.kt -->
     <string name="cat_catalog_categories_title_1">ภาพยนตร์ · หมวดหมู่</string>
     <string name="cat_catalog_categories_title_2">ซีรีส์ · หมวดหมู่</string>
@@ -834,7 +821,6 @@
     <string name="cat_genre_name_war">สงคราม</string>
     <string name="cat_genre_name_western">คาวบอย</string>
     <string name="cat_genre_name_other">อื่นๆ</string>
-
     <!-- ui/player/PlayerExtraStrings.kt -->
     <string name="pex_recent">ล่าสุด</string>
     <string name="pex_zap_hint">ย้อนกลับ: ช่องก่อนหน้า · ▲▼ เปลี่ยนช่อง · 0-9 หมายเลข</string>
@@ -915,7 +901,6 @@
     <string name="pex_previous_episode">ตอนก่อนหน้า</string>
     <string name="pex_close">ปิด</string>
     <string name="pex_sleep_stops_in">หยุดใน %1$s วินาที</string>
-
     <!-- ui/memory/MemoryStrings.kt -->
     <string name="mem_title">หน่วยความจำและพื้นที่เก็บข้อมูล</string>
     <string name="mem_subtitle">เพิ่มพื้นที่ว่างและทำให้แอปเร็วอยู่เสมอ</string>
@@ -991,7 +976,6 @@
     <string name="mem_economy_hint">ใช้หน่วยความจำรูปภาพน้อยลง ไม่มีเฟด ไม่มีตัวอย่างวิดีโอสดในโหมดอัตโนมัติ</string>
     <string name="mem_optimize_images">ปรับรูปภาพให้เหมาะสม</string>
     <string name="mem_optimize_images_hint">รูปภาพจาก Fanart.tv และ TVmaze ผ่าน wsrv.nl (WebP ที่เบากว่า) ปิดเพื่อโหลดโดยตรง</string>
-
     <!-- ui/downloads/DownloadStrings.kt -->
     <string name="dl_nav_title">ดาวน์โหลด</string>
     <string name="dl_download">ดาวน์โหลด</string>
@@ -1031,7 +1015,6 @@
     <string name="dl_notif_channel">ดาวน์โหลด</string>
     <string name="dl_notif_progress">กำลังดาวน์โหลด %1$s · %2$s%%</string>
     <string name="dl_notif_starting">กำลังเตรียมการดาวน์โหลด…</string>
-
     <!-- ui/profile/ProfileStrings.kt -->
     <string name="prof_who_watching">ใครกำลังดู?</string>
     <string name="prof_add">เพิ่ม</string>
@@ -1077,7 +1060,6 @@
         <item>Cyan</item>
         <item>Lime</item>
     </string-array>
-
     <!-- ui/settings/CloudSyncStrings.kt -->
     <string name="cloud_group">บัญชีคลาวด์</string>
     <string name="cloud_synced_with_cloud">ซิงค์กับคลาวด์แล้ว</string>
@@ -1114,7 +1096,6 @@
     <string name="cloud_removal_body">\"%1$s\" ไม่ได้แชร์กับอุปกรณ์นี้อีกแล้ว มีรายการโปรดหรือการบันทึก %2$s รายการที่ขึ้นอยู่กับมัน</string>
     <string name="cloud_remove_anyway">ลบ</string>
     <string name="cloud_keep_local">เก็บไว้ในเครื่อง</string>
-
     <!-- ui/settings/DnsStrings.kt -->
     <string name="dns_group">เครือข่าย</string>
     <string name="dns_server">เซิร์ฟเวอร์ DNS</string>
@@ -1139,7 +1120,6 @@
     <string name="dns_test_failed">แปลงที่อยู่ล้มเหลว</string>
     <string name="dns_vlc_note">ไม่ใช้กับเครื่องเล่น VLC</string>
     <string name="dns_scope_note">ใช้กับแคตตาล็อก ผังรายการ รูปภาพ คลาวด์ และสตรีมวิดีโอที่เล่นด้วย ExoPlayer เครื่องเล่น VLC ใช้ DNS ของระบบ หากเซิร์ฟเวอร์ไม่ตอบภายใน 2 วินาที จะใช้ DNS ของระบบ</string>
-
     <!-- ui/account/AccountScreen.kt -->
     <string name="acct_title">การสมัครสมาชิก</string>
     <string name="acct_sub">การสมัครสมาชิก IPTV ของคุณตามที่ผู้ให้บริการรายงาน</string>
@@ -1160,7 +1140,6 @@
     <string name="acct_offline">เชื่อมต่อผู้ให้บริการไม่ได้ ลองอีกครั้งภายหลัง</string>
     <string name="acct_no_source">ยังไม่ได้ตั้งค่าแหล่งที่มา</string>
     <string name="acct_no_xtream">แหล่งที่มาประเภทนี้ไม่มีรายละเอียดการสมัครสมาชิก</string>
-
     <!-- ui/live/LivePreview.kt -->
     <string name="lp_row">ตัวอย่างวิดีโอในทีวีสด</string>
     <string name="lp_hint">ช่องที่โฟกัสจะเล่นข้างรายการ OK เพื่อเต็มจอทันที</string>
@@ -1171,7 +1150,6 @@
     <string name="lp_on">เปิด</string>
     <string name="lp_off">ปิด</string>
     <string name="lp_seconds">%1$s วินาที</string>
-
     <!-- i18n/Strings.kt -->
     <string name="str_nav_home">หน้าแรก</string>
     <string name="str_nav_live">ทีวีสด</string>
@@ -1476,7 +1454,6 @@
     <string name="common_confirm">ยืนยัน</string>
     <string name="common_dismiss">ปิด</string>
     <string name="common_change">เปลี่ยน</string>
-
     <!-- ui/mobile/MobileStrings.kt -->
     <string name="mob_tab_more">เพิ่มเติม</string>
     <string name="mob_more_title">เพิ่มเติม</string>
@@ -1526,7 +1503,6 @@
     <string name="mob_from_cloud">จากคลาวด์</string>
     <string name="mob_open_dashboard">เปิดแดชบอร์ด</string>
     <string name="mob_dashboard_address">ที่อยู่แดชบอร์ด</string>
-
     <!-- Lien « Aider à traduire » (Réglages › Langue) -->
     <string name="translate_help">ช่วยแปล Ultra TV</string>
     <string name="translate_help_sub">ไม่มีภาษาของคุณหรือมีข้อผิดพลาด?</string>
@@ -1550,7 +1526,7 @@
     <string name="osd_history">ประวัติ</string>
     <string name="osd_history_empty">ยังไม่มีช่องล่าสุด</string>
     <string name="osd_remaining">เหลือ %1$s</string>
-    <string name="osd_banner_hint">OK ช่อง  ·  ▲▼ ควบคุม  ·  ◀ ▶ ก่อนหน้า / ถัดไป  ·  0-9 หมายเลข</string>
+    <string name="osd_banner_hint">OK ช่อง · ▲▼ ควบคุม · ◀ ▶ ก่อนหน้า / ถัดไป · 0-9 หมายเลข</string>
     <string name="osd_drawer_all">ทุกช่อง</string>
     <string name="osd_no_previous">ไม่มีช่องก่อนหน้า</string>
     <string name="osd_drawer_hint">OK เปลี่ยนช่อง · ▲▼ เลื่อนดู · ◀ หมวดหมู่ · ▶ ช่อง · ‹ ปิด</string>
@@ -1568,7 +1544,6 @@
     <string name="cor_down">เลื่อนลง</string>
     <string name="cor_done">เสร็จสิ้น</string>
     <string name="cor_cancel">ยกเลิก</string>
-
     <!-- Rubrique Sport -->
     <string name="sport_nav">กีฬา</string>
     <string name="sport_setting_label">ส่วนกีฬา</string>
@@ -1746,7 +1721,6 @@
     <string name="st_unlock_extra">+30 นาที</string>
     <string name="st_unlock_today">สำหรับวันนี้ (ครั้งเดียว)</string>
     <string name="st_warn">การรับชมจะสิ้นสุดใน %1$d นาที</string>
-
     <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
     <string name="handoff_title">ดูต่อบนอุปกรณ์นี้หรือไม่?</string>
     <string name="handoff_body">%1$s ส่งมาให้คุณ: %2$s</string>
@@ -1809,7 +1783,6 @@
     <string name="mlib_counts">%1$d ภาพยนตร์ · %2$d ซีรีส์</string>
     <string name="mlib_nas_folders">โฟลเดอร์</string>
     <string name="mlib_nas_auto">ระบุอัตโนมัติแล้ว</string>
-
     <!-- Espace Sport : compétitions, classements, feuille de match, mode sans spoiler -->
     <string name="sport_mode_tv">ผังรายการทีวี</string>
     <string name="sport_mode_leagues">การแข่งขัน</string>
