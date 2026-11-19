@@ -203,7 +203,7 @@
   "player.engine": "MOOTTORI",
   "player.error": "Toisto epäonnistui.",
   "player.drmUnsupported": "Suojattua streamia ei tueta tietokoneella",
-  "player.errorHint": "Streamia ei voitu toistaa. Yritä uudelleen, tarkista lähde tai avaa se toisessa soittimessa.",
+  "player.errorHint": "Lähde on voinut saavuttaa samanaikaisten yhteyksien rajan tai streami ei ole saatavilla.",
   "player.retry": "Yritä uudelleen",
   "player.openVlc": "Avaa VLC:llä",
   "player.openLogs": "Avaa lokikansio",
