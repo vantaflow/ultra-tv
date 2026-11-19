@@ -203,7 +203,7 @@
   "player.engine": "AFSPILLER",
   "player.error": "Afspilningen mislykkedes.",
   "player.drmUnsupported": "Beskyttet stream understøttes ikke på computer",
-  "player.errorHint": "Streamen kunne ikke afspilles. Prøv igen, tjek kilden, eller åbn den i en anden afspiller.",
+  "player.errorHint": "Kilden har muligvis nået grænsen for samtidige forbindelser, eller streamen er utilgængelig.",
   "player.retry": "Prøv igen",
   "player.openVlc": "Åbn i VLC",
   "player.openLogs": "Åbn logmappen",
