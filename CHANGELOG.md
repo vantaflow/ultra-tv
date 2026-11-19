@@ -4,6 +4,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [Bureau 1.2.76] — 2026-11-19
+
+### Corrigé
+- Windows et Linux : clic droit dans un champ (adresse, identifiant, mot de passe…) → Couper, Copier, Coller, Tout sélectionner. Electron n'affiche aucun menu par défaut et l'appli n'a pas de barre de menus hors macOS : on ne pouvait coller qu'au clavier (Ctrl+V)
+
 ## [1.3.67] — 2026-11-19 (Android)
 
 ### Corrigé
