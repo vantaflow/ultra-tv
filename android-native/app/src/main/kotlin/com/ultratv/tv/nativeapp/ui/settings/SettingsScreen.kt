@@ -806,6 +806,13 @@ private fun timeFormatLabel(D: DesignStrings, f: com.ultratv.tv.nativeapp.ui.com
     com.ultratv.tv.nativeapp.ui.common.TimeFormatPref.H24 -> D.timeFormat24
 }
 private fun qualityLabel(D: DesignStrings, q: String) = when (q) { "4k" -> "4K"; "fhd" -> "FHD"; "hd" -> "HD"; "sd" -> "SD"; else -> D.auto }
+/** « Auto · 2160p (4K) », « 1080p »… : plafond automatique calculé pour cet appareil, ou plafond choisi. */
+internal fun maxHeightLabel(D: DesignStrings, pref: String, autoHeight: Int): String {
+    fun h(v: Int) = if (v >= 2160) "${v}p (4K)" else "${v}p"
+    val manual = com.ultratv.tv.nativeapp.ui.player.engine.TrackPolicy.manualMaxHeight(pref)
+    return if (manual != null) h(manual) else "${D.auto} · ${h(autoHeight)}"
+}
+
 internal fun themeLabel(D: DesignStrings, t: AppTheme) = when (t) {
     AppTheme.LIGHT -> D.themeLight; AppTheme.AUTO -> D.themeAuto; AppTheme.DARK -> D.themeDark; AppTheme.OLED -> D.themeOled
     AppTheme.MIDNIGHT -> D.themeMidnight; AppTheme.FOREST -> D.themeForest; AppTheme.PLUM -> D.themePlum
@@ -825,13 +832,13 @@ private fun PlaybackPane(panes: SettingsPanesViewModel, app: AppViewModel) {
     val bufLabel = when (p.bufferPreset) { "low_latency" -> D.bufLow; "balanced" -> D.bufBalanced; "stable" -> D.bufStable; "custom" -> D.bufCustom; else -> "${D.auto} · ${ad.auto.bufferPreset.name.lowercase().replace('_', ' ')}" }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
         Box(Modifier.weight(1f)) { PaneTitle(D.rubPlayback, D.setDescPlayback) }
-        if (p.playerEngine != "auto" || p.decoderMode != "auto" || p.bufferPreset != "auto") PillButton(D.backToAuto, { panes.backToAuto() }, bg = Ux.Surface2)
+        if (p.playerEngine != "auto" || p.decoderMode != "auto" || p.bufferPreset != "auto" || p.maxHeight != "auto") PillButton(D.backToAuto, { panes.backToAuto() }, bg = Ux.Surface2)
     }
     SettingsCard {
         PrefRow(D.playerRow, engineLabel) { choice = "engine" }
         PrefRow(D.decodingRow, decLabel) { choice = "dec" }
         PrefRow(D.bufferRow, bufLabel) { choice = "buf" }
-        PrefRow(D.maxQuality, "${D.auto} · ${ad.auto.maxVideoHeight}p") { }
+        PrefRow(D.maxQuality, maxHeightLabel(D, p.maxHeight, ad.auto.maxVideoHeight)) { choice = "mh" }
         PrefRow(D.playbackQuality, if (p.videoQuality == "max") D.qualityMax else D.auto, hint = D.playbackQualityHint) { choice = "vq" }
         PrefRow(D.preferredQuality, qualityLabel(D, p.preferredQuality), hint = D.preferredQualityHint) { choice = "pq" }
         PrefRow(D.externalPlayer, if (p.defaultPlayer == DefaultPlayer.EXTERNAL) D.on else D.none) { choice = "ext" }
@@ -856,6 +863,11 @@ private fun PlaybackPane(panes: SettingsPanesViewModel, app: AppViewModel) {
         "engine" -> ChoiceDialog(D.playerRow, listOf("auto" to D.auto, "exo" to D.engineExo, "vlc" to D.engineVlc), p.playerEngine, { panes.setPlayerEngine(it); choice = "" }, { choice = "" })
         "dec" -> ChoiceDialog(D.decodingRow, listOf("auto" to D.auto, "hw" to D.hardware, "sw" to D.software), p.decoderMode, { panes.setDecoder(it); choice = "" }, { choice = "" })
         "buf" -> ChoiceDialog(D.bufferRow, listOf("auto" to D.auto, "low_latency" to D.bufLow, "balanced" to D.bufBalanced, "stable" to D.bufStable), p.bufferPreset, { panes.setBufferPreset(it); choice = "" }, { choice = "" })
+        "mh" -> ChoiceDialog(
+            D.maxQuality,
+            listOf("auto" to maxHeightLabel(D, "auto", ad.auto.maxVideoHeight)) + com.ultratv.tv.nativeapp.ui.player.engine.TrackPolicy.MAX_HEIGHTS.map { "$it" to maxHeightLabel(D, "$it", ad.auto.maxVideoHeight) },
+            p.maxHeight, { app.setMaxHeight(it); choice = "" }, { choice = "" },
+        )
         "vq" -> ChoiceDialog(D.playbackQuality, listOf("auto" to D.auto, "max" to D.qualityMax), p.videoQuality, { app.setVideoQuality(it); choice = "" }, { choice = "" })
         "pq" -> ChoiceDialog(D.preferredQuality, listOf("auto" to D.auto, "4k" to "4K", "fhd" to "FHD", "hd" to "HD", "sd" to "SD"), p.preferredQuality, { panes.setPreferredQuality(it); choice = "" }, { choice = "" })
         "ext" -> ChoiceDialog(D.externalPlayer, listOf(DefaultPlayer.INTERNAL to D.none, DefaultPlayer.EXTERNAL to D.on), p.defaultPlayer, { app.setDefaultPlayer(it); choice = "" }, { choice = "" })

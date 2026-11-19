@@ -59,6 +59,7 @@ class AppViewModel @Inject constructor(
     fun setZapVertical(v: Boolean) = viewModelScope.launch { store.setZapVertical(v) }
     fun setTunneledPlayback(v: Boolean) = viewModelScope.launch { store.setTunneledPlayback(v) }
     fun setVideoQuality(v: String) = viewModelScope.launch { store.setVideoQuality(v) }
+    fun setMaxHeight(v: String) = viewModelScope.launch { store.setMaxHeight(v) }
     fun setVideoSurface(v: String) = viewModelScope.launch { store.setVideoSurface(v) }
     fun setPreferSoftwareDecoder(v: Boolean) = viewModelScope.launch { store.setPreferSoftwareDecoder(v) }
     fun setEpgTimeOffsetMin(v: Int) = viewModelScope.launch { store.setEpgTimeOffsetMin(v) }

@@ -177,4 +177,29 @@ class AdaptiveTest {
         assertFalse(PlaybackResolver.resolve(a, com.ultratv.tv.nativeapp.data.prefs.UserPrefs(), 256).tunneling)
         assertTrue(PlaybackResolver.resolve(a, com.ultratv.tv.nativeapp.data.prefs.UserPrefs(tunneledPlayback = true), 256).tunneling)
     }
+
+    // ── 4K : résolution de sortie et plafond choisi ──
+    @Test fun ecran_modeDeSortie4K_interface1080() {
+        assertEquals(2160, ScreenSize.short(1920, 1080, 3840 to 2160))
+        assertEquals(3840, ScreenSize.long(1920, 1080, 3840 to 2160))
+        assertEquals(1080, ScreenSize.short(1920, 1080, null))
+        assertEquals(1080, ScreenSize.short(1080, 1920, 1920 to 1080))
+    }
+    @Test fun auto_4K_surBoxPuissanteReliee_aUneTV4K() {
+        val a = AutoTuner.settings(profile(dev(ram = 4000, screenH = 2160)), NetQuality.EXCELLENT, false, 50)
+        assertEquals(2160, a.maxVideoHeight)
+        // Même box sur une TV 1080p : 1080p.
+        assertEquals(1080, AutoTuner.settings(profile(dev(ram = 4000, screenH = 1080)), NetQuality.EXCELLENT, false, 50).maxVideoHeight)
+    }
+    @Test fun plafondManuel_prioritaire() {
+        val a = AutoTuner.settings(profile(dev()), NetQuality.EXCELLENT, false, 50)   // auto : 1080p (écran 1080p)
+        assertEquals(1080, PlaybackResolver.resolve(a, com.ultratv.tv.nativeapp.data.prefs.UserPrefs(), 256).maxVideoHeight)
+        assertEquals(2160, PlaybackResolver.resolve(a, com.ultratv.tv.nativeapp.data.prefs.UserPrefs(maxHeight = "2160"), 256).maxVideoHeight)
+        assertEquals(720, PlaybackResolver.resolve(a, com.ultratv.tv.nativeapp.data.prefs.UserPrefs(maxHeight = "720"), 256).maxVideoHeight)
+        // Valeur inconnue : automatique.
+        assertEquals(1080, PlaybackResolver.resolve(a, com.ultratv.tv.nativeapp.data.prefs.UserPrefs(maxHeight = "999"), 256).maxVideoHeight)
+        // « Maximale » + plafond manuel : la piste la plus haute SOUS le plafond choisi.
+        val both = PlaybackResolver.resolve(a, com.ultratv.tv.nativeapp.data.prefs.UserPrefs(videoQuality = "max", maxHeight = "1080"), 256)
+        assertTrue(both.maxQuality); assertEquals(1080, both.maxVideoHeight)
+    }
 }

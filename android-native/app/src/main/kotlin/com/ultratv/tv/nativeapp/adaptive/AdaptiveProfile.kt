@@ -42,6 +42,17 @@ interface DeviceInfoSource {
     fun readQuick(): DeviceInfo = read()
 }
 
+/**
+ * Taille d'écran utile au plafond de résolution : la plus grande entre l'interface et le mode de sortie vidéo. Sur Android
+ * TV l'interface est en 1080p même sur une TV 4K ; ne lire qu'elle plafonnait la lecture « Auto » à 1080p.
+ */
+object ScreenSize {
+    fun short(uiW: Int, uiH: Int, mode: Pair<Int, Int>?): Int =
+        maxOf(minOf(uiW, uiH), mode?.let { minOf(it.first, it.second) } ?: 0)
+    fun long(uiW: Int, uiH: Int, mode: Pair<Int, Int>?): Int =
+        maxOf(maxOf(uiW, uiH), mode?.let { maxOf(it.first, it.second) } ?: 0)
+}
+
 class AndroidDeviceInfoSource(private val ctx: Context) : DeviceInfoSource {
     override fun readQuick(): DeviceInfo {
         val am = ctx.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
@@ -51,7 +62,7 @@ class AndroidDeviceInfoSource(private val ctx: Context) : DeviceInfoSource {
             ramMb = (mi.totalMem / 1_048_576L).toInt(), memoryClassMb = am.memoryClass, lowRamFlag = am.isLowRamDevice,
             cores = Runtime.getRuntime().availableProcessors(), maxFreqMhz = null, is64Bit = android.os.Process.is64Bit(),
             sdk = Build.VERSION.SDK_INT, h264 = null, hevc = null, vp9 = null, av1 = null,
-            screenWidth = maxOf(dm.widthPixels, dm.heightPixels), screenHeight = minOf(dm.widthPixels, dm.heightPixels),
+            screenWidth = ScreenSize.long(dm.widthPixels, dm.heightPixels, modeSize()), screenHeight = ScreenSize.short(dm.widthPixels, dm.heightPixels, modeSize()),
             hdr = false, benchmarkMs = null,
         )
     }
@@ -74,11 +85,21 @@ class AndroidDeviceInfoSource(private val ctx: Context) : DeviceInfoSource {
             is64Bit = android.os.Process.is64Bit(),
             sdk = Build.VERSION.SDK_INT,
             h264 = hw("video/avc"), hevc = hw("video/hevc"), vp9 = hw("video/x-vnd.on2.vp9"), av1 = hw("video/av01"),
-            screenWidth = maxOf(dm.widthPixels, dm.heightPixels), screenHeight = minOf(dm.widthPixels, dm.heightPixels),
+            screenWidth = ScreenSize.long(dm.widthPixels, dm.heightPixels, modeSize()), screenHeight = ScreenSize.short(dm.widthPixels, dm.heightPixels, modeSize()),
             hdr = hdr,
             benchmarkMs = null,
         )
     }
+
+    /**
+     * Mode d'affichage de la sortie vidéo (largeur, hauteur physiques) : 3840×2160 sur une box 4K reliée à une TV 4K,
+     * alors que l'interface (`displayMetrics`) y tourne presque toujours en 1920×1080. null si inconnu.
+     */
+    private fun modeSize(): Pair<Int, Int>? = runCatching {
+        @Suppress("DEPRECATION")
+        val d = (ctx.getSystemService(Context.DISPLAY_SERVICE) as android.hardware.display.DisplayManager).getDisplay(0) ?: return@runCatching null
+        d.mode?.let { it.physicalWidth to it.physicalHeight }
+    }.getOrNull()
 
     private fun hw(mime: String): HwCodec? = runCatching {
         MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.asSequence()
@@ -236,8 +257,11 @@ object PlaybackResolver {
     }
     fun resolve(auto: AutoSettings, p: UserPrefs, heapClassMb: Int, levelBump: Int = 0): ResolvedPlayback {
         val r = resolve(auto, p.playerEngine, p.decoderMode, p.bufferPreset, CustomBuffer(p.bufMinSec, p.bufMaxSec, p.bufStartSec, p.bufRebufferSec, p.bufMaxMb), heapClassMb, levelBump)
-        val t = r.copy(tunneling = p.tunneledPlayback)
-        return if (com.ultratv.tv.nativeapp.ui.player.engine.TrackPolicy.isMax(p.videoQuality)) t.copy(maxVideoHeight = Int.MAX_VALUE, maxVideoBitrateBps = null, maxQuality = true) else t
+        val manualH = com.ultratv.tv.nativeapp.ui.player.engine.TrackPolicy.manualMaxHeight(p.maxHeight)
+        // Plafond choisi à la main : il remplace celui de l'automatique (4K autorisée même si l'auto restait en 1080p).
+        val t = r.copy(tunneling = p.tunneledPlayback, maxVideoHeight = manualH ?: r.maxVideoHeight)
+        // « Maximale » : piste la plus haute forcée, sans plafond de débit ; seul un plafond choisi à la main reste.
+        return if (com.ultratv.tv.nativeapp.ui.player.engine.TrackPolicy.isMax(p.videoQuality)) t.copy(maxVideoHeight = manualH ?: Int.MAX_VALUE, maxVideoBitrateBps = null, maxQuality = true) else t
     }
 }
 

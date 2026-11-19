@@ -13,6 +13,12 @@ object TrackPolicy {
     const val QUALITY_MAX = "max"
     fun isMax(pref: String?): Boolean = pref == QUALITY_MAX
 
+    /** Hauteurs proposées pour « Qualité maximale » (la première = 4K). */
+    val MAX_HEIGHTS = listOf(2160, 1080, 720, 480)
+
+    /** Plafond choisi à la main, ou null pour « Auto » (valeur inconnue = Auto). */
+    fun manualMaxHeight(pref: String?): Int? = pref?.toIntOrNull()?.takeIf { it in MAX_HEIGHTS }
+
     /**
      * Estimation de débit avant la première mesure. ExoPlayer part de ~1 à 2 Mb/s selon le réseau : il choisit alors la
      * variante la plus basse (240p-360p) et ne monte qu'après 10 s de tampon. Ici : 8 Mb/s par défaut (ABR corrige vite

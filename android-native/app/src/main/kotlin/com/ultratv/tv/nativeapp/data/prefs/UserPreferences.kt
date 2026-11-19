@@ -99,6 +99,8 @@ data class UserPrefs(
     val autoFrameRate: Boolean = true,
     /** Qualité vidéo : "auto" (adaptative, plafonnée selon l'appareil et le réseau) ou "max" (piste la plus haute forcée, sans plafond). */
     val videoQuality: String = "auto",
+    /** Plafond de résolution : "auto" (selon l'écran, le décodeur et le réseau) ou une hauteur fixe ("2160", "1080", "720", "480"). */
+    val maxHeight: String = "auto",
     /** Lecture tunnelisée Media3 (désactivée par défaut : certains décodeurs la gèrent mal). Sans effet sur VLC. */
     val tunneledPlayback: Boolean = false,
     /** Direct plein écran : faux = Gauche / Droite zappent et Haut / Bas affichent les infos (défaut) ; vrai = l'inverse. */
@@ -208,6 +210,7 @@ class UserPreferencesStore @Inject constructor(
         val bufferSec = intPreferencesKey("buffer_seconds")
         val autoFrameRate = booleanPreferencesKey("auto_frame_rate")
         val videoQuality = stringPreferencesKey("video_quality")
+        val maxHeight = stringPreferencesKey("max_video_height")
         val tunneledPlayback = booleanPreferencesKey("tunneled_playback")
         val zapVertical = booleanPreferencesKey("zap_vertical")
         val videoSurface = stringPreferencesKey("video_surface")
@@ -283,6 +286,7 @@ class UserPreferencesStore @Inject constructor(
             bufferSeconds = p[Keys.bufferSec] ?: 30,
             autoFrameRate = p[Keys.autoFrameRate] ?: true,
             videoQuality = p[Keys.videoQuality] ?: "auto",
+            maxHeight = p[Keys.maxHeight] ?: "auto",
             tunneledPlayback = p[Keys.tunneledPlayback] ?: false,
             zapVertical = p[Keys.zapVertical] ?: false,
             videoSurface = p[Keys.videoSurface] ?: "auto",
@@ -339,6 +343,7 @@ class UserPreferencesStore @Inject constructor(
     suspend fun setZapVertical(v: Boolean) = update { it[Keys.zapVertical] = v }
     suspend fun setTunneledPlayback(v: Boolean) = update { it[Keys.tunneledPlayback] = v }
     suspend fun setVideoQuality(v: String) = update { it[Keys.videoQuality] = v }
+    suspend fun setMaxHeight(v: String) = update { it[Keys.maxHeight] = v }
     suspend fun setVideoSurface(v: String) = update { it[Keys.videoSurface] = v }
     suspend fun setPreferSoftwareDecoder(v: Boolean) = update { it[Keys.preferSwDec] = v }
     suspend fun setEpgTimeOffsetMin(v: Int) = update { it[Keys.epgOffsetMin] = v.coerceIn(-720, 720) }
@@ -378,7 +383,7 @@ class UserPreferencesStore @Inject constructor(
     }
     /** « Revenir en automatique » : efface tous les choix manuels de lecture. */
     suspend fun resetPlaybackToAuto() = update {
-        it[Keys.playerEngine] = "auto"; it[Keys.decoderMode] = "auto"; it[Keys.bufferPreset] = "auto"; it[Keys.preferSwDec] = false
+        it[Keys.playerEngine] = "auto"; it[Keys.decoderMode] = "auto"; it[Keys.bufferPreset] = "auto"; it[Keys.preferSwDec] = false; it[Keys.maxHeight] = "auto"
     }
 
     private suspend inline fun update(crossinline block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
