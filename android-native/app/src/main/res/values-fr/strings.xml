@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Généré par tools/i18n/migrate.py puis maintenu à la main. Source : values/ (anglais, repli). -->
-<resources xmlns:tools="http://schemas.android.com/tools">
+<!-- Généré par tools/i18n/migrate.py puis maintenu à la main. Source : values/ (anglais, repli). --><resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Ressources Android historiques (manifeste, canaux de notification) : inchangées. -->
     <string name="sync_channel">Synchronisation du catalogue</string>
     <string name="sync_notification">Mise à jour de vos chaînes…</string>
     <string name="tv_favorites_channel">Favoris</string>
     <string name="search_hint">Chercher chaînes, films et séries</string>
-
     <!-- i18n/DesignStrings.kt -->
     <string name="ds_rail_profile">Profil</string>
     <string name="ds_rail_switch_profile">Changer de profil</string>
@@ -469,7 +467,6 @@
     <string name="ds_hold_to_reorder">Maintenir : ordre</string>
     <string name="ds_syncing">Synchronisation</string>
     <string name="ds_mode_scheduled_desc">Chaque nuit à %1$s:00</string>
-
     <!-- i18n/DesignStringsB1.kt -->
     <string name="dsb1_act_replay">Revoir depuis le début</string>
     <string name="dsb1_act_replay_hint">Replay de la source</string>
@@ -552,7 +549,6 @@
         <item quantity="many">%1$s épisodes</item>
         <item quantity="other">%1$s épisodes</item>
     </plurals>
-
     <!-- i18n/DirectGuideStrings.kt -->
     <string name="dg_next_word">Ensuite</string>
     <string name="dg_now_badge">MAINTENANT</string>
@@ -588,7 +584,6 @@
     <string name="dg_guide_name_width_name_narrow">Étroite</string>
     <string name="dg_guide_name_width_name_normal">Normale</string>
     <string name="dg_guide_name_width_name_wide">Large</string>
-
     <!-- i18n/GuideStrings.kt -->
     <string name="guide_guide_custom_option">Adresse personnalisée…</string>
     <string name="guide_guide_custom_label">Personnalisé · %1$s</string>
@@ -618,7 +613,6 @@
     <string name="guide_source_guide_mode_hint_complete">Utilisée pour les chaînes restées sans programme.</string>
     <string name="guide_source_value_replaces">Remplace · %1$s</string>
     <string name="guide_source_value_completes">Complète · %1$s</string>
-
     <!-- i18n/HomeV2Strings.kt -->
     <string name="home2_home_more_info">Plus d\'infos</string>
     <string name="home2_home_live_now">En direct</string>
@@ -650,7 +644,6 @@
         <item quantity="many">%1$s favoris</item>
         <item quantity="other">%1$s favoris</item>
     </plurals>
-
     <!-- i18n/PersonStrings.kt -->
     <string name="person_person_role_acting">Acteur</string>
     <string name="person_person_role_directing">Réalisateur</string>
@@ -662,7 +655,6 @@
     <string name="person_person_in_playlist">Dans votre playlist · %1$s</string>
     <string name="person_person_badge_movie">FILM</string>
     <string name="person_person_badge_series">SÉRIE</string>
-
     <!-- i18n/PersonalizationStrings.kt -->
     <string name="perso_personalization">Personnalisation</string>
     <string name="perso_accent_color">Couleur d\'accent</string>
@@ -709,7 +701,6 @@
         <item quantity="many">%1$s sections</item>
         <item quantity="other">%1$s sections</item>
     </plurals>
-
     <!-- i18n/PhoneSendStrings.kt -->
     <string name="phone_card_phone">Depuis le téléphone</string>
     <string name="phone_card_phone_desc">Envoyez la source depuis un téléphone ou un ordinateur, sans saisie à la télécommande</string>
@@ -725,7 +716,6 @@
     <string name="phone_phone_waiting">En attente du téléphone · expire dans %1$s</string>
     <string name="phone_phone_failed">Le code n’a pas pu être créé ou a expiré. Demandez un nouveau code.</string>
     <string name="phone_phone_received">Source reçue depuis votre téléphone</string>
-
     <!-- i18n/RemoteStrings.kt -->
     <string name="remote_remote_title">Télécommande sur le téléphone</string>
     <string name="remote_remote_hint">Rechercher et piloter l’appareil depuis votre téléphone, sur le même Wi-Fi</string>
@@ -744,7 +734,6 @@
     <string name="remote_remote_failed">La télécommande n’a pas pu démarrer. Réessayez.</string>
     <string name="remote_remote_scan_hint">Scannez avec votre téléphone</string>
     <string name="remote_remote_status_on">Prêt · en attente du téléphone</string>
-
     <!-- i18n/SimpleStrings.kt -->
     <string name="simple_title">Que voulez-vous faire ?</string>
     <string name="simple_tile_live">Télé en direct</string>
@@ -797,7 +786,6 @@
     <string name="simple_profile_off">Mode simple : désactivé</string>
     <string name="simple_on">Activé</string>
     <string name="simple_off">Désactivé</string>
-
     <!-- i18n/TraktStrings.kt -->
     <string name="trakt_trakt_add_watchlist">Ajouter à ma watchlist Trakt</string>
     <string name="trakt_trakt_remove_watchlist">Retirer de ma watchlist Trakt</string>
@@ -829,7 +817,6 @@
     <string name="trakt_tracking_unsupported">Ce service ne peut pas retirer un titre de la liste à voir</string>
     <string name="trakt_available_from_list">Disponible de votre liste</string>
     <string name="trakt_available_channel">Disponibilité de la liste à voir</string>
-
     <!-- i18n/CatalogCategoryStrings.kt -->
     <string name="cat_catalog_categories_title_1">Films · Catégories</string>
     <string name="cat_catalog_categories_title_2">Séries · Catégories</string>
@@ -863,7 +850,6 @@
     <string name="cat_genre_name_war">Guerre</string>
     <string name="cat_genre_name_western">Western</string>
     <string name="cat_genre_name_other">Autres</string>
-
     <!-- ui/player/PlayerExtraStrings.kt -->
     <string name="pex_recent">RÉCENTES</string>
     <string name="pex_zap_hint">Retour : chaîne précédente · ▲▼ zapper · 0-9 numéro</string>
@@ -944,7 +930,6 @@
     <string name="pex_previous_episode">Épisode précédent</string>
     <string name="pex_close">Fermer</string>
     <string name="pex_sleep_stops_in">Arrêt dans %1$s s</string>
-
     <!-- ui/memory/MemoryStrings.kt -->
     <string name="mem_title">Mémoire et stockage</string>
     <string name="mem_subtitle">Libérer de la place et garder l’appli rapide</string>
@@ -1020,7 +1005,6 @@
     <string name="mem_economy_hint">Moins d’images en mémoire, pas de fondus, pas d’aperçu vidéo du Direct en Auto</string>
     <string name="mem_optimize_images">Optimiser les images</string>
     <string name="mem_optimize_images_hint">Les images Fanart.tv et TVmaze passent par wsrv.nl (WebP plus léger). Désactivé : chargement direct.</string>
-
     <!-- ui/downloads/DownloadStrings.kt -->
     <string name="dl_nav_title">Téléchargements</string>
     <string name="dl_download">Télécharger</string>
@@ -1060,7 +1044,6 @@
     <string name="dl_notif_channel">Téléchargements</string>
     <string name="dl_notif_progress">%1$s en cours · %2$s %%</string>
     <string name="dl_notif_starting">Préparation des téléchargements…</string>
-
     <!-- ui/profile/ProfileStrings.kt -->
     <string name="prof_who_watching">Qui regarde ?</string>
     <string name="prof_add">Ajouter</string>
@@ -1106,7 +1089,6 @@
         <item>Cyan</item>
         <item>Lime</item>
     </string-array>
-
     <!-- ui/settings/CloudSyncStrings.kt -->
     <string name="cloud_group">Compte cloud</string>
     <string name="cloud_synced_with_cloud">Synchronisé avec le cloud</string>
@@ -1143,7 +1125,6 @@
     <string name="cloud_removal_body">« %1$s » n\'est plus partagée avec cet appareil. %2$s favori(s) ou enregistrement(s) en dépendent.</string>
     <string name="cloud_remove_anyway">Retirer</string>
     <string name="cloud_keep_local">Garder en local</string>
-
     <!-- ui/settings/DnsStrings.kt -->
     <string name="dns_group">Réseau</string>
     <string name="dns_server">Serveur DNS</string>
@@ -1168,7 +1149,6 @@
     <string name="dns_test_failed">Échec de la résolution</string>
     <string name="dns_vlc_note">Non appliqué au lecteur VLC</string>
     <string name="dns_scope_note">S’applique au catalogue, au guide, aux images, au cloud et aux flux vidéo lus par ExoPlayer. Le lecteur VLC garde le DNS du système. Si le serveur ne répond pas en 2 s, le DNS du système prend le relais.</string>
-
     <!-- ui/account/AccountScreen.kt -->
     <string name="acct_title">Abonnement</string>
     <string name="acct_sub">Votre abonnement IPTV, tel que l\'indique votre fournisseur.</string>
@@ -1189,7 +1169,6 @@
     <string name="acct_offline">Fournisseur injoignable. Réessayez plus tard.</string>
     <string name="acct_no_source">Aucune source configurée.</string>
     <string name="acct_no_xtream">Ce type de source ne fournit pas d\'informations d\'abonnement.</string>
-
     <!-- ui/live/LivePreview.kt -->
     <string name="lp_row">Aperçu vidéo dans le Direct</string>
     <string name="lp_hint">La chaîne sélectionnée joue à côté de la liste ; OK passe en plein écran sans attente</string>
@@ -1200,7 +1179,6 @@
     <string name="lp_on">Activé</string>
     <string name="lp_off">Désactivé</string>
     <string name="lp_seconds">%1$s s</string>
-
     <!-- i18n/Strings.kt -->
     <string name="str_nav_home">Accueil</string>
     <string name="str_nav_live">TV en direct</string>
@@ -1318,7 +1296,7 @@
     <string name="str_settings_worker_dialog_hint">Chaque utilisateur déploie son propre Worker (cloudflare-config/) et colle son URL ici. Aucune URL par défaut n\'est livrée dans l\'app pour éviter de divulguer la tienne via le code source.</string>
     <string name="str_settings_worker_field_label">URL de base du Worker (ex. https://votre-config.votre-compte.workers.dev)</string>
     <string name="str_toast_backup_saved">Sauvegarde enregistrée</string>
-    <string name="str_toast_save_failed">"Échec de l'enregistrement : "</string>
+    <string name="str_toast_save_failed">"Échec de l\'enregistrement : "</string>
     <string name="str_toast_empty_file">Fichier vide ou illisible</string>
     <string name="str_toast_config_password_saved">Mot de passe enregistré</string>
     <string name="str_pref_sidebar">Barre latérale</string>
@@ -1505,7 +1483,6 @@
     <string name="common_confirm">Confirmer</string>
     <string name="common_dismiss">Retirer</string>
     <string name="common_change">Modifier</string>
-
     <!-- ui/mobile/MobileStrings.kt -->
     <string name="mob_tab_more">Plus</string>
     <string name="mob_more_title">Plus</string>
@@ -1555,7 +1532,6 @@
     <string name="mob_from_cloud">Depuis le cloud</string>
     <string name="mob_open_dashboard">Ouvrir le tableau de bord</string>
     <string name="mob_dashboard_address">Adresse du tableau de bord</string>
-
     <!-- Lien « Aider à traduire » (Réglages › Langue) -->
     <string name="translate_help">Aider à traduire Ultra TV</string>
     <string name="translate_help_sub">Votre langue manque ou contient une erreur ?</string>
@@ -1579,7 +1555,7 @@
     <string name="osd_history">Historique</string>
     <string name="osd_history_empty">Aucune chaîne récente pour l\'instant</string>
     <string name="osd_remaining">reste %1$s</string>
-    <string name="osd_banner_hint">OK Chaînes  ·  ▲▼ Commandes  ·  ◀ ▶ Précédente / suivante  ·  0-9 Numéro</string>
+    <string name="osd_banner_hint">OK Chaînes · ▲▼ Commandes · ◀ ▶ Précédente / suivante · 0-9 Numéro</string>
     <string name="osd_drawer_all">Toutes les chaînes</string>
     <string name="osd_no_previous">Pas de chaîne précédente</string>
     <string name="osd_drawer_hint">OK zapper · ▲▼ parcourir · ◀ catégories · ▶ chaînes · ‹ fermer</string>
@@ -1597,7 +1573,6 @@
     <string name="cor_down">Descendre</string>
     <string name="cor_done">Valider</string>
     <string name="cor_cancel">Annuler</string>
-
     <!-- Rubrique Sport -->
     <string name="sport_nav">Sport</string>
     <string name="sport_setting_label">Rubrique Sport</string>
@@ -1778,7 +1753,6 @@
     <string name="st_unlock_extra">+30 minutes</string>
     <string name="st_unlock_today">Pour aujourd\'hui (une fois)</string>
     <string name="st_warn">Fin du visionnage dans %1$d min</string>
-
     <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
     <string name="handoff_title">Reprendre sur cet appareil ?</string>
     <string name="handoff_body">%1$s vous envoie : %2$s</string>
@@ -1841,7 +1815,6 @@
     <string name="mlib_counts">%1$d films · %2$d séries</string>
     <string name="mlib_nas_folders">Dossiers</string>
     <string name="mlib_nas_auto">Reconnu automatiquement</string>
-
     <!-- Espace Sport : compétitions, classements, feuille de match, mode sans spoiler -->
     <string name="sport_mode_tv">Programme TV</string>
     <string name="sport_mode_leagues">Compétitions</string>
@@ -1938,4 +1911,8 @@
     <string name="mlib_err_notfound">Rien n’a été trouvé à l’adresse de « %1$s » (%2$s). Vérifiez-la sur le site.</string>
     <string name="mlib_err_tls">« %1$s » (%2$s) : la connexion sécurisée a échoué (certificat). Essayez l’adresse en http.</string>
     <string name="mlib_err_retry">Nouvel essai dans %1$d min.</string>
+    <string name="nav_live"></string>
+    <string name="nav_home"></string>
+    <string name="nav_settings"></string>
+    <string name="app_name"></string>
 </resources>
