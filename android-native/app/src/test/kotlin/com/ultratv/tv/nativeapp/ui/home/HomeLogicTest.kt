@@ -55,10 +55,12 @@ class HomeLogicTest {
         val all = HomeSectionId.entries.toList()
         assertEquals(
             listOf(
-                HomeSectionId.SHORTCUTS, HomeSectionId.CHANNELS,
+                HomeSectionId.SHORTCUTS, HomeSectionId.CHANNELS, HomeSectionId.TOP10,
                 HomeSectionId.RESUME, HomeSectionId.TRAKT_UP_NEXT, HomeSectionId.TRAKT_AVAILABLE,
+                HomeSectionId.LIBRARY_1, HomeSectionId.LIBRARY_2, HomeSectionId.LIBRARY_3, HomeSectionId.LIBRARY_4, HomeSectionId.LIBRARY_5, HomeSectionId.LIBRARY_6,
                 HomeSectionId.BECAUSE_WATCHED, HomeSectionId.TOP_MOVIES, HomeSectionId.TOP_SERIES, HomeSectionId.TRAKT_WATCHLIST, HomeSectionId.TRAKT_RECOMMENDED, HomeSectionId.TRAKT_TRENDING, HomeSectionId.TRAKT_POPULAR,
                 HomeSectionId.TRAKT_LIST_1, HomeSectionId.TRAKT_LIST_2, HomeSectionId.TRAKT_LIST_3, HomeSectionId.TRAKT_LIST_4, HomeSectionId.TRAKT_LIST_5,
+                HomeSectionId.RECENT_CHANNELS, HomeSectionId.LATEST_MOVIES, HomeSectionId.LATEST_SERIES,
             ),
             mobileSectionOrder(all),
         )
@@ -255,5 +257,11 @@ class HomeLogicTest {
         assertEquals("S2 É5 · Demain", p.item.title)
         assertTrue(p.isShow); assertEquals(9L, p.item.id); assertEquals(TmdbKind.TV, p.kind)
         assertEquals("S9", newEpisodePosterOf(newEp(9), null, null).item.title)
+    }
+
+    /** Rangées cochées dans Réglages › Affichage : toutes visibles sur le téléphone (sauf « Nouveaux épisodes », propre à la TV). */
+    @Test fun mobile_rangeesCocheesDansLesReglages_toutesAffichees() {
+        val coches = listOf(HomeSectionId.SHORTCUTS, HomeSectionId.RECENT_CHANNELS, HomeSectionId.RESUME, HomeSectionId.LATEST_MOVIES, HomeSectionId.LATEST_SERIES)
+        assertEquals(coches, mobileSectionOrder(coches))
     }
 }

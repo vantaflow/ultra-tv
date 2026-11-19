@@ -53,8 +53,14 @@ enum class HomeSectionId(val contentType: String) {
     LATEST_SERIES("posters"),
 }
 
-/** Rangées montrées par l'accueil tactile (pas de « regardées récemment » ni de « derniers ajouts », comme avant). */
+/**
+ * Rangées montrées par l'accueil tactile : toutes celles que Réglages › Affichage › Rangées de l'accueil propose, sauf
+ * « Nouveaux épisodes » (cartes propres à la TV). Avant, « Chaînes regardées récemment » et « Derniers films / séries
+ * ajoutés » restaient cochées dans les réglages sans jamais apparaître sur le téléphone.
+ */
 val MOBILE_SECTIONS: Set<HomeSectionId> = setOf(
+    HomeSectionId.RECENT_CHANNELS, HomeSectionId.LATEST_MOVIES, HomeSectionId.LATEST_SERIES, HomeSectionId.TOP10,
+    HomeSectionId.LIBRARY_1, HomeSectionId.LIBRARY_2, HomeSectionId.LIBRARY_3, HomeSectionId.LIBRARY_4, HomeSectionId.LIBRARY_5, HomeSectionId.LIBRARY_6,
     HomeSectionId.RESUME, HomeSectionId.TRAKT_AVAILABLE, HomeSectionId.TRAKT_WATCHLIST, HomeSectionId.TRAKT_RECOMMENDED,
     HomeSectionId.TRAKT_TRENDING, HomeSectionId.TRAKT_POPULAR, HomeSectionId.CHANNELS,
     HomeSectionId.TRAKT_UP_NEXT, HomeSectionId.TRAKT_LIST_1, HomeSectionId.TRAKT_LIST_2, HomeSectionId.TRAKT_LIST_3,

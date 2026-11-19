@@ -55,6 +55,7 @@ import com.ultratv.tv.nativeapp.i18n.DesignStrings
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.i18n.traktPopular
+import com.ultratv.tv.nativeapp.i18n.homeTop10
 import com.ultratv.tv.nativeapp.i18n.traktListRow
 import com.ultratv.tv.nativeapp.i18n.traktUpNext
 import com.ultratv.tv.nativeapp.i18n.traktRecommended
@@ -79,6 +80,7 @@ import com.ultratv.tv.nativeapp.ui.home.HeroItem
 import com.ultratv.tv.nativeapp.ui.home.HomeRows
 import com.ultratv.tv.nativeapp.ui.home.HomeSectionId
 import com.ultratv.tv.nativeapp.ui.home.traktListIndex
+import com.ultratv.tv.nativeapp.ui.home.libraryIndex
 import com.ultratv.tv.nativeapp.ui.home.PosterCardUi
 import com.ultratv.tv.nativeapp.ui.home.ResumeCardUi
 import com.ultratv.tv.nativeapp.ui.home.mobileSectionOrder
@@ -193,6 +195,17 @@ fun MobileHomeScreen(
                     HomeSectionId.TRAKT_UP_NEXT -> TraktPosterRow(D.traktUpNext, rows.upNext, wide, openPoster)
                     HomeSectionId.BECAUSE_WATCHED -> TraktPosterRow(D.becauseWatched(rows.becauseTitle), rows.because, wide, openPoster)
                     HomeSectionId.TOP_MOVIES -> TraktPosterRow(D.topRatedMovies, rows.topMovies, wide, openPoster)
+                    HomeSectionId.LATEST_MOVIES -> TraktPosterRow(D.latestMovies, rows.latestMovies, wide, openPoster)
+                    HomeSectionId.LATEST_SERIES -> TraktPosterRow(D.latestSeries, rows.latestSeries, wide, openPoster)
+                    HomeSectionId.TOP10 -> TraktPosterRow(D.homeTop10, rows.top10, wide, openPoster)
+                    HomeSectionId.LIBRARY_1, HomeSectionId.LIBRARY_2, HomeSectionId.LIBRARY_3, HomeSectionId.LIBRARY_4, HomeSectionId.LIBRARY_5, HomeSectionId.LIBRARY_6 ->
+                        rows.libraries.getOrNull(id.libraryIndex)?.let { l -> TraktPosterRow(D.catalogSortName(com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Sort.RECENT) + " · " + l.name, l.cards, wide, openPoster) }
+                    HomeSectionId.RECENT_CHANNELS -> Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
+                        SectionHeader(D.recentlyWatched, null, {})
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
+                            items(rows.recentChannels, key = { it.key }, contentType = { "resume" }) { c -> ResumeCard(c, D) { onPlayHistory(c.entry) } }
+                        }
+                    }
                     HomeSectionId.TOP_SERIES -> TraktPosterRow(D.topRatedSeries, rows.topSeries, wide, openPoster)
                     HomeSectionId.TRAKT_LIST_1, HomeSectionId.TRAKT_LIST_2, HomeSectionId.TRAKT_LIST_3, HomeSectionId.TRAKT_LIST_4, HomeSectionId.TRAKT_LIST_5 ->
                         rows.traktLists.getOrNull(id.traktListIndex)?.let { l -> TraktPosterRow(D.traktListRow(l.name), l.cards, wide, openPoster) }

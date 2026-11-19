@@ -44,7 +44,8 @@ interface DeviceInfoSource {
 
 /**
  * Taille d'écran utile au plafond de résolution : la plus grande entre l'interface et le mode de sortie vidéo. Sur Android
- * TV l'interface est en 1080p même sur une TV 4K ; ne lire qu'elle plafonnait la lecture « Auto » à 1080p.
+ * TV l'interface est en 1080p même sur une TV 4K ; ne lire qu'elle plafonnait la lecture « Auto » à 1080p. Le mode n'est
+ * lu que sur une TV (voir `modeSize`) : [mode] null = taille de l'interface seule (téléphone, tablette).
  */
 object ScreenSize {
     fun short(uiW: Int, uiH: Int, mode: Pair<Int, Int>?): Int =
@@ -96,10 +97,19 @@ class AndroidDeviceInfoSource(private val ctx: Context) : DeviceInfoSource {
      * alors que l'interface (`displayMetrics`) y tourne presque toujours en 1920×1080. null si inconnu.
      */
     private fun modeSize(): Pair<Int, Int>? = runCatching {
+        // TV seulement : sur un téléphone, l'écran physique (souvent 1440p) dépasse l'interface (1080p) et lire plus haut
+        // ne sert à rien ; l'auto y choisissait des flux plus lourds et le direct devenait saccadé (1.3.67).
+        if (!isTvDevice()) return@runCatching null
         @Suppress("DEPRECATION")
         val d = (ctx.getSystemService(Context.DISPLAY_SERVICE) as android.hardware.display.DisplayManager).getDisplay(0) ?: return@runCatching null
         d.mode?.let { it.physicalWidth to it.physicalHeight }
     }.getOrNull()
+
+    private fun isTvDevice(): Boolean = runCatching {
+        val ui = ctx.getSystemService(Context.UI_MODE_SERVICE) as android.app.UiModeManager
+        ui.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION ||
+            ctx.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)
+    }.getOrDefault(false)
 
     private fun hw(mime: String): HwCodec? = runCatching {
         MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.asSequence()
