@@ -4,6 +4,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.67] — 2026-11-19 (Android)
+
+### Corrigé
+- Lecture « Auto » : la 4K n'est plus bridée à 1080p sur une box 4K reliée à une TV 4K (l'appli lisait la résolution de l'interface, toujours 1080p sur Android TV, au lieu de celle de la sortie vidéo)
+
+### Ajouté
+- Réglages › Lecture › Qualité maximale : vrai choix (Auto, 4K, 1080p, 720p, 480p), prioritaire sur l'automatique
+
 ## [1.3.66] — 2026-11-19 (Android)
 
 ### Corrigé
