@@ -379,7 +379,10 @@ fun FormField(
                 .padding(horizontal = 24.design),
             contentAlignment = Alignment.CenterStart,
         ) {
-            BasicTextField(
+            // Clavier système des TV (souvent plein écran) : il ne montrait que le texte saisi, sans dire quel champ on remplit
+            // (adresse, utilisateur, mot de passe). Le nom du champ lui est transmis (hintText), et on lui demande de ne pas
+            // masquer l'écran (pas de zone d'extraction) : le libellé et le champ restent visibles au-dessus du clavier.
+            FieldImeLabel(label) { BasicTextField(
                 value = value,
                 onValueChange = onChange,
                 singleLine = true,
@@ -433,7 +436,7 @@ fun FormField(
                     }
                     inner()
                 },
-            )
+            ) }
         }
         if (shownError != null) {
             Text(shownError, color = Ux.Err, fontFamily = Manrope, fontSize = if (touch) 12.sp else 22.spx)
@@ -693,4 +696,26 @@ fun NasDialog(onDismiss: () -> Unit, busy: Boolean = false, onBack: (() -> Unit)
         FormField(D.fieldMediaPass, pass, { pass = it }, password = true, last = true, placeholder = "••••••••", testTag = "field-pass")
         Text(D.nasHint, fontFamily = Manrope, fontSize = 20.spx, color = Ux.Text3, maxLines = 3)
     }
+}
+
+/**
+ * Transmet au clavier système le nom du champ ([label], affiché par le clavier plein écran des TV) et lui demande de ne pas
+ * prendre tout l'écran : sans cela, on tapait l'adresse, l'utilisateur ou le mot de passe sans savoir lequel.
+ */
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+@Composable
+private fun FieldImeLabel(label: String, content: @Composable () -> Unit) {
+    androidx.compose.ui.platform.InterceptPlatformTextInput(
+        interceptor = { request, next ->
+            next.startInputMethod(object : androidx.compose.ui.platform.PlatformTextInputMethodRequest {
+                override fun createInputConnection(outAttributes: android.view.inputmethod.EditorInfo): android.view.inputmethod.InputConnection {
+                    val ic = request.createInputConnection(outAttributes)
+                    outAttributes.hintText = label
+                    outAttributes.imeOptions = outAttributes.imeOptions or
+                        android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI or android.view.inputmethod.EditorInfo.IME_FLAG_NO_FULLSCREEN
+                    return ic
+                }
+            })
+        },
+    ) { content() }
 }
