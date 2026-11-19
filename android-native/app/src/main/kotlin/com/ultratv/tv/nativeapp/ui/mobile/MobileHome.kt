@@ -80,6 +80,7 @@ import com.ultratv.tv.nativeapp.ui.home.HeroItem
 import com.ultratv.tv.nativeapp.ui.home.HomeRows
 import com.ultratv.tv.nativeapp.ui.home.HomeSectionId
 import com.ultratv.tv.nativeapp.ui.home.traktListIndex
+import com.ultratv.tv.nativeapp.ui.home.libraryIndex
 import com.ultratv.tv.nativeapp.ui.home.PosterCardUi
 import com.ultratv.tv.nativeapp.ui.home.ResumeCardUi
 import com.ultratv.tv.nativeapp.ui.home.mobileSectionOrder
