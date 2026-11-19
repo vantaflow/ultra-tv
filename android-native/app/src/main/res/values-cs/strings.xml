@@ -1893,5 +1893,4 @@
     <string name="mlib_err_notfound">Na adrese „%1$s“ (%2$s) se nic nenašlo. Zkontrolujte ji na webu.</string>
     <string name="mlib_err_tls">„%1$s“ (%2$s): zabezpečené připojení selhalo (certifikát). Zkuste adresu http.</string>
     <string name="mlib_err_retry">Další pokus za %1$d min.</string>
-    <string name="ds_theme_teal"></string>
 </resources>

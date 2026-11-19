@@ -1904,5 +1904,4 @@
     <string name="mlib_err_notfound">Nu s-a găsit nimic la adresa lui „%1$s” (%2$s). Verificați-o pe site.</string>
     <string name="mlib_err_tls">„%1$s” (%2$s): conexiunea securizată a eșuat (certificat). Încercați adresa http.</string>
     <string name="mlib_err_retry">O nouă încercare în %1$d min.</string>
-    <string name="ds_theme_teal"></string>
 </resources>

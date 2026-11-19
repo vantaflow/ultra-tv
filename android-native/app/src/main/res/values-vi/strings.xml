@@ -1866,5 +1866,4 @@
     <string name="mlib_err_notfound">Không tìm thấy gì tại địa chỉ của “%1$s” (%2$s). Hãy kiểm tra trên trang web.</string>
     <string name="mlib_err_tls">“%1$s” (%2$s): kết nối bảo mật thất bại (chứng chỉ). Hãy thử địa chỉ http.</string>
     <string name="mlib_err_retry">Thử lại sau %1$d phút.</string>
-    <string name="ds_theme_teal"></string>
 </resources>

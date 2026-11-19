@@ -1904,5 +1904,4 @@
     <string name="mlib_err_notfound">Nada foi encontrado no endereço de “%1$s” (%2$s). Verifique-o no site.</string>
     <string name="mlib_err_tls">“%1$s” (%2$s): a conexão segura falhou (certificado). Tente o endereço http.</string>
     <string name="mlib_err_retry">Nova tentativa em %1$d min.</string>
-    <string name="ds_theme_teal"></string>
 </resources>

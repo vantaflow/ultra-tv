@@ -1885,5 +1885,4 @@
     <string name="mlib_err_notfound">Δεν βρέθηκε τίποτα στη διεύθυνση του «%1$s» (%2$s). Ελέγξτε τη στον ιστότοπο.</string>
     <string name="mlib_err_tls">«%1$s» (%2$s): η ασφαλής σύνδεση απέτυχε (πιστοποιητικό). Δοκιμάστε τη διεύθυνση http.</string>
     <string name="mlib_err_retry">Νέα προσπάθεια σε %1$d λεπ.</string>
-    <string name="ds_theme_teal"></string>
 </resources>

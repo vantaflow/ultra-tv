@@ -1966,13 +1966,4 @@
     <string name="mlib_err_notfound">لم يُعثر على شيء في عنوان «%1$s» (%2$s). تحقّق منه في الموقع.</string>
     <string name="mlib_err_tls">«%1$s» (%2$s): فشل الاتصال الآمن (الشهادة). جرّب العنوان بـ http.</string>
     <string name="mlib_err_retry">محاولة جديدة بعد %1$d دقيقة.</string>
-    <string name="nav_live"></string>
-    <string name="ds_hint_ok"></string>
-    <string name="sync_notification"></string>
-    <string name="nav_home"></string>
-    <string name="sync_channel"></string>
-    <string name="search_hint"></string>
-    <string name="nav_settings"></string>
-    <string name="tv_favorites_channel"></string>
-    <string name="app_name"></string>
 </resources>

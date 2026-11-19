@@ -1855,5 +1855,4 @@
     <string name="mlib_err_notfound">Kohteen ”%1$s” osoitteesta (%2$s) ei löytynyt mitään. Tarkista se verkkosivustolla.</string>
     <string name="mlib_err_tls">”%1$s” (%2$s): suojattu yhteys epäonnistui (varmenne). Kokeile http-osoitetta.</string>
     <string name="mlib_err_retry">Uusi yritys %1$d min kuluttua.</string>
-    <string name="ds_theme_teal"></string>
 </resources>

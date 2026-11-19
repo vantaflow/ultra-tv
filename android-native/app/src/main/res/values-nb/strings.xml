@@ -1885,5 +1885,4 @@
     <string name="mlib_err_notfound">Fant ingenting på adressen til «%1$s» (%2$s). Sjekk den på nettstedet.</string>
     <string name="mlib_err_tls">«%1$s» (%2$s): den sikre tilkoblingen mislyktes (sertifikat). Prøv http-adressen.</string>
     <string name="mlib_err_retry">Nytt forsøk om %1$d min.</string>
-    <string name="ds_theme_teal"></string>
 </resources>

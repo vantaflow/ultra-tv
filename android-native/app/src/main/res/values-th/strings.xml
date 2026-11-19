@@ -1866,5 +1866,4 @@
     <string name="mlib_err_notfound">ไม่พบสิ่งใดที่ที่อยู่ของ “%1$s” (%2$s) ตรวจสอบบนเว็บไซต์</string>
     <string name="mlib_err_tls">“%1$s” (%2$s): การเชื่อมต่อที่ปลอดภัยล้มเหลว (ใบรับรอง) ลองใช้ที่อยู่ http</string>
     <string name="mlib_err_retry">ลองใหม่ในอีก %1$d นาที</string>
-    <string name="ds_theme_teal"></string>
 </resources>

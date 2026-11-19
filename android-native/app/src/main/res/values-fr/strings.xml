@@ -1911,8 +1911,4 @@
     <string name="mlib_err_notfound">Rien n’a été trouvé à l’adresse de « %1$s » (%2$s). Vérifiez-la sur le site.</string>
     <string name="mlib_err_tls">« %1$s » (%2$s) : la connexion sécurisée a échoué (certificat). Essayez l’adresse en http.</string>
     <string name="mlib_err_retry">Nouvel essai dans %1$d min.</string>
-    <string name="nav_live"></string>
-    <string name="nav_home"></string>
-    <string name="nav_settings"></string>
-    <string name="app_name"></string>
 </resources>

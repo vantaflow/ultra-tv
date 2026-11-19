@@ -1902,16 +1902,4 @@
     <string name="mlib_err_notfound">No se encontró nada en la dirección de «%1$s» (%2$s). Compruébala en la web.</string>
     <string name="mlib_err_tls">«%1$s» (%2$s): falló la conexión segura (certificado). Prueba la dirección http.</string>
     <string name="mlib_err_retry">Nuevo intento en %1$d min.</string>
-    <string name="nav_live"></string>
-    <string name="ds_hint_ok"></string>
-    <string name="sync_notification"></string>
-    <string name="nav_home"></string>
-    <string name="sync_channel"></string>
-    <string name="search_hint"></string>
-    <string name="nav_settings"></string>
-    <string name="lp_seconds"></string>
-    <string name="tv_favorites_channel"></string>
-    <string name="ds_episode_short"></string>
-    <string name="app_name"></string>
-    <string name="ds_episode_tag"></string>
 </resources>
