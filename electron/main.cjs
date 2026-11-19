@@ -24,6 +24,7 @@ const { cloudRequest } = require("./cloudfetch.cjs");
 const { computeWindowFit } = require("./windowfit.cjs");
 const dnsMod = require("./dns.cjs");
 const trailer = require("./trailer.cjs");
+const { contextMenuTemplate } = require("./contextmenu.cjs");
 const recorderMod = require("./recorder.cjs");
 const nasMod = require("./nas.cjs");
 const discoveryMod = require("./discovery.cjs");
@@ -617,6 +618,13 @@ function createWindow() {
       mainWindow.setFullScreen(!mainWindow.isFullScreen());
       event.preventDefault();
     }
+  });
+
+  // Clic droit : couper / copier / coller dans les champs (aucun menu par défaut dans Electron, aucune barre de menus
+  // hors macOS) ; Ctrl+V / Cmd+V fonctionnaient déjà au clavier.
+  wc.on("context-menu", (_event, params) => {
+    const template = contextMenuTemplate(params, app.getLocale());
+    if (template.length) Menu.buildFromTemplate(template).popup({ window: mainWindow });
   });
 
   const notifyFullscreen = (value) => () => {
