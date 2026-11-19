@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Formulaires (ajout d'une source…) sur TV : le clavier système, souvent plein écran, ne montrait que le texte tapé sans dire quel champ on remplissait (adresse, utilisateur, mot de passe). Le nom du champ est maintenant transmis au clavier, qui ne masque plus le formulaire.
+
 ## [1.3.65] — 2026-11-18 (Android)
 
 ### Modifié
