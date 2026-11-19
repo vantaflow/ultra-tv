@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Premier jet (traduction automatique relue), à relire sur Weblate -->
-<resources xmlns:tools="http://schemas.android.com/tools">
+<!-- Premier jet (traduction automatique relue), à relire sur Weblate --><resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Ressources Android historiques (manifeste, canaux de notification) : inchangées. -->
     <string name="app_name">UTV</string>
     <string name="nav_home">Trang chủ</string>
@@ -10,7 +9,6 @@
     <string name="sync_notification">Đang cập nhật kênh của bạn…</string>
     <string name="tv_favorites_channel">Yêu thích</string>
     <string name="search_hint">Tìm kênh, phim và series</string>
-
     <!-- i18n/DesignStrings.kt -->
     <string name="ds_rail_profile">Hồ sơ</string>
     <string name="ds_rail_switch_profile">Đổi hồ sơ</string>
@@ -458,7 +456,6 @@
     <string name="ds_hold_to_reorder">Nhấn giữ: sắp xếp lại</string>
     <string name="ds_syncing">Đang đồng bộ</string>
     <string name="ds_mode_scheduled_desc">Mỗi đêm lúc %1$s:00</string>
-
     <!-- i18n/DesignStringsB1.kt -->
     <string name="dsb1_act_replay">Xem từ đầu</string>
     <string name="dsb1_act_replay_hint">Phát lại từ nguồn</string>
@@ -537,7 +534,6 @@
     <plurals name="dsb1_episodes_count">
         <item quantity="other">%1$s tập</item>
     </plurals>
-
     <!-- i18n/DirectGuideStrings.kt -->
     <string name="dg_next_word">Tiếp</string>
     <string name="dg_now_badge">BÂY GIỜ</string>
@@ -571,7 +567,6 @@
     <string name="dg_guide_name_width_name_narrow">Hẹp</string>
     <string name="dg_guide_name_width_name_normal">Bình thường</string>
     <string name="dg_guide_name_width_name_wide">Rộng</string>
-
     <!-- i18n/GuideStrings.kt -->
     <string name="guide_guide_custom_option">Địa chỉ tùy chỉnh…</string>
     <string name="guide_guide_custom_label">Tùy chỉnh · %1$s</string>
@@ -601,7 +596,6 @@
     <string name="guide_source_guide_mode_hint_complete">Dùng cho các kênh không có chương trình.</string>
     <string name="guide_source_value_replaces">Thay thế · %1$s</string>
     <string name="guide_source_value_completes">Bổ sung · %1$s</string>
-
     <!-- i18n/HomeV2Strings.kt -->
     <string name="home2_home_more_info">Thông tin thêm</string>
     <string name="home2_home_live_now">Trực tiếp</string>
@@ -625,7 +619,6 @@
     <plurals name="home2_home_favorites_count">
         <item quantity="other">%1$s mục yêu thích</item>
     </plurals>
-
     <!-- i18n/PersonStrings.kt -->
     <string name="person_person_role_acting">Diễn viên</string>
     <string name="person_person_role_directing">Đạo diễn</string>
@@ -637,7 +630,6 @@
     <string name="person_person_in_playlist">Trong danh sách phát của bạn · %1$s</string>
     <string name="person_person_badge_movie">PHIM</string>
     <string name="person_person_badge_series">SERIES</string>
-
     <!-- i18n/PersonalizationStrings.kt -->
     <string name="perso_personalization">Cá nhân hóa</string>
     <string name="perso_accent_color">Màu nhấn</string>
@@ -680,7 +672,6 @@
     <plurals name="perso_section_count">
         <item quantity="other">%1$s mục</item>
     </plurals>
-
     <!-- i18n/PhoneSendStrings.kt -->
     <string name="phone_card_phone">Từ điện thoại của bạn</string>
     <string name="phone_card_phone_desc">Gửi nguồn từ điện thoại hoặc máy tính, không cần gõ bằng điều khiển</string>
@@ -696,7 +687,6 @@
     <string name="phone_phone_waiting">Đang chờ điện thoại · hết hạn sau %1$s</string>
     <string name="phone_phone_failed">Không thể tạo mã hoặc mã đã hết hạn. Hãy thử mã mới.</string>
     <string name="phone_phone_received">Đã nhận nguồn từ điện thoại của bạn</string>
-
     <!-- i18n/RemoteStrings.kt -->
     <string name="remote_remote_title">Điều khiển trên điện thoại</string>
     <string name="remote_remote_hint">Tìm kiếm và điều khiển thiết bị từ điện thoại, trên cùng Wi-Fi</string>
@@ -715,7 +705,6 @@
     <string name="remote_remote_failed">Không thể khởi động điều khiển. Hãy thử lại.</string>
     <string name="remote_remote_scan_hint">Quét bằng điện thoại</string>
     <string name="remote_remote_status_on">Sẵn sàng · đang chờ điện thoại</string>
-
     <!-- i18n/SimpleStrings.kt -->
     <string name="simple_title">Bạn muốn làm gì?</string>
     <string name="simple_tile_live">TV trực tiếp</string>
@@ -768,7 +757,6 @@
     <string name="simple_profile_off">Chế độ đơn giản: tắt</string>
     <string name="simple_on">Bật</string>
     <string name="simple_off">Tắt</string>
-
     <!-- i18n/TraktStrings.kt -->
     <string name="trakt_trakt_add_watchlist">Thêm vào danh sách xem sau trên Trakt</string>
     <string name="trakt_trakt_remove_watchlist">Xóa khỏi danh sách xem sau trên Trakt</string>
@@ -800,7 +788,6 @@
     <string name="trakt_tracking_unsupported">Dịch vụ này không thể xóa một tựa khỏi danh sách</string>
     <string name="trakt_available_from_list">Có sẵn từ danh sách của bạn</string>
     <string name="trakt_available_channel">Tình trạng có sẵn của danh sách xem sau</string>
-
     <!-- i18n/CatalogCategoryStrings.kt -->
     <string name="cat_catalog_categories_title_1">Phim · Danh mục</string>
     <string name="cat_catalog_categories_title_2">Series · Danh mục</string>
@@ -834,7 +821,6 @@
     <string name="cat_genre_name_war">Chiến tranh</string>
     <string name="cat_genre_name_western">Cao bồi</string>
     <string name="cat_genre_name_other">Khác</string>
-
     <!-- ui/player/PlayerExtraStrings.kt -->
     <string name="pex_recent">GẦN ĐÂY</string>
     <string name="pex_zap_hint">Quay lại: kênh trước · ▲▼ chuyển kênh · 0-9 số kênh</string>
@@ -915,7 +901,6 @@
     <string name="pex_previous_episode">Tập trước</string>
     <string name="pex_close">Đóng</string>
     <string name="pex_sleep_stops_in">Dừng sau %1$s giây</string>
-
     <!-- ui/memory/MemoryStrings.kt -->
     <string name="mem_title">Bộ nhớ và lưu trữ</string>
     <string name="mem_subtitle">Giải phóng dung lượng và giữ ứng dụng nhanh</string>
@@ -991,7 +976,6 @@
     <string name="mem_economy_hint">Ít bộ nhớ ảnh hơn, không mờ dần, không xem trước video trực tiếp ở chế độ Tự động</string>
     <string name="mem_optimize_images">Tối ưu ảnh</string>
     <string name="mem_optimize_images_hint">Ảnh từ Fanart.tv và TVmaze đi qua wsrv.nl (WebP nhẹ hơn). Tắt để tải trực tiếp.</string>
-
     <!-- ui/downloads/DownloadStrings.kt -->
     <string name="dl_nav_title">Tải xuống</string>
     <string name="dl_download">Tải xuống</string>
@@ -1031,7 +1015,6 @@
     <string name="dl_notif_channel">Tải xuống</string>
     <string name="dl_notif_progress">Đang tải %1$s · %2$s%%</string>
     <string name="dl_notif_starting">Đang chuẩn bị tải xuống…</string>
-
     <!-- ui/profile/ProfileStrings.kt -->
     <string name="prof_who_watching">Ai đang xem?</string>
     <string name="prof_add">Thêm</string>
@@ -1077,7 +1060,6 @@
         <item>Cyan</item>
         <item>Lime</item>
     </string-array>
-
     <!-- ui/settings/CloudSyncStrings.kt -->
     <string name="cloud_group">Tài khoản đám mây</string>
     <string name="cloud_synced_with_cloud">Đã đồng bộ với đám mây</string>
@@ -1114,7 +1096,6 @@
     <string name="cloud_removal_body">\"%1$s\" không còn được chia sẻ với thiết bị này. %2$s mục yêu thích hoặc bản ghi phụ thuộc vào nó.</string>
     <string name="cloud_remove_anyway">Xóa</string>
     <string name="cloud_keep_local">Giữ lại cục bộ</string>
-
     <!-- ui/settings/DnsStrings.kt -->
     <string name="dns_group">Mạng</string>
     <string name="dns_server">Máy chủ DNS</string>
@@ -1139,7 +1120,6 @@
     <string name="dns_test_failed">Phân giải thất bại</string>
     <string name="dns_vlc_note">Không áp dụng cho trình phát VLC</string>
     <string name="dns_scope_note">Áp dụng cho danh mục, lịch phát sóng, ảnh, đám mây và luồng video phát bằng ExoPlayer. Trình phát VLC giữ DNS hệ thống. Nếu máy chủ không trả lời trong 2 giây, sẽ dùng DNS hệ thống.</string>
-
     <!-- ui/account/AccountScreen.kt -->
     <string name="acct_title">Gói đăng ký</string>
     <string name="acct_sub">Gói đăng ký IPTV của bạn, theo báo cáo của nhà cung cấp.</string>
@@ -1160,7 +1140,6 @@
     <string name="acct_offline">Không kết nối được nhà cung cấp. Hãy thử lại sau.</string>
     <string name="acct_no_source">Chưa cấu hình nguồn.</string>
     <string name="acct_no_xtream">Loại nguồn này không cung cấp thông tin gói đăng ký.</string>
-
     <!-- ui/live/LivePreview.kt -->
     <string name="lp_row">Xem trước video trong TV trực tiếp</string>
     <string name="lp_hint">Kênh đang chọn phát cạnh danh sách; OK để toàn màn hình ngay</string>
@@ -1171,7 +1150,6 @@
     <string name="lp_on">Bật</string>
     <string name="lp_off">Tắt</string>
     <string name="lp_seconds">%1$s giây</string>
-
     <!-- i18n/Strings.kt -->
     <string name="str_nav_home">Trang chủ</string>
     <string name="str_nav_live">TV trực tiếp</string>
@@ -1476,7 +1454,6 @@
     <string name="common_confirm">Xác nhận</string>
     <string name="common_dismiss">Bỏ qua</string>
     <string name="common_change">Thay đổi</string>
-
     <!-- ui/mobile/MobileStrings.kt -->
     <string name="mob_tab_more">Thêm</string>
     <string name="mob_more_title">Thêm</string>
@@ -1526,7 +1503,6 @@
     <string name="mob_from_cloud">Từ đám mây</string>
     <string name="mob_open_dashboard">Mở bảng điều khiển</string>
     <string name="mob_dashboard_address">Địa chỉ bảng điều khiển</string>
-
     <!-- Lien « Aider à traduire » (Réglages › Langue) -->
     <string name="translate_help">Giúp dịch Ultra TV</string>
     <string name="translate_help_sub">Ngôn ngữ của bạn bị thiếu hoặc có lỗi?</string>
@@ -1550,7 +1526,7 @@
     <string name="osd_history">Lịch sử</string>
     <string name="osd_history_empty">Chưa có kênh gần đây</string>
     <string name="osd_remaining">còn %1$s</string>
-    <string name="osd_banner_hint">OK Kênh  ·  ▲▼ Điều khiển  ·  ◀ ▶ Trước / sau  ·  0-9 Số kênh</string>
+    <string name="osd_banner_hint">OK Kênh · ▲▼ Điều khiển · ◀ ▶ Trước / sau · 0-9 Số kênh</string>
     <string name="osd_drawer_all">Tất cả kênh</string>
     <string name="osd_no_previous">Không có kênh trước</string>
     <string name="osd_drawer_hint">OK chuyển kênh · ▲▼ duyệt · ◀ danh mục · ▶ kênh · ‹ đóng</string>
@@ -1568,7 +1544,6 @@
     <string name="cor_down">Di chuyển xuống</string>
     <string name="cor_done">Xong</string>
     <string name="cor_cancel">Hủy</string>
-
     <!-- Rubrique Sport -->
     <string name="sport_nav">Thể thao</string>
     <string name="sport_setting_label">Mục Thể thao</string>
@@ -1746,7 +1721,6 @@
     <string name="st_unlock_extra">+30 phút</string>
     <string name="st_unlock_today">Cho hôm nay (một lần)</string>
     <string name="st_warn">Việc xem kết thúc sau %1$d phút</string>
-
     <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
     <string name="handoff_title">Tiếp tục xem trên thiết bị này?</string>
     <string name="handoff_body">%1$s gửi cho bạn: %2$s</string>
@@ -1809,7 +1783,6 @@
     <string name="mlib_counts">%1$d phim · %2$d phim bộ</string>
     <string name="mlib_nas_folders">Thư mục</string>
     <string name="mlib_nas_auto">Nhận diện tự động</string>
-
     <!-- Espace Sport : compétitions, classements, feuille de match, mode sans spoiler -->
     <string name="sport_mode_tv">Lịch truyền hình</string>
     <string name="sport_mode_leagues">Giải đấu</string>
@@ -1893,4 +1866,5 @@
     <string name="mlib_err_notfound">Không tìm thấy gì tại địa chỉ của “%1$s” (%2$s). Hãy kiểm tra trên trang web.</string>
     <string name="mlib_err_tls">“%1$s” (%2$s): kết nối bảo mật thất bại (chứng chỉ). Hãy thử địa chỉ http.</string>
     <string name="mlib_err_retry">Thử lại sau %1$d phút.</string>
+    <string name="ds_theme_teal"></string>
 </resources>
