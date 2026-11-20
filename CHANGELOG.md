@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.69] — 2026-11-20 (Android)
+
 ### Corrigé
 - Fire TV : on voit de nouveau ce qu'on tape dans les formulaires (adresse, identifiant, mot de passe). Le clavier Amazon reste en grand par-dessus l'écran : il garde maintenant sa zone de texte, avec le nom du champ
 - Portail Stalker : une MAC complète tapée derrière le préfixe prérempli 00:1A:79 donnait 00:1A:79:00:1A:79 et le portail refusait la connexion. La MAC tapée est maintenant gardée
