@@ -36,7 +36,7 @@
 | **Samsung TVs** (Tizen 5.5+, 2020 models and later) | [Unsigned .wgt](https://github.com/vantaflow/ultra-tv/releases) — developer install, [see the guide](docs/tv.md) |
 | **LG TVs** (webOS 6+, 2021 models and later) | [.ipk](https://github.com/vantaflow/ultra-tv/releases) — developer mode, [see the guide](docs/tv.md) |
 | **Windows** (x64) | [.exe installer](https://ultratv.dpdns.org/download/windows) |
-| **Mac** (Apple Silicon and Intel) | [.dmg disk image](https://ultratv.dpdns.org/download/mac) |
+| **Mac** (Apple Silicon and Intel) | [.dmg disk image](https://ultratv.dpdns.org/download/mac) (macOS 13+) · [macOS 12 Monterey](https://ultratv.dpdns.org/download/mac12) |
 | **Linux** (x86_64) | [AppImage](https://ultratv.dpdns.org/download/linux) · [.deb](https://ultratv.dpdns.org/download/linux-deb) (Debian, Ubuntu) · [.rpm](https://ultratv.dpdns.org/download/linux-rpm) (Fedora, openSUSE) · Ubuntu 22.04+: `sudo apt install libfuse2` if the AppImage doesn't start |
 
 Automatic updates afterwards, on every platform. No account needed.
