@@ -7,6 +7,7 @@ const releases = [
   { tag_name: "desktop-v1.2.39", assets: [
     { name: "UltraTV-1.2.39-win-x64.exe", browser_download_url: "https://x.test/win" },
     { name: "UltraTV-1.2.39-win-x64.exe.blockmap", browser_download_url: "https://x.test/map" },
+    { name: "UltraTV-1.2.39-mac12-universal.dmg", browser_download_url: "https://x.test/mac12" },
     { name: "UltraTV-1.2.39-mac-universal.dmg", browser_download_url: "https://x.test/mac" },
     { name: "UltraTV-1.2.39-linux-x86_64.AppImage", browser_download_url: "https://x.test/linux" },
     { name: "UltraTV-1.2.39-linux-amd64.deb", browser_download_url: "https://x.test/deb" },
@@ -18,6 +19,7 @@ describe("liens de téléchargement", () => {
   it("dernière release bureau publiée, fichier de la plateforme", () => {
     expect(pickDesktopAsset(releases, "windows")).toBe("https://x.test/win");
     expect(pickDesktopAsset(releases, "mac")).toBe("https://x.test/mac");
+    expect(pickDesktopAsset(releases, "mac12")).toBe("https://x.test/mac12");
     expect(pickDesktopAsset(releases, "linux")).toBe("https://x.test/linux");
     expect(pickDesktopAsset(releases, "linux-deb")).toBe("https://x.test/deb");
     expect(pickDesktopAsset(releases, "linux-rpm")).toBe("https://x.test/rpm");

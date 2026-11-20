@@ -4,8 +4,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [Bureau 1.2.77] — 2026-11-20
+
 ### Ajouté
 - Bureau : version Mac pour macOS 12 Monterey (fichiers « mac12-universal »). Les versions récentes d'Electron exigent macOS 13 ; celle-ci est construite avec Electron 43, le dernier compatible, et sa mise à jour intégrée reste sur ce build
+- Lien de téléchargement /download/mac12 pour la version macOS 12 (/download/mac reste la version habituelle)
 
 ## [1.3.68] — 2026-11-19 (Android)
 

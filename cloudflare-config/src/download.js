@@ -1,4 +1,4 @@
-// Liens de téléchargement stables (README, site, posts) : /download/android (+ -arm64, -32, -armv7, -universal), /windows, /mac, /linux (AppImage), /linux-deb, /linux-rpm.
+// Liens de téléchargement stables (README, site, posts) : /download/android (+ -arm64, -32, -armv7, -universal), /windows, /mac, /mac12 (macOS 12), /linux (AppImage), /linux-deb, /linux-rpm.
 // Android : l'APK universel de la dernière release (« Latest » = Android). Bureau : les releases « desktop-v* » ne sont
 // pas « Latest » et leurs fichiers portent le numéro de version ; on lit la dernière release bureau via l'API GitHub
 // (100 dernières releases, cache 1 h : les releases Android et les pré-versions sont nombreuses) et on redirige vers le fichier de la plateforme.
@@ -18,6 +18,7 @@ export const ANDROID_URLS = {
 const PATTERNS = {
   windows: /-win-x64\.exe$/,
   mac: /-mac-universal\.dmg$/,
+  mac12: /-mac12-universal\.dmg$/, // macOS 12 Monterey (Electron 43) ; /mac reste le build habituel (macOS 13+)
   linux: /\.AppImage$/,
   "linux-deb": /\.deb$/,
   "linux-rpm": /\.rpm$/,
