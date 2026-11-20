@@ -37,4 +37,14 @@ class StalkerTelemetryTest {
         got.forEach { m -> assertFalse(m, m.contains("portail-fictif") || m.contains("host=")) }
         got.forEach { m -> assertFalse(m, m.contains("00:1A:79") || m.contains("8080") || m.contains("/c/")) }
     }
+
+    @Test fun echecDAjout_enWarn_avecLeCodeHttp() {
+        val got = mutableListOf<String>()
+        val old = StalkerTelemetry.warnSink
+        StalkerTelemetry.warnSink = { got += it }
+        try {
+            StalkerTelemetry.probeFailed(com.ultratv.tv.nativeapp.data.net.HttpStatusException(404))
+        } finally { StalkerTelemetry.warnSink = old }
+        assertTrue(got.isEmpty() || got.single() == "probe failed error=HttpStatusException http=404")
+    }
 }

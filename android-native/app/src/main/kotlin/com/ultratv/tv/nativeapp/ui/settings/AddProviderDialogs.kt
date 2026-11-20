@@ -512,8 +512,15 @@ object MacVisualTransformation : VisualTransformation {
     }
 }
 
-/** Saisie MAC → 12 chiffres hexadécimaux au plus, en majuscules (tout autre caractère est ignoré). */
-internal fun macDigits(input: String): String = input.filter { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }.uppercase().take(12)
+/**
+ * Saisie MAC → 12 chiffres hexadécimaux au plus, en majuscules (tout autre caractère est ignoré). Le champ est prérempli avec
+ * 00:1A:79 : qui tape sa MAC complète derrière (clavier plein écran des Fire TV, on ne voit pas le champ) obtenait
+ * « 00:1A:79:00:1A:79 » et le portail refusait. 18 chiffres ou plus = préfixe + MAC complète : on garde les 12 derniers.
+ */
+internal fun macDigits(input: String): String {
+    val d = input.filter { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }.uppercase()
+    return if (d.length >= 18) d.takeLast(12) else d.take(12)
+}
 
 /**
  * « Portail Stalker (MAC) » : adresse du portail, MAC (préremplie avec le préfixe des boîtiers MAG 00:1A:79), identifiant et
@@ -702,6 +709,11 @@ fun NasDialog(onDismiss: () -> Unit, busy: Boolean = false, onBack: (() -> Unit)
  * Transmet au clavier système le nom du champ ([label], affiché par le clavier plein écran des TV) et lui demande de ne pas
  * prendre tout l'écran : sans cela, on tapait l'adresse, l'utilisateur ou le mot de passe sans savoir lequel.
  */
+/** Clavier qui doit garder sa propre zone de texte : celui des Fire TV (Amazon), toujours affiché en grand. */
+internal fun keepsImeTextArea(manufacturer: String?): Boolean = manufacturer.equals("Amazon", ignoreCase = true)
+
+private val keepImeTextArea: Boolean by lazy { keepsImeTextArea(android.os.Build.MANUFACTURER) }
+
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 private fun FieldImeLabel(label: String, content: @Composable () -> Unit) {
@@ -711,7 +723,9 @@ private fun FieldImeLabel(label: String, content: @Composable () -> Unit) {
                 override fun createInputConnection(outAttributes: android.view.inputmethod.EditorInfo): android.view.inputmethod.InputConnection {
                     val ic = request.createInputConnection(outAttributes)
                     outAttributes.hintText = label
-                    outAttributes.imeOptions = outAttributes.imeOptions or
+                    // Fire TV : le clavier Amazon reste en grand par-dessus l'écran quoi qu'on demande ; sans sa zone de texte
+                    // (NO_EXTRACT_UI) on ne voyait plus du tout ce qu'on tapait. Il garde donc sa zone, avec le nom du champ.
+                    if (!keepImeTextArea) outAttributes.imeOptions = outAttributes.imeOptions or
                         android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI or android.view.inputmethod.EditorInfo.IME_FLAG_NO_FULLSCREEN
                     return ic
                 }
