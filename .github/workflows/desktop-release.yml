@@ -97,6 +97,13 @@ jobs:
             os: macos-15
             artifact: desktop-mac
             builder_args: "--mac dmg zip --universal"
+          # macOS 12 Monterey : Electron 44+ exige macOS 13. Build séparé avec Electron 43, le dernier qui y tourne
+          # (fichiers « mac12-universal », pas de latest-mac.yml : la mise à jour intégrée choisit le zip selon le système).
+          - name: macOS 12 (universal)
+            os: macos-15
+            artifact: desktop-mac12
+            builder_args: "--mac dmg zip --universal"
+            legacy_electron: "43.8.12"
           - name: Windows (x64)
             os: windows-latest
             artifact: desktop-win
@@ -228,9 +235,27 @@ jobs:
           done
           exit 1
 
+      - name: macOS 12 - Electron ${{ matrix.legacy_electron }}
+        if: matrix.legacy_electron != ''
+        working-directory: electron
+        run: npm install --no-save --no-package-lock "electron@${{ matrix.legacy_electron }}"
+
       - name: Package
         working-directory: electron
-        run: npx electron-builder ${{ matrix.builder_args }} --publish never
+        env:
+          LEGACY_ELECTRON: ${{ matrix.legacy_electron }}
+        run: |
+          if [ -n "$LEGACY_ELECTRON" ]; then
+            npx electron-builder ${{ matrix.builder_args }} --publish never \
+              -c.electronVersion="$LEGACY_ELECTRON" \
+              -c.mac.minimumSystemVersion=12.0 \
+              '-c.artifactName=UltraTV-${version}-mac12-${arch}.${ext}'
+            # latest-mac.yml décrit le build habituel : celui-ci ne doit pas l'écraser à la publication.
+            rm -f release/latest*.yml
+            plutil -extract LSMinimumSystemVersion raw "release/mac-universal/Ultra TV.app/Contents/Info.plist"
+          else
+            npx electron-builder ${{ matrix.builder_args }} --publish never
+          fi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

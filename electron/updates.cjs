@@ -79,6 +79,17 @@ async function latestDesktopTag() {
   return pickDesktopTag(await res.json());
 }
 
+/** Darwin 22 = macOS 13. En dessous (macOS 12 Monterey) : build séparé avec Electron 43, le dernier qui y tourne. */
+function isLegacyMac(darwinRelease = os.release()) {
+  const major = parseInt(String(darwinRelease).split(".")[0], 10) || 0;
+  return major > 0 && major < 22;
+}
+
+/** Zip de mise à jour macOS : « mac12-universal » sur macOS 12, sinon « mac-universal ». Exporté pour les tests. */
+function macZipName(version, darwinRelease = os.release()) {
+  return `UltraTV-${version}-${isLegacyMac(darwinRelease) ? "mac12" : "mac"}-universal.zip`;
+}
+
 /** Compare deux versions « X.Y.Z » : > 0 si a est plus récente. Exporté pour les tests. */
 function compareVersions(a, b) {
   const x = String(a).split(".").map((n) => parseInt(n, 10) || 0);
@@ -148,7 +159,7 @@ function createMacUnsignedUpdater({ app, publish }) {
     let ok = false;
     try {
       const zip = path.join(dir, "update.zip");
-      await download(`https://github.com/${REPO}/releases/download/${tag}/UltraTV-${version}-mac-universal.zip`, zip, (percent) => publish({ state: "downloading", percent, version }));
+      await download(`https://github.com/${REPO}/releases/download/${tag}/${macZipName(version)}`, zip, (percent) => publish({ state: "downloading", percent, version }));
       const extract = path.join(dir, "app");
       fs.mkdirSync(extract);
       await run("ditto", ["-x", "-k", zip, extract]);
@@ -209,7 +220,8 @@ function createUpdater({ app, send }) {
       pkgManual = true;
       return true;
     }
-    if (process.platform === "darwin" && !(await isMacSigned())) {
+    // macOS 12 : toujours notre mise à jour, qui prend le zip « mac12 » (latest-mac.yml décrit le build Electron récent).
+    if (process.platform === "darwin" && (isLegacyMac() || !(await isMacSigned()))) {
       // Pas de signature Apple : mise à jour faite par l'application elle-même (voir createMacUnsignedUpdater).
       macUpdater = createMacUnsignedUpdater({ app, publish });
       return true;
@@ -287,4 +299,4 @@ function createUpdater({ app, send }) {
   return { check, install, status: () => last };
 }
 
-module.exports = { createUpdater, pickDesktopTag, compareVersions, isLinuxPackageInstall, linuxPackageKind, manualUpdateUrl };
+module.exports = { createUpdater, pickDesktopTag, compareVersions, macZipName, isLegacyMac, isLinuxPackageInstall, linuxPackageKind, manualUpdateUrl };
