@@ -1,7 +1,7 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert");
-const { pickDesktopTag } = require("../updates.cjs");
+const { pickDesktopTag, macZipName, isLegacyMac } = require("../updates.cjs");
 
 test("prend la release de bureau publiée la plus récente, pas la release Android « Latest »", () => {
   const rel = [
@@ -43,4 +43,13 @@ test("famille de paquet et lien de téléchargement", () => {
   assert.strictEqual(manualUpdateUrl("deb", "desktop-v1.3.1"), "https://ultratv.dpdns.org/download/linux-deb");
   assert.strictEqual(manualUpdateUrl("rpm", "desktop-v1.3.1"), "https://ultratv.dpdns.org/download/linux-rpm");
   assert.strictEqual(manualUpdateUrl(null, "desktop-v1.3.1"), "https://github.com/vantaflow/ultra-tv/releases/tag/desktop-v1.3.1");
+});
+
+test("macOS 12 (Darwin 21) prend le zip mac12, macOS 13+ le zip habituel", () => {
+  assert.strictEqual(macZipName("1.2.77", "21.6.0"), "UltraTV-1.2.77-mac12-universal.zip");
+  assert.strictEqual(macZipName("1.2.77", "22.1.0"), "UltraTV-1.2.77-mac-universal.zip");
+  assert.strictEqual(macZipName("1.2.77", "25.0.0"), "UltraTV-1.2.77-mac-universal.zip");
+  assert.strictEqual(isLegacyMac("21.6.0"), true);
+  assert.strictEqual(isLegacyMac("22.0.0"), false);
+  assert.strictEqual(isLegacyMac(""), false);
 });
