@@ -26,6 +26,9 @@ internal object StalkerTelemetry {
     /** Remplaçable en test. */
     @Volatile internal var sink: (String) -> Unit = { com.ultratv.tv.nativeapp.RemoteLog.info("stalker", it) }
 
+    /** Échec de l'ajout : en « warn », seul niveau toujours remonté (les « info » de l'ajout n'arrivaient jamais). */
+    @Volatile internal var warnSink: (String) -> Unit = { com.ultratv.tv.nativeapp.RemoteLog.warn("stalker", it) }
+
     private fun log(key: String, message: String) { if (limiter.allow(key)) sink(message) }
 
     fun dialogOpened() = log("open", "dialog opened")
@@ -36,7 +39,11 @@ internal object StalkerTelemetry {
     fun addAttempt() = log("add", "add attempt")
 
     fun probeOk() = log("probe", "probe ok endpoint found")
-    fun probeFailed(t: Throwable) = log("probe", "probe failed error=${errorClass(t)}")
+    fun probeFailed(t: Throwable) {
+        if (!limiter.allow("probe")) return
+        val http = (t as? com.ultratv.tv.nativeapp.data.net.HttpStatusException)?.code?.toString() ?: "-"
+        warnSink("probe failed error=${errorClass(t)} http=$http")
+    }
 
     fun syncStarted() = log("sync-start", "sync start")
     fun syncEnded(errorKind: String?) = log("sync-end", if (errorKind == null) "sync end ok" else "sync error kind=$errorKind")
