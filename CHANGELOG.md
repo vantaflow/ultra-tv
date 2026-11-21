@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Modifié
+- Télémétrie : un appareil sans compte envoie désormais ses rapports de plantage et ses lignes d'erreur ou d'avertissement (jamais les lignes d'information), avec le modèle de l'appareil, la version et un identifiant aléatoire d'installation. Avant, rien ne partait sans appairage : une panne chez quelqu'un qui venait d'installer l'appli restait invisible. Worker : routes `/api/anon/crash` et `/api/anon/events`, débit borné par adresse IP et par installation.
+
 ### Corrigé
 - Direct : « Autres qualités » ne plante plus quand le fournisseur propose deux variantes de même qualité et de même nom (plantage « Key "HD · HBO" was already used », 1.3.67). Toutes les boîtes de choix acceptent désormais deux options au même libellé.
 - Bibliothèques (Jellyfin, Emby, Plex, NAS) : la rangée « Reprendre » n'affiche qu'une tuile par série, même avec plusieurs épisodes entamés (deux tuiles identiques pouvaient faire planter l'écran).

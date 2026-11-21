@@ -46,7 +46,10 @@ TV box + your Cloudflare Worker), so the primary threats are:
   private/loopback/metadata IPs refused even if allow-listed, redirects
   re-validated hop by hop, GET/HEAD only, CORS limited to `ALLOWED_ORIGINS`.
 - **Telemetry** — always on in the Android app (no opt-out); payloads are
-  sanitised as described above (no credentials, MAC or full URLs).
+  sanitised as described above (no credentials, MAC or full URLs). A device
+  without an account sends crash reports and error/warning lines only, through
+  the open, rate-limited `/api/anon/*` routes (device model, version and a
+  random install ID of which the Worker keeps a short fingerprint).
 - **Provider credentials at rest** — Room DB lives in app-private storage
   (`/data/data/<pkg>/files/`) which is unreadable by other apps on
   non-rooted devices.

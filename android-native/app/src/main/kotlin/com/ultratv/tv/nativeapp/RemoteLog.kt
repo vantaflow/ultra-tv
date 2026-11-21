@@ -19,9 +19,13 @@ import java.util.concurrent.TimeUnit
  *
  * Authentification : jeton d'APPAREIL (Authorization: Bearer) obtenu par
  * appairage et rangé dans le Keystore. Plus aucun jeton partagé dans l'APK : un
- * secret embarqué dans un binaire public n'est pas un secret. Tant que
- * l'appareil n'est pas appairé, rien n'est envoyé ; les crashs restent dans
- * crash.txt et partent au premier démarrage suivant l'appairage.
+ * secret embarqué dans un binaire public n'est pas un secret.
+ *
+ * Appareil sans compte : les plantages, erreurs et avertissements partent quand même, par les routes ouvertes
+ * `/api/anon/…` (voir [TelemetryRoute]), avec le strict nécessaire au diagnostic : modèle de l'appareil, version,
+ * version d'Android et identifiant aléatoire d'installation (le Worker n'en garde qu'une empreinte). Les lignes
+ * d'information (navigation, fluidité, touches) ne partent pas. Avant, rien n'était envoyé sans compte : un plantage
+ * ou un échec d'ajout de source chez quelqu'un qui venait d'installer l'appli restait invisible.
  *
  * L'URL du Worker est configurable (Réglages, ou ULTRA_WORKER_URL au build) ;
  * HTTPS est exigé hors build debug. Tout texte est nettoyé par [LogSanitizer]
@@ -37,6 +41,10 @@ object RemoteLog {
 
     @Volatile private var tokenStore: DeviceTokenStore? = null
 
+    @Volatile private var installIdOf: (() -> String)? = null
+
+    private fun paired(): Boolean = tokenStore?.token() != null
+
     /** Requête authentifiée, ou null si l'appareil n'est pas appairé / URL invalide. */
     private fun authedRequest(path: String, body: String): Request? {
         val base = workerBase() ?: return null
@@ -46,6 +54,20 @@ object RemoteLog {
             .header("Authorization", "Bearer $token")
             .post(body.toRequestBody(JSON))
             .build()
+    }
+
+    /**
+     * Requête d'envoi : authentifiée si l'appareil est appairé ; sinon vers la route sans compte [anonPath], l'étiquette
+     * d'appareil remplacée par l'identifiant d'installation. Null si l'URL du Worker est invalide ou l'identifiant illisible.
+     */
+    private fun request(pairedPath: String, anonPath: String, body: JSONObject): Request? {
+        authedRequest(pairedPath, body.toString())?.let { return it }
+        if (paired()) return null // appairé mais URL invalide : rien à envoyer
+        val base = workerBase() ?: return null
+        val install = runCatching { installIdOf?.invoke() }.getOrNull()?.takeIf { it.isNotBlank() } ?: return null
+        body.remove("mac")
+        body.put("install", install)
+        return Request.Builder().url("$base$anonPath").post(body.toString().toRequestBody(JSON)).build()
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -94,6 +116,7 @@ object RemoteLog {
     fun init(ctx: android.content.Context, mac: () -> String, versionName: String, versionCode: Int) {
         appCtx = ctx.applicationContext
         tokenStore = DeviceTokenStore(ctx.applicationContext)
+        installIdOf = { com.ultratv.tv.nativeapp.data.config.InstallIdStore(ctx.applicationContext).get() }
         contextInfo = ContextInfo(
             macOf = mac,
             versionName = versionName,
@@ -132,8 +155,8 @@ object RemoteLog {
                 put("device", ctx.device)
                 put("androidSdk", ctx.androidSdk)
                 put("stack", sanitize(stack).take(60_000))
-            }.toString()
-            val req = authedRequest("/api/crash", body) ?: return@runCatching
+            }
+            val req = request(TelemetryRoute.CRASH, TelemetryRoute.ANON_CRASH, body) ?: return@runCatching
             eventClient.newCall(req).execute().use { resp ->
                 if (resp.isSuccessful) file.delete()
             }
@@ -179,9 +202,13 @@ object RemoteLog {
     /** Vide la file par un seul POST /api/events (plusieurs si les lignes sont très longues). Appelé hors thread principal. */
     private fun flushQueue() {
         val ctx = contextInfo ?: return
-        val taken = synchronized(queueLock) { flushJob?.cancel(); flushJob = null; queue.drain() }
-        if (taken.isEmpty()) return
+        val drained = synchronized(queueLock) { flushJob?.cancel(); flushJob = null; queue.drain() }
+        if (drained.isEmpty()) return
         if (!telemetryEnabled) return
+        // Tri fait ici, hors thread principal : savoir si l'appareil est appairé demande de déchiffrer le jeton (Keystore).
+        val isPaired = paired()
+        val taken = drained.filter { TelemetryRoute.keeps(isPaired, queue.isImportant(it.level)) }
+        if (taken.isEmpty()) return
         val failed = mutableListOf<LogQueue.Line>()
         for (chunk in LogQueue.chunks(taken)) {
             val ok = runCatching { sendChunk(ctx, chunk) }.getOrDefault(false)
@@ -205,11 +232,14 @@ object RemoteLog {
             val body = JSONObject().apply {
                 put("mac", ctx.mac); put("version", ctx.versionName); put("versionCode", ctx.versionCode); put("device", ctx.device)
                 put("events", events)
-            }.toString()
-            val req = authedRequest("/api/events", body) ?: return true // pas appairé : comme avant, rien n'est envoyé
+            }
+            val wasPaired = paired()
+            val req = request(TelemetryRoute.EVENTS, TelemetryRoute.ANON_EVENTS, body) ?: return true // URL invalide : rien à envoyer
             eventClient.newCall(req).execute().use { r ->
                 when {
                     r.isSuccessful -> return true
+                    // Sans compte : un Worker qui ne connaît pas la route (ancien, auto-hébergé) ne reçoit rien, comme avant.
+                    r.code == 404 && !wasPaired -> return true
                     r.code == 404 -> batchSupported = false // ancien Worker : repli ci-dessous
                     r.code == 429 || r.code >= 500 -> return false
                     else -> return true // refus définitif (jeton révoqué, lot trop gros) : inutile de réessayer
@@ -268,8 +298,8 @@ object RemoteLog {
                 put("device", ctx.device)
                 put("androidSdk", ctx.androidSdk)
                 put("stack", payload)
-            }.toString()
-            val req = authedRequest("/api/crash", body) ?: return@runCatching
+            }
+            val req = request(TelemetryRoute.CRASH, TelemetryRoute.ANON_CRASH, body) ?: return@runCatching
             crashClient.newCall(req).execute().use { resp ->
                 if (resp.isSuccessful) pendingCrashFile()?.delete()
             }
@@ -293,6 +323,20 @@ object RemoteLog {
     }
 }
 
+
+/** Routes d'envoi selon que l'appareil a un compte, et ce qui part sans compte. Pur, testé. */
+internal object TelemetryRoute {
+    const val CRASH = "/api/crash"
+    const val EVENTS = "/api/events"
+    const val ANON_CRASH = "/api/anon/crash"
+    const val ANON_EVENTS = "/api/anon/events"
+
+    /**
+     * Cette ligne de journal part-elle ? Appareil appairé : toutes (l'échantillonnage des infos vient après). Sans
+     * compte : avertissements et erreurs seulement, le strict nécessaire pour comprendre une panne.
+     */
+    fun keeps(paired: Boolean, important: Boolean): Boolean = paired || important
+}
 
 /** Format du fichier de plantage en attente : chaque entrée commence par la version qui a planté. Pur, testé. */
 internal object CrashFile {

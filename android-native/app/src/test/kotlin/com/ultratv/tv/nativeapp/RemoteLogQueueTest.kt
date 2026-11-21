@@ -110,3 +110,22 @@ class RemoteLogQueueTest {
         assertTrue(LogQueue.chunks(emptyList()).isEmpty())
     }
 }
+
+/** Ce qui part d'un appareil sans compte : le strict nécessaire (erreurs et avertissements), par les routes ouvertes. */
+class TelemetryRouteTest {
+    @Test fun appaire_toutesLesLignesPartent() {
+        assertTrue(TelemetryRoute.keeps(paired = true, important = false))
+        assertTrue(TelemetryRoute.keeps(paired = true, important = true))
+    }
+
+    @Test fun sansCompte_seulesLesLignesImportantesPartent() {
+        assertFalse(TelemetryRoute.keeps(paired = false, important = false))
+        assertTrue(TelemetryRoute.keeps(paired = false, important = true))
+    }
+
+    @Test fun sansCompte_routesDistinctesDesRoutesAppairees() {
+        assertEquals("/api/anon/crash", TelemetryRoute.ANON_CRASH)
+        assertEquals("/api/anon/events", TelemetryRoute.ANON_EVENTS)
+        assertTrue(TelemetryRoute.ANON_CRASH != TelemetryRoute.CRASH && TelemetryRoute.ANON_EVENTS != TelemetryRoute.EVENTS)
+    }
+}

@@ -273,8 +273,9 @@ Les journaux et rapports de plantage sont nettoyés (paramètres `username`, `pa
 | Envoi | Quand | Vers | Ce qui part | Coupé par le réglage |
 |---|---|---|---|---|
 | Comptage anonyme | ≈ 10 s après le démarrage, au plus une fois par 20 h, appareil **non appairé** | Worker `/api/anon/ping` | identifiant aléatoire d'installation, version, application utilisée (`android-tv` ou `android-mobile`), modèle de l'appareil (fabricant + modèle, 64 caractères au plus) | Oui |
-| Journaux de diagnostic | pendant l'usage, appareil **appairé** | Worker `/api/event` | niveau, étiquette, message nettoyé (démarrage, écran affiché, mesures de fluidité, blocages, compteurs de touches, Google TV, mise à jour, échecs de synchro), version, modèle, étiquette d'appareil | Oui |
-| Rapports de plantage | au plantage (ou au démarrage suivant), appareil **appairé** | Worker `/api/crash` | trace nettoyée, version, modèle, version d'Android | Oui |
+| Journaux de diagnostic | pendant l'usage, appareil **appairé** | Worker `/api/events` | niveau, étiquette, message nettoyé (démarrage, écran affiché, mesures de fluidité, blocages, compteurs de touches, Google TV, mise à jour, échecs de synchro), version, modèle, étiquette d'appareil | Oui |
+| Erreurs et avertissements, appareil **sans compte** | pendant l'usage, appareil **non appairé** | Worker `/api/anon/events` | seulement les lignes d'erreur et d'avertissement (échec de synchro, de lecture, d'ajout de source) : niveau, étiquette, message nettoyé, version, modèle, identifiant aléatoire d'installation ; jamais les lignes d'information (écrans affichés, fluidité, touches) | Oui |
+| Rapports de plantage | au plantage (ou au démarrage suivant), appareil appairé ou non | Worker `/api/crash` (appairé), `/api/anon/crash` (sans compte, avec l'identifiant aléatoire d'installation à la place de l'étiquette d'appareil) | trace nettoyée, version, modèle, version d'Android | Oui |
 | Mise à jour | 30 s après chaque lancement, ou à la demande | `api.github.com`, puis GitHub | requête sans identifiant ; si une version plus récente existe, l'APK est téléchargé et l'installateur d'Android demande confirmation | **Non** |
 | Alertes (lecture) | à l'ouverture, puis toutes les 15 min au premier plan | Worker `/api/announcements` | type d'écran, version | **Non** |
 | Alertes (statistiques) | alerte affichée, fermée ou bouton utilisé | Worker `/api/announcements/<id>/stat` | type d'événement, identifiant aléatoire d'installation | Oui |
@@ -304,14 +305,14 @@ Pas de rapport de plantage, de journal distant ni d'alertes. **Comptage anonyme*
 - **Sources, jetons Trakt et OpenSubtitles, favoris et historique partagés** : chiffrés, jusqu'à suppression.
 - **Réglages partagés et profils** : catégories visibles, ordre des catégories et des chaînes, chaînes masquées ; profils (nom, couleur ou avatar, profil Enfants, langue de l'interface, jamais le code PIN) ; jusqu'à suppression.
 - **Où** : dans la base Turso du Worker (région Francfort) ; l'ancienne base D1 et l'espace KV de Cloudflare sont conservés en secours, sans plus être écrits.
-- **Journaux de diagnostic** : 7 jours ; **rapports de plantage** : 30 jours. Ils contiennent identifiant d'appareil, empreinte du compte (HMAC non réversible, jamais l'identifiant ni l'adresse e-mail), pays, version, modèle, étiquette d'appareil dérivée par hachage de l'identifiant Android.
+- **Journaux de diagnostic** : 7 jours ; **rapports de plantage** : 30 jours. Ils contiennent identifiant d'appareil, empreinte du compte (HMAC non réversible, jamais l'identifiant ni l'adresse e-mail), pays, version, modèle, étiquette d'appareil dérivée par hachage de l'identifiant Android. Pour un appareil sans compte : pays, version, modèle et une empreinte courte de l'identifiant d'installation (ni compte, ni étiquette d'appareil, ni adresse IP, ni l'identifiant lui-même).
 - **Comptage anonyme** : empreinte de l'identifiant d'installation, dates, version, application utilisée (Android TV, Android mobile, Windows, macOS, Linux), modèle de l'appareil (Android), pays, nombre de sources envoyées depuis le web ; 180 jours. **Statistiques d'alerte** : empreinte, jusqu'à 31 jours après la fin de l'alerte.
 - **Envoi depuis le téléphone** : 15 min au plus. **Code d'appairage** : 10 min.
 - **Adresse IP** : elle n'est écrite dans aucune donnée conservée ; elle sert seulement à compter les requêtes (limitation de débit) dans des compteurs sans adresse qui s'effacent seuls.
 
 ### Réglage de la télémétrie
 
-**Android :** la télémétrie (journaux de diagnostic, rapports de plantage, comptage anonyme, statistiques d'alertes) est toujours active et ne se coupe plus. Ce qui est envoyé reste limité à ce qui est décrit plus haut. Sans appairage, aucun journal ni rapport de plantage n'est envoyé.
+**Android :** la télémétrie (journaux de diagnostic, rapports de plantage, comptage anonyme, statistiques d'alertes) est toujours active et ne se coupe plus. Ce qui est envoyé reste limité à ce qui est décrit plus haut. Sans appairage, seuls les rapports de plantage et les lignes d'erreur ou d'avertissement sont envoyés, avec le modèle de l'appareil, la version et un identifiant aléatoire d'installation : sans eux, une panne chez quelqu'un qui n'a pas créé de compte restait invisible et ne pouvait pas être corrigée.
 
 **Windows et macOS :** Réglages › À propos › *Télémétrie anonyme* (activée par défaut) ne concerne que le comptage anonyme ; désactivée, plus rien ne part et l'identifiant est effacé.
 
