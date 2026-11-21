@@ -328,10 +328,11 @@ internal fun HomeTvContent(
     CompositionLocalProvider(LocalBringIntoViewSpec provides pivotSpec, LocalHomeFocusRestore provides restore, LocalHomeEdgeGate provides edgeGate) {
         LazyColumn(
             // Touches reçues par l'accueil : une sortie de rangée différée dont la touche est périmée est abandonnée (voir [HomeEdgeGate]).
-            Modifier.fillMaxSize().onPreviewKeyEvent { if (it.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) edgeGate.keys++; false }
-                // Le focus initial est FAIT dès qu'un élément de l'accueil le porte : un bandeau qui arrive après les rangées (fonds résolus
-                // en retard, première synchro) ne le déplace plus sans touche et ne fait pas défiler la liste.
-                .onFocusChanged { if (it.hasFocus) onHeroFocused() },
+            Modifier.fillMaxSize().onPreviewKeyEvent { if (it.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) { edgeGate.keys++; if (!heroFocusDone) onHeroFocused() }; false }
+                // Le focus initial est FAIT dès que l'utilisateur a pressé une touche (ici ou sur un élément qui le porte) : un bandeau
+                // qui arrive après les rangées ne déplace plus son focus et ne fait pas défiler la liste. Sans aucune touche (lancement : le
+                // focus initial est tombé sur la première carte faute de bandeau), le bandeau qui arrive prend « Regarder » et la liste remonte.
+                .onFocusChanged { if (it.hasFocus && restore.userActed()) onHeroFocused() },
             state = listState,
             // Les rangées portent elles-mêmes leur marge gauche (elles débordent de RowBleed dans cette marge sans être rognées par la liste).
             contentPadding = PaddingValues(bottom = 54.design),
@@ -343,7 +344,7 @@ internal fun HomeTvContent(
                         if (slot == HomeTopSlot.HERO && hero != null) {
                             // Image pleine largeur de la zone de contenu : aucune marge horizontale sur cet élément.
                             Hero(
-                                hero, heroExtras, onWatch = onWatchHero, onInfo = onInfoHero, inList = heroInList, onToggleList = onToggleHeroList, takeFocus = !heroFocusDone, onFocused = onHeroFocused, onFocusTop = scrollTop,
+                                hero, heroExtras, onWatch = onWatchHero, onInfo = onInfoHero, inList = heroInList, onToggleList = onToggleHeroList, takeFocus = !heroFocusDone && !restore.userActed(), onFocused = onHeroFocused, onFocusTop = scrollTop,
                                 index = heroIndex, count = heroCount, mayRotate = heroRotates, clock = clock, watchTarget = heroWatch, modifier = Modifier.fillMaxWidth().height(HeroHeight).testTag("home-hero"),
                             )
                         } else Column(Modifier.padding(start = HomeStart, top = 44.design, end = 72.design), verticalArrangement = Arrangement.spacedBy(30.design)) {
@@ -789,7 +790,9 @@ private fun HeroBody(
     // « Regarder » n'est ciblable qu'une fois le bandeau composé (voir [HeroWatchTarget]).
     androidx.compose.runtime.DisposableEffect(watchTarget) { watchTarget?.attached = true; onDispose { watchTarget?.attached = false } }
     var focused by remember { mutableStateOf(false) }
-    if (takeFocus) RequestInitialFocus(requester, hasFocus = { focused })
+    val restoreState = LocalHomeFocusRestore.current
+    // Une touche pressée pendant les essais arrête la demande : jamais de focus déplacé sous les doigts de l'utilisateur.
+    if (takeFocus) RequestInitialFocus(requester, hasFocus = { focused || restoreState?.userActed() == true })
     val rtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
     // Voile bas : sombre, il fond vers la page sur 40 % de la hauteur. Thème clair : le texte (clair) reste sur fond
     // sombre, le fondu vers la page claire se limite aux 8 % du bas, sous les boutons (bord adouci, texte lisible).

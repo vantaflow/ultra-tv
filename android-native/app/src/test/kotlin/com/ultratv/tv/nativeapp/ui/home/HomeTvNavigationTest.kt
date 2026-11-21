@@ -101,9 +101,9 @@ import org.robolectric.annotation.GraphicsMode
 class HomeTvNavigationTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
 
-    @Before fun fakeImages() { installFakeImageLoader() }
+    @Before fun fakeImages() { installFakeImageLoader(); InputClock.lastKeyMs = 0L; InputClock.lastKeyCode = 0 }
 
-    @After fun resetTheme() { Ux.themeLight = false; resetImageLoader() }
+    @After fun resetTheme() { Ux.themeLight = false; resetImageLoader(); InputClock.lastKeyMs = 0L; InputClock.lastKeyCode = 0 }
 
     private val hero = HomeTvFixtures.heroWithBackdrop
     private val layout = HomeLayout.defaultFor(true)
@@ -488,6 +488,58 @@ class HomeTvNavigationTest {
         assertEquals("après l'arrivée du bandeau", moved, focusNow("après l'arrivée du bandeau"))
         // La liste n'a pas défilé d'elle-même : le haut du bandeau est toujours en haut de l'écran.
         assertEquals("la liste est restée en haut", 0f, rule.onNodeWithTag("home-hero").getUnclippedBoundsInRoot().top.value, 1f)
+    }
+
+    @Test fun lancementAFroid_rangeesPuisBandeau_aucuneTouche_leBandeauPrendLeFocus_etLaListeEstEnHaut() {
+        mount(withHero = false)
+        rule.mainClock.advanceTimeBy(1_000); rule.waitForIdle()
+        val first = focusNow("départ sans bandeau")
+        assertTrue("focus initial sur une carte tant que le bandeau manque ($first)", !first.startsWith("hero-"))
+        // Les fonds sont résolus en retard : le bandeau arrive au-dessus, l'utilisateur n'a rien pressé.
+        rule.runOnIdle { heroSource.value = hero }
+        rule.mainClock.advanceTimeBy(4_000); rule.waitForIdle()
+        assertEquals("sans aucune touche, le focus va sur « Regarder »", "hero-watch", focusNow("après l'arrivée du bandeau"))
+        assertTrue("bandeau entier visible (bord haut non au-dessus de l'écran)", rule.onNodeWithTag("home-hero").getUnclippedBoundsInRoot().top.value >= -1f)
+        rule.onNodeWithTag("hero-watch").assertIsDisplayed()
+    }
+
+    @Test fun lancementAFroid_uneToucheAvantLeBandeau_leFocusNeBougePas_unAppuiReel() {
+        mount(withHero = false)
+        rule.mainClock.advanceTimeBy(1_000); rule.waitForIdle()
+        // Le temps avance entre l'ouverture de l'accueil et l'appui : la touche est postérieure à l'ouverture.
+        android.os.SystemClock.sleep(50)
+        val moved = step(forward, "appui")
+        rule.runOnIdle { heroSource.value = hero }
+        rule.mainClock.advanceTimeBy(4_000); rule.waitForIdle()
+        assertEquals("le bandeau est affiché", 1, rule.onAllNodes(hasTestTag("hero-watch")).fetchSemanticsNodes().size)
+        assertEquals("le focus n'a pas bougé", moved, focusNow("après le bandeau"))
+        assertEquals("liste en haut", 0f, rule.onNodeWithTag("home-hero").getUnclippedBoundsInRoot().top.value, 1f)
+    }
+
+    @Test fun lancementAFroid_touchePressesSurUnAutreEcranAvantLAccueil_neCompteJamaisCommeUneInteraction() {
+        InputClock.lastKeyCode = Key.DirectionDown.nativeKeyCode; InputClock.lastKeyMs = android.os.SystemClock.uptimeMillis()
+        android.os.SystemClock.sleep(50)
+        mount(withHero = false)
+        rule.mainClock.advanceTimeBy(1_000); rule.waitForIdle()
+        rule.runOnIdle { heroSource.value = hero }
+        rule.mainClock.advanceTimeBy(4_000); rule.waitForIdle()
+        assertEquals("touche d'un autre écran ignorée", "hero-watch", focusNow("après le bandeau"))
+    }
+
+    @Test fun lancementAFroid_sansAucunBandeau_leFocusResteSurLaPremiereRangee() {
+        mount(withHero = false)
+        rule.mainClock.advanceTimeBy(4_000); rule.waitForIdle()
+        val first = focusNow("sans bandeau")
+        assertTrue("premier élément de la première rangée ($first)", first.startsWith("home-channel-") || first.startsWith("home-resume-"))
+    }
+
+    @Test fun lancementAFroid_rangeesPuisBandeau_enArabe_leBandeauPrendLeFocus() {
+        mount(lang = AppLang.Arabic, withHero = false)
+        rule.mainClock.advanceTimeBy(1_000); rule.waitForIdle()
+        rule.runOnIdle { heroSource.value = hero }
+        rule.mainClock.advanceTimeBy(4_000); rule.waitForIdle()
+        assertEquals("hero-watch", focusNow("après le bandeau"))
+        assertTrue(rule.onNodeWithTag("home-hero").getUnclippedBoundsInRoot().top.value >= -1f)
     }
 
     @Test fun accueilQuiSOuvreAvecLeBandeau_lePremierFocusEstSurRegarder_etLaListeResteEnHaut() {

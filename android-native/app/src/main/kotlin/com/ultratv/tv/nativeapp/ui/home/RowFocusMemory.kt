@@ -107,6 +107,12 @@ internal class HomeFocusRestore(var saved: String? = null) {
         return s.substring(row.length + 1) !in keys
     }
 
+    /**
+     * L'utilisateur a pressé une touche depuis que CET accueil est affiché (créé après la touche d'un autre écran : celle-ci ne compte pas).
+     * Distingue le lancement (le bandeau qui arrive après les rangées prend le focus) d'une navigation déjà commencée (il ne le déplace pas).
+     */
+    fun userActed(): Boolean = com.ultratv.tv.nativeapp.ui.common.InputClock.lastKeyMs > startMs
+
     fun isPending(): Boolean {
         if (!pending) return false
         if (com.ultratv.tv.nativeapp.ui.common.InputClock.lastKeyMs > startMs || savedAbsentFromData()) pending = false
