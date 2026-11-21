@@ -269,8 +269,9 @@ Logs and crash reports are scrubbed (`username`, `password`, `token`… paramete
 | What | When | To | Content | Turned off by the setting |
 |---|---|---|---|---|
 | Anonymous install count | ≈ 10 s after start, at most once per 20 h, **unpaired** device | Worker `/api/anon/ping` | random install ID, version, app in use (`android-tv` or `android-mobile`), device model (manufacturer + model, 64 characters at most) | Yes |
-| Diagnostic logs | during use, **paired** device | Worker `/api/event` | level, tag, scrubbed message (start, screen shown, smoothness metrics, freezes, key counters, Google TV, update, sync failures), version, model, device label | Yes |
-| Crash reports | on crash (or next start), **paired** device | Worker `/api/crash` | scrubbed stack trace, version, model, Android version | Yes |
+| Diagnostic logs | during use, **paired** device | Worker `/api/events` | level, tag, scrubbed message (start, screen shown, smoothness metrics, freezes, key counters, Google TV, update, sync failures), version, model, device label | Yes |
+| Errors and warnings, device **without an account** | during use, **unpaired** device | Worker `/api/anon/events` | error and warning lines only (sync, playback or add-source failures): level, tag, scrubbed message, version, model, random install ID; never the information lines (screens shown, smoothness, keys) | Yes |
+| Crash reports | on crash (or next start), paired or not | Worker `/api/crash` (paired), `/api/anon/crash` (no account, with the random install ID instead of the device label) | scrubbed stack trace, version, model, Android version | Yes |
 | Update check | 30 s after each launch, or on request | `api.github.com`, then GitHub | request without identifier; if a newer version exists the APK is downloaded and Android's installer asks for confirmation | **No** |
 | Alerts (read) | on open, then every 15 min in the foreground | Worker `/api/announcements` | screen type, version | **No** |
 | Alerts (statistics) | alert shown, dismissed or button used | Worker `/api/announcements/<id>/stat` | event type, random install ID | Yes |
@@ -300,14 +301,14 @@ No crash report, remote log or alerts. **Anonymous count** (same rule as Android
 - **Sources, Trakt and OpenSubtitles tokens, shared favourites and history**: encrypted, until deleted.
 - **Shared settings and profiles**: visible categories, category and channel order, hidden channels; profiles (name, colour or avatar, kids profile, interface language, never the PIN); until deleted.
 - **Where**: in the Worker's Turso database (Frankfurt region); the former Cloudflare D1 database and KV namespace are kept as a backup and no longer written.
-- **Diagnostic logs**: 7 days; **crash reports**: 30 days. They hold device ID, an account fingerprint (non-reversible HMAC, never the account ID or e-mail address), country, version, model, a device label derived by hashing the Android ID.
+- **Diagnostic logs**: 7 days; **crash reports**: 30 days. They hold device ID, an account fingerprint (non-reversible HMAC, never the account ID or e-mail address), country, version, model, a device label derived by hashing the Android ID. For a device without an account: country, version, model and a short fingerprint of the install ID (no account, no device label, no IP address, not the ID itself).
 - **Anonymous count**: hash of the install ID, dates, version, app in use (Android TV, Android mobile, Windows, macOS, Linux), device model (Android), country, number of sources sent from the web; 180 days. **Alert statistics**: hash, up to 31 days after the alert ends.
 - **Send from phone**: 15 min at most. **Pairing code**: 10 min.
 - **IP address**: not written to any stored data; used only to count requests (rate limiting) in counters that hold no address and expire on their own.
 
 ### Telemetry setting
 
-**Android:** telemetry (diagnostic logs, crash reports, anonymous count, alert statistics) is always on and can no longer be turned off. What is sent stays limited to what is described above. Without pairing, no log or crash report is sent.
+**Android:** telemetry (diagnostic logs, crash reports, anonymous count, alert statistics) is always on and can no longer be turned off. What is sent stays limited to what is described above. Without pairing, only crash reports and error or warning lines are sent, with the device model, the version and a random install ID: without them, a failure on a device with no account stayed invisible and could not be fixed.
 
 **Windows and macOS:** Settings › About › *Anonymous telemetry* (on by default) only covers the anonymous count; off, nothing is sent any more and the ID is erased.
 

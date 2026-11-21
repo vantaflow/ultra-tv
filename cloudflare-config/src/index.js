@@ -74,6 +74,9 @@ const EVENT_MAX_BODY = 8 * 1024;
 const EVENTS_BATCH_MAX = 50;
 const EVENTS_BATCH_MAX_BODY = 32 * 1024;
 const CRASH_MAX_BODY = 48 * 1024;
+/** Appareil sans compte : plantages et lots de journaux acceptés par heure et par installation. */
+const ANON_CRASH_PER_HOUR = 10;
+const ANON_EVENTS_PER_HOUR = 30;
 
 // ---- limitation de débit ------------------------------------------------------
 
@@ -238,6 +241,9 @@ async function route(req, env, ctx) {
   if (path === "/api/envoi/poll" && m === "POST") return envoiPoll(req, env);
   // Relevé anonyme d'installation (appareils sans compte) : identifiant aléatoire, version, pays.
   if (path === "/api/anon/ping" && m === "POST") return anonPing(req, env);
+  // Plantages et journaux d'erreur d'un appareil sans compte (modèle, version, pays ; ni compte ni adresse IP).
+  if (path === "/api/anon/crash" && m === "POST") return anonIngest(req, env, "crash");
+  if (path === "/api/anon/events" && m === "POST") return anonIngest(req, env, "event");
   if (path === "/api/config" && m === "GET") return deviceConfig(req, env);
   if (path === "/api/device/rotate" && m === "POST") return deviceRotate(req, env);
   if (path === "/api/device/providers" && (m === "POST" || m === "PUT")) return devicePutProvider(req, env);
@@ -1916,6 +1922,48 @@ async function ingestBatch(req, env) {
   }
   const entries = b.events.filter((e) => e && typeof e === "object").map((e) => {
     // Horodatage de la ligne côté appareil accepté s'il est plausible (ni futur, ni plus vieux d'une heure).
+    const ts = Number.isFinite(e.ts) && e.ts <= now && e.ts > now - 3600_000 ? Math.trunc(e.ts) : now;
+    return { ...cleanEvent({ ...base, ts }, e), sampled: e.sampled === true };
+  });
+  await recordEvents(env, "event", entries);
+  return json({ ok: true, accepted: entries.length });
+}
+
+/**
+ * Télémétrie d'un appareil SANS compte : `POST /api/anon/crash` { install, version, versionCode, device, androidSdk, stack }
+ * et `POST /api/anon/events` { install, version, versionCode, device, events: [...] } (mêmes bornes que les routes appairées).
+ *
+ * Sans jeton d'appareil, la route est ouverte : débit borné par adresse IP puis par installation, identifiant
+ * d'installation exigé. On garde le strict nécessaire au diagnostic : modèle de l'appareil, version, version d'Android,
+ * pays, et une empreinte courte de l'identifiant d'installation (pour relier les lignes d'un même appareil). Ni compte,
+ * ni étiquette MAC, ni adresse IP, ni l'identifiant d'installation lui-même.
+ */
+async function anonIngest(req, env, kind) {
+  const isCrash = kind === "crash";
+  const ipLimit = await limited(env, `aning:ip:${clientIp(req)}`, 60, 3600, true);
+  if (ipLimit) return ipLimit;
+  const body = await readJson(req, isCrash ? CRASH_MAX_BODY : EVENTS_BATCH_MAX_BODY);
+  if (body.error) return body.error;
+  const b = body.value;
+  const install = validInstall(b?.install);
+  if (!install) return json({ error: "install" }, 400);
+  if (!isCrash && !Array.isArray(b.events)) return json({ error: "invalid" }, 400);
+  if (!isCrash && b.events.length > EVENTS_BATCH_MAX) return json({ error: "too_many" }, 413);
+  const fingerprint = (await anonKey(install)).slice("anon:".length, "anon:".length + 12);
+  // Compteur exact (Durable Object) : le limiteur natif, à la minute, laisserait passer bien plus sur une route ouverte.
+  const perInstall = await limited(env, `aning:${kind}:${fingerprint}`, isCrash ? ANON_CRASH_PER_HOUR : ANON_EVENTS_PER_HOUR, 3600);
+  if (perInstall) return perInstall;
+  const now = Date.now();
+  const base = {
+    v: 2, ts: now, deviceId: `anon-${fingerprint}`, mac: null,
+    version: sanitizeText(b.version, 32) || null, versionCode: int(b.versionCode),
+    device: sanitizeText(b.device, 128) || null, acct: null, country: countryOf(req),
+  };
+  if (isCrash) {
+    await recordEvent(env, "crash", { ...base, androidSdk: int(b.androidSdk), stack: sanitizeText(b.stack, 32 * 1024) });
+    return json({ ok: true });
+  }
+  const entries = b.events.filter((e) => e && typeof e === "object").map((e) => {
     const ts = Number.isFinite(e.ts) && e.ts <= now && e.ts > now - 3600_000 ? Math.trunc(e.ts) : now;
     return { ...cleanEvent({ ...base, ts }, e), sampled: e.sampled === true };
   });
