@@ -638,6 +638,7 @@ private fun GuidePreviewPane(
 ) {
     ProbePreview()
     val shared = com.ultratv.tv.nativeapp.ui.player.engine.LocalSharedLive.current
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val pv by pvm.previewPrefs.state.collectAsState()
     val userPrefs by pvm.userPrefs.collectAsState()
     val touchUi = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
@@ -662,19 +663,29 @@ private fun GuidePreviewPane(
     if (videoPreview && shared != null) {
         LaunchedEffect(shared) { shared.env = pvm.env() }
         LaunchedEffect(pv.sound) { shared.applyPreviewMuted(!pv.sound) }
-        LaunchedEffect(shared, pv.delayMs) {
+        LaunchedEffect(shared, pv.delayMs, lifecycleOwner) {
             // Chaîne du programme focalisé, lue après le délai ; collectLatest : jamais deux flux.
-            // Première chaîne (ouverture de l'écran, aperçu réactivé) : lancée tout de suite ; ensuite 0,7 s après un arrêt sur
-            // une chaîne, 1,5 s tant que la liste est parcourue (voir [LivePreviewPolicy.immediateThenSettled]).
-            with(com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy) { snapshotFlow { target() }.immediateThenSettled(guideSettledDelayMs(pv.delayMs), guideDelayMs(pv.delayMs)) }.collectLatest { c ->
-                val row = com.ultratv.tv.nativeapp.ui.live.channelKey(c)
-                when (com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.decideChecked(shared.owner, shared.rowKey, row) { vm.lockedKeys() }) {
-                    com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.Action.KEEP -> Unit
-                    com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.Action.STOP -> shared.stopPreview()
-                    com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.Action.START -> {
-                        val url = vm.previewUrl(c)
-                        if (target()?.id != c.id) return@collectLatest
-                        shared.preview(row, row, url, mutedNow) { pvm.createSession(ctx, shared.scope, shared, textureView, userPrefs?.videoSurface ?: "auto") }
+            // Première chaîne (ouverture de l'écran, aperçu réactivé, retour au premier plan) : lancée tout de suite ; ensuite 0,7 s
+            // après un arrêt sur une chaîne, 1,5 s tant que la liste est parcourue (voir [LivePreviewPolicy.immediateThenSettled]).
+            // Seulement au premier plan : en arrière-plan la minuterie en attente est annulée (aucun flux muet ouvert derrière l'Accueil).
+            val lifecycle = lifecycleOwner.lifecycle
+            val foreground = lifecycle.currentStateFlow.map { it.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED) }
+            with(com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy) {
+                runInForeground(foreground, { snapshotFlow { target() }.immediateThenSettled(guideSettledDelayMs(pv.delayMs), guideDelayMs(pv.delayMs)) }) { c ->
+                    val row = com.ultratv.tv.nativeapp.ui.live.channelKey(c)
+                    // Flux de cette chaîne tombé en erreur : y revenir le relance (sinon l'encadré restait sur le logo sans fin).
+                    val failed = shared.session?.state?.value?.phase == com.ultratv.tv.nativeapp.ui.player.engine.Phase.ERROR
+                    val action = decideChecked(shared.owner, shared.rowKey, row, failed) { vm.lockedKeys() }
+                    android.util.Log.i("UltraPlay", "guide preview ${action.name.lowercase()} owner=${shared.owner} failed=$failed")
+                    when (action) {
+                        com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.Action.KEEP -> Unit
+                        com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.Action.STOP -> shared.stopPreview()
+                        com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.Action.START -> {
+                            val url = vm.previewUrl(c)
+                            if (target()?.id != c.id) return@runInForeground
+                            if (!lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) return@runInForeground
+                            shared.preview(row, row, url, mutedNow) { pvm.createSession(ctx, shared.scope, shared, textureView, userPrefs?.videoSurface ?: "auto") }
+                        }
                     }
                 }
             }
@@ -686,7 +697,6 @@ private fun GuidePreviewPane(
     }
     // Écran quitté ou appli en arrière-plan : l'aperçu ferme son flux.
     DisposableEffect(shared) { onDispose { shared?.stopPreview() } }
-    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, shared) {
         val obs = androidx.lifecycle.LifecycleEventObserver { _, ev -> if (ev == androidx.lifecycle.Lifecycle.Event.ON_STOP) shared?.stopPreview() }
         lifecycleOwner.lifecycle.addObserver(obs)
@@ -707,7 +717,12 @@ private fun GuidePreviewPane(
     val pic by (live?.takeIf { matches }?.state ?: NO_SESSION_STATE).collectAsState()
     // Image affichée, ou flux audio seul (radio) prêt : le son part, l'encadré garde le logo.
     val shown = matches && pic.showsMedia
-    if (shared != null) LaunchedEffect(shared, shown) { shared.setPictureShown(shown) }
+    if (shared != null) {
+        // Image retirée (changement de chaîne) : son coupé DANS l'image qui la retire (un LaunchedEffect laissait passer une image
+        // avec le son de l'ancienne chaîne sous le logo de la nouvelle) ; image affichée : son rendu après l'image qui la montre.
+        if (!shown) androidx.compose.runtime.SideEffect { shared.setPictureShown(false) }
+        LaunchedEffect(shared, shown) { shared.setPictureShown(shown) }
+    }
     GuidePreviewVideo(channel, live, shared, matches, modifier)
 }
 
