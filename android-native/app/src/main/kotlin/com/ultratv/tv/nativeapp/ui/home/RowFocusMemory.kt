@@ -22,7 +22,9 @@ import kotlinx.coroutines.flow.first
  */
 internal class RowFocusMemory(val id: String = "", private val gate: HomeEdgeGate? = null, private val restore: HomeFocusRestore? = null) {
     var hasFocus = false
-    var last: Any? = null
+    /** Dernière carte focalisée : relue de l'accueil si la rangée est sortie de la composition puis revenue (mémoire recréée). */
+    var last: Any? = restore?.lastOfRow(id)
+        set(value) { field = value; if (value != null) restore?.setLastOfRow(id, value) }
     val composed = HashSet<Any>()
 
     /** [restoreId] : identité de la carte pour la restauration au retour ([HomeFocusRestore.idOf]), calculée une fois par carte. */
@@ -126,8 +128,13 @@ internal class HomeFocusRestore(var saved: String? = null) {
         return keys.indexOf(s.substring(row.length + 1))
     }
 
+    /** Dernière carte focalisée de chaque rangée, tenue par l'accueil (qui reste composé pendant la visite) : survit à la sortie de composition d'une rangée. */
+    private val rowLast = HashMap<String, Any>()
+    fun lastOfRow(row: String): Any? = rowLast[row]
+    fun setLastOfRow(row: String, key: Any) { rowLast[row] = key }
+
     /** Visite neuve (retour par le menu) : plus aucun élément à restaurer, tout est candidat. */
-    fun reset() { saved = null; pending = false }
+    fun reset() { saved = null; pending = false; rowLast.clear() }
 
     fun idOf(row: String, key: Any) = "$row\u0000$key"
 

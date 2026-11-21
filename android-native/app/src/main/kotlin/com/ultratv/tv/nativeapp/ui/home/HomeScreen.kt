@@ -305,6 +305,7 @@ internal fun HomeTvContent(
     // Dernière carte focalisée, sauvegardée avec l'entrée de navigation : de retour d'une fiche, le focus y revient.
     val restore = rememberSaveable(saver = HomeFocusRestore.Saver) { HomeFocusRestore() }
     remember(restore, freshStart) { if (freshStart) { restore.reset(); listState.requestScrollToItem(0) }; freshStart }
+    val homeVisit = rememberHomeVisit(freshStart)
     // Dernier recours de la restauration : après [HomeFocusRestore.RESTORE_MS] tout redevient candidat, bien avant la fin des essais de la
     // demande de focus initiale (3 s). Une carte disparue des données d'une rangée déjà là est vue plus tôt (voir RegisterRowKeys). Aucune demande de focus ici.
     LaunchedEffect(restore) {
@@ -331,7 +332,7 @@ internal fun HomeTvContent(
             count(ShortcutId.SERIES)?.let { add(D.homeSeriesCount(it, formatCount(it, D.locale))) }
         }.joinToString(" · ")
     }
-    CompositionLocalProvider(LocalBringIntoViewSpec provides pivotSpec, LocalHomeFocusRestore provides restore, LocalHomeEdgeGate provides edgeGate, LocalHomeFresh provides freshStart) {
+    CompositionLocalProvider(LocalBringIntoViewSpec provides pivotSpec, LocalHomeFocusRestore provides restore, LocalHomeEdgeGate provides edgeGate, LocalHomeVisit provides homeVisit) {
         LazyColumn(
             // Touches reçues par l'accueil : une sortie de rangée différée dont la touche est périmée est abandonnée (voir [HomeEdgeGate]).
             Modifier.fillMaxSize().onPreviewKeyEvent { if (it.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) { edgeGate.keys++; if (!heroFocusDone) onHeroFocused() }; false }

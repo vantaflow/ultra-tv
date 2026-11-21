@@ -4,6 +4,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -33,14 +34,30 @@ internal fun rememberHeroFocusDone(freshStart: Boolean): MutableState<Boolean> {
     return state
 }
 
-/** Visite neuve de l'accueil, fournie aux rangées (leur défilement horizontal sauvegardé est remis au début). */
-internal val LocalHomeFresh = staticCompositionLocalOf { false }
+/**
+ * Numéro de visite neuve de l'accueil (0 = aucune), sauvegardé avec l'entrée de navigation : incrémenté une fois quand
+ * l'accueil s'ouvre par le menu. Chaque rangée ne se remet au début qu'une fois par numéro ([rememberRowListState]).
+ */
+@Composable
+internal fun rememberHomeVisit(freshStart: Boolean): Int {
+    val visit = rememberSaveable { mutableIntStateOf(0) }
+    remember(visit, freshStart) { if (freshStart) visit.intValue++; freshStart }
+    return visit.intValue
+}
 
-/** État de défilement d'une rangée de l'accueil : sauvegardé avec l'entrée de navigation, sauf visite neuve (remis au début). */
+/** Numéro de la visite neuve en cours, fourni aux rangées. */
+internal val LocalHomeVisit = staticCompositionLocalOf { 0 }
+
+/**
+ * État de défilement d'une rangée de l'accueil : sauvegardé avec l'entrée de navigation. Une visite neuve le remet au début
+ * UNE seule fois (le numéro déjà traité est sauvegardé avec la rangée) : sortie puis revenue dans la composition, la rangée
+ * garde sa place.
+ */
 @Composable
 internal fun rememberRowListState(): LazyListState {
     val state = rememberLazyListState()
-    val fresh = LocalHomeFresh.current
-    remember(state, fresh) { if (fresh) state.requestScrollToItem(0); fresh }
+    val visit = LocalHomeVisit.current
+    val done = rememberSaveable { mutableIntStateOf(0) }
+    remember(state, visit) { if (visit != 0 && done.intValue != visit) { state.requestScrollToItem(0); done.intValue = visit }; visit }
     return state
 }

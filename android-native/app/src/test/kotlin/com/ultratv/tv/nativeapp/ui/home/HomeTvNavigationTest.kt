@@ -633,6 +633,21 @@ class HomeTvNavigationTest {
         assertEquals("première carte de la rangée, pas la carte quittée", "home-poster-m1", downTo("home-poster-m"))
     }
 
+    /** Visite ouverte par le menu : la remise à neuf des rangées a lieu UNE fois, puis la mémoire de rangée joue comme d'habitude. */
+    @Test fun visiteNeuve_rangeeSortieDeLaCompositionPuisRevenue_gardeLaCarteQuittee() {
+        mount(long = true)
+        leaveAndReturnByMenu()
+        assertEquals("hero-watch", focusNow("visite neuve"))
+        downTo("home-poster-t")
+        repeat(8) { step(forward, "carte") }
+        val left = focusNow("carte lointaine")
+        assertEquals("home-poster-t9", left)
+        repeat(6) { step(Key.DirectionDown, "descente") }
+        var tag = ""
+        repeat(6) { tag = step(Key.DirectionUp, "remontée") }
+        assertEquals("la rangée garde sa carte quittée", left, tag)
+    }
+
     private fun entreeDansLeContenuApresRetourParLeMenu(lang: AppLang) {
         mount(lang)
         downTo("home-poster-m")
