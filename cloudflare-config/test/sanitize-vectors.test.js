@@ -149,11 +149,15 @@ describe("sanitizeLog : bornes et coût", () => {
     expect(sanitizeLog("a".repeat(10000), 100).length).toBeLessThanOrEqual(100);
   });
 
-  // Coût. La contrainte réelle est la limite de 10 ms de temps CPU par requête de l'offre gratuite de Workers, pour
-  // TOUTE la requête (nettoyage compris). Mesures en millisecondes entières (horloge de workerd) : la plus courte de
-  // 7 passes (15 pour la pile réaliste) après échauffement, la moins sensible aux autres fichiers de test qui tournent en parallèle. Elles
-  // dépendent de la machine.
-  // - Pile réaliste de 30 Ko : doit tenir sous 10 ms (mesuré : 2 à 4 ms en node sur un Mac récent).
+  // Coût. La VRAIE contrainte est le budget de temps CPU du Worker en production : 10 ms par requête sur l'offre
+  // gratuite, pour TOUTE la requête (nettoyage compris), mesurés par workerd chez Cloudflare. Ce test ne peut pas la
+  // vérifier : il mesure la machine qui fait tourner les tests (Mac de développement ou exécuteur de CI, 2 à 4 fois plus
+  // lent, avec les autres fichiers de test en parallèle). Il garde seulement un ordre de grandeur et la linéarité.
+  // Mesures en millisecondes entières (horloge de workerd) : la plus courte de 7 passes (15 pour la pile réaliste)
+  // après échauffement, la moins sensible à la charge.
+  // - Pile réaliste de 30 Ko : seuil de 25 ms (mesuré : 2 à 4 ms en node sur un Mac récent). Un seuil de 10 ms, égal au
+  //   budget de production, échouait de temps en temps sur une machine de CI chargée sans rien dire du Worker réel ;
+  //   25 ms laisse cette marge et attrape quand même une régression d'un ordre de grandeur.
   // - Entrées hostiles de 30 à 64 Ko : seuil INDICATIF de 100 ms (pires formes mesurées : 7 à 11 ms sur une machine
   //   au repos, 3 à 4 fois plus sur une machine chargée par une compilation). Il garde la
   //   linéarité (un retour arrière catastrophique coûterait des secondes) ; au-delà de 10 ms en production, seule la
@@ -196,12 +200,13 @@ describe("sanitizeLog : bornes et coût", () => {
     expect(fastest(() => sanitizeLog(h, 32 * 1024, { hostKey: KEY }))).toBeLessThan(100);
   });
 
-  it("pile réaliste de 30 Ko : nettoyée en moins de 10 ms (limite CPU réelle), sans fuite", () => {
+  it("pile réaliste de 30 Ko : nettoyée en moins de 25 ms sur la machine de test (budget réel : CPU du Worker), sans fuite", () => {
     const frame = "\tat okhttp3.internal.connection.RealCall.execute(RealCall.kt:154)\n";
     const stack = `java.io.IOException: unexpected end of stream on http://fournisseur.invalid:8080/ZZUSERZZ/ZZPASSZZ/1.ts\n${frame.repeat(400)}`
       + `JSON input: {"username":"ZZUSERZZ","password":"ZZPASSZZ"}\n${frame.repeat(60)}`;
     expect(stack.length).toBeGreaterThan(30000);
-    expect(fastest(() => sanitizeLog(stack, 32 * 1024, { hostKey: KEY }), 15)).toBeLessThan(10);
+    const ms = fastest(() => sanitizeLog(stack, 32 * 1024, { hostKey: KEY }), 15);
+    expect(ms, `pile réaliste : ${ms} ms`).toBeLessThan(25);
     const out = sanitizeLog(stack, 32 * 1024, { hostKey: KEY });
     expect(out).not.toContain("ZZUSERZZ");
     expect(out).not.toContain("ZZPASSZZ");
