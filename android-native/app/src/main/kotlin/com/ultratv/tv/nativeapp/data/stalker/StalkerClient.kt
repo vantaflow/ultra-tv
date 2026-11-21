@@ -125,25 +125,39 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
         val known = endpoints.get(a.portal)
         val candidates = listOfNotNull(known) + StalkerPortal.endpointCandidates(a.portal).filter { it != known }
         var last: Throwable? = null
+        // Premier point d'entrée dont la poignée de main répond mais dont le profil est refusé : gardé en dernier recours.
+        // Un même serveur peut répondre à plusieurs chemins (portal.php d'un autre panneau + le vrai portail sous
+        // /stalker_portal/) : s'arrêter au premier jeton faisait refuser toute la suite (« identifiants refusés »).
+        var refusedFirst: Session? = null
         for (api in candidates) {
             val token = try { handshake(a, api) } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (t: Throwable) { last = t; null }
                 ?: continue
-            if (api != known) endpoints.put(a.portal, api)
             val s = Session(api, token)
-            // Profil : indispensable sur la plupart des portails pour « activer » le jeton ; son contenu est sans importance ici.
-            runCatching { raw(a, s, profileParams(a)) }
-            if (a.login.isNotEmpty()) {
-                val ok = jsOf(StalkerJson.parse(raw(a, s, listOf(
-                    "type" to "stb", "action" to "do_auth", "login" to a.login, "password" to a.password,
-                    "device_id" to a.device.deviceId, "device_id2" to a.device.deviceId2,
-                ))))
-                if (ok == false || ok == "false") throw denied()
-            }
-            return s
+            // Profil : indispensable sur la plupart des portails pour « activer » le jeton.
+            val profile = try { raw(a, s, profileParams(a)) } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (_: Throwable) { null }
+            if (profile != null && refused(profile)) { if (refusedFirst == null) refusedFirst = s; continue }
+            return finishOpen(a, s, known)
+        }
+        refusedFirst?.let {
+            com.ultratv.tv.nativeapp.UtvLog.w("StalkerProbe", "profile refused on every endpoint candidates=${candidates.size}")
+            return finishOpen(a, it, known)
         }
         // Le point d'entrée mémorisé ne répond plus : il sera sondé de nouveau la prochaine fois.
         if (known != null) endpoints.forget(a.portal)
         throw last ?: denied()
+    }
+
+    /** Point d'entrée retenu : mémorisé, puis `do_auth` si un identifiant est fourni. */
+    private suspend fun finishOpen(a: Account, s: Session, known: String?): Session {
+        if (s.api != known) endpoints.put(a.portal, s.api)
+        if (a.login.isNotEmpty()) {
+            val ok = jsOf(StalkerJson.parse(raw(a, s, listOf(
+                "type" to "stb", "action" to "do_auth", "login" to a.login, "password" to a.password,
+                "device_id" to a.device.deviceId, "device_id2" to a.device.deviceId2,
+            ))))
+            if (ok == false || ok == "false") throw denied()
+        }
+        return s
     }
 
     /** `stb/handshake` → jeton ; null si la réponse n'en contient pas (mauvais point d'entrée). */
