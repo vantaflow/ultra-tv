@@ -625,7 +625,7 @@ class HomeTvStructureTest {
      * son anneau, reste dans l'écran aux deux bords ; vers la fin de la rangée la carte ne recule jamais (pas de saut ni
      * d'oscillation du défilement) ; chaque touche déplace d'UNE carte.
      */
-    private fun assertRowNeverClipped(block: HomeBlock, lang: AppLang, count: Int, scale: Float, tag: (Int) -> String, data: HomeRows.() -> HomeRows, rowTag: String? = null, ringDp: Float = 10.design.value) {
+    private fun assertRowNeverClipped(block: HomeBlock, lang: AppLang, count: Int, scale: Float, tag: (Int) -> String, data: HomeRows.() -> HomeRows, rowTag: String? = null, ringDp: Float = PosterRingReach.value) {
         val base = HomeLayout.defaultFor(true)
         setHome(hero = null, layout = base.move(block, -base.order.indexOf(block)), lang = lang)
         rowsState.value = rowsState.value.data()
@@ -682,14 +682,14 @@ class HomeTvStructureTest {
         copy(channels = (1..n).map { i -> ChannelCardUi(ChannelEntity(id = i.toLong(), providerId = 1, remoteId = "$i", name = "Nova $i", logo = null, categoryId = null, streamUrl = "u", num = i), null) })
     }
 
-    @Test fun rangeReprendre_jamaisRognee_enFrancais() = assertRowNeverClipped(HomeBlock.RESUME, AppLang.French, 8, 1.04f, { "home-resume-r$it" }, resumeRows(8), "home-resume-row")
-    @Test fun rangeReprendre_jamaisRognee_enArabe() = assertRowNeverClipped(HomeBlock.RESUME, AppLang.Arabic, 8, 1.04f, { "home-resume-r$it" }, resumeRows(8), "home-resume-row")
-    @Test fun rangeDirect_jamaisRognee_enFrancais() = assertRowNeverClipped(HomeBlock.CHANNELS, AppLang.French, 8, 1.06f, { "home-channel-$it" }, channelRows(8), "home-channel-row")
-    @Test fun rangeDirect_jamaisRognee_enArabe() = assertRowNeverClipped(HomeBlock.CHANNELS, AppLang.Arabic, 8, 1.06f, { "home-channel-$it" }, channelRows(8), "home-channel-row")
-    @Test fun rangeTop10_jamaisRognee_enFrancais() = assertRowNeverClipped(HomeBlock.TOP10, AppLang.French, 10, 1.10f, { "home-poster-t$it" }, { this })
-    @Test fun rangeTop10_jamaisRognee_enArabe() = assertRowNeverClipped(HomeBlock.TOP10, AppLang.Arabic, 10, 1.10f, { "home-poster-t$it" }, { this })
-    @Test fun rangeAffiches_jamaisRognee_enFrancais() = assertRowNeverClipped(HomeBlock.LATEST_MOVIES, AppLang.French, 6, 1.10f, { "home-poster-m$it" }, { this })
-    @Test fun rangeAffiches_jamaisRognee_enArabe() = assertRowNeverClipped(HomeBlock.LATEST_MOVIES, AppLang.Arabic, 6, 1.10f, { "home-poster-m$it" }, { this })
+    @Test fun rangeReprendre_jamaisRognee_enFrancais() = assertRowNeverClipped(HomeBlock.RESUME, AppLang.French, 8, ResumeScale, { "home-resume-r$it" }, resumeRows(8), "home-resume-row")
+    @Test fun rangeReprendre_jamaisRognee_enArabe() = assertRowNeverClipped(HomeBlock.RESUME, AppLang.Arabic, 8, ResumeScale, { "home-resume-r$it" }, resumeRows(8), "home-resume-row")
+    @Test fun rangeDirect_jamaisRognee_enFrancais() = assertRowNeverClipped(HomeBlock.CHANNELS, AppLang.French, 8, ChannelScale, { "home-channel-$it" }, channelRows(8), "home-channel-row")
+    @Test fun rangeDirect_jamaisRognee_enArabe() = assertRowNeverClipped(HomeBlock.CHANNELS, AppLang.Arabic, 8, ChannelScale, { "home-channel-$it" }, channelRows(8), "home-channel-row")
+    @Test fun rangeTop10_jamaisRognee_enFrancais() = assertRowNeverClipped(HomeBlock.TOP10, AppLang.French, 10, HomePosterScale, { "home-poster-t$it" }, { this })
+    @Test fun rangeTop10_jamaisRognee_enArabe() = assertRowNeverClipped(HomeBlock.TOP10, AppLang.Arabic, 10, HomePosterScale, { "home-poster-t$it" }, { this })
+    @Test fun rangeAffiches_jamaisRognee_enFrancais() = assertRowNeverClipped(HomeBlock.LATEST_MOVIES, AppLang.French, 6, HomePosterScale, { "home-poster-m$it" }, { this })
+    @Test fun rangeAffiches_jamaisRognee_enArabe() = assertRowNeverClipped(HomeBlock.LATEST_MOVIES, AppLang.Arabic, 6, HomePosterScale, { "home-poster-m$it" }, { this })
 
     /**
      * Rangée d'affiches : l'affiche focalisée (agrandie de 10 %) et son contour restent ENTIERS dans la rangée et dans
@@ -697,11 +697,13 @@ class HomeTvStructureTest {
      * agrandie (autour de son centre) mais sa taille relevée est celle de la mise en page, d'où `taille × zoom` ici.
      * Contour = 6 de décalage + 4 d'épaisseur (unités design), agrandis aussi. Top 10 : le grand chiffre ne déborde pas non plus.
      */
+    private fun titleOf(block: HomeBlock) = titles.getValue(block.sections.first())
+
     private fun assertPosterRowFits(block: HomeBlock, lang: AppLang, count: Int, prefix: String, rowTag: String, rankTag: ((Int) -> String)? = null) {
         val base = HomeLayout.defaultFor(true)
         setHome(hero = null, layout = base.move(block, -base.order.indexOf(block)), lang = lang)
         val screen = rule.onRoot().getUnclippedBoundsInRoot()
-        val scale = 1.10f; val ring = 10.design.value * scale
+        val scale = HomePosterScale; val ring = PosterRingReach.value * scale
         focusPoster("${prefix}1")
         val forward = if (lang.rtl) Key.DirectionLeft else Key.DirectionRight
         for (i in 1..count) {
@@ -717,6 +719,11 @@ class HomeTvStructureTest {
             assertTrue("$prefix$i : coupée en bas par l'écran ($b / ${screen.bottom})", b <= screen.bottom.value)
             assertTrue("$prefix$i : coupée à gauche ($l)", l >= screen.left.value)
             assertTrue("$prefix$i : coupée à droite ($r / ${screen.right})", r <= screen.right.value)
+            // Le contour agrandi reste sous le titre de la rangée et ne dépasse pas la cellule (titre et année sous l'affiche compris).
+            val title = rule.onAllNodes(hasText(titleOf(block)))[0].getUnclippedBoundsInRoot()
+            assertTrue("$prefix$i : le contour recouvre le titre de la rangée ($t / ${title.bottom})", t >= title.bottom.value)
+            val cell = rule.onNodeWithTag("home-poster-$prefix$i").getUnclippedBoundsInRoot()
+            assertTrue("$prefix$i : le contour dépasse la cellule ($b / ${cell.bottom})", b <= cell.bottom.value)
             if (rankTag != null) {
                 val k = rule.onNodeWithTag(rankTag(i)).getUnclippedBoundsInRoot()
                 assertTrue("$prefix$i : chiffre rogné en haut (${k.top} / ${row.top})", k.top.value >= row.top.value)

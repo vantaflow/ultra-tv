@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.key
 import androidx.compose.runtime.LaunchedEffect
@@ -403,3 +404,15 @@ fun RowEdgeMargin(margin: androidx.compose.ui.unit.Dp, content: @Composable () -
     CompositionLocalProvider(LocalBringIntoViewSpec provides spec, content = content)
 }
 
+
+/**
+ * Marge de bord au défilement d'une rangée dont la carte focalisée est agrandie de [scale] avec un anneau de portée [ring].
+ * Le zoom est un `graphicsLayer` : la demande de défilement reçoit un rectangle à position déjà agrandie (g = (zoom - 1) / 2
+ * × [cardWidth] de moins) mais à taille de mise en page ; côté fin il faut donc 2 g + anneau (agrandi aussi). Arrondie
+ * au demi-dp (unité design) supérieur.
+ */
+internal fun edgeMarginFor(scale: Float, cardWidth: androidx.compose.ui.unit.Dp, ring: androidx.compose.ui.unit.Dp): androidx.compose.ui.unit.Dp {
+    val g = (scale - 1f) / 2f * cardWidth.value
+    val dp = 2f * g + ring.value * scale
+    return (kotlin.math.ceil(dp * 2f - 0.001f) / 2f).dp
+}

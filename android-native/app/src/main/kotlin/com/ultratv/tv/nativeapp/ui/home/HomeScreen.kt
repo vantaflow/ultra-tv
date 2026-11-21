@@ -4,6 +4,7 @@ import com.ultratv.tv.nativeapp.ui.design.designT
 import com.ultratv.tv.nativeapp.ui.common.RowBleed
 import com.ultratv.tv.nativeapp.ui.common.rowBleedStart
 import com.ultratv.tv.nativeapp.ui.common.RowEdgeMargin
+import com.ultratv.tv.nativeapp.ui.common.edgeMarginFor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -408,20 +409,24 @@ private class HomePivotSpec(private val topFocused: () -> Boolean) : BringIntoVi
 private fun Modifier.homeRow(): Modifier = this.rowBleedStart(RowBleed).focusRestorer().focusGroup()
 
 /*
- * Marges de bord au défilement. Le zoom de la carte focalisée est un `graphicsLayer` : la demande de défilement reçoit un
- * rectangle dont la position est déjà agrandie (autour du centre, soit g = (zoom - 1) / 2 × largeur de moins) mais dont la
- * taille est celle de la mise en page. Côté fin, il faut donc la marge du zoom ET de l'anneau, plus ce décalage g :
- * marge = 2 g + anneau (anneau agrandi aussi). Unités design.
+ * Marges de bord au défilement : calculées par [edgeMarginFor] (2 g + anneau) à partir des constantes mêmes de chaque
+ * rangée (zoom, largeur de carte), jamais écrites en chiffres. Portée de l'anneau : 10 (design), soit contour 6 + 4 pour
+ * les affiches ; pour les cartes Reprendre / En direct l'anneau est dessiné dans la carte, 10 est une réserve prudente.
  */
+internal val PosterRingReach get() = 10.design
+internal const val ResumeScale = 1.04f
+internal val ResumeCardWidth get() = 320.design
+internal const val ChannelScale = 1.06f
+internal val ChannelCardWidth get() = 392.design
 
-/** Rangée d'affiches (200, zoom 10 % : g = 10) + anneau (10 × 1,10 = 11) : 31. */
-private val PosterEdgeMargin get() = 31.design
+/** Rangées d'affiches et Top 10 : 31. */
+private val PosterEdgeMargin get() = edgeMarginFor(HomePosterScale, PosterWidth, PosterRingReach)
 
-/** Rangée « Reprendre » (320, zoom 4 % : g = 6,4) + anneau (10 × 1,04 = 10,4) : 23,2, arrondi à 24. */
-private val ResumeEdgeMargin get() = 24.design
+/** Rangée « Reprendre » : 24. */
+private val ResumeEdgeMargin get() = edgeMarginFor(ResumeScale, ResumeCardWidth, PosterRingReach)
 
-/** Rangée « En direct » (392, zoom 6 % : g = 11,8) + anneau (10 × 1,06 = 10,6) : 34,2, arrondi à 35. */
-private val ChannelEdgeMargin get() = 35.design
+/** Rangée « En direct » : 35. */
+private val ChannelEdgeMargin get() = edgeMarginFor(ChannelScale, ChannelCardWidth, PosterRingReach)
 
 @Composable
 private fun HomeSection(
@@ -528,7 +533,7 @@ private fun ChannelRow(cards: List<ChannelCardUi>, onPlay: (ChannelEntity) -> Un
 @Composable
 private fun SeeAllCard(label: String, memory: RowFocusMemory, onClick: () -> Unit) {
     FocusSurface(
-        onClick = onClick, shape = RoundedCornerShape(16.design), bg = Ux.Card, focusedBg = Ux.Card, focusedScale = 1.06f, ringWidth = 5.design,
+        onClick = onClick, shape = RoundedCornerShape(16.design), bg = Ux.Card, focusedBg = Ux.Card, focusedScale = ChannelScale, ringWidth = 5.design,
         modifier = Modifier.width(220.design).height(CHANNEL_CARD_HEIGHT).then(rowMemory(memory, "see-all")).testTag("home-channel-see-all"),
     ) { _ ->
         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
@@ -543,7 +548,7 @@ private fun SeeAllCard(label: String, memory: RowFocusMemory, onClick: () -> Uni
 private val Top10CellWidth get() = 336.design
 
 /** Agrandissement de l'affiche focalisée sur l'accueil (10 %). */
-private const val HomePosterScale = 1.10f
+internal const val HomePosterScale = 1.10f
 
 /**
  * « Top 10 aujourd'hui » : chaque affiche porte son rang en grand chiffre au contour, derrière elle, du côté du début de
@@ -643,7 +648,7 @@ private fun ShortcutTile(sc: ShortcutUi?, sport: SportTile?, modifier: Modifier,
     }
 }
 
-private val PosterWidth get() = 200.design
+internal val PosterWidth get() = 200.design
 /**
  * Marges des rangées d'affiches : l'affiche ciblée grandit de 10 % (15 en haut pour 300 de haut) plus son contour
  * (décalé de 6, épaisseur 4, agrandi lui aussi : 11) ; sans cette marge, elle recouvrait le titre de la rangée.
@@ -845,9 +850,9 @@ private fun ResumeCard(c: ResumeCardUi, modifier: Modifier = Modifier, onClick: 
             else -> D.minLeft.format(mins)
         }
     }
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(20.design), bg = Ux.Card, focusedBg = Ux.Card, focusedScale = 1.04f, ringWidth = 5.design, modifier = modifier.width(320.design).height(180.design)) { _ ->
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(20.design), bg = Ux.Card, focusedBg = Ux.Card, focusedScale = ResumeScale, ringWidth = 5.design, modifier = modifier.width(ResumeCardWidth).height(180.design)) { _ ->
         Box(Modifier.fillMaxSize()) {
-            ThumbImage(e.poster, e.title, Modifier.fillMaxSize(), radius = 20, decodeSize = DpSize(320.design, 180.design))
+            ThumbImage(e.poster, e.title, Modifier.fillMaxSize(), radius = 20, decodeSize = DpSize(ResumeCardWidth, 180.design))
             Box(Modifier.fillMaxSize().background(ResumeScrim))
             Column(Modifier.align(Alignment.BottomStart).padding(start = 16.design, end = 16.design, bottom = 18.design), verticalArrangement = Arrangement.spacedBy(4.design)) {
                 Text(c.title, color = Color.White, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, lineHeight = 22.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -873,8 +878,8 @@ internal fun channelTrackColor(): Color = Ux.Text.copy(alpha = 0.10f)
 private fun ChannelCard(card: ChannelCardUi, memory: RowFocusMemory, onClick: () -> Unit) {
     val c = card.channel
     FocusSurface(
-        onClick = onClick, shape = RoundedCornerShape(16.design), bg = Ux.Card, focusedBg = Ux.Card, focusedScale = 1.06f, ringWidth = 5.design,
-        modifier = Modifier.width(392.design).height(CHANNEL_CARD_HEIGHT).then(rowMemory(memory, c.id)).testTag("home-channel-${c.id}"),
+        onClick = onClick, shape = RoundedCornerShape(16.design), bg = Ux.Card, focusedBg = Ux.Card, focusedScale = ChannelScale, ringWidth = 5.design,
+        modifier = Modifier.width(ChannelCardWidth).height(CHANNEL_CARD_HEIGHT).then(rowMemory(memory, c.id)).testTag("home-channel-${c.id}"),
     ) { _ ->
         Row(Modifier.align(Alignment.TopStart).fillMaxWidth().padding(start = 18.design, end = 18.design, top = 16.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
             LiveBadge()
