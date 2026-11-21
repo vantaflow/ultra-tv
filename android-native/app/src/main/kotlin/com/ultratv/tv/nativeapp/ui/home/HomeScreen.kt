@@ -158,7 +158,10 @@ fun HomeScreen(
     vm.setHeroRotating(heroRotates)
     val heroes by vm.heroes.collectAsStateWithLifecycle()
     // « À la une » qui défile toutes les 9 s (sans focus volé : seul le contenu change, OK ouvre le titre affiché).
+    val freshStart = rememberHomeFreshStart()
+    val heroFocusDoneState = rememberHeroFocusDone(freshStart)
     var heroIdx by rememberSaveable { mutableStateOf(0) }
+    remember(freshStart) { if (freshStart) heroIdx = 0; freshStart }
     LaunchedEffect(heroes.size, heroRotates) {
         if (heroes.size < 2 || !heroRotates) return@LaunchedEffect
         while (true) { kotlinx.coroutines.delay(HERO_ROTATE_MS); heroIdx = (heroIdx + 1) % heroes.size }
@@ -217,7 +220,7 @@ fun HomeScreen(
     // composition, le focusRestorer de ScreenFocusHost est perdu ; c'est [HomeFocusRestore] (élément quitté, sauvegardé avec
     // l'entrée) qui rend seul candidat l'élément quitté, et la demande de focus initiale de ScreenFocusHost tombe dessus.
     // Les retours qui ne recomposent pas l'accueil (modale fermée, menu latéral) restent à ScreenFocusHost / ContentFocusMemory.
-    var heroFocusDone by rememberSaveable { mutableStateOf(false) }
+    var heroFocusDone by heroFocusDoneState
     val onHeroFocused = remember { { heroFocusDone = true } }
     val clock = rememberEpgClock()
     val sportOn = com.ultratv.tv.nativeapp.ui.sport.LocalSportEnabled.current
@@ -231,7 +234,7 @@ fun HomeScreen(
     HomeTvContent(
         slot = slot, hero = h, heroIndex = heroIdx % heroes.size.coerceAtLeast(1), heroCount = heroes.size, heroExtras = heroExtras,
         rows = rows, providerCount = providers.size, clock = clock, sportOn = sportOn, sportLive = sportLive,
-        heroFocusDone = heroFocusDone, onHeroFocused = onHeroFocused,
+        heroFocusDone = heroFocusDone, onHeroFocused = onHeroFocused, freshStart = freshStart,
         playHistory = playHistory, openPoster = openPoster, playChannel = playChannel, onShortcut = onShortcut, onGoSport = onGoSport,
         onWatchHero = watchHero, onInfoHero = openHero, heroInList = heroInList, onToggleHeroList = toggleHeroList,
         heroRotates = heroRotates,
@@ -264,6 +267,8 @@ internal fun HomeTvContent(
     slot: HomeTopSlot, hero: HeroItem?, heroIndex: Int, heroCount: Int, heroExtras: State<Map<String, HeroExtras>>,
     rows: HomeRows, providerCount: Int, clock: State<Long>, sportOn: Boolean, sportLive: Int?,
     heroFocusDone: Boolean, onHeroFocused: () -> Unit,
+    // Visite neuve (retour par le menu latéral) : liste en haut, rien à restaurer, rangées au début.
+    freshStart: Boolean = false,
     playHistory: (WatchHistoryEntity) -> Unit, openPoster: (PosterCardUi) -> Unit, playChannel: (ChannelEntity) -> Unit,
     onShortcut: (ShortcutId) -> Unit, onGoSport: () -> Unit,
     onWatchHero: (HeroItem) -> Unit, onInfoHero: (HeroItem) -> Unit,
@@ -299,6 +304,7 @@ internal fun HomeTvContent(
     val pivotSpec = remember { HomePivotSpec { topFocusFlag[0] } }
     // Dernière carte focalisée, sauvegardée avec l'entrée de navigation : de retour d'une fiche, le focus y revient.
     val restore = rememberSaveable(saver = HomeFocusRestore.Saver) { HomeFocusRestore() }
+    remember(restore, freshStart) { if (freshStart) { restore.reset(); listState.requestScrollToItem(0) }; freshStart }
     // Dernier recours de la restauration : après [HomeFocusRestore.RESTORE_MS] tout redevient candidat, bien avant la fin des essais de la
     // demande de focus initiale (3 s). Une carte disparue des données d'une rangée déjà là est vue plus tôt (voir RegisterRowKeys). Aucune demande de focus ici.
     LaunchedEffect(restore) {
@@ -325,7 +331,7 @@ internal fun HomeTvContent(
             count(ShortcutId.SERIES)?.let { add(D.homeSeriesCount(it, formatCount(it, D.locale))) }
         }.joinToString(" · ")
     }
-    CompositionLocalProvider(LocalBringIntoViewSpec provides pivotSpec, LocalHomeFocusRestore provides restore, LocalHomeEdgeGate provides edgeGate) {
+    CompositionLocalProvider(LocalBringIntoViewSpec provides pivotSpec, LocalHomeFocusRestore provides restore, LocalHomeEdgeGate provides edgeGate, LocalHomeFresh provides freshStart) {
         LazyColumn(
             // Touches reçues par l'accueil : une sortie de rangée différée dont la touche est périmée est abandonnée (voir [HomeEdgeGate]).
             Modifier.fillMaxSize().onPreviewKeyEvent { if (it.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) { edgeGate.keys++; if (!heroFocusDone) onHeroFocused() }; false }
@@ -536,7 +542,7 @@ private fun HomeSection(
 @Composable
 private fun ResumeRow(cards: List<ResumeCardUi>, onPlay: (WatchHistoryEntity) -> Unit) {
     val memory = rememberRowFocusMemory()
-    val listState = rememberLazyListState()
+    val listState = rememberRowListState()
     RegisterRowKeys(memory, cards, listState) { cards.map { it.key } }
     RowEdgeMargin(ResumeEdgeMargin) {
         LazyRow(Modifier.homeRow().then(memory.tracker).testTag("home-resume-row"), state = listState, horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PaddingValues(start = RowBleed, end = 96.design, top = 18.design, bottom = 18.design)) {
@@ -563,7 +569,7 @@ private fun NewEpisodesRow(cards: List<NewEpisodeCardUi>, onOpen: (PosterCardUi)
 @Composable
 private fun PosterRow(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
     val memory = rememberRowFocusMemory()
-    val listState = rememberLazyListState()
+    val listState = rememberRowListState()
     RegisterRowKeys(memory, cards, listState) { cards.map { it.key } }
     RowEdgeMargin(PosterEdgeMargin) {
         LazyRow(Modifier.homeRow().then(memory.tracker).testTag("home-poster-row"), state = listState, horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
@@ -582,7 +588,7 @@ private fun PosterRow(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit)
 private fun ChannelRow(cards: List<ChannelCardUi>, onPlay: (ChannelEntity) -> Unit, seeAll: String, up: HeroWatchTarget?, onSeeAll: () -> Unit) {
     // ▲ depuis n'importe quelle carte, à la sortie du groupe : « Regarder » (sans cela, la recherche géométrique choisit le bouton le plus proche, à droite).
     val memory = rememberRowFocusMemory()
-    val listState = rememberLazyListState()
+    val listState = rememberRowListState()
     RegisterRowKeys(memory, cards, listState) { cards.distinctBy { it.channel.id }.map { it.channel.id } + "see-all" }
     val rowModifier = Modifier.homeRow(up)
     RowEdgeMargin(ChannelEdgeMargin) {
@@ -628,7 +634,7 @@ internal const val HomePosterScale = 1.10f
 @Composable
 private fun Top10Row(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
     val memory = rememberRowFocusMemory()
-    val listState = rememberLazyListState()
+    val listState = rememberRowListState()
     RegisterRowKeys(memory, cards, listState) { cards.map { it.key } }
     // Le défilement vers la carte focalisée vise la CELLULE entière (grand chiffre compris), pas la seule affiche : sinon, en revenant en arrière, le chiffre était rogné au bord.
     val density = androidx.compose.ui.platform.LocalDensity.current

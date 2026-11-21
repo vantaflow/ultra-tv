@@ -126,6 +126,9 @@ internal class HomeFocusRestore(var saved: String? = null) {
         return keys.indexOf(s.substring(row.length + 1))
     }
 
+    /** Visite neuve (retour par le menu) : plus aucun élément à restaurer, tout est candidat. */
+    fun reset() { saved = null; pending = false }
+
     fun idOf(row: String, key: Any) = "$row\u0000$key"
 
     /** Le focus est arrivé sur [id] : fin de l'attente si c'est la cible, sinon mémorisation pour une prochaine sortie. */

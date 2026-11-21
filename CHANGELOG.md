@@ -13,6 +13,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Réglages › À propos : une ligne « Paiement par carte » grisée, marquée « Bientôt disponible », apparaît sous « Soutenir Ultra TV ». Elle se parcourt à la télécommande mais ne fait rien pour l'instant : aucun prix, aucun lien, aucune connexion.
 - Catalogue (téléphone et tablette avec clavier ou manette) : la pastille de filtre focalisée n'est plus collée au bord de l'écran. Ce changement concerne le catalogue, pas l'accueil.
 - Télécommande (TV) : sur l'Accueil, le Guide, le Direct, Films, Séries et les autres écrans du menu, Retour ouvre le menu latéral avec le focus sur l'écran courant, au lieu d'afficher seulement « Maintenez Retour pour quitter ». Menu ouvert, Retour garde la règle d'avant (retour à l'accueil, puis le message de sortie). Fenêtres et sous-niveaux gardent la priorité.
+- Accueil TV : en revenant à l'accueil par le menu latéral, il s'ouvre comme à neuf (liste en haut, bandeau « À la une » entier, focus sur « Regarder », rangées au début). La carte quittée n'est retrouvée qu'au retour d'une fiche ou du lecteur.
 
 ### Corrigé
 - Arabe : les rangées de l'accueil et du catalogue ne sont plus rognées au bord de départ.

@@ -218,14 +218,15 @@ class HomeTvNavigationTest {
     @Composable
     private fun HomeScene(heroCount: Int, sportList: List<SportEntry>) {
         // Comme HomeScreen : « Regarder » ne prend le focus qu'une fois par visite (état sauvegardé dans l'entrée de navigation).
-        var done by rememberSaveable { mutableStateOf(false) }
+        val fresh = rememberHomeFreshStart()
+        var done by rememberHeroFocusDone(fresh)
         val clock = clockState
         val extras = remember { mutableStateOf(emptyMap<String, HeroExtras>()) }
         val current = heroSource.value
         HomeTvContent(
             slot = if (current != null) HomeTopSlot.HERO else HomeTopSlot.NONE, hero = current, heroIndex = 0, heroCount = heroCount, heroExtras = extras,
             rows = rowsState.value, providerCount = 3, clock = clock, sportOn = sportList.isNotEmpty(), sportLive = sportList.size.takeIf { it > 0 },
-            heroFocusDone = done, onHeroFocused = { done = true },
+            heroFocusDone = done, onHeroFocused = { done = true }, freshStart = fresh,
             playHistory = {}, openPoster = {}, playChannel = {}, onShortcut = {}, onGoSport = {},
             onWatchHero = {}, onInfoHero = {},
             heroInList = inList, onToggleHeroList = {},
@@ -601,6 +602,57 @@ class HomeTvNavigationTest {
         rule.mainClock.advanceTimeBy(2_000); rule.waitForIdle()
         val back = focusNow("après retour")
         assertTrue("le focus revient sur l'image, pas sur une carte de rangée ($back)", back.startsWith("hero-"))
+    }
+
+    // ───────────── Retour à l'accueil par le menu latéral : comme à neuf ─────────────
+
+    /** Autre écran puis retour à l'accueil CHOISI dans le menu latéral ([HomeFreshStart], posé par le menu) ; accueil recomposé. */
+    private fun leaveAndReturnByMenu() {
+        rule.runOnIdle { screen.value = "detail" }; rule.waitForIdle()
+        rule.onNodeWithTagExists("detail-button")
+        rule.runOnIdle { HomeFreshStart.mark(); screen.value = "home" }; rule.waitForIdle()
+        rule.mainClock.advanceTimeBy(2_000); rule.waitForIdle()
+    }
+
+    @Test fun retourParLeMenu_listeEnHaut_bandeauEntier_focusSurRegarder() {
+        mount(long = true)
+        downTo("home-poster-m")
+        repeat(2) { step(forward, "carte") }
+        leaveAndReturnByMenu()
+        assertEquals("accueil comme à neuf : « Regarder »", "hero-watch", focusNow("après retour par le menu"))
+        rule.onNodeWithTag("home-hero").assertIsDisplayed()
+        assertEquals("liste en haut : le bandeau commence en haut de l'écran", 0f, rule.onNodeWithTag("home-hero").getUnclippedBoundsInRoot().top.value, 1f)
+    }
+
+    @Test fun retourParLeMenu_memoireDesRangeesRemiseAZero_premiereCarte() {
+        mount()
+        downTo("home-poster-m")
+        repeat(4) { step(forward, "carte") }
+        leaveAndReturnByMenu()
+        assertEquals("hero-watch", focusNow("après retour"))
+        assertEquals("première carte de la rangée, pas la carte quittée", "home-poster-m1", downTo("home-poster-m"))
+    }
+
+    private fun entreeDansLeContenuApresRetourParLeMenu(lang: AppLang) {
+        mount(lang)
+        downTo("home-poster-m")
+        repeat(2) { step(forward, "carte") }
+        leaveAndReturnByMenu()
+        // Le focus est dans le menu au moment du choix : l'entrée dans le contenu (▶, ◀ en arabe) arrive sur « Regarder ».
+        focusByTag("rail-0")
+        assertEquals("hero-watch", step(forward, "menu vers le contenu"))
+        rule.onNodeWithTag("home-hero").assertIsDisplayed()
+    }
+
+    @Test fun retourParLeMenu_focusDansLeMenu_entrerDansLeContenu_arriveSurRegarder() = entreeDansLeContenuApresRetourParLeMenu(AppLang.French)
+    @Test fun retourParLeMenu_focusDansLeMenu_entrerDansLeContenu_enArabe_arriveSurRegarder() = entreeDansLeContenuApresRetourParLeMenu(AppLang.Arabic)
+
+    @Test fun retourDUneFiche_sansPasserParLeMenu_gardeLaCarteQuittee() {
+        mount()
+        downTo("home-poster-m")
+        repeat(2) { step(forward, "carte") }
+        leaveAndReturn(); rule.mainClock.advanceTimeBy(2_000); rule.waitForIdle()
+        assertEquals("home-poster-m3", focusNow("après retour de fiche"))
     }
 
     private fun leaveAndReturn(frames: Int = 90, whileAway: () -> Unit = {}): List<String> {
