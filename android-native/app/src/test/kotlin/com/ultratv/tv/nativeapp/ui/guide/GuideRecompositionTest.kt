@@ -127,8 +127,10 @@ class GuideRecompositionTest {
                         onRetry = {},
                         onSelect = { _, _ -> }, onWatch = { watched = it.name }, onRemind = { _, _ -> }, onRecord = { _, _ -> },
                         preview = { sel, m ->
+                            // Même lecture que GuidePreviewPane : seule la CHAÎNE focalisée recompose l'aperçu.
                             ProbePreview()
-                            Box(m) { Text(sel.value?.first?.name ?: "—") }
+                            val ch = rememberFocusedChannel(sel, null).value
+                            Box(m) { Text(ch?.name ?: "—") }
                         },
                     )
                 }
@@ -160,10 +162,10 @@ class GuideRecompositionTest {
     }
 
     /** Compteurs d'un seul appui, et nombre d'images (frames) qui ont recomposé quelque chose. */
-    private class Snap(val rows: Map<Long, Int>, val cells: Map<Long, Int>, val header: Int, val preview: Int, val screen: Int, val frames: Int, val focus: String, val detail: String = "") {
+    private class Snap(val rows: Map<Long, Int>, val cells: Map<Long, Int>, val header: Int, val buttons: Int, val preview: Int, val screen: Int, val frames: Int, val focus: String, val detail: String = "") {
         val rowTotal get() = rows.values.sum()
         val cellTotal get() = cells.values.sum()
-        override fun toString() = "images=$frames[$detail] écran=$screen lignes=$rowTotal(${rows.size}) cases=$cellTotal(${cells.size}) en-tête=$header aperçu=$preview -> focus : $focus"
+        override fun toString() = "images=$frames[$detail] écran=$screen lignes=$rowTotal(${rows.size}) cases=$cellTotal(${cells.size}) en-tête=$header boutons=$buttons aperçu=$preview -> focus : $focus"
     }
 
     private fun total() = probe.screen + probe.rowTotal + probe.cellTotal + probe.header + probe.preview
@@ -193,7 +195,7 @@ class GuideRecompositionTest {
         rule.mainClock.autoAdvance = true
         rule.waitForIdle()
         frame()
-        val snap = Snap(HashMap(probe.rows), HashMap(probe.cells), probe.header, probe.preview, probe.screen, frames, focusedText(), detail.toString())
+        val snap = Snap(HashMap(probe.rows), HashMap(probe.cells), probe.header, probe.buttons, probe.preview, probe.screen, frames, focusedText(), detail.toString())
         println("COMPTEURS $name : $snap")
         return snap
     }
@@ -235,11 +237,13 @@ class GuideRecompositionTest {
         assertEquals("aucune ligne recomposée", emptySet<Long>(), r.rows.keys)
         assertEquals("seulement la case quittée et la case atteinte", setOf(1002L, 1003L), r.cells.keys)
         assertEquals("l'écran n'est pas recomposé", 0, r.screen)
-        assertTrue("en-tête : une fois au plus (${r.header})", r.header <= 1)
+        assertEquals("en-tête : une fois", 1, r.header)
+        assertEquals("même chaîne : l'aperçu n'est pas recomposé", 0, r.preview)
         val l = gesture("◀ dans la ligne", Key.DirectionLeft)
         assertEquals(emptySet<Long>(), l.rows.keys)
         assertEquals(setOf(1002L, 1003L), l.cells.keys)
-        assertTrue(l.header <= 1)
+        assertEquals(1, l.header)
+        assertEquals(0, l.preview)
     }
 
     @Test fun plafond_bas_haut_ne_touche_que_les_deux_cases_et_la_ligne_qui_entre() {
@@ -253,7 +257,8 @@ class GuideRecompositionTest {
             // Toute case recomposée est l'ancienne, la nouvelle, ou appartient à la ligne qui entre.
             val stray = r.cells.keys.filter { it != from && it != to && channelOf(it) !in r.rows.keys }
             assertEquals("cases recomposées hors du plan : $stray", emptyList<Long>(), stray)
-            assertTrue("en-tête : une fois au plus (${r.header})", r.header <= 1)
+            assertEquals("en-tête : une fois", 1, r.header)
+            assertEquals("changement de chaîne : l'aperçu une fois", 1, r.preview)
             from = to
         }
         for (i in 1..3) {
@@ -261,6 +266,8 @@ class GuideRecompositionTest {
             val to = focusedId()
             assertEquals("▲ dans les lignes déjà composées : aucune ligne", emptySet<Long>(), r.rows.keys)
             assertEquals(setOf(from, to), r.cells.keys)
+            assertEquals(1, r.header)
+            assertEquals(1, r.preview)
             from = to
         }
     }
@@ -382,5 +389,25 @@ class GuideRecompositionTest {
         rule.waitForIdle()
         assertTrue("minute suivante : chaque ligne visible une fois au plus : ${probe.rows}", probe.rows.values.all { it == 1 })
         assertEquals(0, probe.screen)
+    }
+
+    // ── Cause 3 : en-tête et aperçu. ──
+
+    @Test fun plafond_boutons_non_recomposes_entre_deux_programmes_a_venir() {
+        mount()
+        focusOn("P1-4")           // deux programmes à venir de suite : mêmes boutons (Regarder, Me rappeler, Enregistrer)
+        val r = gesture("▶ entre deux programmes à venir", Key.DirectionRight)
+        assertEquals(0, r.buttons)
+        assertEquals(1, r.header)
+        assertEquals(0, r.preview)
+    }
+
+    @Test fun plafond_le_panneau_du_haut_suit_la_selection_dans_la_meme_image_que_les_cases_ou_la_suivante() {
+        mount()
+        focusOn("P1-2")
+        val r = gesture("▶ dans la ligne", Key.DirectionRight)
+        assertTrue("l'en-tête se met à jour au plus une image après les cases (images : ${r.frames})", r.frames <= 2)
+        // Le panneau du haut montre le programme focalisé.
+        rule.onNode(hasText("P1-3") and !hasClickAction()).assertExists()
     }
 }
