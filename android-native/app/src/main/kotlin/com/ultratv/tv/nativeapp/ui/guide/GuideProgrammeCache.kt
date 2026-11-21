@@ -13,12 +13,15 @@ import com.ultratv.tv.nativeapp.data.db.EpgEntity
  * (les moins récemment demandées sortent d'abord).
  */
 internal class GuideProgrammeCache(private val maxChannels: Int = 200) {
+    companion object { const val KEEP_MARGIN_MS = 6 * 3_600_000L }
     private class Entry(val from: Long, val to: Long, val generation: Int, val raw: List<EpgEntity>, val rows: List<EpgEntity>)
 
     private val entries = object : LinkedHashMap<Long, Entry>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, Entry>?) = size > maxChannels
     }
-    private var generation = 0
+    /** Génération courante (incrémentée par [invalidate]) : à lire AVANT une requête et à rendre à [put]. */
+    var generation = 0
+        private set
 
     /** Chaînes de [ids] dont la plage [from, to] n'est pas déjà chargée (ou dont le chargement date d'avant la dernière synchro). */
     fun missing(ids: Collection<Long>, from: Long, to: Long): List<Long> =
@@ -31,20 +34,27 @@ internal class GuideProgrammeCache(private val maxChannels: Int = 200) {
      * Range [fetched] (programmes lus pour [ids] sur [from, to]). Rend vrai si la liste affichée d'une chaîne a changé
      * (nouvelle chaîne non vide, contenu différent) : alors, et alors seulement, il faut republier [snapshot].
      */
-    fun put(ids: Collection<Long>, from: Long, to: Long, fetched: List<EpgEntity>): Boolean {
+    fun put(ids: Collection<Long>, from: Long, to: Long, fetched: List<EpgEntity>, readGeneration: Int = generation): Boolean {
         val byChannel = fetched.groupBy { it.channelId }
         var changed = false
+        // Lu avant une fin de synchro survenue pendant la requête : rangé comme périmé (relu au prochain passage), jamais « frais ».
+        val gen = readGeneration
+        // Mémoire bornée : chaque entrée garde au plus la plage lue élargie de [KEEP_MARGIN_MS] de chaque côté.
+        val keepFrom = from - KEEP_MARGIN_MS; val keepTo = to + KEEP_MARGIN_MS
         for (id in ids) {
             val old = entries[id]
             val incoming = byChannel[id].orEmpty()
-            val extend = old != null && old.generation == generation && old.from <= to && old.to >= from
-            val raw = if (extend) mergeByStart(old!!.raw, incoming) else incoming
+            val extend = old != null && old.generation == gen && old.from <= to && old.to >= from
+            var raw = if (extend) mergeByStart(old!!.raw, incoming) else incoming
+            var eFrom = if (extend) minOf(old!!.from, from) else from
+            var eTo = if (extend) maxOf(old!!.to, to) else to
+            if (eFrom < keepFrom || eTo > keepTo) {
+                eFrom = maxOf(eFrom, keepFrom); eTo = minOf(eTo, keepTo)
+                raw = raw.filter { it.endMs >= eFrom && it.startMs <= eTo }
+            }
             val rows = normalizeRow(raw)
             val keep = old != null && old.rows == rows
-            entries[id] = Entry(
-                if (extend) minOf(old!!.from, from) else from, if (extend) maxOf(old!!.to, to) else to, generation, raw,
-                if (keep) old!!.rows else rows,
-            )
+            entries[id] = Entry(eFrom, eTo, gen, raw, if (keep) old!!.rows else rows)
             // Chaîne lue pour la première fois, même sans programme : publiée (« lue, rien à cette heure » ≠ « pas encore lue »).
             if (old == null || (!keep && (rows.isNotEmpty() || old.rows.isNotEmpty()))) changed = true
         }

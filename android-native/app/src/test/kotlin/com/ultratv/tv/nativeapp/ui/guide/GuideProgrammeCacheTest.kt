@@ -46,6 +46,27 @@ class GuideProgrammeCacheTest {
         assertEquals("un seul programme par début, le plus récent", listOf(1L, 20L, 3L), c.snapshot().getValue(1).map { it.id })
     }
 
+    @Test fun m3_donnees_lues_avant_une_fin_de_synchro_restent_a_relire() {
+        val c = GuideProgrammeCache()
+        val gen = c.generation
+        c.invalidate()   // la synchro se termine pendant la requête
+        c.put(listOf(1), 0, 6 * h, listOf(e(1, 1, 0, 2)), gen)
+        assertEquals("lues avant la fin de synchro : à relire", listOf(1L), c.missing(listOf(1), 0, 6 * h))
+        assertEquals(listOf(1L), c.snapshot().getValue(1).map { it.id })   // affichées en attendant
+    }
+
+    @Test fun m4_une_entree_ne_grossit_pas_sans_limite() {
+        val c = GuideProgrammeCache()
+        // Quinze jours parcourus par plages de 15 h qui se touchent (▶ répété) : l'entrée reste bornée.
+        for (k in 0 until 24) {
+            val from = k * 15 * h; val to = from + 15 * h
+            c.put(listOf(1), from, to, (0 until 15).map { i -> e(k * 100L + i, 1, from / h + i, from / h + i + 1) })
+        }
+        val rows = c.snapshot().getValue(1)
+        assertTrue("au plus 15 h lues + 2 × 6 h de marge : ${rows.size} programmes", rows.size <= 27)
+        assertEquals(emptyList<Long>(), c.missing(listOf(1), 23 * 15 * h, 24 * 15 * h))
+    }
+
     @Test fun une_plage_disjointe_remplace_au_lieu_de_declarer_le_trou_charge() {
         val c = GuideProgrammeCache()
         c.put(listOf(1), 0, 6 * h, listOf(e(1, 1, 0, 2)))

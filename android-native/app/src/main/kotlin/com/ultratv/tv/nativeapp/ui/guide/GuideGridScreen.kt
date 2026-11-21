@@ -369,8 +369,9 @@ class GuideGridViewModel @Inject constructor(
                 val missing = cache.missing(ids, from, to)
                 if (missing.isEmpty()) { _readyWindow.value = w; return@collect }   // décalage dans la plage déjà chargée : rien à lire, rien à republier
                 val (fetchFrom, fetchTo) = guideFetchRange(w)
+                val gen = cache.generation   // avant la requête : une fin de synchro pendant la lecture la rend périmée
                 val rows = missing.chunked(500).flatMap { epgDao.rangeForChannels(it, fetchFrom, fetchTo) }
-                if (cache.put(missing, fetchFrom, fetchTo, rows)) _programmes.value = cache.snapshot()
+                if (cache.put(missing, fetchFrom, fetchTo, rows, gen)) _programmes.value = cache.snapshot()
                 _readyWindow.value = w
             }
         }
