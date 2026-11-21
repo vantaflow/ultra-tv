@@ -35,17 +35,25 @@ import com.ultratv.tv.nativeapp.ui.design.*
 fun PaymentRow(D: DesignStrings = LocalDs.current) {
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     FocusSurface(
-        onClick = { },
+        onClick = { }, inert = true,
         shape = settingsRowShape(), bg = Ux.SurfaceDeep, ringWidth = settingsRowRing(), focusedScale = 1.0f,
         modifier = Modifier.fillMaxWidth().settingsRowHeight(touch, 84).testTag("settings-payment").semantics(mergeDescendants = true) { disabled() },
     ) { f ->
-        Row(settingsRowInner(touch).alpha(0.5f), verticalAlignment = Alignment.CenterVertically) {
+        Row(settingsRowInner(touch).alpha(PAYMENT_ROW_ALPHA), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.design)) {
-                Text(D.paymentTitle, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = if (touch) 2 else 1, overflow = TextOverflow.Ellipsis)
-                Text(D.paymentSub, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = if (touch) 3 else 1, overflow = TextOverflow.Ellipsis)
+                Text(D.paymentTitle, color = paymentTitleColor(f), fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = if (touch) 2 else 1, overflow = TextOverflow.Ellipsis)
+                Text(D.paymentSub, color = paymentSubColor(f), fontFamily = Manrope, fontSize = 22.spx, maxLines = if (touch) 3 else 1, overflow = TextOverflow.Ellipsis)
             }
             Spacer(Modifier.width(16.design))
-            Text(D.paymentSoon, color = if (f) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = if (touch) 2 else 1, overflow = TextOverflow.Ellipsis, textAlign = if (touch) TextAlign.End else null, modifier = Modifier.widthIn(max = if (touch) 300.design else 420.design))
+            Text(D.paymentSoon, color = paymentValueColor(f), fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = if (touch) 2 else 1, overflow = TextOverflow.Ellipsis, textAlign = if (touch) TextAlign.End else null, modifier = Modifier.widthIn(max = if (touch) 300.design else 420.design))
         }
     }
 }
+
+/** Opacité du contenu de la ligne grisée. */
+internal const val PAYMENT_ROW_ALPHA = 0.5f
+
+// Couleurs du texte (avant opacité), au repos et au focus. Seuls des jetons Ux.* ; le test de contraste lit ces mêmes fonctions.
+internal fun paymentTitleColor(focused: Boolean) = if (focused) Ux.TextOnLight else Ux.Text
+internal fun paymentSubColor(focused: Boolean) = if (focused) Ux.OnFocus2 else Ux.Text2
+internal fun paymentValueColor(focused: Boolean) = if (focused) Ux.TextOnLight else Ux.Text

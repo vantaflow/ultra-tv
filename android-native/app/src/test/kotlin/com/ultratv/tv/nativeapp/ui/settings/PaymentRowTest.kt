@@ -7,7 +7,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.requestFocus
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.printToString
+import androidx.compose.ui.semantics.SemanticsActions
+import com.ultratv.tv.nativeapp.ui.common.ModalOpener
+import org.junit.Assert.assertNotNull
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertIsDisplayed
@@ -87,19 +95,46 @@ class PaymentRowTest {
     @Test fun clicEtToucheOK_neFontRien() {
         mount()
         val app = shadowOf(ApplicationProvider.getApplicationContext<android.app.Application>())
+        ModalOpener.take() // vide un éventuel marquage antérieur
+        rule.onNodeWithTag("settings-payment").requestFocus()
+        rule.onNodeWithTag("settings-payment").assertIsFocused()
+        val avant = rule.onRoot().printToString()
         rule.onNodeWithTag("settings-payment").performClick()
         rule.waitForIdle()
         rule.onNodeWithTag("settings-payment").performKeyInput { pressKey(Key.DirectionCenter) }
         rule.onNodeWithTag("settings-payment").performKeyInput { pressKey(Key.Enter) }
         rule.waitForIdle()
         assertNull("aucune activité lancée", app.nextStartedActivity)
-        // Rien n'apparaît : toujours la seule ligne, mêmes textes.
-        rule.onNodeWithText("Card payment", useUnmergedTree = true).assertIsDisplayed()
-        assertEquals(0, rule.onAllNodesWithTagCount("settings-payment-dialog"))
+        assertNull("aucun ouvreur de fenêtre marqué", ModalOpener.take())
+        assertEquals("arbre sémantique inchangé (aucun dialogue, aucun nœud ajouté)", avant, rule.onRoot().printToString())
+        rule.onNodeWithTag("settings-payment").assertIsFocused()
     }
 
-    private fun androidx.compose.ui.test.junit4.ComposeContentTestRule.onAllNodesWithTagCount(tag: String) =
-        onAllNodes(androidx.compose.ui.test.hasTestTag(tag)).fetchSemanticsNodes().size
+    private fun verifieSansActionMaisFocalisable(touch: Boolean) {
+        mount(AppLang.French, touch = touch)
+        val n = rule.onNodeWithTag("settings-payment")
+        n.assertHasNoClickAction().assertIsNotEnabled()
+        n.assert(SemanticsMatcher.keyIsDefined(SemanticsActions.RequestFocus))
+        n.assertTextContains("Paiement par carte", substring = true)
+        n.assertTextContains("Bientôt disponible", substring = true)
+        n.requestFocus(); n.assertIsFocused()
+    }
+
+    @Test fun pasDActionDeClicExposee_maisFocalisableEtLue_tv() = verifieSansActionMaisFocalisable(false)
+    @Test fun pasDActionDeClicExposee_maisFocalisableEtLue_tactile() = verifieSansActionMaisFocalisable(true)
+
+    private fun verifiePrefRow(touch: Boolean) {
+        var n = 0
+        ModalOpener.take()
+        mount(touch = touch) { SettingsCard { PrefRow("Ligne", "v", Modifier.testTag("pref")) { n++ } } }
+        rule.onNodeWithTag("pref").assertHasClickAction()
+        rule.onNodeWithTag("pref").performClick(); rule.waitForIdle()
+        assertEquals("onClick appelé (touch=$touch)", 1, n)
+        if (!touch) assertNotNull("l'ouvreur est marqué comme avant", ModalOpener.take())
+    }
+
+    @Test fun prefRowExistante_gardeSonComportement_tv() = verifiePrefRow(false)
+    @Test fun prefRowExistante_gardeSonComportement_tactile() = verifiePrefRow(true)
 
     @Test fun telecommande_traverseLaListeSansSautNiPiege() {
         mount {
@@ -121,8 +156,9 @@ class PaymentRowTest {
         key(Key.DirectionUp); rule.onNodeWithTag("row-a").assertIsFocused()
     }
 
-    @Test fun rendu_dansTousLesThemes() {
+    @Test fun rendu_dansTousLesThemes_etContrasteLisible() {
         mount()
+        val rapports = mutableListOf<String>()
         for (theme in AppTheme.entries) {
             rule.runOnUiThread {
                 Ux.themeLight = isLightTheme(theme, systemDark = true, isTv = true)
@@ -131,8 +167,35 @@ class PaymentRowTest {
             }
             rule.waitForIdle()
             rule.onNodeWithTag("settings-payment").assertIsDisplayed()
+            var ligne = ""
+            rule.runOnUiThread {
+                for ((etat, fond) in listOf("repos" to Ux.SurfaceDeep, "focus" to Ux.Cta)) {
+                    val f = etat == "focus"
+                    for ((nom, c) in listOf("libelle" to paymentTitleColor(f), "bientot" to paymentValueColor(f), "sous-texte" to paymentSubColor(f))) {
+                        val r = ratio(over(c.copy(alpha = PAYMENT_ROW_ALPHA), fond), fond)
+                        ligne += " $etat/$nom=%.2f".format(r)
+                        // « Bientôt disponible » et le libellé : au moins 3:1 ; le sous-texte, texte secondaire, au moins 2,5:1.
+                        val seuil = if (nom == "sous-texte") 2.5 else 3.0
+                        if (r < seuil) ligne += "(!)"
+                    }
+                }
+            }
+            rapports += "$theme:$ligne"
         }
-        assertTrue(AppTheme.entries.size >= 10)
+        println("CONTRASTES\n" + rapports.joinToString("\n"))
+        assertTrue("contrastes insuffisants :\n" + rapports.filter { "(!)" in it }.joinToString("\n"), rapports.none { "(!)" in it })
+    }
+
+    private fun over(fg: androidx.compose.ui.graphics.Color, bg: androidx.compose.ui.graphics.Color) = androidx.compose.ui.graphics.Color(
+        red = fg.red * fg.alpha + bg.red * (1 - fg.alpha), green = fg.green * fg.alpha + bg.green * (1 - fg.alpha),
+        blue = fg.blue * fg.alpha + bg.blue * (1 - fg.alpha), alpha = 1f,
+    )
+    private fun lum(c: androidx.compose.ui.graphics.Color): Double {
+        fun ch(v: Float): Double = if (v <= 0.03928f) v / 12.92 else Math.pow((v + 0.055) / 1.055, 2.4)
+        return 0.2126 * ch(c.red) + 0.7152 * ch(c.green) + 0.0722 * ch(c.blue)
+    }
+    private fun ratio(a: androidx.compose.ui.graphics.Color, b: androidx.compose.ui.graphics.Color): Double {
+        val x = lum(a); val y = lum(b); return (maxOf(x, y) + 0.05) / (minOf(x, y) + 0.05)
     }
 
     @Test fun rendu_enArabeRTL_etAuTactile() {

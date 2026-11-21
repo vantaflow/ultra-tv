@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -172,6 +173,12 @@ fun FocusSurface(
     ringWidth: Dp = 6.design,
     focusedBg: Color = Ux.Cta,
     onLongClick: (() -> Unit)? = null,
+    /**
+     * Surface inerte : focalisable (télécommande, clavier, lecteur d'écran) mais sans action de clic, sans ondulation ni
+     * affaissement à l'appui et sans marquer d'ouvreur de fenêtre. `onClick` n'est alors jamais appelé. Par défaut
+     * (`false`) le comportement est inchangé pour tous les autres appelants.
+     */
+    inert: Boolean = false,
     content: @Composable BoxScope.(focused: Boolean) -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -184,11 +191,14 @@ fun FocusSurface(
             Modifier
                 .minTouchTarget()
                 .then(modifier)
-                .graphicsLayer { val s = if (pressed) 0.97f else 1f; scaleX = s; scaleY = s }
+                .graphicsLayer { val s = if (pressed && !inert) 0.97f else 1f; scaleX = s; scaleY = s }
                 .then(if (focused) Modifier.border(2.dp, Ux.Accent, shape) else Modifier)
                 .clip(shape)
                 .background(bg)
-                .combinedClickable(interactionSource = interaction, indication = androidx.compose.material3.ripple(color = Ux.Text), onClick = onClick, onLongClick = onLongClick),
+                .then(
+                    if (inert) Modifier.focusable(interactionSource = interaction)
+                    else Modifier.combinedClickable(interactionSource = interaction, indication = androidx.compose.material3.ripple(color = Ux.Text), onClick = onClick, onLongClick = onLongClick),
+                ),
         ) { content(false) }
         return
     }
@@ -218,10 +228,13 @@ fun FocusSurface(
             .then(if (focused && ringWidth.value > 0f) Modifier.border(ringWidth, Ux.Accent, shape) else Modifier)
             .clip(shape)
             .background(if (focused) focusedBg else bg)
-            .combinedClickable(
-                interactionSource = interaction, indication = null,
-                onClick = { com.ultratv.tv.nativeapp.ui.common.ModalOpener.mark(self); onClick() },
-                onLongClick = onLongClick?.let { lc -> { com.ultratv.tv.nativeapp.ui.common.ModalOpener.mark(self); lc() } },
+            .then(
+                if (inert) Modifier.focusable(interactionSource = interaction)
+                else Modifier.combinedClickable(
+                    interactionSource = interaction, indication = null,
+                    onClick = { com.ultratv.tv.nativeapp.ui.common.ModalOpener.mark(self); onClick() },
+                    onLongClick = onLongClick?.let { lc -> { com.ultratv.tv.nativeapp.ui.common.ModalOpener.mark(self); lc() } },
+                ),
             ),
     ) { content(focused) }
 }
