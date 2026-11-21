@@ -34,8 +34,12 @@ session qui développe Kairo (`com.vantaflow.kairo`). À réaliser après les co
   applis n'ont pas la même clé.
   - Empreinte communiquée par Kairo (APK publié v1.26.0 et build installé sur la box, identiques) :
     `b5c0901798aa6a67b3cd619c56c27057431eec2681c9b1799f9afc2aba5e8c3e`.
-  - Une seconde clé (empreinte commençant par `51ad3989`) est peut-être utilisée pour les releases : le propriétaire
-    doit trancher. **Ne rien figer avant la confirmation de Kairo.**
+  - Décision convenue avec Kairo le 2026-11-21 : la liste ne contient QUE cette empreinte. L'ancienne clé
+    (`51ad3989…`) a signé Kairo 1.0.0 à 1.21.0, versions qui ne liront jamais ce fournisseur ; Kairo garde `b5c09017…`
+    pour toutes ses versions à venir (publiées par l'automatisation de son dépôt) et prévient avant tout changement de
+    clé. La liste reste une liste : une nouvelle empreinte s'ajoute par une nouvelle version d'Ultra TV.
+  - À l'implémentation : revérifier l'empreinte sur le paquet réellement installé sur la box (ne pas se fier au seul
+    message), et la figer dans une constante couverte par un test.
 - `content://{autorité}/now` — une ligne par chaîne, 20 lignes au plus, favoris d'abord puis chaînes récentes, du profil
   actif et de la source active. Colonnes :
 
