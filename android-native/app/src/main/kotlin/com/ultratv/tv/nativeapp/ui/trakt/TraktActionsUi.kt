@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -190,12 +191,36 @@ fun TraktMovieActions(movie: MovieEntity, vm: TraktActionsViewModel = hiltViewMo
     if (!st.linked) return
     val D = LocalDs.current
     var rating by remember { mutableStateOf(false) }
-    Row(horizontalArrangement = Arrangement.spacedBy(20.design), verticalAlignment = Alignment.CenterVertically) {
-        PillButton(if (st.inWatchlist) D.traktRemoveWatchlist else D.traktAddWatchlist, { vm.toggleWatchlist(D) }, heightPx = 64, fontPx = 22, iconPath = BOOKMARK, iconFill = st.inWatchlist)
-        PillButton(if (st.watched) D.traktMarkUnwatched else D.traktMarkWatched, { vm.toggleMovieWatched(D) }, heightPx = 64, fontPx = 22, iconPath = Icons.Check)
-        PillButton(ratingLabel(D, st.rating), { rating = true }, heightPx = 64, fontPx = 22, iconPath = STAR, iconFill = st.rating != null)
-    }
+    TraktMovieActionsRow(
+        watchlistLabel = if (st.inWatchlist) D.traktRemoveWatchlist else D.traktAddWatchlist, inWatchlist = st.inWatchlist, onWatchlist = { vm.toggleWatchlist(D) },
+        watchedLabel = if (st.watched) D.traktMarkUnwatched else D.traktMarkWatched, onWatched = { vm.toggleMovieWatched(D) },
+        rateLabel = ratingLabel(D, st.rating), rated = st.rating != null, onRate = { rating = true },
+    )
     if (rating) RatingDialog(st.rating, D, { vm.rate(D, it) }, { rating = false })
+}
+
+/**
+ * Les trois gestes Trakt d'une fiche film TV, sans ViewModel (rendu testable). Rangée qui PASSE À LA LIGNE : dans la colonne
+ * de gauche de la fiche (largeur bornée), trois pilules côte à côte écrasaient la dernière jusqu'à ne laisser que l'étoile de
+ * « Noter ». Chaque libellé reste entier, quelles que soient la langue et la taille du texte ; la télécommande suit la
+ * géométrie (◀ ▶ dans une ligne, ▲ ▼ entre les lignes).
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+internal fun TraktMovieActionsRow(
+    watchlistLabel: String, inWatchlist: Boolean, onWatchlist: () -> Unit,
+    watchedLabel: String, onWatched: () -> Unit,
+    rateLabel: String, rated: Boolean, onRate: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    androidx.compose.foundation.layout.FlowRow(
+        modifier, horizontalArrangement = Arrangement.spacedBy(20.design), verticalArrangement = Arrangement.spacedBy(16.design),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
+        PillButton(watchlistLabel, onWatchlist, heightPx = 64, fontPx = 22, iconPath = BOOKMARK, iconFill = inWatchlist)
+        PillButton(watchedLabel, onWatched, heightPx = 64, fontPx = 22, iconPath = Icons.Check)
+        PillButton(rateLabel, onRate, heightPx = 64, fontPx = 22, iconPath = STAR, iconFill = rated)
+    }
 }
 
 /** Fiche film (tactile) : trois tuiles Trakt. Rien si le compte n'est pas lié. */
@@ -206,12 +231,30 @@ fun TraktMovieActionsMobile(movie: MovieEntity, vm: TraktActionsViewModel = hilt
     if (!st.linked) return
     val D = LocalDs.current
     var rating by remember { mutableStateOf(false) }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        com.ultratv.tv.nativeapp.ui.mobile.MobileActionTile(BOOKMARK, if (st.inWatchlist) D.traktInWatchlist else D.traktAddWatchlist, { vm.toggleWatchlist(D) }, Modifier.weight(1f), active = st.inWatchlist, fill = st.inWatchlist)
-        com.ultratv.tv.nativeapp.ui.mobile.MobileActionTile(Icons.Check, if (st.watched) D.traktWatched else D.traktMarkWatched, { vm.toggleMovieWatched(D) }, Modifier.weight(1f), active = st.watched)
-        com.ultratv.tv.nativeapp.ui.mobile.MobileActionTile(STAR, ratingLabel(D, st.rating), { rating = true }, Modifier.weight(1f), active = st.rating != null, fill = st.rating != null)
-    }
+    TraktMovieTilesRow(
+        if (st.inWatchlist) D.traktInWatchlist else D.traktAddWatchlist, st.inWatchlist, { vm.toggleWatchlist(D) },
+        if (st.watched) D.traktWatched else D.traktMarkWatched, st.watched, { vm.toggleMovieWatched(D) },
+        ratingLabel(D, st.rating), st.rating != null, { rating = true },
+    )
     if (rating) RatingDialog(st.rating, D, { vm.rate(D, it) }, { rating = false })
+}
+
+/**
+ * Les trois tuiles Trakt de la fiche tactile, sans ViewModel. Même hauteur pour les trois (celle de la plus haute) : un
+ * libellé long passe sur plusieurs lignes au lieu d'être coupé (« Ajouter à ma watchlist… »).
+ */
+@Composable
+internal fun TraktMovieTilesRow(
+    watchlistLabel: String, inWatchlist: Boolean, onWatchlist: () -> Unit,
+    watchedLabel: String, watched: Boolean, onWatched: () -> Unit,
+    rateLabel: String, rated: Boolean, onRate: () -> Unit,
+) {
+    Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        val tile = Modifier.weight(1f).fillMaxHeight()
+        com.ultratv.tv.nativeapp.ui.mobile.MobileActionTile(BOOKMARK, watchlistLabel, onWatchlist, tile, active = inWatchlist, fill = inWatchlist, wrap = true)
+        com.ultratv.tv.nativeapp.ui.mobile.MobileActionTile(Icons.Check, watchedLabel, onWatched, Modifier.weight(1f).fillMaxHeight(), active = watched, wrap = true)
+        com.ultratv.tv.nativeapp.ui.mobile.MobileActionTile(STAR, rateLabel, onRate, Modifier.weight(1f).fillMaxHeight(), active = rated, fill = rated, wrap = true)
+    }
 }
 
 /**
@@ -228,17 +271,26 @@ fun TraktSeriesButton(series: SeriesEntity, episodes: List<EpisodeEntity>, seaso
     var rating by remember { mutableStateOf(false) }
     if (touch) com.ultratv.tv.nativeapp.ui.mobile.MobileSecondaryButton(D.traktButton, { open = true })
     // Bouton rond, icône seule (comme le cœur des favoris) : à côté de « Reprendre S2 É12 », la pilule « Trakt » n'avait
-    // plus la place et s'affichait « Tra… ».
-    else FocusSurface(
-        onClick = { open = true }, shape = androidx.compose.foundation.shape.CircleShape, bg = Ux.Surface2,
-        modifier = Modifier.size(64.design).semantics { contentDescription = D.traktButton },
-    ) { f ->
-        androidx.compose.foundation.layout.Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            DIcon(STAR, 30.design, if (f) Ux.TextOnLight else if (st.rating != null) Ux.Accent else Ux.Text, fill = st.rating != null)
-        }
-    }
+    // plus la place et s'affichait « Tra… ». Voulu : il ouvre le panneau des gestes, où chaque libellé est écrit en entier.
+    else TraktSeriesIconButton(rated = st.rating != null, description = D.traktButton, onClick = { open = true })
     if (rating) RatingDialog(st.rating, D, { vm.rate(D, it) }, { rating = false })
     else if (open) TraktSeriesDialog(st, episodes.filter { it.season == season }, season, D, vm, onRate = { rating = true }, onDismiss = { open = false })
+}
+
+/**
+ * Bouton rond à étoile de la fiche série TV (sans ViewModel) : même taille que le cœur des favoris (64 px de maquette), nom
+ * lu par le lecteur d'écran ([description]), étoile pleine quand l'œuvre est notée.
+ */
+@Composable
+internal fun TraktSeriesIconButton(rated: Boolean, description: String, onClick: () -> Unit) {
+    FocusSurface(
+        onClick = onClick, shape = androidx.compose.foundation.shape.CircleShape, bg = Ux.Surface2,
+        modifier = Modifier.size(64.design).semantics { contentDescription = description },
+    ) { f ->
+        androidx.compose.foundation.layout.Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            DIcon(STAR, 30.design, if (f) Ux.TextOnLight else if (rated) Ux.Accent else Ux.Text, fill = rated)
+        }
+    }
 }
 
 @Composable

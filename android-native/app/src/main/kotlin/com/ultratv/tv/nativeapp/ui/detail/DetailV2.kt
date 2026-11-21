@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -232,7 +233,7 @@ fun V2CastRow(
  * Distribution ; les titres proches ([below]) sont plus bas, le focus qui y entre fait défiler la fiche.
  * [actionsExtra] vient à la suite des boutons (téléchargement), [afterActions] sous eux (Trakt).
  */
-@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun MovieDetailTv(
     m: MovieDetailTvModel,
@@ -281,7 +282,9 @@ fun MovieDetailTv(
                         if (m.progress > 0f) ProgressLine(m.progress, Modifier.fillMaxWidth().clip(RoundedCornerShape(3.design)), heightPx = 6, track = Ux.Text.copy(alpha = 0.12f))
                         Text(m.progressLine, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 17.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.design), verticalAlignment = Alignment.CenterVertically) {
+                    // Rangée qui passe à la ligne : en ligne simple, le dernier bouton (Télécharger) était écrasé jusqu'à « Té… »
+                    // dans la colonne de 880 px, en toutes langues. Chaque libellé reste entier ; ▲ ▼ suivent la géométrie.
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(12.design), verticalArrangement = Arrangement.spacedBy(12.design), itemVerticalAlignment = Alignment.CenterVertically) {
                         V2Pill(
                             m.primaryLabel, onPrimary, primary = true, heightPx = 64, fontPx = 21, hPadPx = 32, iconPath = Icons.Play, iconFill = true,
                             modifier = Modifier.focusRequester(playRequester).onFocusChanged { onPlayFocusChanged(it.isFocused) },
