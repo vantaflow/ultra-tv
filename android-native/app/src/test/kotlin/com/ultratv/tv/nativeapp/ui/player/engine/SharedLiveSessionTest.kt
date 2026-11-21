@@ -56,7 +56,8 @@ class SharedLiveSessionTest {
         override fun selectSubtitle(id: String?) {}
         override fun setAspect(mode: AspectMode) {}
         override fun setSpeed(speed: Float) {}
-        override val hasVideo = true
+        var video = true
+        override val hasVideo get() = video
         override fun limitQuality(maxHeight: Int, maxBitrateBps: Int?) {}
         override fun stats() = EngineStats()
         override fun setMuted(muted: Boolean) { this.muted = muted }
@@ -80,6 +81,17 @@ class SharedLiveSessionTest {
         PlaybackSession(
             ctx, scope, FrameLayout(ctx), { settings }, InMemoryChannelPlaybackMemory(), NetworkMonitor(ctx),
             isLive = true, autoFrameRate = false, userAgent = "test",
+            engineFactory = { k, c -> FakeEngine(k, c, engines).also { engines += it } },
+        )
+    }
+    /** Lecture en base du flux lente (propsLookup) : le démarrage est asynchrone, comme dans l'appli. */
+    private var lookupGate: kotlinx.coroutines.CompletableDeferred<Unit>? = null
+    private val createSlow: () -> PlaybackSession = {
+        sessionsCreated++
+        PlaybackSession(
+            ctx, scope, FrameLayout(ctx), { settings }, InMemoryChannelPlaybackMemory(), NetworkMonitor(ctx),
+            isLive = true, autoFrameRate = false, userAgent = "test",
+            propsLookup = { lookupGate?.await(); null },
             engineFactory = { k, c -> FakeEngine(k, c, engines).also { engines += it } },
         )
     }
@@ -305,8 +317,9 @@ class SharedLiveSessionTest {
         assertEquals(false, engines.single().muted)
     }
 
+    // Garde-fou de la session (le Guide ferme son aperçu avant d'ouvrir le lecteur : ce passage n'est pas emprunté depuis lui).
     @Test
-    fun guide_retourDuPleinEcran_muetJusquAuRetourDeLImage() {
+    fun guide_demoteAvecPorteActive_muetJusquAuRetourDeLImage() {
         shared.gateAudioOnPicture = true
         shared.preview("1:a", "1:a", "http://a", muted = false, create)
         firstFrame(); shared.setPictureShown(true)
@@ -325,5 +338,94 @@ class SharedLiveSessionTest {
         shared.preview("1:a", "1:a", "http://a", muted = false, create)
         shared.setPictureShown(false)
         assertNull("aucune coupure hors du Guide", engines.single().muted)
+    }
+
+    @Test
+    fun guide_ouverture_apercuDemarreImmediatementEtMuet_sonAvecLaPremiereImage() {
+        shared.gateAudioOnPicture = true
+        assertTrue(shared.preview("1:a", "1:a", "http://a", muted = false, create))
+        assertEquals("flux lancé dès l'ouverture", listOf("http://a"), loads)
+        assertEquals("pas de son avant l'image", true, engines.single().muted)
+        firstFrame()
+        shared.setPictureShown(shared.session!!.state.value.showsMedia)
+        assertEquals("son et image ensemble", false, engines.single().muted)
+    }
+
+    @Test
+    fun guide_apercuMasque_stopPreviewLiberelFlux_etRienNeDemarre() {
+        shared.gateAudioOnPicture = true
+        shared.preview("1:a", "1:a", "http://a", muted = false, create)
+        firstFrame()
+        shared.stopPreview()
+        assertEquals(LiveOwner.NONE, shared.owner)
+        assertTrue("aucun moteur vivant", live().isEmpty())
+        assertEquals(listOf("http://a"), loads)
+    }
+
+    // ── Relecture b271b601, I5.1 : démarrage asynchrone ──
+
+    @Test
+    fun guide_lectureEnBaseLente_l_ancienneImageNeSertPasLaNouvelleChaine() {
+        shared.gateAudioOnPicture = true
+        shared.preview("1:a", "1:a", "http://a", muted = false, createSlow)
+        firstFrame()
+        val s = shared.session!!
+        assertTrue("A affichée", s.state.value.showsMedia)
+        shared.setPictureShown(true)
+        assertEquals(false, engines.single().muted)
+
+        lookupGate = kotlinx.coroutines.CompletableDeferred()          // la lecture en base de B traîne
+        shared.preview("1:b", "1:b", "http://b", muted = false, createSlow)
+        // Ce que l'écran lit à cet instant : aucune image, donc son coupé (rien de A ne passe sous le titre de B).
+        assertFalse("l'état de A ne doit plus passer pour une image affichée", s.state.value.showsMedia)
+        assertEquals(Phase.LOADING, s.state.value.phase)
+        shared.setPictureShown(s.state.value.showsMedia)
+        assertEquals(true, engines.single().muted)
+
+        lookupGate!!.complete(Unit)
+        assertEquals(listOf("http://a", "http://b"), loads)
+        firstFrame()
+        assertTrue(s.state.value.showsMedia)
+    }
+
+    // ── I5.2 : flux radio (aucune piste vidéo) ──
+
+    @Test
+    fun guide_fluxRadio_sonRetabliQuandLeMoteurEstPret_sansImage() {
+        shared.gateAudioOnPicture = true
+        shared.preview("1:r", "1:r", "http://radio", muted = false, create)
+        val e = engines.single(); e.video = false
+        assertFalse(shared.session!!.state.value.showsMedia)
+        shared.setPictureShown(shared.session!!.state.value.showsMedia)
+        assertEquals("pas de son avant que le moteur soit prêt", true, e.muted)
+        e.flow.tryEmit(EngineEvent.Ready)
+        assertTrue("audio seul prêt", shared.session!!.state.value.audioOnly)
+        shared.setPictureShown(shared.session!!.state.value.showsMedia)
+        assertEquals(false, e.muted)
+    }
+
+    @Test
+    fun guide_fluxAvecVideo_sonSeulementALaPremiereImage_memeApresReady() {
+        shared.gateAudioOnPicture = true
+        shared.preview("1:a", "1:a", "http://a", muted = false, create)
+        val e = engines.single()
+        e.flow.tryEmit(EngineEvent.Ready)
+        assertFalse("flux avec vidéo : Ready n'est pas une image", shared.session!!.state.value.showsMedia)
+        shared.setPictureShown(shared.session!!.state.value.showsMedia)
+        assertEquals(true, e.muted)
+        firstFrame()
+        shared.setPictureShown(shared.session!!.state.value.showsMedia)
+        assertEquals(false, e.muted)
+    }
+
+    @Test
+    fun guide_radioPuisChaineVideo_audioSeulRetombe() {
+        shared.gateAudioOnPicture = true
+        shared.preview("1:r", "1:r", "http://radio", muted = false, create)
+        engines.single().video = false
+        engines.single().flow.tryEmit(EngineEvent.Ready)
+        assertTrue(shared.session!!.state.value.audioOnly)
+        shared.preview("1:a", "1:a", "http://a", muted = false, create)
+        assertFalse("la chaîne suivante repart sans marque audio seul", shared.session!!.state.value.audioOnly)
     }
 }

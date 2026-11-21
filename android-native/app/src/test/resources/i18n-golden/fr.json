@@ -1066,6 +1066,7 @@
   "LivePreviewStrings.getAutoLowRam()": "Auto (désactivé sur les box à faible mémoire)",
   "LivePreviewStrings.getDelay()": "Délai avant l\u2019aperçu",
   "LivePreviewStrings.getDelayHint()": "Plus court : plus rapide, mais plus de flux ouverts en parcourant la liste",
+  "LivePreviewStrings.getGuideChip()": "Aperçu :",
   "LivePreviewStrings.getHint()": "La chaîne sélectionnée joue à côté de la liste ; OK passe en plein écran sans attente",
   "LivePreviewStrings.getOff()": "Désactivé",
   "LivePreviewStrings.getOn()": "Activé",

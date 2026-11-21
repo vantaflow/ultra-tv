@@ -40,7 +40,12 @@ data class SessionState(
     val buffering: Boolean = false,
     /** Dernier code HTTP reçu avant l'erreur (null si le serveur n'a pas répondu) : précise le message affiché. */
     val errorHttp: Int? = null,
-)
+    /** Flux sans piste vidéo (radio) : le moteur est prêt mais aucune image ne viendra ; le son suffit à « montrer » le flux. */
+    val audioOnly: Boolean = false,
+) {
+    /** Le flux est présenté à l'utilisateur : image affichée (en lecture) ou flux audio seul prêt. */
+    val showsMedia: Boolean get() = (phase == Phase.PLAYING && hasPicture) || audioOnly
+}
 
 /**
  * Une session de lecture : UN seul moteur vivant à la fois (connexion unique du fournisseur : `release()`
@@ -235,7 +240,14 @@ class PlaybackSession(
         startJob?.cancel()
         val lookup = propsLookup
         if (props == null && lookup != null && channelKey != null) {
-            // Les propriétés d'un flux protégé sont lues dans la base (jamais dans l'URL) avant d'ouvrir le moteur.
+            // Les propriétés d'un flux protégé sont lues dans la base (jamais dans l'URL) avant d'ouvrir le moteur. Pendant cette
+            // lecture (asynchrone, longue sur une box chargée), l'état du flux PRÉCÉDENT ne doit plus passer pour celui du nouveau :
+            // retour au chargement, sans image (l'écran qui coupe le son tant qu'il n'y a pas d'image le lit).
+            val st = _state.value
+            // Une erreur reste une erreur : [begin] n'enchaîne pas sur le moteur en place après elle.
+            if (st.phase == Phase.PLAYING || st.phase == Phase.ENDED || st.audioOnly) {
+                _state.value = st.copy(phase = Phase.LOADING, error = null, errorHttp = null, hasPicture = false, buffering = false, audioOnly = false)
+            }
             startJob = scope.launch { begin(url, channelKey, resumeMs, runCatching { lookup(channelKey) }.getOrNull()) }
         } else begin(url, channelKey, resumeMs, props)
     }
@@ -433,7 +445,7 @@ class PlaybackSession(
                 // Direct figé en chargement (serveur qui ne renvoie plus rien sans fermer) : reconnexion au bout de 12 s.
                 if (reconnectAllowed && stallJob?.isActive != true) stallJob = scope.launch { delay(STALL_MS); reconnectLive() }
             } else if (e.hasVideo && startupJob?.isActive != true) armStartup(e)   // rechargement avant toute image (après Ready) : même garde-fou
-            EngineEvent.Ready -> { diagEndBuffering(); if (_state.value.buffering) _state.value = _state.value.copy(buffering = false); stallJob?.cancel(); startupJob?.cancel(); if (!firstFrame && watchdog?.isActive != true) armPictureWatchdog(e) }
+            EngineEvent.Ready -> { diagEndBuffering(); if (_state.value.buffering) _state.value = _state.value.copy(buffering = false); if (!e.hasVideo && !firstFrame && !_state.value.audioOnly) _state.value = _state.value.copy(audioOnly = true); stallJob?.cancel(); startupJob?.cancel(); if (!firstFrame && watchdog?.isActive != true) armPictureWatchdog(e) }
             EngineEvent.FirstFrame -> {
                 // Déjà vue pour ce lancement : le moteur la resignale quand sa surface change (aperçu → plein écran) ;
                 // la durée depuis le lancement n'aurait plus de sens (41 s affichées pour 1,7 s réelles).

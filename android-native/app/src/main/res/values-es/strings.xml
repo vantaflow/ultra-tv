@@ -545,6 +545,7 @@
     <string name="dg_next_word">Después</string>
     <string name="dg_now_badge">AHORA</string>
     <string name="dg_now_button">Ahora</string>
+    <string name="dg_preview_chip">Vista previa:</string>
     <plurals name="dg_minutes_remaining">
         <item quantity="one">%1$s min restante</item>
         <item quantity="many">%1$s min restantes</item>

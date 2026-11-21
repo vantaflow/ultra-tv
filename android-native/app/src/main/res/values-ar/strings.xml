@@ -574,6 +574,7 @@
     <string name="dg_next_word">بعد ذلك</string>
     <string name="dg_now_badge">الآن</string>
     <string name="dg_now_button">الآن</string>
+    <string name="dg_preview_chip">المعاينة:</string>
     <plurals name="dg_minutes_remaining">
         <item quantity="zero">متبقّي %1$s د</item>
         <item quantity="one">متبقّي %1$s د</item>

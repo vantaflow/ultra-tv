@@ -552,6 +552,7 @@
     <string name="dg_next_word">Next</string>
     <string name="dg_now_badge">NOW</string>
     <string name="dg_now_button">Now</string>
+    <string name="dg_preview_chip">Preview:</string>
     <plurals name="dg_minutes_remaining">
         <item quantity="one">%1$s min left</item>
         <item quantity="other">%1$s min left</item>

@@ -50,4 +50,43 @@ class LivePreviewPolicyTest {
         val max = LivePreviewPolicy.DELAY_CHOICES.max()
         assertEquals(maxOf(max.toLong(), 1_500L), LivePreviewPolicy.guideDelayMs(max))
     }
+
+    // ── Aperçu du Guide : départ immédiat à l'ouverture ──
+
+    private fun timed(vararg steps: Pair<Long, String?>): kotlinx.coroutines.flow.Flow<String?> = kotlinx.coroutines.flow.flow {
+        var t = 0L
+        for ((at, v) in steps) { kotlinx.coroutines.delay(at - t); t = at; emit(v) }
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private fun collectTimed(flow: kotlinx.coroutines.flow.Flow<String>): List<Pair<Long, String>> {
+        val out = mutableListOf<Pair<Long, String>>()
+        kotlinx.coroutines.test.runTest { flow.collect { out += testScheduler.currentTime to it } }
+        return out
+    }
+
+    @Test
+    fun guide_premiereChaineDemarreSansDelai_lesSuivantesAttendentLaPause() {
+        with(LivePreviewPolicy) {
+            val got = collectTimed(timed(0L to null, 0L to "A", 100L to "B", 200L to "C", 5_000L to "D").immediateThenDebounced(1_500))
+            // A tout de suite ; B abandonné par C ; C après 1,5 s de pause ; D après 1,5 s.
+            assertEquals(listOf(0L to "A", 1_700L to "C", 6_500L to "D"), got)
+        }
+    }
+
+    @Test
+    fun guide_selectionQuiArriveTard_partImmediatement_etNeRepartPasSurLaMemeChaine() {
+        with(LivePreviewPolicy) {
+            val got = collectTimed(timed(0L to null, 300L to "A", 400L to "A").immediateThenDebounced(1_500))
+            assertEquals(listOf(300L to "A"), got)
+        }
+    }
+
+    @Test
+    fun guide_apercuMasque_arreteLApercuEnCours_seulement() {
+        assertTrue(LivePreviewPolicy.stopWhenDisabled(enabled = false, owner = LiveOwner.PREVIEW))
+        assertFalse("jamais le plein écran", LivePreviewPolicy.stopWhenDisabled(false, LiveOwner.FULLSCREEN))
+        assertFalse(LivePreviewPolicy.stopWhenDisabled(false, LiveOwner.NONE))
+        assertFalse(LivePreviewPolicy.stopWhenDisabled(true, LiveOwner.PREVIEW))
+    }
 }
