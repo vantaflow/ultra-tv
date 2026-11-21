@@ -94,7 +94,7 @@ Décidé par le propriétaire :
 - Zéro régression, et pas de publication sans son accord.
 
 Décidé par l'auteur du document, à corriger si besoin :
-- **Identité actuelle conservée** (pas le système de design « Onyx TV » présent sur le compte).
+- **Identité actuelle conservée** (aucun système de design externe repris).
 - **Le Direct reste la première rangée de l'accueil**, sous l'image à la une.
 - **« Ma liste » = les favoris existants** (chaînes, films, séries), sans nouvelle table. Le libellé « Favoris » devient
   « Ma liste » dans le menu ; l'écran donne aussi accès aux enregistrements, téléchargements et rappels (écran 13).

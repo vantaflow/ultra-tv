@@ -81,7 +81,7 @@ class PaymentRowTest {
         mount()
         rule.onNodeWithTag("settings-payment").assertIsDisplayed()
         rule.onNodeWithText("Card payment", useUnmergedTree = true).assertIsDisplayed()
-        rule.onNodeWithText("Premium options will arrive in a future version.", useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithText("Card payment will arrive in a future version.", useUnmergedTree = true).assertIsDisplayed()
         rule.onNodeWithText("Coming soon", useUnmergedTree = true).assertIsDisplayed()
     }
 

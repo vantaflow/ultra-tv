@@ -32,6 +32,7 @@ import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.relocation.bringIntoViewResponder
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -625,10 +626,15 @@ private fun Top10Row(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) 
     val memory = rememberRowFocusMemory()
     val listState = rememberLazyListState()
     RegisterRowKeys(memory, cards, listState) { cards.map { it.key } }
+    // Le défilement vers la carte focalisée vise la CELLULE entière (grand chiffre compris), pas la seule affiche : sinon, en revenant en arrière, le chiffre était rogné au bord.
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val cellPx = with(density) { Top10CellWidth.toPx() }
+    val reservePx = with(density) { ((HomePosterScale - 1f) / 2f * PosterWidth.toPx()) }
+    val cellModifier = remember(cellPx, reservePx) { Modifier.width(Top10CellWidth).bringIntoViewResponder(WholeCellResponder(cellPx, reservePx)) }
     RowEdgeMargin(PosterEdgeMargin) {
         LazyRow(Modifier.homeRow().then(memory.tracker).testTag("home-top10-row"), state = listState, horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
             itemsIndexed(cards, key = { _, p -> p.key }, contentType = { _, _ -> "top10" }) { i, p ->
-                Box(Modifier.width(Top10CellWidth)) {
+                Box(cellModifier) {
                     Top10Rank(i + 1, Modifier.align(Alignment.TopStart))
                     com.ultratv.tv.nativeapp.ui.catalog.PosterCell(
                         p.item, Modifier.width(PosterWidth).align(Alignment.TopEnd).then(rowMemory(memory, p.key)).testTag("home-poster-${p.key}"),
@@ -640,15 +646,31 @@ private fun Top10Row(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) 
     }
 }
 
+/**
+ * Rend visible la cellule entière (de 0 à [widthPx], sur la hauteur de l'enfant) quand un enfant demande à être amené à l'écran.
+ * [reservePx] : débord de l'agrandissement de l'affiche (hors de la cellule de chaque côté), que la marge de bord de la rangée
+ * ne couvrait que pour un rectangle déjà décalé par le zoom, comme celui de l'affiche seule.
+ */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+private class WholeCellResponder(private val widthPx: Float, private val reservePx: Float) : androidx.compose.foundation.relocation.BringIntoViewResponder {
+    override fun calculateRectForParent(localRect: androidx.compose.ui.geometry.Rect) =
+        androidx.compose.ui.geometry.Rect(-reservePx, localRect.top, widthPx + reservePx, localRect.bottom)
+    override suspend fun bringChildIntoView(localRect: () -> androidx.compose.ui.geometry.Rect?) = Unit
+}
+
 /** Grand chiffre au contour (couleur du thème) : dessiné une fois par cellule, aucune lecture d'état de focus. */
 @Composable
 private fun Top10Rank(rank: Int, modifier: Modifier) {
-    val stroke = with(androidx.compose.ui.platform.LocalDensity.current) { 4.design.toPx() }
+    // Taille NON soumise à « Taille du texte » : la cellule est de largeur fixe (336), « 10 » à ×1,3 la déborderait. Style mémorisé (rien d'alloué à la recomposition).
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val stroke = with(density) { 4.design.toPx() }
+    val size = with(density) { (300 / 2f).dp.toSp() }
+    val style = remember(stroke) { androidx.compose.ui.text.TextStyle(drawStyle = androidx.compose.ui.graphics.drawscope.Stroke(width = stroke)) }
     Box(modifier.testTag("top10-rank-$rank")) {
         Text(
-            "$rank", color = Ux.Text3, fontFamily = Sora, fontWeight = FontWeight.ExtraBold, fontSize = 300.spx, lineHeight = 300.spx,
+            "$rank", color = Ux.Text3, fontFamily = Sora, fontWeight = FontWeight.ExtraBold, fontSize = size, lineHeight = size,
             maxLines = 1, softWrap = false,
-            style = androidx.compose.ui.text.TextStyle(drawStyle = androidx.compose.ui.graphics.drawscope.Stroke(width = stroke)),
+            style = style,
             modifier = Modifier.clearAndSetSemantics { },
         )
     }
@@ -963,7 +985,7 @@ private fun ChannelCard(card: ChannelCardUi, memory: RowFocusMemory, onClick: ()
                 Text(now, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 26.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (card.timeRange != null) Text(card.timeRange, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            if (card.progress != null) ProgressLine(card.progress, Modifier.align(Alignment.BottomStart).fillMaxWidth(), track = channelTrackColor())
+            if (card.progress != null) com.ultratv.tv.nativeapp.ui.design.StreamingProgressLine(card.progress, Modifier.align(Alignment.BottomStart).fillMaxWidth(), track = channelTrackColor())
         }
     }
 }

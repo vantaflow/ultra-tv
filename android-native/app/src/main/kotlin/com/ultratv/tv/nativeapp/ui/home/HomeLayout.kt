@@ -59,7 +59,9 @@ data class HomeLayout(val order: List<HomeBlock>, val hidden: Set<HomeBlock>) {
     }
 
     /** Vide seulement pour le défaut de l'appareil ([tv]) : « jamais personnalisé » reste distinct d'un choix explicite. */
-    fun orderCsv(tv: Boolean = false): String = if (this == defaultFor(tv)) "" else order.joinToString(",") { it.name }
+    fun orderCsv(tv: Boolean = false): String =
+        // Ordre par défaut avec des blocs masqués : « » aussi (la liste des masqués, non vide, suffit à distinguer d'un « jamais personnalisé »).
+        if (this == defaultFor(tv) || (order == DEFAULT.order && hidden.isNotEmpty())) "" else order.joinToString(",") { it.name }
     fun hiddenCsv(): String = hidden.sortedBy { it.ordinal }.joinToString(",") { it.name }
 
     companion object {

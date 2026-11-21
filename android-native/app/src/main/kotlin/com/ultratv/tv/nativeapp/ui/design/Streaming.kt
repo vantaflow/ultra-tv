@@ -86,15 +86,18 @@ fun LiveBadge(modifier: Modifier = Modifier) {
     }
 }
 
-/** Étiquette de test du remplissage de [ProgressLine]. */
+/** Étiquette de test du remplissage de [StreamingProgressLine]. */
 const val PROGRESS_FILL_TAG = "progress_fill"
 
 /** Fraction bornée à 0..1 ; NaN vaut 0. */
 fun progressFraction(f: Float): Float = if (f.isNaN()) 0f else f.coerceIn(0f, 1f)
 
-/** Barre de progression de 6 unités : piste (blanc à 22 % par défaut, pour une image), remplissage accent. */
+/**
+ * Barre de progression de 6 unités : piste (blanc à 22 % par défaut, pour une image), remplissage accent. Nom distinct de
+ * [ProgressLine] (Design.kt, hauteur en paramètre) : deux surcharges du même nom se choisissaient selon `heightPx`.
+ */
 @Composable
-fun ProgressLine(fraction: Float, modifier: Modifier = Modifier, track: Color = Color.White.copy(alpha = 0.22f)) {
+fun StreamingProgressLine(fraction: Float, modifier: Modifier = Modifier, track: Color = Color.White.copy(alpha = 0.22f)) {
     val f = progressFraction(fraction)
     Box(modifier.height(6.design).clip(RoundedCornerShape(3.design)).background(track)) {
         Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(Ux.Accent).testTag(PROGRESS_FILL_TAG))

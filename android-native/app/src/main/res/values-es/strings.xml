@@ -1665,7 +1665,7 @@
     <string name="support_sub">Gratis y sin anuncios: una donación ayuda a pagar los servidores.</string>
     <string name="support_scan">Escanea el código QR con tu teléfono para donar en Ko-fi (tarjeta o PayPal).</string>
     <string name="payment_title">Pago con tarjeta</string>
-    <string name="payment_sub">Las opciones Premium llegarán en una próxima versión.</string>
+    <string name="payment_sub">El pago con tarjeta llegará en una próxima versión.</string>
     <string name="payment_soon">Próximamente</string>
     <string name="simple_back_full">Volver al modo completo</string>
     <string name="simple_all_settings">Todos los ajustes</string>

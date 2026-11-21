@@ -1723,7 +1723,7 @@
     <string name="support_sub">مجاني وبلا إعلانات: يساعد التبرع في دفع تكاليف الخوادم.</string>
     <string name="support_scan">امسح رمز QR بهاتفك للتبرع عبر Ko-fi (بطاقة أو PayPal).</string>
     <string name="payment_title">الدفع بالبطاقة</string>
-    <string name="payment_sub">ستتوفر خيارات Premium في إصدار قادم.</string>
+    <string name="payment_sub">سيتوفر الدفع بالبطاقة في إصدار قادم.</string>
     <string name="payment_soon">قريبًا</string>
     <string name="simple_back_full">العودة إلى الوضع الكامل</string>
     <string name="simple_all_settings">كل الإعدادات</string>

@@ -650,6 +650,29 @@ class HomeTvStructureTest {
         for (i in count - 1 downTo 1) { press(backward); check(i) }
     }
 
+    /** Top 10 parcouru dans les deux sens : la cellule entière (grand chiffre compris) de la carte focalisée reste dans l'écran. */
+    private fun assertTop10RankNeverClipped(lang: AppLang) {
+        val base = HomeLayout.defaultFor(true)
+        setHome(hero = null, layout = base.move(HomeBlock.TOP10, -base.order.indexOf(HomeBlock.TOP10)), lang = lang)
+        val screen = rule.onRoot().getUnclippedBoundsInRoot()
+        val rtl = lang.rtl
+        val forward = if (rtl) Key.DirectionLeft else Key.DirectionRight
+        val backward = if (rtl) Key.DirectionRight else Key.DirectionLeft
+        cardOf("home-poster-t1").requestFocus(); rule.waitForIdle()
+        fun check(i: Int) {
+            cardOf("home-poster-t$i").assertIsFocused()
+            val rank = rule.onNodeWithTag("top10-rank-$i").getUnclippedBoundsInRoot()
+            assertTrue("grand chiffre $i coupé à gauche (${rank.left} / ${screen.left})", rank.left.value >= screen.left.value - 0.5f)
+            assertTrue("grand chiffre $i coupé à droite (${rank.right} / ${screen.right})", rank.right.value <= screen.right.value + 0.5f)
+        }
+        check(1)
+        for (i in 2..10) { press(forward); check(i) }
+        for (i in 9 downTo 1) { press(backward); check(i) }
+    }
+
+    @Test fun top10_grandChiffreJamaisRogneAuBord_enFrancais() = assertTop10RankNeverClipped(AppLang.French)
+    @Test fun top10_grandChiffreJamaisRogneAuBord_enArabe() = assertTop10RankNeverClipped(AppLang.Arabic)
+
     private fun resumeRows(n: Int): HomeRows.() -> HomeRows = {
         copy(resume = (1..n).map { i ->
             ResumeCardUi(key = "r$i", entry = WatchHistoryEntity(providerId = 1, kind = "MOVIE", remoteId = "$i", title = "Film $i", poster = null, streamUrl = "u"), title = "Film $i", progress = 0.4f, minutesLeft = 30)

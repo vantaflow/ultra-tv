@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.sync.withPermit
@@ -368,11 +369,16 @@ class HomeViewModel @Inject constructor(
     /** Bouton « Ma liste » de l'image à la une : même appel que les fiches (cœur des fiches film et série). */
     fun toggleHeroList(h: HeroItem) {
         val kind = if (h.kind == HeroItem.Kind.SERIES) "SERIES" else "MOVIE"
+        // Lecture et écriture sous verrou : deux OK rapides se suivent au lieu de lire le même état « absent » et d'écrire deux fois « présent ».
         viewModelScope.launch {
-            val current = catalog.isFavorite(h.providerId, kind, h.remoteId).first()
-            catalog.setFavorite(h.providerId, kind, h.remoteId, !current)
+            heroListLock.withLock {
+                val current = catalog.isFavorite(h.providerId, kind, h.remoteId).first()
+                catalog.setFavorite(h.providerId, kind, h.remoteId, !current)
+            }
         }
     }
+
+    private val heroListLock = kotlinx.coroutines.sync.Mutex()
 
     /** Favorites en premier ; sans favori, des chaînes avec logo. [favorite] dit lequel des deux. */
     val favoriteChannels: StateFlow<List<ChannelEntity>> = pid

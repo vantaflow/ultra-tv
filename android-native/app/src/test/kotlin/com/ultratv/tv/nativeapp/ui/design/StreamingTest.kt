@@ -51,8 +51,8 @@ class StreamingTest {
     @Test fun `ligne de progression hors bornes ne deborde pas de la piste`() {
         rule.setContent {
             Column {
-                ProgressLine(-1f, Modifier.width(100.dp).testTag("a"))
-                ProgressLine(7f, Modifier.width(100.dp).testTag("b"))
+                StreamingProgressLine(-1f, Modifier.width(100.dp).testTag("a"))
+                StreamingProgressLine(7f, Modifier.width(100.dp).testTag("b"))
             }
         }
         rule.waitForIdle()

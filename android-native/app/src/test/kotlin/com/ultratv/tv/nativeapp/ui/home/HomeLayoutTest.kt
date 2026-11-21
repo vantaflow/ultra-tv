@@ -114,4 +114,22 @@ class HomeLayoutTest {
         val d = HomeLayout.defaultFor(true)
         assertEquals("", d.orderCsv(tv = true)); assertEquals("SHORTCUTS", d.hiddenCsv())
     }
+
+    @Test fun telephone_blocMasque_ordreParDefautNEstPasReecrit_etRelecturePareille() {
+        val hidden = HomeLayout.DEFAULT.toggle(HomeBlock.TOP10)
+        assertEquals("", hidden.orderCsv())
+        assertEquals(hidden, HomeLayout.parse(hidden.orderCsv(), hidden.hiddenCsv()))
+    }
+
+    @Test fun tv_blocMasqueEnPlusDesRaccourcis_ordreParDefautNEstPasReecrit_etRelecturePareille() {
+        val l = HomeLayout.defaultFor(true).toggle(HomeBlock.TOP10)
+        assertEquals("", l.orderCsv(tv = true))
+        assertEquals(l, HomeLayout.parse(l.orderCsv(tv = true), l.hiddenCsv(), tv = true))
+    }
+
+    @Test fun ordrePersonnalise_resteEcritEnEntier() {
+        val l = HomeLayout.DEFAULT.move(HomeBlock.entries[1], 1).toggle(HomeBlock.TOP10)
+        assertTrue(l.orderCsv().isNotEmpty())
+        assertEquals(l, HomeLayout.parse(l.orderCsv(), l.hiddenCsv()))
+    }
 }
