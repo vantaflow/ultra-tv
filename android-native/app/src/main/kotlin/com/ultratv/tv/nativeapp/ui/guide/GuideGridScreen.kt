@@ -37,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.key
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -645,9 +646,12 @@ private fun CategoryChip(label: String, selected: Boolean, onClick: () -> Unit) 
 private fun GuideRow(
     c: ChannelEntity, progs: List<EpgEntity>, windowStart: Long, gridW: Dp, nameColPx: Int, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, clock: androidx.compose.runtime.State<Long>,
     firstModifier: Modifier, onSelect: (EpgEntity) -> Unit, onRemind: (EpgEntity) -> Unit, onFocusProg: (EpgEntity) -> Unit,
-    nowMs: Long = System.currentTimeMillis(),
+    nowProvider: () -> Long = { System.currentTimeMillis() },
 ) {
     ProbeRow(c.id)
+    // « Maintenant » à la minute près, relu quand l'horloge partagée tourne : la ligne ne se recompose qu'à la minute (une
+    // lecture directe de l'heure donnait une valeur différente à chaque composition, donc jamais de saut possible).
+    val nowMs by remember(nowProvider) { androidx.compose.runtime.derivedStateOf { clock.value; nowProvider() / 60_000L * 60_000L } }
     Row(Modifier.fillMaxWidth().height(84.designT)) {
         // Cellule de la chaîne (maquette) : numéro, logo 48 et nom dans une carte arrondie, 8 px avant les programmes.
         Row(Modifier.width(nameColPx.design).fillMaxHeight().padding(end = 8.design).clip(RoundedCornerShape(18.design)).background(Ux.Card2).padding(horizontal = 14.design), verticalAlignment = Alignment.CenterVertically) {
@@ -673,18 +677,22 @@ private fun GuideRow(
                 val slot = slots[idx] ?: return@forEachIndexed
                 val isNow = p.startMs <= nowMs && p.endMs > nowMs
                 val w = (gridW * slot.widthFrac - 8.design).coerceAtLeast(24.design)
+                // Une case par programme (clé = identifiant) : une liste qui change garde le nœud, donc le focus, des programmes qui restent.
+                key(p.id) {
                 FocusSurface(
                     onClick = { onSelect(p) },
-                    onLongClick = { if (p.startMs > nowMs) onRemind(p) },
+                    // Lu au moment de l'appui long : la lambda ne capture pas l'heure (elle changerait à chaque minute).
+                    onLongClick = { if (p.startMs > nowProvider()) onRemind(p) },
                     shape = RoundedCornerShape(14.design),
                     bg = if (isNow) Ux.NowTint else Ux.Card,
                     ringWidth = 0.dp, focusedScale = 1f,
-                    modifier = Modifier.offset(x = gridW * slot.startFrac).width(w).fillMaxHeight()
+                    // Sélection écrite PENDANT le passage du focus (même image que les cases) : un LaunchedEffect la décalait d'une image.
+                    modifier = Modifier.onFocusChanged { if (it.isFocused) onFocusProg(p) }
+                        .offset(x = gridW * slot.startFrac).width(w).fillMaxHeight()
                         .then(if (idx == 0 || isNow) firstModifier.takeIf { idx == 0 } ?: Modifier else Modifier),
                 ) { f ->
                     ProbeCell(p.id)
                     val wPx = (w.value * 2).toInt()      // largeur en px de maquette
-                    if (f) LaunchedEffect(p.id) { onFocusProg(p) }
                     // Sous ~90 px : fond seul (le titre apparaît dans le panneau du bas). Entre 90 et 200 px : titre seul.
                     if (wPx >= 90) Column(Modifier.fillMaxSize().clip(RoundedCornerShape(14.design)).padding(horizontal = if (wPx < 200) 10.design else 18.design, vertical = 12.design), verticalArrangement = Arrangement.spacedBy(4.design, Alignment.CenterVertically)) {
                         // softWrap = false : un titre trop long sur une ligne coupée, sans quoi la cellule repoussait l'horaire hors du cadre.
@@ -696,6 +704,7 @@ private fun GuideRow(
                     }
                     // Progression dans le programme en cours : fine barre en pied de case, dessinée depuis l'horloge partagée.
                     if (isNow) com.ultratv.tv.nativeapp.ui.common.EpgProgressBar(p.startMs, p.endMs, clock, Modifier.align(Alignment.BottomStart).padding(horizontal = 12.design, vertical = 8.design), heightDp = 2.5f, track = if (f) Color(0x33000000) else Ux.Surface)
+                }
                 }
             }
         }
@@ -843,7 +852,7 @@ internal fun GuideTvContent(
                                 c, programmes[c.id].orEmpty(), windowStart, gridW, nameColPx, D, clock,
                                 firstModifier = if (i == 0) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier,
                                 onSelect = { p -> onSelect(c, p) }, onRemind = { p -> onRemind(c, p) }, onFocusProg = { p -> focusedProg.value = c to p },
-                                nowMs = nowProvider(),
+                                nowProvider = nowProvider,
                             )
                         } else Spacer(Modifier.height(84.designT))
                     }
