@@ -11,6 +11,8 @@ import com.ultratv.tv.nativeapp.data.db.UltraDb
 import com.ultratv.tv.nativeapp.data.db.observeCategoryCounts
 import com.ultratv.tv.nativeapp.data.sync.SyncCoordinator
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
@@ -89,9 +91,20 @@ class CategoryManager @Inject constructor(
 
     /** Ordre alphabétique (nom affiché), pour tout le type. */
     suspend fun sortAlphabetically(pid: Long, kind: String) {
-        val cats = categoryDao.forProviderKind(pid, kind)
-        saveOrder(pid, kind, cats.sortedBy { com.ultratv.tv.nativeapp.ui.common.prettyCategoryName(it.name).lowercase() }.map { it.remoteId })
+        saveOrder(pid, kind, alphabeticalIds(categoryDao.forProviderKind(pid, kind)))
     }
+
+    /**
+     * Retour à l'ordre du fournisseur (ordre d'arrivée des catégories) après un tri A → Z : avant, le tri écrasait
+     * l'ordre et rien ne permettait de le retrouver. Enregistré comme un ordre ordinaire (profil + partage).
+     */
+    suspend fun restoreProviderOrder(pid: Long, kind: String) {
+        saveOrder(pid, kind, providerIds(categoryDao.forProviderKind(pid, kind)))
+    }
+
+    /** Vrai tant que les catégories sont rangées de A à Z : le bouton propose alors l'ordre du fournisseur. */
+    fun observeAlphabetical(pid: Long, kind: String): Flow<Boolean> =
+        categoryDao.observeOrdered(pid, kind).map { isAlphabetical(it) }.distinctUntilChanged()
 
     /** Ordre complet actuel (identifiants du fournisseur). */
     suspend fun orderedIds(pid: Long, kind: String): List<String> = categoryDao.orderedIds(pid, kind)
@@ -191,3 +204,14 @@ class CategoryManager @Inject constructor(
         }
     }
 }
+
+/** Identifiants rangés de A à Z (nom affiché, sans tenir compte de la casse). */
+internal fun alphabeticalIds(cats: List<CategoryEntity>): List<String> =
+    cats.sortedBy { com.ultratv.tv.nativeapp.ui.common.prettyCategoryName(it.name).lowercase() }.map { it.remoteId }
+
+/** Identifiants dans l'ordre du fournisseur (ordre d'arrivée = id). */
+internal fun providerIds(cats: List<CategoryEntity>): List<String> = cats.sortedBy { it.id }.map { it.remoteId }
+
+/** [ordered] (ordre affiché) est-il l'ordre A → Z ? Faux s'il y a moins de deux catégories (rien à basculer). */
+internal fun isAlphabetical(ordered: List<CategoryEntity>): Boolean =
+    ordered.size > 1 && ordered.map { it.remoteId } == alphabeticalIds(ordered)

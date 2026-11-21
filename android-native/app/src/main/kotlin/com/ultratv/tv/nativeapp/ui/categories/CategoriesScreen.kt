@@ -175,7 +175,15 @@ class CategoriesViewModel @Inject constructor(
     private fun publish(p: Long) = com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed(p)
     /** Nouvel ordre de la liste AFFICHÉE (éventuellement filtrée) : fusionné dans l'ordre complet, puis partagé. */
     fun saveOrder(ids: List<String>) { viewModelScope.launch { providerId()?.let { manager.saveOrderOf(it, kind.value, ids); publish(it) } } }
-    fun sortAz() { viewModelScope.launch { providerId()?.let { manager.sortAlphabetically(it, kind.value); publish(it) } } }
+    /** Catégories rangées de A à Z : le bouton de tri propose alors de revenir à l'ordre du fournisseur. */
+    val sortedAz: StateFlow<Boolean> = combine(pid, kind) { p, k -> p to k }
+        .flatMapLatest { (p, k) -> if (p == null) flowOf(false) else manager.observeAlphabetical(p, k) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    /** Bascule A → Z / ordre du fournisseur (un second appui défait le tri). */
+    fun sortAz() {
+        val az = sortedAz.value
+        viewModelScope.launch { providerId()?.let { if (az) manager.restoreProviderOrder(it, kind.value) else manager.sortAlphabetically(it, kind.value); publish(it) } }
+    }
 
     /** Chaînes masquées de la source affichée (identifiants du fournisseur). */
     val hiddenIds: StateFlow<Set<String>> = pid.flatMapLatest { p -> if (p == null) flowOf(emptySet()) else manager.observeHidden(p).map { l -> l.mapTo(HashSet()) { it.id } } }
@@ -222,6 +230,7 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
     val D = LocalDs.current
     val manualStrings = remember(D.lang) { ManualChannelStrings(D.lang) }
     val kind by vm.kind.collectAsState()
+    val sortedAz by vm.sortedAz.collectAsState()
     val q by vm.query.collectAsState()
     val rows by vm.rows.collectAsState()
     val tabs by vm.tabCounts.collectAsState()
@@ -283,7 +292,7 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
             FilterField(q, { vm.query.value = it }, D.filterHint, Modifier.weight(1f))
             PillButton(D.enableAll, { vm.setAll(true) }, heightPx = 64, hPadPx = 26, fontPx = 20, weight = FontWeight.Bold, bg = Ux.Surface)
             PillButton(D.disableAll, { vm.setAll(false) }, heightPx = 64, hPadPx = 26, fontPx = 20, weight = FontWeight.Bold, bg = Ux.Surface)
-            PillButton(D.catSortAz, { vm.sortAz() }, heightPx = 64, hPadPx = 26, fontPx = 20, weight = FontWeight.Bold, bg = Ux.Surface)
+            PillButton(if (sortedAz) D.catalogSortName(com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Sort.PROVIDER) else D.catSortAz, { vm.sortAz() }, heightPx = 64, hPadPx = 26, fontPx = 20, weight = FontWeight.Bold, bg = Ux.Surface)
             if (kind == "LIVE") PillButton(manualStrings.add, { manualCat = null; manualEdit = "" }, heightPx = 64, hPadPx = 26, fontPx = 20, weight = FontWeight.Bold, bg = Ux.Surface)
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = 28.design)) {
@@ -516,6 +525,7 @@ private fun TouchCategories(
     onChannels: (String, String) -> Unit = { _, _ -> },
     onAddManual: () -> Unit = {},
 ) {
+    val sortedAz by vm.sortedAz.collectAsState()
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dpT, vertical = 12.dpT), verticalArrangement = Arrangement.spacedBy(12.dpT)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size44().clip(RoundedCornerShape(22.dpT)).clickableT(onBack), contentAlignment = Alignment.Center) { DIcon("M15 6l-6 6 6 6", 22.dpT, Ux.Text, strokeWidth = 2.5f) }
@@ -532,7 +542,7 @@ private fun TouchCategories(
         }
         FilterField(q, { vm.query.value = it }, D.filterHint, Modifier.fillMaxWidth())
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dpT)) {
-            for ((label, act) in listOf<Pair<String, () -> Unit>>(D.enableAll to { vm.setAll(true) }, D.disableAll to { vm.setAll(false) }, D.catSortAz to { vm.sortAz() })) {
+            for ((label, act) in listOf<Pair<String, () -> Unit>>(D.enableAll to { vm.setAll(true) }, D.disableAll to { vm.setAll(false) }, (if (sortedAz) D.catalogSortName(com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Sort.PROVIDER) else D.catSortAz) to { vm.sortAz() })) {
                 Box(Modifier.weight(1f).heightIn44().clip(RoundedCornerShape(14.dpT)).background(Ux.Surface).border(1.dpT, Ux.Line, RoundedCornerShape(14.dpT)).clickableT(act).padding(horizontal = 10.dpT, vertical = 8.dpT), contentAlignment = Alignment.Center) {
                     Text(label, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 15.sp, lineHeight = 18.sp, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 }
