@@ -32,6 +32,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Guide TV, télécommande : à la fin d'une mise à jour du guide, le focus reste sur le programme sélectionné au lieu de partir sur « Regarder » ou de disparaître.
 - Guide TV, télécommande : ◀ / ▶ restent sur la chaîne. Au bout des programmes disponibles (programmes passés effacés, fin du guide), la plage horaire s'arrête au lieu de défiler dans le vide et de perdre la sélection ; ◀ au début de la plage recule bien dans le temps au lieu de sauter sur les jours, et ▶ sur le dernier programme d'une chaîne ne saute plus en biais sur une autre chaîne.
 - Guide TV : la liste des chaînes reste la même quelle que soit l'heure ou le jour affichés (toutes les chaînes qui ont un guide). Passer minuit avec ▶ ne fait plus remonter la liste ni perdre la sélection au-delà de la 30e chaîne ; une chaîne sans programme ce jour-là apparaît en ligne vide. Même liste sur téléphone et tablette.
+- Guide TV, télécommande : ⏩ / ⏪ (jour suivant / précédent) gardent la même heure et la même chaîne. Pendant le chargement de l'autre jour, la sélection reste sur le programme en cours ; elle passe ensuite au programme de la même chaîne à la même heure, ou, si la chaîne n'a rien ce jour-là, sur la chaîne voisine la plus proche.
 
 ## [1.3.72] — 2026-11-21 (Android)
 

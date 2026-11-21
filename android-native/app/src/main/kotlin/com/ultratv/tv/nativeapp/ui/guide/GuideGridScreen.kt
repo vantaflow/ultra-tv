@@ -350,13 +350,21 @@ class GuideGridViewModel @Inject constructor(
     /** Incrémenté à la fin d'une synchro du guide : les programmes déjà lus sont relus (sans être effacés d'abord). */
     private val reload = MutableStateFlow(0)
     private val _readyWindow = MutableStateFlow<Long?>(null)
+
+    /** Les programmes des lignes visibles couvrent déjà la fenêtre [w] (lecture synchrone du cache, sur le fil principal). */
+    fun covers(w: Long): Boolean {
+        val ids = visible.value
+        if (ids.isEmpty()) return true
+        val (from, to) = guideNeededRange(w)
+        return cache.missing(ids, from, to).isEmpty()
+    }
     /** Début de la fenêtre pour laquelle les programmes des lignes visibles sont lus (null : rien encore) : « aucune case » veut alors dire « rien à cette heure ». */
     val readyWindow: StateFlow<Long?> = _readyWindow.asStateFlow()
 
     init {
         viewModelScope.launch {
             combine(visible.debounce(150), _windowStart, reload) { v, w, _ -> v to w }.collect { (ids, w) ->
-                if (ids.isEmpty()) return@collect
+                if (ids.isEmpty()) { _readyWindow.value = w; return@collect }
                 val (from, to) = guideNeededRange(w)
                 val missing = cache.missing(ids, from, to)
                 if (missing.isEmpty()) { _readyWindow.value = w; return@collect }   // décalage dans la plage déjà chargée : rien à lire, rien à republier
@@ -461,6 +469,8 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
         loadedFor = { id -> readyWindow.value == vm.windowStart.value && programmesState.value.containsKey(id) }, windowStart = windowStart, day = day, D = D, clock = clock,
         groups = groups, group = group, guideLoad = guideLoad, nameColPx = nameColPx, groupName = groupName,
         onDay = { d -> day = d; vm.setWindowStart(guideWindowStart(System.currentTimeMillis(), d)) },
+        onDayShift = { d, w -> day = d; vm.setWindowStart(w) },
+        readyFor = { w -> vm.covers(w) || readyWindow.value == w },
         onWindowStart = { ms -> vm.setWindowStart(ms) },
         onGroup = { id -> vm.selectGroup(id) },
         onVisible = { ids -> vm.setVisible(ids) },
@@ -767,11 +777,13 @@ private fun CategoryChip(label: String, selected: Boolean, onClick: () -> Unit) 
 internal class GuideFocusPlan {
     /** Programme visé, désigné par sa chaîne et son DÉBUT (unique par chaîne en base) : un réimport du guide change les identifiants, pas les horaires. */
     var progStart = Long.MIN_VALUE
+    /** Ou bien : le programme de la chaîne qui couvre cet instant (⏪ ⏩ : même heure l'autre jour), à défaut sa première case affichée. */
+    var atMs = Long.MIN_VALUE
     var channelId = -1L
-    var firstOfRow = false
     /** Vrai pendant [take] : l'entrée de la grille (première case) ne détourne pas la demande de focus. */
     var entering = false
         private set
+    val pending get() = channelId != -1L
 
     /** Donne le focus à [target], y compris quand il était perdu hors de la grille (sinon l'entrée de la grille le détournait sur la première case). */
     fun take(target: androidx.compose.ui.focus.FocusRequester) {
@@ -779,10 +791,15 @@ internal class GuideFocusPlan {
         try { runCatching { target.requestFocus() } } finally { entering = false }
     }
 
-    fun clear() { progStart = Long.MIN_VALUE; channelId = -1L; firstOfRow = false }
+    fun clear() { progStart = Long.MIN_VALUE; atMs = Long.MIN_VALUE; channelId = -1L }
 
-    fun wants(channelId: Long, startMs: Long, firstShown: Boolean): Boolean =
-        this.channelId == channelId && ((progStart != Long.MIN_VALUE && progStart == startMs) || (firstOfRow && firstShown))
+    /** Indice, dans la ligne [channelId], de la case qui doit prendre le focus (-1 : aucune). [slots] : cases affichées (null = hors fenêtre). */
+    fun targetIndex(channelId: Long, progs: List<EpgEntity>, slots: List<Slot?>, firstShown: Int): Int {
+        if (this.channelId != channelId) return -1
+        if (progStart != Long.MIN_VALUE) return progs.indices.firstOrNull { progs[it].startMs == progStart && slots[it] != null } ?: -1
+        if (atMs != Long.MIN_VALUE) return progs.indices.firstOrNull { slots[it] != null && atMs >= progs[it].startMs && atMs < progs[it].endMs } ?: firstShown
+        return -1
+    }
 }
 
 /** Ligne de 84 px : colonne chaîne (logo fixe + nom) puis programmes positionnés par l'heure, 8 px d'écart. */
@@ -819,6 +836,8 @@ private fun GuideRow(
         val slots = remember(progs, windowStart) { progs.map { slotFor(it.startMs, it.endMs, windowStart) } }
         // La liste peut dépasser la fenêtre (cache par plage) : la « première » case est la première AFFICHÉE.
         val firstShown = remember(slots) { slots.indexOfFirst { it != null } }
+        // Cible de focus posée avant un changement de la grille (lue seulement quand elle vise cette chaîne).
+        val planIdx = plan.targetIndex(c.id, progs, slots, firstShown)
         Box(Modifier.width(gridW).fillMaxHeight()) {
             progs.forEachIndexed { idx, p ->
                 val slot = slots[idx] ?: return@forEachIndexed
@@ -829,11 +848,11 @@ private fun GuideRow(
                 // programmes qui restent, même quand un réimport du guide leur donne de nouveaux identifiants.
                 key(p.startMs) {
                 // Cible de focus posée avant un changement de la grille : prise par la case qui la compose, dans la même image.
-                val taker = if (plan.wants(c.id, p.startMs, idx == firstShown)) remember { androidx.compose.ui.focus.FocusRequester() } else null
+                val taker = if (idx == planIdx) remember { androidx.compose.ui.focus.FocusRequester() } else null
                 // Après l'image qui a posé la case : le focus perdu par les cases retirées est déjà rendu ailleurs, la prise vient APRÈS.
                 if (taker != null) LaunchedEffect(taker) {
                     androidx.compose.runtime.withFrameNanos { }
-                    if (plan.wants(c.id, p.startMs, idx == firstShown)) { plan.clear(); plan.take(taker) }
+                    if (plan.targetIndex(c.id, progs, slots, firstShown) == idx) { plan.clear(); plan.take(taker) }
                 }
                 FocusSurface(
                     onClick = { onSelect(p) },
@@ -885,6 +904,10 @@ internal fun GuideTvContent(
     progsFor: (Long) -> List<EpgEntity>, windowStart: Long, day: Int,
     /** Vrai quand les programmes de la chaîne sont lus pour la fenêtre courante (une liste vide veut alors dire « rien à cette heure »). */
     loadedFor: (Long) -> Boolean = { true },
+    /** Les programmes des lignes visibles couvrent la fenêtre donnée : sinon la grille garde la fenêtre affichée jusqu'à leur arrivée. */
+    readyFor: (Long) -> Boolean = { true },
+    /** ⏪ ⏩ : jour [day] et fenêtre à la même heure ce jour-là. */
+    onDayShift: (day: Int, windowStart: Long) -> Unit = { d, _ -> },
     D: com.ultratv.tv.nativeapp.i18n.DesignStrings, clock: androidx.compose.runtime.State<Long>,
     groups: List<com.ultratv.tv.nativeapp.ui.live.DirectCategory>, group: String, guideLoad: GuideLoad, nameColPx: Int,
     groupName: (com.ultratv.tv.nativeapp.ui.live.DirectCategory) -> String,
@@ -900,6 +923,11 @@ internal fun GuideTvContent(
     nowProvider: () -> Long = { System.currentTimeMillis() },
 ) {
     ProbeScreen()
+    // Fenêtre AFFICHÉE : la demandée dès que les programmes des lignes visibles la couvrent (décalage au bord : tout de suite,
+    // déjà lus) ; sinon (⏪ ⏩, autre jour) la précédente reste à l'écran, avec la case focalisée, jusqu'à leur arrivée.
+    val lastShown = remember { longArrayOf(windowStart) }
+    val shownWindow = if (lastShown[0] == windowStart || readyFor(windowStart)) windowStart else lastShown[0]
+    androidx.compose.runtime.SideEffect { lastShown[0] = shownWindow }
     val focus = LocalFocusManager.current
     var inGrid by remember { mutableStateOf(false) }
     // Programme focalisé : lu SEULEMENT par le panneau du haut et l'aperçu — lu ici, chaque déplacement recomposait
@@ -907,6 +935,8 @@ internal fun GuideTvContent(
     val focusedProg = remember { mutableStateOf<Pair<ChannelEntity, EpgEntity>?>(null) }
     // Cible de focus d'une grille qui change sous le doigt (bord de fenêtre, changement de jour) : voir [GuideFocusPlan].
     val plan = remember { GuideFocusPlan() }
+    // Dernier instant visé par ⏪ ⏩ (chaîne, instant) : voir le traitement de ces touches.
+    val dayAnchor = remember { longArrayOf(-1L, Long.MIN_VALUE) }
     val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
     Column(
         modifier.fillMaxSize().padding(start = 48.design, end = 56.design, top = 40.design, bottom = 12.design)
@@ -918,9 +948,18 @@ internal fun GuideTvContent(
                 if (e.type == KeyEventType.KeyDown && (e.key == Key.MediaRewind || e.key == Key.MediaFastForward)) {
                     val d = (day + if (e.key == Key.MediaFastForward) 1 else -1).coerceIn(-1, 2)
                     if (d != day) {
-                        // Les programmes changent tous : le focus revient sur la même chaîne, au premier programme du jour choisi.
-                        if (inGrid) focusedProg.value?.let { plan.channelId = it.first.id; plan.firstOfRow = true }
-                        onDay(d)
+                        // Même heure, l'autre jour (calendrier : changement d'heure compris). La grille garde la fenêtre affichée, et la
+                        // case focalisée, jusqu'à l'arrivée des programmes de ce jour ; le focus va alors sur le programme de la même
+                        // chaîne à la même heure (à défaut sa première case affichée, ou la ligne voisine la plus proche).
+                        val w = java.util.Calendar.getInstance().apply { timeInMillis = windowStart; add(java.util.Calendar.DAY_OF_YEAR, d - day) }.timeInMillis
+                        if (inGrid) focusedProg.value?.let { (ch, p) ->
+                            // Instant visé : celui du ⏪ ⏩ précédent tant que le focus est resté sur le programme qui le couvre (un aller-
+                            // retour revient sur le même programme), sinon le début visible du programme focalisé.
+                            val base = if (dayAnchor[0] == ch.id && dayAnchor[1] >= p.startMs && dayAnchor[1] < p.endMs) dayAnchor[1] else maxOf(p.startMs, shownWindow)
+                            plan.channelId = ch.id; plan.atMs = base + (w - shownWindow)
+                            dayAnchor[0] = ch.id; dayAnchor[1] = plan.atMs
+                        }
+                        onDayShift(d, w)
                     }
                     return@onPreviewKeyEvent true
                 }
@@ -940,10 +979,10 @@ internal fun GuideTvContent(
                 }
                 // Programme voisin affiché dans la fenêtre : déplacement normal. Sinon, jamais de saut en biais vers une autre chaîne
                 // (la case d'une autre ligne qui dépasse à droite) : on reste sur la ligne, et la fenêtre défile ou bute.
-                val neighbourShown = next != null && slotFor(next.startMs, next.endMs, windowStart) != null
+                val neighbourShown = next != null && slotFor(next.startMs, next.endMs, shownWindow) != null
                 if (sel != null && !neighbourShown || !focus.moveFocus(dir)) {
-                    val shifted = guideEdgeShift(windowStart, forward, sel?.second, next != null)
-                    if (shifted != windowStart) {
+                    val shifted = guideEdgeShift(shownWindow, forward, sel?.second, next != null)
+                    if (shifted != shownWindow || shownWindow != windowStart) {
                         if (next != null && sel != null) { plan.channelId = sel.first.id; plan.progStart = next.startMs }
                         onWindowStart(shifted)
                     }
@@ -993,7 +1032,7 @@ internal fun GuideTvContent(
                     Text(dayName(D, day), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 17.spx, maxLines = 1)
                 }
                 Row(Modifier.weight(1f)) {
-                    for (i in 0 until 6) Text(EpgClock.hm(windowStart + i * SLOT_MS), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 17.spx, modifier = Modifier.weight(1f), maxLines = 1)
+                    for (i in 0 until 6) Text(EpgClock.hm(shownWindow + i * SLOT_MS), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 17.spx, modifier = Modifier.weight(1f), maxLines = 1)
                 }
             }
 
@@ -1024,12 +1063,28 @@ internal fun GuideTvContent(
             // inexistante annulait le déplacement (▼ depuis les jours sans effet, aucun focus à l'ouverture).
             // Une cible par ligne composée (première case affichée), choisie au moment de l'entrée : rien n'est recomposé pour ça.
             val rowEntry = remember { HashMap<Long, FocusRequester>() }
-            val windowNow = androidx.compose.runtime.rememberUpdatedState(windowStart)
+            val windowNow = androidx.compose.runtime.rememberUpdatedState(shownWindow)
             val progsNow = androidx.compose.runtime.rememberUpdatedState(progsFor)
             val loadedNow = androidx.compose.runtime.rememberUpdatedState(loadedFor)
             val hasCell = { id: Long -> progsNow.value(id).any { slotFor(it.startMs, it.endMs, windowNow.value) != null } }
             val entryTarget: () -> FocusRequester? = {
                 state.layoutInfo.visibleItemsInfo.firstNotNullOfOrNull { info -> peekAt(info.index)?.takeIf { hasCell(it.id) }?.let { rowEntry[it.id] } }
+            }
+            // Après un changement de la fenêtre affichée (⏪ ⏩, bord) : si la grille avait le focus et l'a perdu (case focalisée
+            // retirée sans qu'aucune case ne reprenne la cible, par exemple une chaîne sans programme ce jour-là), le focus revient
+            // sur la ligne visible qui a une case la plus proche de cette chaîne. Deux images après le changement : après la prise
+            // normale par la case visée ([GuideFocusPlan]), jamais à retardement ni quand le focus est déjà ailleurs dans la grille.
+            val hadGridFocus = remember(shownWindow) { androidx.compose.runtime.snapshots.Snapshot.withoutReadObservation { inGrid } }
+            LaunchedEffect(shownWindow) {
+                if (!hadGridFocus) return@LaunchedEffect
+                repeat(2) { androidx.compose.runtime.withFrameNanos { } }
+                if (inGrid) return@LaunchedEffect
+                val chId = plan.channelId.takeIf { it != -1L } ?: focusedProg.value?.first?.id ?: return@LaunchedEffect
+                plan.clear()
+                val visible = state.layoutInfo.visibleItemsInfo.mapNotNull { info -> peekAt(info.index)?.let { info.index to it.id } }
+                val from = visible.firstOrNull { it.second == chId }?.first ?: visible.firstOrNull()?.first ?: return@LaunchedEffect
+                visible.filter { hasCell(it.second) }.minByOrNull { kotlin.math.abs(it.first - from) * 2 + (if (it.first > from) 1 else 0) }
+                    ?.let { rowEntry[it.second] }?.let { plan.take(it) }
             }
             // Aucune case dans aucune ligne visible, programmes lus : un message et des actions, jamais une grille muette.
             val windowEmpty by remember {
@@ -1069,9 +1124,9 @@ internal fun GuideTvContent(
                 // Position lue DANS le calque (mise en page + alpha) : le tic de l'horloge ne recompose rien.
                 val accent = Ux.Accent
                 Box(
-                    Modifier.offset { androidx.compose.ui.unit.IntOffset((nameColPx.design + gridW * (com.ultratv.tv.nativeapp.ui.common.EpgProgress.nowLineFraction(clock.value, windowStart, GUIDE_WINDOW_MS) ?: 0f)).roundToPx(), 0) }
+                    Modifier.offset { androidx.compose.ui.unit.IntOffset((nameColPx.design + gridW * (com.ultratv.tv.nativeapp.ui.common.EpgProgress.nowLineFraction(clock.value, shownWindow, GUIDE_WINDOW_MS) ?: 0f)).roundToPx(), 0) }
                         .width(3.design).fillMaxHeight()
-                        .graphicsLayer { alpha = if (com.ultratv.tv.nativeapp.ui.common.EpgProgress.nowLineFraction(clock.value, windowStart, GUIDE_WINDOW_MS) != null) 1f else 0f }
+                        .graphicsLayer { alpha = if (com.ultratv.tv.nativeapp.ui.common.EpgProgress.nowLineFraction(clock.value, shownWindow, GUIDE_WINDOW_MS) != null) 1f else 0f }
                         .background(accent),
                 )
                 LazyColumn(state = state, verticalArrangement = Arrangement.spacedBy(8.design), contentPadding = PaddingValues(top = 8.design, bottom = 24.design)) {
@@ -1082,7 +1137,7 @@ internal fun GuideTvContent(
                             val progs by remember(c.id, progsFor) { androidx.compose.runtime.derivedStateOf { progsFor(c.id) } }
                             val entry = remember(c.id) { rowEntry.getOrPut(c.id) { FocusRequester() } }
                             GuideRow(
-                                c, progs, windowStart, gridW, nameColPx, D, clock, plan,
+                                c, progs, shownWindow, gridW, nameColPx, D, clock, plan,
                                 firstModifier = Modifier.focusRequester(entry),
                                 onSelect = { p -> onSelect(c, p) }, onRemind = { p -> onRemind(c, p) }, onFocusProg = { p -> focusedProg.value = c to p },
                                 onFocusRefresh = { p -> focusedProg.value?.let { (fc, fp) -> if (fc.id == c.id && fp.startMs == p.startMs && fp != p) focusedProg.value = c to p } },
@@ -1092,7 +1147,7 @@ internal fun GuideTvContent(
                     }
                 }
                 if (windowEmpty) GuideWindowEmpty(D, showAll = group != com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL, nowAction = emptyAction, onNow = { onDay(0) }, onAll = { onGroup(com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL) })
-                NowPill(clock, windowStart, nameColPx.design, gridW)
+                NowPill(clock, shownWindow, nameColPx.design, gridW)
             }
         }
     }
