@@ -50,6 +50,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -210,8 +212,10 @@ fun HomeScreen(
         homeTopSlot(h != null, loaded, providers.map { it.kind }, com.ultratv.tv.nativeapp.ui.settings.SUPPORTED_KINDS, f != null)
     }
     // Focus initial sur « Regarder » UNE fois par visite de l'accueil (état sauvegardé dans l'entrée de navigation) :
-    // au retour d'une fiche ou du lecteur, le hero recomposé ne vole plus le focus que ScreenFocusHost (focusRestorer)
-    // rend à la carte quittée.
+    // au retour d'une fiche ou du lecteur, le hero recomposé ne prend plus le focus. Qui le rend : l'accueil est sorti de la
+    // composition, le focusRestorer de ScreenFocusHost est perdu ; c'est [HomeFocusRestore] (élément quitté, sauvegardé avec
+    // l'entrée) qui rend seul candidat l'élément quitté, et la demande de focus initiale de ScreenFocusHost tombe dessus.
+    // Les retours qui ne recomposent pas l'accueil (modale fermée, menu latéral) restent à ScreenFocusHost / ContentFocusMemory.
     var heroFocusDone by rememberSaveable { mutableStateOf(false) }
     val onHeroFocused = remember { { heroFocusDone = true } }
     val clock = rememberEpgClock()
@@ -267,6 +271,8 @@ internal fun HomeTvContent(
     sportRow: @Composable (Modifier, PaddingValues) -> Unit,
     // Calculé UNE fois par l'appelant (l'écran le passe aussi au ViewModel) ; à défaut, lu ici.
     heroRotates: Boolean = rememberHeroMayRotate(),
+    // Porte de sortie de rangée propre à cet écran ; injectable pour les tests.
+    edgeGate: HomeEdgeGate = remember { HomeEdgeGate() },
 ) {
     val D = LocalDs.current
     // Pivot VERTICAL seulement (haut de l'élément focalisé à 30 % de l'écran, comme le pivot TV de Compose) ; les
@@ -292,17 +298,10 @@ internal fun HomeTvContent(
     val pivotSpec = remember { HomePivotSpec { topFocusFlag[0] } }
     // Dernière carte focalisée, sauvegardée avec l'entrée de navigation : de retour d'une fiche, le focus y revient.
     val restore = rememberSaveable(saver = HomeFocusRestore.Saver) { HomeFocusRestore() }
-    // Retour sur l'accueil : la carte sauvegardée est composée quelques images après le premier focus (donné à la première
-    // carte composée) ; dès qu'elle l'est, le focus lui revient, sauf si l'utilisateur a déjà appuyé sur une touche.
+    // Abandon de la restauration si l'élément quitté n'existe plus (données changées) : tout redevient candidat bien avant
+    // la fin des essais de la demande de focus initiale (3 s). Aucune demande de focus ici.
     LaunchedEffect(restore) {
-        if (!restore.pending) return@LaunchedEffect
-        val t0 = android.os.SystemClock.uptimeMillis()
-        repeat(RESTORE_FRAMES) {
-            if (com.ultratv.tv.nativeapp.ui.common.InputClock.lastKeyMs > t0) { restore.pending = false; return@LaunchedEffect }
-            if (restore.targetComposed) { restore.pending = false; runCatching { restore.requester.requestFocus() }; return@LaunchedEffect }
-            androidx.compose.runtime.withFrameNanos { }
-        }
-        restore.pending = false
+        if (restore.pending) { kotlinx.coroutines.delay(HomeFocusRestore.RESTORE_MS); restore.pending = false }
     }
     LaunchedEffect(topHasFocus, animsOff) {
         if (!topHasFocus) return@LaunchedEffect
@@ -325,10 +324,10 @@ internal fun HomeTvContent(
             count(ShortcutId.SERIES)?.let { add(D.homeSeriesCount(it, formatCount(it, D.locale))) }
         }.joinToString(" · ")
     }
-    CompositionLocalProvider(LocalBringIntoViewSpec provides pivotSpec, LocalHomeFocusRestore provides restore) {
+    CompositionLocalProvider(LocalBringIntoViewSpec provides pivotSpec, LocalHomeFocusRestore provides restore, LocalHomeEdgeGate provides edgeGate) {
         LazyColumn(
-            // Retour sur l'accueil recomposé de zéro : le focus va d'abord sur la carte sauvegardée (sinon comportement habituel).
-            Modifier.fillMaxSize().focusRestorer { if (restore.pending && restore.targetComposed) restore.requester else FocusRequester.Default },
+            // Touches reçues par l'accueil : une sortie de rangée différée dont la touche est périmée est abandonnée (voir [HomeEdgeGate]).
+            Modifier.fillMaxSize().onPreviewKeyEvent { if (it.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) edgeGate.keys++; false },
             state = listState,
             // Les rangées portent elles-mêmes leur marge gauche (elles débordent de RowBleed dans cette marge sans être rognées par la liste).
             contentPadding = PaddingValues(bottom = 54.design),
@@ -336,7 +335,7 @@ internal fun HomeTvContent(
         ) {
             item(key = "top", contentType = slot.name) {
                 CompositionLocalProvider(LocalBringIntoViewSpec provides inheritedSpec) {
-                    Column(Modifier.onFocusChanged { topFocusFlag[0] = it.hasFocus; topHasFocus = it.hasFocus; if (it.hasFocus) { restore.saved = null; restore.pending = false } }) {
+                    Column(Modifier.onFocusChanged { topFocusFlag[0] = it.hasFocus; topHasFocus = it.hasFocus }) {
                         if (slot == HomeTopSlot.HERO && hero != null) {
                             // Image pleine largeur de la zone de contenu : aucune marge horizontale sur cet élément.
                             Hero(
@@ -366,9 +365,6 @@ internal fun HomeTvContent(
         }
     }
 }
-
-/** Images attendues, au plus, pour que la carte quittée soit composée au retour sur l'accueil. */
-private const val RESTORE_FRAMES = 40
 
 /** Marge gauche de l'accueil (maquette : 56 px après le rail). */
 private val HomeStart get() = 56.design
@@ -423,27 +419,40 @@ private class HomePivotSpec(private val topFocused: () -> Boolean) : BringIntoVi
  * restauration — revenir dans la rangée (Haut/Bas, retour du menu latéral, rangée recomposée après être sortie de
  * l'écran) rend le focus à la DERNIÈRE carte visée de cette rangée, jamais à la première par défaut.
  * Sorties : [up] reçoit ▲ (sinon recherche habituelle) ; ◀ / ▶ ne tombent jamais sur la carte d'une autre rangée, voir [HomeEdgeGate].
+ * Le déplacement refait est DIFFÉRÉ d'une image (le refaire dans `exit` rentrerait dans la recherche en cours) : si une autre
+ * touche est arrivée entre-temps, l'intention est périmée et rien n'est refait.
  */
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 private fun Modifier.homeRow(up: FocusRequester? = null): Modifier {
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
-    return this.focusProperties {
-        exit = { d ->
-            when {
-                d == androidx.compose.ui.focus.FocusDirection.Up && up != null -> up
-                d == androidx.compose.ui.focus.FocusDirection.Left || d == androidx.compose.ui.focus.FocusDirection.Right -> {
-                    scope.launch {
-                        HomeEdgeGate.closed = true
-                        try { focusManager.moveFocus(d) } finally { HomeEdgeGate.closed = false }
+    val gate = LocalHomeEdgeGate.current
+    val bleed = RowBleed
+    val chain = remember(up, gate, focusManager, scope, bleed) {
+        Modifier.focusProperties {
+            exit = { d ->
+                when {
+                    gate == null || gate.closed -> FocusRequester.Default
+                    d == androidx.compose.ui.focus.FocusDirection.Up && up != null -> up
+                    d == androidx.compose.ui.focus.FocusDirection.Left || d == androidx.compose.ui.focus.FocusDirection.Right -> {
+                        val keys = gate.keys
+                        scope.launch {
+                            // Toujours à l'image suivante (jamais dans la recherche de focus en cours, même si le dispatcher est immédiat).
+                            androidx.compose.runtime.withFrameNanos { }
+                            if (gate.keys != keys) return@launch
+                            gate.relaunches++
+                            gate.closed = true
+                            try { focusManager.moveFocus(d) } finally { gate.closed = false }
+                        }
+                        FocusRequester.Cancel
                     }
-                    FocusRequester.Cancel
+                    else -> FocusRequester.Default
                 }
-                else -> FocusRequester.Default
             }
-        }
-    }.rowBleedStart(RowBleed).focusRestorer().focusGroup()
+        }.rowBleedStart(bleed).focusRestorer().focusGroup()
+    }
+    return this.then(chain)
 }
 
 /*
@@ -767,13 +776,13 @@ private fun HeroBody(
             Row(Modifier.padding(top = 6.design), horizontalArrangement = Arrangement.spacedBy(14.design)) {
                 OnImageButton(
                     D.watch, onClick = { onWatch(h) }, primary = true, iconPath = Icons.Play, iconFill = true,
-                    modifier = Modifier.testTag("hero-watch").focusRequester(requester).onFocusChanged { focused = it.isFocused; if (it.isFocused) { onFocused(); onFocusTop() } },
+                    modifier = Modifier.testTag("hero-watch").then(heroFocus("watch")).focusRequester(requester).onFocusChanged { focused = it.isFocused; if (it.isFocused) { onFocused(); onFocusTop() } },
                 )
                 OnImageButton(
                     D.homeMoreInfo, onClick = { onInfo(h) },
-                    modifier = Modifier.testTag("hero-info").onFocusChanged { if (it.isFocused) onFocusTop() },
+                    modifier = Modifier.testTag("hero-info").then(heroFocus("info")).onFocusChanged { if (it.isFocused) onFocusTop() },
                 )
-                HeroListButton(h, inList, onToggleList, Modifier.testTag("hero-list").onFocusChanged { if (it.isFocused) onFocusTop() })
+                HeroListButton(h, inList, onToggleList, Modifier.testTag("hero-list").then(heroFocus("list")).onFocusChanged { if (it.isFocused) onFocusTop() })
             }
         }
         // Heure en haut à droite de l'image (lue dans HomeClock : l'écran ne se recompose pas chaque minute).

@@ -42,6 +42,7 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.requestFocus
 import androidx.compose.ui.test.isFocusable
@@ -113,8 +114,12 @@ class HomeTvNavigationTest {
     private var railVisits = 0
     private var rtl = false
     private var longHome = false
+    private var edgeGate = HomeEdgeGate()
+    private var clockState = mutableLongStateOf(System.currentTimeMillis())
+    /** Boîte de dialogue posée par-dessus l'écran (comme OverlayHost) ; à sa fermeture le focus est rendu à l'écran. */
+    private val modalOpen = mutableStateOf(false)
 
-    private val rowTagPrefixes = listOf("hero-watch", "hero-info", "hero-list", "home-channel-", "home-resume-", "home-poster-", "home-sport-", "rail-", "detail-button")
+    private val rowTagPrefixes = listOf("hero-watch", "hero-info", "hero-list", "home-channel-", "home-resume-", "home-poster-", "home-sport-", "rail-", "detail-button", "modal-")
 
     // ───────────── Montage ─────────────
 
@@ -155,6 +160,7 @@ class HomeTvNavigationTest {
         lang: AppLang = AppLang.French, withHero: Boolean = true, long: Boolean = false, withRail: Boolean = true, sport: Int = 0, heroCount: Int = 1,
     ) {
         rtl = lang.rtl; longHome = long
+        edgeGate = HomeEdgeGate(); clockState = mutableLongStateOf(System.currentTimeMillis())
         I18n.init(ApplicationProvider.getApplicationContext())
         heroSource.value = if (withHero) hero else null
         rowsState.value = if (long) HomeTvFixtures.longRows(layout) else HomeTvFixtures.rows(layout)
@@ -185,6 +191,7 @@ class HomeTvNavigationTest {
                         }
                     }
                     if (withRail) Rail(Modifier.align(Alignment.TopStart))
+                    ModalHost()
                 }
             }
         }
@@ -192,10 +199,24 @@ class HomeTvNavigationTest {
     }
 
     @Composable
+    private fun ModalHost() {
+        var wasOpen by remember { mutableStateOf(false) }
+        if (modalOpen.value) {
+            val r = remember { FocusRequester() }
+            FocusSurface(onClick = {}, modifier = Modifier.size(100.dp, 40.dp).testTag("modal-button").focusRequester(r)) { _ -> }
+            androidx.compose.runtime.LaunchedEffect(Unit) { r.requestFocus() }
+        }
+        androidx.compose.runtime.LaunchedEffect(modalOpen.value) {
+            if (!modalOpen.value && wasOpen) CurrentScreenFocus.requester?.requestFocus()
+            wasOpen = modalOpen.value
+        }
+    }
+
+    @Composable
     private fun HomeScene(heroCount: Int, sportList: List<SportEntry>) {
         // Comme HomeScreen : « Regarder » ne prend le focus qu'une fois par visite (état sauvegardé dans l'entrée de navigation).
         var done by rememberSaveable { mutableStateOf(false) }
-        val clock = remember { mutableLongStateOf(System.currentTimeMillis()) }
+        val clock = clockState
         val extras = remember { mutableStateOf(emptyMap<String, HeroExtras>()) }
         val current = heroSource.value
         HomeTvContent(
@@ -205,7 +226,7 @@ class HomeTvNavigationTest {
             playHistory = {}, openPoster = {}, playChannel = {}, onShortcut = {}, onGoSport = {},
             onWatchHero = {}, onInfoHero = {},
             heroInList = inList, onToggleHeroList = {},
-            emptyTop = {},
+            emptyTop = {}, edgeGate = edgeGate,
             sportRow = { m, p -> if (sportList.isNotEmpty()) SportHomeRow(sportList, clock, m, p, {}, {}) },
         )
     }
@@ -213,6 +234,20 @@ class HomeTvNavigationTest {
     // ───────────── Touches et constats ─────────────
 
     /** Appui complet (comme MainActivity.dispatchKeyEvent, qui horodate la touche dans InputClock). */
+    /** Focalisés à chaque image pendant [frames] images (autoAdvance coupé) : tout élément de passage y apparaît. */
+    private fun focusTrace(frames: Int, action: () -> Unit): List<String> {
+        rule.mainClock.autoAdvance = false
+        val seen = mutableListOf<String>()
+        rule.runOnUiThread { action() }
+        repeat(frames) {
+            rule.mainClock.advanceTimeByFrame()
+            rule.onAllNodes(isFocused()).fetchSemanticsNodes().forEach { n -> tagOf(n)?.let { t -> if (seen.lastOrNull() != t) seen += t } }
+        }
+        rule.mainClock.autoAdvance = true
+        rule.waitForIdle()
+        return seen
+    }
+
     private fun press(key: Key) {
         InputClock.lastKeyCode = key.nativeKeyCode
         InputClock.lastKeyMs = android.os.SystemClock.uptimeMillis()
@@ -464,6 +499,176 @@ class HomeTvNavigationTest {
         rule.mainClock.advanceTimeBy(2_000); rule.waitForIdle()
         val back = focusNow("après retour")
         assertTrue("le focus revient sur l'image, pas sur une carte de rangée ($back)", back.startsWith("hero-"))
+    }
+
+    private fun leaveAndReturn(frames: Int = 90, whileAway: () -> Unit = {}): List<String> {
+        rule.runOnIdle { screen.value = "detail" }; rule.waitForIdle()
+        rule.onNodeWithTagExists("detail-button")
+        rule.runOnUiThread { whileAway() }
+        return focusTrace(frames) { screen.value = "home" }.filter { it != "detail-button" }
+    }
+
+    @Test fun retourSurLAccueil_aucunFocusDePassage_memeDefilement_memeCarte() {
+        mount()
+        downTo("home-poster-m")
+        repeat(2) { step(forward, "carte") }
+        assertEquals("home-poster-m3", focusNow("avant"))
+        val before = rule.onNodeWithTag("home-poster-m3").getUnclippedBoundsInRoot()
+        val seen = leaveAndReturn()
+        // Entre la recomposition et la stabilisation, un seul élément a reçu le focus : la carte quittée.
+        assertEquals("aucun focus de passage", listOf("home-poster-m3"), seen)
+        assertEquals("home-poster-m3", focusNow("après"))
+        val after = rule.onNodeWithTag("home-poster-m3").getUnclippedBoundsInRoot()
+        assertEquals("même défilement de la liste (haut de la carte)", before.top.value, after.top.value, 1f)
+        assertEquals("même défilement de la rangée (gauche de la carte)", before.left.value, after.left.value, 1f)
+    }
+
+    private fun retourSurUnBouton(button: String) {
+        mount()
+        repeat(listOf("hero-watch", "hero-info", "hero-list").indexOf(button)) { step(forward, "bouton") }
+        assertEquals(button, focusNow("avant"))
+        val seen = leaveAndReturn()
+        assertEquals("aucun focus de passage ($button)", listOf(button), seen)
+        assertEquals(button, focusNow("après retour"))
+    }
+
+    @Test fun retourSurLAccueil_heroWatch_resteHeroWatch() = retourSurUnBouton("hero-watch")
+    @Test fun retourSurLAccueil_heroInfo_resteHeroInfo() = retourSurUnBouton("hero-info")
+    @Test fun retourSurLAccueil_heroList_resteHeroList() = retourSurUnBouton("hero-list")
+
+    @Test fun retourSurLAccueil_carteDisparue_restaurationAbandonnee_unElementVisibleFocalise() {
+        mount()
+        downTo("home-poster-m")
+        repeat(2) { step(forward, "carte") }
+        // Pendant l'absence, la rangée est remplacée : la carte quittée n'existe plus.
+        val seen = leaveAndReturn(frames = 150) { rowsState.value = rowsState.value.copy(latestMovies = (1..4).map { HomeTvFixtures.posterUi("n", it) }) }
+        assertTrue("un élément a reçu le focus : $seen", seen.isNotEmpty())
+        val tag = focusNow("après abandon")
+        assertTrue("jamais nulle part, jamais sur la carte disparue ($tag)", tag != "home-poster-m3")
+    }
+
+    @Test fun retourSurLAccueil_donneesJamaisArrivees_restaurationAbandonnee_leBandeauRepreudLeFocus() {
+        mount()
+        downTo("home-poster-m")
+        val seen = leaveAndReturn(frames = 150) { rowsState.value = HomeRows.EMPTY }
+        assertTrue("un élément a reçu le focus : $seen", seen.isNotEmpty())
+        assertTrue(focusNow("après abandon").startsWith("hero-"))
+    }
+
+    @Test fun retourSurLAccueil_touchePendantLAttente_gagneToujours_restaurationAbandonnee() {
+        mount()
+        downTo("home-poster-m")
+        rule.runOnIdle { screen.value = "detail" }; rule.waitForIdle()
+        rule.runOnUiThread { rowsState.value = rowsState.value.copy(latestMovies = (1..4).map { HomeTvFixtures.posterUi("n", it) }) }
+        rule.mainClock.autoAdvance = false
+        rule.runOnUiThread { screen.value = "home" }
+        repeat(3) { rule.mainClock.advanceTimeByFrame() }
+        assertEquals("en attente : aucun focus dans l'accueil", 0, rule.onAllNodes(isFocused()).fetchSemanticsNodes().count { tagOf(it) != "detail-button" })
+        // Une touche pendant l'attente (bien avant les 1000 ms d'abandon) : tout redevient candidat à la prochaine tentative.
+        android.os.SystemClock.sleep(20)
+        InputClock.lastKeyCode = Key.DirectionDown.nativeKeyCode; InputClock.lastKeyMs = android.os.SystemClock.uptimeMillis()
+        rule.mainClock.advanceTimeBy(250)
+        rule.mainClock.autoAdvance = true
+        rule.waitForIdle()
+        focusNow("après la touche")
+    }
+
+    @Test fun retourSurLAccueil_rafraichissementDesRangees_etFermetureDUneModale_neDeclenchentAucuneRestauration() {
+        mount()
+        downTo("home-poster-m")
+        repeat(2) { step(forward, "carte") }
+        leaveAndReturn()
+        assertEquals("home-poster-m3", focusNow("restauré"))
+        // Rafraîchissement : aucune restauration, le focus ne bouge pas.
+        val refreshed = focusTrace(30) { rowsState.value = HomeTvFixtures.rows(layout) }
+        assertTrue("rafraîchissement : $refreshed", refreshed.all { it == "home-poster-m3" })
+        assertEquals("home-poster-m3", focusNow("après rafraîchissement"))
+        // Modale : le focus va sur elle puis revient (rendu par l'écran), sans passer par une autre carte.
+        val modal = focusTrace(30) { modalOpen.value = true }
+        assertEquals(listOf("modal-button"), modal.filter { it != "home-poster-m3" })
+        val closed = focusTrace(60) { modalOpen.value = false }
+        assertTrue("fermeture de la modale : $closed", closed.all { it == "home-poster-m3" || it == "modal-button" })
+        assertEquals("home-poster-m3", focusNow("après la modale"))
+        // Et ◀ ▶ restent normaux ensuite.
+        assertEquals("home-poster-m2", step(backward, "après")); assertEquals("home-poster-m3", step(forward, "après"))
+    }
+
+    // ───────────── Porte de sortie de rangée ─────────────
+
+    @Test fun sansMenuLateral_gaucheAuDebutEtDroiteALaFin_leFocusResteSurLaMemeCarte_uneSeuleRelancePourChaqueTouche() {
+        mount(withRail = false)
+        downTo("home-poster-t")
+        val first = focusNow("début")
+        val r0 = edgeGate.relaunches
+        assertEquals(first, step(backward, "début de rangée"))
+        assertEquals("une seule relance pour la touche", r0 + 1, edgeGate.relaunches)
+        for (k in 1..16) { val t = step(forward, "avance"); if (t == focusNow("lecture")) { /* continue */ } }
+        val last = focusNow("fin")
+        val r1 = edgeGate.relaunches
+        assertEquals(last, step(forward, "fin de rangée"))
+        assertTrue("au plus une relance pour la touche", edgeGate.relaunches - r1 <= 1)
+        assertEquals("la porte est rouverte", false, edgeGate.closed)
+        // Rien n'est perdu : ▼ / ▲ fonctionnent.
+        step(Key.DirectionDown, "après"); step(Key.DirectionUp, "après")
+    }
+
+    @Test fun gauchePuisBasSansAttendre_lIntentionPerimeeEstAbandonnee_aucunMouvementFantome() {
+        mount()
+        downTo("home-resume-")
+        val before = focusNow("départ")
+        // ◀ puis ▼ dans le même instant : la relance différée de ◀ est périmée quand elle s'exécute.
+        InputClock.lastKeyCode = Key.DirectionDown.nativeKeyCode; InputClock.lastKeyMs = android.os.SystemClock.uptimeMillis()
+        val r0 = edgeGate.relaunches
+        // Horloge de test arrêtée : la relance différée de ◀ ne s'exécute pas entre les deux touches.
+        rule.mainClock.autoAdvance = false
+        rule.onRoot().performKeyInput { keyDown(backward); keyUp(backward) }
+        rule.onRoot().performKeyInput { keyDown(Key.DirectionDown); keyUp(Key.DirectionDown) }
+        rule.mainClock.autoAdvance = true
+        rule.waitForIdle()
+        val after = focusNow("après ◀ ▼ simultanés")
+        assertTrue("le focus a suivi ▼, pas le menu ($after)", !after.startsWith("rail-") && after != before)
+        assertEquals("aucune relance fantôme", r0, edgeGate.relaunches)
+        assertEquals(false, edgeGate.closed)
+    }
+
+    @Test fun relanceDeLaSortie_auPlusUneFoisParTouche_surToutLeParcoursDuMenu() {
+        mount(long = true)
+        var horizontalPresses = 0
+        var last = focusNow("départ")
+        for (i in 1..14) {
+            val t = step(Key.DirectionDown, "descente")
+            if (t == last) break
+            last = t
+            step(backward, "vers le menu"); horizontalPresses++
+            step(forward, "retour"); horizontalPresses++
+            assertEquals("la porte est rouverte", false, edgeGate.closed)
+        }
+        // Chaque touche horizontale provoque au plus une relance : une boucle donnerait bien plus.
+        assertTrue("relances ${edgeGate.relaunches} pour $horizontalPresses touches", edgeGate.relaunches <= horizontalPresses)
+    }
+
+    // ───────────── Le focus ne bouge jamais sans touche, avec le temps ─────────────
+
+    @Test fun avecLeTemps_rotationDuBandeauEtChangementDeMinute_leFocusNeBougePas() {
+        mount(heroCount = 3)
+        fun stable(label: String) {
+            val tag = focusNow("$label (départ)")
+            for (period in 1..4) {
+                rule.runOnIdle { heroSource.value = hero.copy(id = 10L + period, title = "Titre $period", backdrop = "https://exemple.invalid/f$period.jpg") }
+                rule.mainClock.advanceTimeBy(9_000)
+                rule.waitForIdle()
+                assertEquals("$label : période $period", tag, focusNow("$label période $period"))
+            }
+            rule.runOnIdle { clockState.longValue += 61_000L }
+            rule.mainClock.advanceTimeBy(2_000); rule.waitForIdle()
+            assertEquals("$label : l'heure a changé de minute", tag, focusNow("$label minute"))
+        }
+        downTo("home-poster-m")
+        stable("carte")
+        for (i in 1..14) { if (focusNow("haut").startsWith("hero-")) break; step(Key.DirectionUp, "remontée") }
+        assertEquals("hero-watch", focusNow("haut"))
+        step(forward, "bouton")
+        stable("bouton")
     }
 
     @Test fun retour_unSeulAppuiAuMilieuDesRangees_neBougeJamaisLeFocus_etArriveAuDernierRecours() {
