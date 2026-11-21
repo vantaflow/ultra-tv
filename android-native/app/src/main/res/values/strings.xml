@@ -1929,4 +1929,19 @@
     <string name="stalker_field_device_id">Device ID 1</string>
     <string name="stalker_field_device_id2">Device ID 2</string>
     <string name="stalker_field_signature">Signature</string>
+    <string name="ds_err_network_hint">Check your Internet connection. If other channels play, this channel\'s server is not answering.</string>
+    <string name="ds_err_server_down">The provider\'s server is having a problem</string>
+    <string name="ds_err_server_down_hint">The problem is on the provider\'s side, not your connection. Try again in a few minutes or pick another channel.</string>
+    <string name="ds_err_too_many">Too many connections at once</string>
+    <string name="ds_err_too_many_hint">Your provider limits how many streams you can watch at once. Stop playback on your other devices, wait a moment, then try again.</string>
+    <string name="ds_err_rejected">The provider rejected the request</string>
+    <string name="ds_err_generic_hint">Try again or pick another channel. If it keeps happening, check the source in Settings.</string>
+    <string name="ds_err_not_found_hint">The provider removed or moved it. Sync the source in Settings to refresh the list.</string>
+    <string name="ds_err_format_hint">The app tried both of its players without success. The stream may be offline or in a format that is not supported.</string>
+    <string name="ds_err_decoder">This device cannot decode this video</string>
+    <string name="ds_err_decoder_hint">The resolution or codec is more than this device can handle. Try a lower-quality version of the channel (HD instead of 4K).</string>
+    <string name="ds_err_no_picture">There is sound but no picture</string>
+    <string name="syncerr_rate_limited">Too many requests — the provider is limiting access, try again in a few minutes</string>
+    <string name="syncerr_invalid_response">The server replied with something other than a playlist — check the address</string>
+    <string name="syncerr_local_network">This address is on a local network — connect this device to the same network and turn off any VPN</string>
 </resources>

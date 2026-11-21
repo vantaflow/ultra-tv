@@ -5,9 +5,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ## [Non publié]
 
 ### Modifié
-- Télémétrie : un appareil sans compte envoie désormais ses rapports de plantage et ses lignes d'erreur ou d'avertissement (jamais les lignes d'information), avec le modèle de l'appareil, la version et un identifiant aléatoire d'installation. Avant, rien ne partait sans appairage : une panne chez quelqu'un qui venait d'installer l'appli restait invisible. Worker : routes `/api/anon/crash` et `/api/anon/events`, débit borné par adresse IP et par installation.
+- Lecteur : l'écran d'erreur dit la cause et quoi faire, au lieu de « Problème de réseau » pour tout. Panne du serveur du fournisseur (5xx), trop de lectures simultanées (429), demande rejetée, serveur injoignable, chaîne retirée, format illisible, décodage impossible sur l'appareil et « du son mais pas d'image » ont chacun leur message et leur conseil ; le code HTTP est rappelé en petit quand il aide le support.
+- Synchronisation : trois causes ont maintenant leur propre message. Adresse du réseau local injoignable (« connectez l'appareil au même réseau et désactivez le VPN »), trop de demandes (429, auparavant présenté à tort comme un refus du type d'accès) et réponse illisible (page web à la place de la liste, auparavant « La synchronisation a échoué »).
+- Télémétrie : un appareil sans compte envoie désormais ses rapports de plantage et ses lignes d'erreur ou d'avertissement (jamais les lignes d'information), avec le modèle de l'appareil, la version et un identifiant aléatoire d'installation. Avant, rien ne partait sans appairage : une panne chez quelqu'un qui venait d'installer l'appli restait invisible. Worker : routes `/api/anon/crash` et `/api/anon/events`, débit borné par adresse IP, par un plafond global et par installation.
 
 ### Corrigé
+- Rapports de plantage : un fichier de plantages en attente devenu trop gros était refusé à chaque démarrage et plus rien ne remontait ; seuls les plantages les plus récents de la dernière version partent, dans la limite acceptée.
 - Direct : « Autres qualités » ne plante plus quand le fournisseur propose deux variantes de même qualité et de même nom (plantage « Key "HD · HBO" was already used », 1.3.67). Toutes les boîtes de choix acceptent désormais deux options au même libellé.
 - Bibliothèques (Jellyfin, Emby, Plex, NAS) : la rangée « Reprendre » n'affiche qu'une tuile par série, même avec plusieurs épisodes entamés (deux tuiles identiques pouvaient faire planter l'écran).
 - Mode simple : la grille des films et séries ne plante plus si une synchronisation présente un instant le même titre sur deux pages.

@@ -21,6 +21,8 @@ export default defineConfig({
         bindings: {
           TEST_MIGRATIONS: migrations,
           TELEMETRY_FILTER: "off",
+          // Plafond global de la télémétrie sans compte : large ici (les tests enchaînent les requêtes), testé à part.
+          ANON_TELEMETRY_PER_HOUR: "1800",
           ...(turso ? { STORAGE_MODE: "turso", TURSO_URL: "libsql://simule.test", TURSO_AUTH_TOKEN: "simule" } : {}),
           SESSION_SECRET: "test-session-secret-0123456789abcdef0123456789",
           PROVIDER_ENC_KEY: "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",

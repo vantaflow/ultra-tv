@@ -22,7 +22,9 @@ import java.util.concurrent.TimeUnit
  * ouvertes, avec le modèle et la version, sans l'étiquette d'appareil.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
+// Application nue : la vraie (UltraTvApp) recopie en arrière-plan l'adresse du Worker des réglages dans RemoteLog et
+// écrasait parfois celle du serveur de test ; l'envoi partait alors ailleurs et le test échouait de façon intermittente.
+@Config(sdk = [34], application = android.app.Application::class)
 class RemoteLogUnpairedTest {
     private val server = MockWebServer()
 

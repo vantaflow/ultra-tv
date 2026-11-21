@@ -64,10 +64,11 @@ internal object EpgErrors {
         }
         return when (NetErrors.classify(t)) {
             SyncErrorKind.TIMEOUT -> EpgFailReason.TIMEOUT
-            SyncErrorKind.HOST_NOT_FOUND, SyncErrorKind.UNREACHABLE, SyncErrorKind.TLS -> EpgFailReason.NETWORK
-            SyncErrorKind.SERVER_ERROR -> EpgFailReason.SERVER
+            SyncErrorKind.HOST_NOT_FOUND, SyncErrorKind.UNREACHABLE, SyncErrorKind.TLS, SyncErrorKind.LOCAL_NETWORK -> EpgFailReason.NETWORK
+            SyncErrorKind.SERVER_ERROR, SyncErrorKind.RATE_LIMITED -> EpgFailReason.SERVER
             SyncErrorKind.UNAUTHORIZED, SyncErrorKind.PROVIDER_BLOCKED -> EpgFailReason.AUTH
             SyncErrorKind.NOT_FOUND -> EpgFailReason.NOT_FOUND
+            SyncErrorKind.INVALID_RESPONSE -> EpgFailReason.BAD_FORMAT
             SyncErrorKind.OTHER -> EpgFailReason.OTHER
         }
     }

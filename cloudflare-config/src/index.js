@@ -77,6 +77,15 @@ const CRASH_MAX_BODY = 48 * 1024;
 /** Appareil sans compte : plantages et lots de journaux acceptés par heure et par installation. */
 const ANON_CRASH_PER_HOUR = 10;
 const ANON_EVENTS_PER_HOUR = 30;
+/**
+ * Routes sans compte, tous appareils confondus : requêtes par heure (plafond global, voir `anonIngest`). Réglable par
+ * ANON_TELEMETRY_PER_HOUR ; 300 correspond au limiteur natif de 30 requêtes par minute.
+ */
+const ANON_GLOBAL_PER_HOUR = 300;
+const anonGlobalPerHour = (env) => { const n = parseInt(env?.ANON_TELEMETRY_PER_HOUR, 10); return Number.isFinite(n) && n > 0 ? n : ANON_GLOBAL_PER_HOUR; };
+/** Lignes gardées par lot sans compte, et taille gardée d'une trace : la route est ouverte, le volume doit rester borné. */
+const ANON_EVENTS_KEPT = 20;
+const ANON_STACK_MAX = 16 * 1024;
 
 // ---- limitation de débit ------------------------------------------------------
 
@@ -1933,14 +1942,19 @@ async function ingestBatch(req, env) {
  * Télémétrie d'un appareil SANS compte : `POST /api/anon/crash` { install, version, versionCode, device, androidSdk, stack }
  * et `POST /api/anon/events` { install, version, versionCode, device, events: [...] } (mêmes bornes que les routes appairées).
  *
- * Sans jeton d'appareil, la route est ouverte : débit borné par adresse IP puis par installation, identifiant
- * d'installation exigé. On garde le strict nécessaire au diagnostic : modèle de l'appareil, version, version d'Android,
+ * Sans jeton d'appareil, la route est ouverte : n'importe qui peut l'appeler avec un identifiant inventé. Le volume
+ * est donc borné à trois niveaux, tous par le limiteur natif (jamais de Durable Object ici : leur quota gratuit sert à
+ * l'appairage et aux verrous de connexion, une route ouverte ne doit pas pouvoir l'épuiser) : par adresse IP, pour
+ * l'ensemble des appareils sans compte, puis par installation. Un lot ne garde que ses premières lignes et une trace est
+ * raccourcie. Au pire, la télémétrie sans compte se sature elle-même ; celle des appareils appairés n'est pas touchée.
+ * On garde le strict nécessaire au diagnostic : modèle de l'appareil, version, version d'Android,
  * pays, et une empreinte courte de l'identifiant d'installation (pour relier les lignes d'un même appareil). Ni compte,
  * ni étiquette MAC, ni adresse IP, ni l'identifiant d'installation lui-même.
  */
 async function anonIngest(req, env, kind) {
   const isCrash = kind === "crash";
-  const ipLimit = await limited(env, `aning:ip:${clientIp(req)}`, 60, 3600, true);
+  const ipLimit = (await limited(env, `aning:ip:${clientIp(req)}`, 60, 3600, true))
+    || (await limited(env, "aning:all", anonGlobalPerHour(env), 3600, true));
   if (ipLimit) return ipLimit;
   const body = await readJson(req, isCrash ? CRASH_MAX_BODY : EVENTS_BATCH_MAX_BODY);
   if (body.error) return body.error;
@@ -1950,8 +1964,7 @@ async function anonIngest(req, env, kind) {
   if (!isCrash && !Array.isArray(b.events)) return json({ error: "invalid" }, 400);
   if (!isCrash && b.events.length > EVENTS_BATCH_MAX) return json({ error: "too_many" }, 413);
   const fingerprint = (await anonKey(install)).slice("anon:".length, "anon:".length + 12);
-  // Compteur exact (Durable Object) : le limiteur natif, à la minute, laisserait passer bien plus sur une route ouverte.
-  const perInstall = await limited(env, `aning:${kind}:${fingerprint}`, isCrash ? ANON_CRASH_PER_HOUR : ANON_EVENTS_PER_HOUR, 3600);
+  const perInstall = await limited(env, `aning:${kind}:${fingerprint}`, isCrash ? ANON_CRASH_PER_HOUR : ANON_EVENTS_PER_HOUR, 3600, true);
   if (perInstall) return perInstall;
   const now = Date.now();
   const base = {
@@ -1960,10 +1973,10 @@ async function anonIngest(req, env, kind) {
     device: sanitizeText(b.device, 128) || null, acct: null, country: countryOf(req),
   };
   if (isCrash) {
-    await recordEvent(env, "crash", { ...base, androidSdk: int(b.androidSdk), stack: sanitizeText(b.stack, 32 * 1024) });
+    await recordEvent(env, "crash", { ...base, androidSdk: int(b.androidSdk), stack: sanitizeText(b.stack, ANON_STACK_MAX) });
     return json({ ok: true });
   }
-  const entries = b.events.filter((e) => e && typeof e === "object").map((e) => {
+  const entries = b.events.filter((e) => e && typeof e === "object").slice(0, ANON_EVENTS_KEPT).map((e) => {
     const ts = Number.isFinite(e.ts) && e.ts <= now && e.ts > now - 3600_000 ? Math.trunc(e.ts) : now;
     return { ...cleanEvent({ ...base, ts }, e), sampled: e.sampled === true };
   });

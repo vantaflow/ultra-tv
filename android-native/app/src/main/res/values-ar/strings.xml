@@ -1972,4 +1972,19 @@
     <string name="stalker_field_device_id">معرّف الجهاز 1 (Device ID)</string>
     <string name="stalker_field_device_id2">معرّف الجهاز 2 (Device ID 2)</string>
     <string name="stalker_field_signature">التوقيع</string>
+    <string name="ds_err_network_hint">تحقّق من اتصالك بالإنترنت. إذا كانت القنوات الأخرى تعمل، فخادم هذه القناة هو الذي لا يستجيب.</string>
+    <string name="ds_err_server_down">خادم المزوّد يواجه مشكلة</string>
+    <string name="ds_err_server_down_hint">المشكلة من جهة المزوّد وليست من اتصالك. أعد المحاولة بعد بضع دقائق أو اختر قناة أخرى.</string>
+    <string name="ds_err_too_many">اتصالات كثيرة في الوقت نفسه</string>
+    <string name="ds_err_too_many_hint">مزوّدك يحدّد عدد المشاهدات في الوقت نفسه. أوقف التشغيل على أجهزتك الأخرى، انتظر قليلاً ثم أعد المحاولة.</string>
+    <string name="ds_err_rejected">رفض المزوّد الطلب</string>
+    <string name="ds_err_generic_hint">أعد المحاولة أو اختر قناة أخرى. إذا استمرت المشكلة، تحقّق من المصدر في الإعدادات.</string>
+    <string name="ds_err_not_found_hint">أزالها المزوّد أو نقلها. زامِن المصدر من الإعدادات لتحديث القائمة.</string>
+    <string name="ds_err_format_hint">جرّب التطبيق مشغّلَيه دون نجاح. قد يكون البث متوقفاً أو بصيغة غير مدعومة.</string>
+    <string name="ds_err_decoder">هذا الجهاز لا يستطيع فكّ ترميز هذا الفيديو</string>
+    <string name="ds_err_decoder_hint">الدقّة أو الترميز يتجاوزان قدرة هذا الجهاز. جرّب نسخة أقلّ جودة من القناة (HD بدل 4K).</string>
+    <string name="ds_err_no_picture">الصوت يعمل لكن بلا صورة</string>
+    <string name="syncerr_rate_limited">طلبات كثيرة — المزوّد يحدّ من الوصول، أعد المحاولة بعد بضع دقائق</string>
+    <string name="syncerr_invalid_response">ردّ الخادم بشيء غير قائمة التشغيل — تحقّق من العنوان</string>
+    <string name="syncerr_local_network">هذا العنوان على شبكة محلية — صِل الجهاز بالشبكة نفسها وأوقف الـVPN</string>
 </resources>
