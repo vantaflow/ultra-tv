@@ -50,6 +50,13 @@ Les équipes, ligues, le QR code et le code d'envoi y sont des emplacements.
   Android 7.1) au plus récent.
 - Chaque lot corrige aussi les défauts rencontrés sur les écrans qu'il touche (navigation, Retour, focus, textes
   tronqués, fluidité), qu'ils viennent de la refonte ou qu'ils soient plus anciens.
+- Gestion d'erreur et journaux (« une bonne gestion d'erreur, des logs complets pour pouvoir savoir quoi corriger ») :
+  chaque écran refait dessine ses états de chargement, vide et d'erreur avec un message compréhensible et une action
+  (réessayer, revenir) ; aucune exception n'est avalée en silence ; toute erreur attrapée laisse une ligne de journal
+  (`RemoteLog`) qui dit l'écran, l'action en cours, la cause et la version, sans jamais contenir d'identifiant, de mot de
+  passe ni d'adresse de flux complète (les adresses Xtream et M3U portent les identifiants : elles sont masquées). Un lot
+  transversal vérifie la chaîne complète : plantages, erreurs de composition, coroutines, lecteur, synchronisation, fil
+  d'Ariane des derniers écrans et des dernières touches joint à chaque rapport.
 - Restent hors de CE chantier, parce que ce sont d'autres bases de code : l'application de bureau et les paquets TV
   Samsung / LG. Ils feront l'objet d'un chantier à part, après l'appli Android.
 
