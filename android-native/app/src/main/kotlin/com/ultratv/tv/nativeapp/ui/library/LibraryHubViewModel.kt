@@ -119,7 +119,7 @@ class LibraryHubViewModel @Inject constructor(
             }
         }
         MediaLibraryLogic.shelfPlan(
-            started.take(max), recent,
+            MediaLibraryLogic.resumeTiles(started, max), recent,
             if (movies > 0) m(latestM).take(max) else emptyList(), if (series > 0) s(latestS).take(max) else emptyList(), libs,
         )
     }

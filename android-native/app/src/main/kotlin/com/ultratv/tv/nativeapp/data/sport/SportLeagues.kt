@@ -127,7 +127,7 @@ object LeagueParser {
         (0 until a.length()).mapNotNull { n ->
             val o = a.optJSONObject(n) ?: return@mapNotNull null
             StandingRow(o.i("rk"), o.s("team") ?: return@mapNotNull null, https(o.s("badge")), o.s("g"), o.i("p"), o.i("w"), o.i("d"), o.i("l"), o.i("gd"), o.i("pts"), o.s("form"))
-        }
+        }.distinctBy { Triple(it.group, it.rank, it.team) } // clé de la liste du classement : une ligne répétée la faisait planter
     }.getOrNull()
 
     fun sheet(json: String?): MatchSheet? = runCatching {

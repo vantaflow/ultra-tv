@@ -99,7 +99,7 @@ object SportHubLogic {
         guideLive: List<SportEntry>, entries: List<SportEntry>, alsoOn: Map<Pair<Long, Long>, List<SportEntry>>,
         nowMs: Long, liveByLeague: Map<String, List<LeagueMatch>> = emptyMap(), programmeLabel: (SportEntry) -> String,
     ): List<LiveCardModel> {
-        val liveMatches = LeagueLogic.live(matches)
+        val liveMatches = LeagueLogic.live(matches).distinctBy { it.id } // l'identifiant sert de clé de liste
         if (leagueKey != null) {
             return liveMatches.map { m ->
                 val ch = LeagueChannels.channelsFor(m, entries)

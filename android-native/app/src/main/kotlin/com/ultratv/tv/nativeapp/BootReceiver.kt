@@ -34,13 +34,17 @@ class BootReceiver : BroadcastReceiver() {
                 // Les alarmes ne survivent pas à un redémarrage : on ré-arme rappels et enregistrements.
                 runCatching { remindersScheduler.rescheduleAll() }
                 runCatching { recordingScheduler.rearmAll() }
-                val launch = prefs.flow.first().launchAtBoot
-                if (launch) {
-                    val start = Intent(context, MainActivity::class.java).apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                // Lecture des réglages ou lancement refusé par le système (démarrage d'activité en arrière-plan interdit
+                // sur certaines box) : une exception ici, dans une coroutine sans gestionnaire, tuait l'appli au démarrage.
+                runCatching {
+                    val launch = prefs.flow.first().launchAtBoot
+                    if (launch) {
+                        val start = Intent(context, MainActivity::class.java).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(start)
                     }
-                    context.startActivity(start)
-                }
+                }.onFailure { RemoteLog.warn("boot", "launch at boot failed: ${it.javaClass.simpleName}") }
             } finally {
                 pending.finish()
             }

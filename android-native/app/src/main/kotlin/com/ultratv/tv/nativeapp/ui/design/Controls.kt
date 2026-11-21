@@ -184,6 +184,21 @@ fun ChoiceRow(
     }
 }
 
+/**
+ * Clés de liste de la boîte de choix, une par option. Le libellé quand il est unique ; un libellé répété (deux variantes
+ * « HD · HBO » d'une même chaîne, deux profils homonymes) est départagé par sa position, sinon la liste plante
+ * (« Key … was already used »).
+ */
+internal fun choiceKeys(labels: List<String>): List<String> {
+    val used = HashSet<String>(labels.size * 2)
+    return labels.mapIndexed { i, label ->
+        var key = label
+        var n = 0
+        while (!used.add(key)) key = "$label\u0000$i" + (if (n++ == 0) "" else "\u0000$n")
+        key
+    }
+}
+
 /** Boîte de choix modale (liste de valeurs, la courante cochée) — remplace les anciennes puces. */
 @Composable
 fun <T> ChoiceDialog(title: String, options: List<Pair<T, String>>, selected: T?, onPick: (T) -> Unit, onDismiss: () -> Unit) {
@@ -192,6 +207,7 @@ fun <T> ChoiceDialog(title: String, options: List<Pair<T, String>>, selected: T?
     val selectedIndex = options.indexOfFirst { it.first == selected }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex.coerceAtLeast(0))
     val selectedFocus = androidx.compose.runtime.remember { FocusRequester() }
+    val keys = androidx.compose.runtime.remember(options) { choiceKeys(options.map { it.second }) }
     if (selectedIndex >= 0) androidx.compose.runtime.LaunchedEffect(Unit) {
         repeat(10) { if (runCatching { selectedFocus.requestFocus() }.getOrDefault(false)) return@LaunchedEffect; kotlinx.coroutines.delay(50) }
     }
@@ -199,7 +215,8 @@ fun <T> ChoiceDialog(title: String, options: List<Pair<T, String>>, selected: T?
         Column(Modifier.widthIn(min = 560.design, max = 760.design).clip(RoundedCornerShape(28.design)).background(Ux.SurfaceDeep).padding(40.design), verticalArrangement = Arrangement.spacedBy(12.design)) {
             Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 36.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(bottom = 8.design))
             LazyColumn(Modifier.heightIn(max = 640.design), state = listState, verticalArrangement = Arrangement.spacedBy(10.design)) {
-                items(options, key = { it.second }) { (key, label) ->
+                items(options.size, key = { keys[it] }) { i ->
+                    val (key, label) = options[i]
                     ChoiceRow(label, key == selected, { onPick(key) }, heightPx = 68, fontPx = 24, bg = Ux.Surface, selectedBg = Ux.Surface2, ringWidth = 5.design,
                         modifier = if (key == selected) Modifier.focusRequester(selectedFocus) else Modifier)
                 }

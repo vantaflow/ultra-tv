@@ -4,6 +4,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Direct : « Autres qualités » ne plante plus quand le fournisseur propose deux variantes de même qualité et de même nom (plantage « Key "HD · HBO" was already used », 1.3.67). Toutes les boîtes de choix acceptent désormais deux options au même libellé.
+- Bibliothèques (Jellyfin, Emby, Plex, NAS) : la rangée « Reprendre » n'affiche qu'une tuile par série, même avec plusieurs épisodes entamés (deux tuiles identiques pouvaient faire planter l'écran).
+- Mode simple : la grille des films et séries ne plante plus si une synchronisation présente un instant le même titre sur deux pages.
+- Sport : une ligne de classement ou un match en direct répété par le serveur n'est affiché qu'une fois.
+- Démarrage avec l'appareil : une erreur au lancement automatique ne fait plus planter l'appli.
+
 ## [1.3.71] — 2026-11-21 (Android)
 
 ### Modifié
