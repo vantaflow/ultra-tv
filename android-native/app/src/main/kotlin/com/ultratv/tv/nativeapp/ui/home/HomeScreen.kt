@@ -45,7 +45,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.composed
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.unit.DpSize
@@ -447,8 +446,9 @@ private fun HomeSection(
 
 @Composable
 private fun ResumeRow(cards: List<ResumeCardUi>, onPlay: (WatchHistoryEntity) -> Unit) {
-    LazyRow(Modifier.homeRow(), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PaddingValues(start = RowBleed, end = 96.design)) {
-        items(cards, key = { it.key }, contentType = { "resume" }) { c -> ResumeCard(c) { onPlay(c.entry) } }
+    val memory = rememberRowFocusMemory()
+    LazyRow(Modifier.homeRow().then(memory.tracker), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PaddingValues(start = RowBleed, end = 96.design)) {
+        items(cards, key = { it.key }, contentType = { "resume" }) { c -> ResumeCard(c, rowMemory(memory, c.key)) { onPlay(c.entry) } }
     }
 }
 
@@ -469,9 +469,10 @@ private fun NewEpisodesRow(cards: List<NewEpisodeCardUi>, onOpen: (PosterCardUi)
 /** Rangée d'affiches (catalogue ou Trakt, films et séries mêlés) ; sélectionner ouvre la fiche existante. */
 @Composable
 private fun PosterRow(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
-    LazyRow(Modifier.homeRow(), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
+    val memory = rememberRowFocusMemory()
+    LazyRow(Modifier.homeRow().then(memory.tracker), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
         items(cards, key = { it.key }, contentType = { "poster" }) { p ->
-            com.ultratv.tv.nativeapp.ui.catalog.PosterCell(p.item, Modifier.width(PosterWidth), kind = p.kind, imageWidth = PosterWidth) { onOpen(p) }
+            com.ultratv.tv.nativeapp.ui.catalog.PosterCell(p.item, Modifier.width(PosterWidth).then(rowMemory(memory, p.key)).testTag("home-poster-${p.key}"), kind = p.kind, imageWidth = PosterWidth) { onOpen(p) }
         }
     }
 }
@@ -480,10 +481,10 @@ private fun PosterRow(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit)
 @Composable
 private fun ChannelRow(cards: List<ChannelCardUi>, onPlay: (ChannelEntity) -> Unit, seeAll: String, up: FocusRequester?, onSeeAll: () -> Unit) {
     // ▲ depuis n'importe quelle carte, à la sortie du groupe : « Regarder » (sans cela, la recherche géométrique choisit le bouton le plus proche, à droite).
-    val memory = remember { ChannelRowFocus() }
+    val memory = rememberRowFocusMemory()
     val rowModifier = if (up != null) Modifier.focusProperties { exit = { d -> if (d == androidx.compose.ui.focus.FocusDirection.Up) up else FocusRequester.Default } }.homeRow() else Modifier.homeRow()
     LazyRow(
-        rowModifier.testTag("home-channel-row").onFocusChanged { memory.hasFocus = it.hasFocus }, horizontalArrangement = Arrangement.spacedBy(20.design),
+        rowModifier.then(memory.tracker).testTag("home-channel-row"), horizontalArrangement = Arrangement.spacedBy(20.design),
         // Marge verticale : la carte focalisée grandit de 6 % (haut et bas) et la rangée rogne ce qui dépasse.
         contentPadding = PaddingValues(start = RowBleed, end = 96.design, top = 14.design, bottom = 14.design)) {
         items(cards.distinctBy { it.channel.id }, key = { it.channel.id }, contentType = { "channel" }) { c -> ChannelCard(c, memory) { onPlay(c.channel) } }
@@ -494,10 +495,10 @@ private fun ChannelRow(cards: List<ChannelCardUi>, onPlay: (ChannelEntity) -> Un
 
 /** Dernière carte d'une rangée : ouvre l'écran complet. Même hauteur, même focus que les vignettes de chaîne. */
 @Composable
-private fun SeeAllCard(label: String, memory: ChannelRowFocus, onClick: () -> Unit) {
+private fun SeeAllCard(label: String, memory: RowFocusMemory, onClick: () -> Unit) {
     FocusSurface(
         onClick = onClick, shape = RoundedCornerShape(16.design), bg = Ux.Card, focusedBg = Ux.Card, focusedScale = 1.06f, ringWidth = 5.design,
-        modifier = Modifier.width(220.design).height(CHANNEL_CARD_HEIGHT).rowMemory(memory, "see-all").testTag("home-channel-see-all"),
+        modifier = Modifier.width(220.design).height(CHANNEL_CARD_HEIGHT).then(rowMemory(memory, "see-all")).testTag("home-channel-see-all"),
     ) { _ ->
         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
             Text(label, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -510,10 +511,11 @@ private fun SeeAllCard(label: String, memory: ChannelRowFocus, onClick: () -> Un
 /** « Top 10 aujourd'hui » : affiches avec leur rang (1 à 10) en pastille sur l'affiche. */
 @Composable
 private fun Top10Row(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
-    LazyRow(Modifier.homeRow(), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
+    val memory = rememberRowFocusMemory()
+    LazyRow(Modifier.homeRow().then(memory.tracker), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
         itemsIndexed(cards, key = { _, p -> p.key }, contentType = { _, _ -> "top10" }) { i, p ->
             Box(Modifier.width(PosterWidth)) {
-                com.ultratv.tv.nativeapp.ui.catalog.PosterCell(p.item, Modifier.fillMaxWidth(), kind = p.kind, imageWidth = PosterWidth) { onOpen(p) }
+                com.ultratv.tv.nativeapp.ui.catalog.PosterCell(p.item, Modifier.fillMaxWidth().then(rowMemory(memory, p.key)).testTag("home-poster-${p.key}"), kind = p.kind, imageWidth = PosterWidth) { onOpen(p) }
                 // Pastille de rang en bas à gauche de l'affiche (le titre et la méta occupent ~100 de plus sous l'affiche).
                 Text(
                     "${i + 1}", color = Ux.OnAccent, fontFamily = Sora, fontWeight = FontWeight.ExtraBold, fontSize = 34.spx, maxLines = 1,
@@ -547,8 +549,9 @@ private fun shortcutIcon(id: ShortcutId): String = when (id) {
 /** Rangée de raccourcis (quand l'utilisateur les affiche) : une ligne, tuiles à largeurs égales. */
 @Composable
 private fun ShortcutsRow(items: List<ShortcutUi>, sport: SportTile?, onSelect: (ShortcutId) -> Unit) {
-    Row(Modifier.homeRow().padding(end = 96.design).testTag("home-shortcuts"), horizontalArrangement = Arrangement.spacedBy(16.design)) {
-        shortcutDisplay(items, sport != null).forEach { sc -> ShortcutTile(sc, sport, Modifier.weight(1f).height(110.design), onSelect) }
+    val memory = rememberRowFocusMemory()
+    Row(Modifier.homeRow().then(memory.tracker).padding(end = 96.design).testTag("home-shortcuts"), horizontalArrangement = Arrangement.spacedBy(16.design)) {
+        shortcutDisplay(items, sport != null).forEach { sc -> ShortcutTile(sc, sport, Modifier.weight(1f).height(110.design).then(rowMemory(memory, sc?.id ?: "sport")), onSelect) }
     }
 }
 
@@ -768,7 +771,7 @@ private val ResumeScrim = androidx.compose.ui.graphics.Brush.verticalGradient(0.
 
 /** Carte « Reprendre » (maquette) : vignette 16:9 plein cadre, titre et reste à voir en bas, progression en pied. */
 @Composable
-private fun ResumeCard(c: ResumeCardUi, onClick: () -> Unit) {
+private fun ResumeCard(c: ResumeCardUi, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val D = LocalDs.current
     val e = c.entry
     // Titre nettoyé et progression calculés dans le ViewModel (hors fil principal) ; seul le libellé localisé est formaté ici, une fois.
@@ -780,7 +783,7 @@ private fun ResumeCard(c: ResumeCardUi, onClick: () -> Unit) {
             else -> D.minLeft.format(mins)
         }
     }
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(20.design), bg = Ux.Card, focusedBg = Ux.Card, focusedScale = 1.04f, ringWidth = 5.design, modifier = Modifier.width(320.design).height(180.design)) { _ ->
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(20.design), bg = Ux.Card, focusedBg = Ux.Card, focusedScale = 1.04f, ringWidth = 5.design, modifier = modifier.width(320.design).height(180.design)) { _ ->
         Box(Modifier.fillMaxSize()) {
             ThumbImage(e.poster, e.title, Modifier.fillMaxSize(), radius = 20, decodeSize = DpSize(320.design, 180.design))
             Box(Modifier.fillMaxSize().background(ResumeScrim))
@@ -796,24 +799,6 @@ private fun ResumeCard(c: ResumeCardUi, onClick: () -> Unit) {
 // Hauteur d'une vignette : cadre qui contient du texte (titre, horaire), donc en unité « designT » (grandit avec la taille de texte choisie).
 private val CHANNEL_CARD_HEIGHT get() = 220.designT
 
-/**
- * Mémoire de la rangée « En direct » : la recherche directionnelle de Compose choisit la carte la plus proche
- * (focusRestorer ne sert pas aux touches ▲ ▼), donc revenir sur la rangée tombait sur une carte voisine de celle quittée.
- * Quand le focus est hors de la rangée, seule la dernière carte focalisée reste candidate (si elle est encore composée :
- * jamais d'impasse). Objet simple lu au moment de la recherche : aucun état Compose, aucune recomposition.
- */
-private class ChannelRowFocus {
-    var hasFocus = false
-    var last: Any? = null
-    val composed = HashSet<Any>()
-    fun canFocus(key: Any) = hasFocus || last == null || last !in composed || key == last
-}
-
-private fun Modifier.rowMemory(memory: ChannelRowFocus, key: Any): Modifier = composed {
-    androidx.compose.runtime.DisposableEffect(memory, key) { memory.composed += key; onDispose { memory.composed -= key } }
-    this.focusProperties { canFocus = memory.canFocus(key) }.onFocusChanged { if (it.isFocused) memory.last = key }
-}
-
 /** Piste de la progression d'une vignette posée sur la page : jeton du thème (le blanc par défaut de ProgressLine est fait pour une image). */
 internal fun channelTrackColor(): Color = Ux.Text.copy(alpha = 0.10f)
 
@@ -823,11 +808,11 @@ internal fun channelTrackColor(): Color = Ux.Text.copy(alpha = 0.10f)
  * Le focus se lit par l'anneau et l'agrandissement (fond inchangé : les textes gardent leurs jetons).
  */
 @Composable
-private fun ChannelCard(card: ChannelCardUi, memory: ChannelRowFocus, onClick: () -> Unit) {
+private fun ChannelCard(card: ChannelCardUi, memory: RowFocusMemory, onClick: () -> Unit) {
     val c = card.channel
     FocusSurface(
         onClick = onClick, shape = RoundedCornerShape(16.design), bg = Ux.Card, focusedBg = Ux.Card, focusedScale = 1.06f, ringWidth = 5.design,
-        modifier = Modifier.width(392.design).height(CHANNEL_CARD_HEIGHT).rowMemory(memory, c.id).testTag("home-channel-${c.id}"),
+        modifier = Modifier.width(392.design).height(CHANNEL_CARD_HEIGHT).then(rowMemory(memory, c.id)).testTag("home-channel-${c.id}"),
     ) { _ ->
         Row(Modifier.align(Alignment.TopStart).fillMaxWidth().padding(start = 18.design, end = 18.design, top = 16.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
             LiveBadge()

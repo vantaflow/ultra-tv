@@ -10,12 +10,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.isFocusable
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.assertHasClickAction
 import com.ultratv.tv.nativeapp.ui.design.designT
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.onRoot
@@ -30,12 +33,16 @@ import androidx.compose.ui.unit.width
 import androidx.test.core.app.ApplicationProvider
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
 import com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity
+import com.ultratv.tv.nativeapp.ui.catalog.PosterItem
 import com.ultratv.tv.nativeapp.i18n.AppLang
 import com.ultratv.tv.nativeapp.i18n.I18n
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.i18n.designStringsFor
 import com.ultratv.tv.nativeapp.i18n.stringsFor
+import com.ultratv.tv.nativeapp.i18n.extNewEpisodes
+import com.ultratv.tv.nativeapp.i18n.homeTop10
+import com.ultratv.tv.nativeapp.i18n.sportLiveNow
 import com.ultratv.tv.nativeapp.ui.common.design
 import com.ultratv.tv.nativeapp.ui.design.Ux
 import com.ultratv.tv.nativeapp.ui.mobile.LocalTouch
@@ -83,9 +90,22 @@ class HomeTvStructureTest {
             resume = listOf(resume(1), resume(2)), recentChannels = listOf(resume(3)),
             newEpisodes = listOf(NewEpisodeCardUi(21, "Les Gardiens du phare", null, 2023, 8.1, 2, 7, 0L, aired = true)),
             shortcuts = shortcutsOf(HomeCounts(channels = 1240, movies = 30435, series = 4028, favorites = 12), emptyList(), null, null),
+            // Top 10 (dix affiches) et « Derniers films » (six affiches) : de quoi tester les rangées d'affiches.
+            top10 = (1..10).map { posterUi("t", it) }, latestMovies = (1..6).map { posterUi("m", it) },
             layout = layout,
         )
     }
+
+    private fun posterUi(prefix: String, i: Int) = PosterCardUi(
+        key = "$prefix$i", item = PosterItem(id = i + if (prefix == "t") 100L else 0L, title = "Titre $prefix$i", poster = null, year = 2024, rating = 7.5),
+        isShow = false, kind = com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE,
+    )
+
+    /** Titres des rangées, lus dans la composition (les libellés sont des propriétés composables). */
+    private var titles = emptyMap<HomeSectionId, String>()
+
+    /** Rangées montrées : modifiables depuis un test (remplacement des données d'une rangée). */
+    private val rowsState = mutableStateOf(HomeRows.EMPTY)
 
     /** Titre « à la une » courant : modifiable depuis un test pour simuler la rotation automatique. */
     private val heroSource = mutableStateOf<HeroItem?>(null)
@@ -99,7 +119,7 @@ class HomeTvStructureTest {
     ) {
         heroSource.value = hero
         I18n.init(ApplicationProvider.getApplicationContext())
-        val data = rows(layout)
+        rowsState.value = rows(layout)
         rule.setContent {
             CompositionLocalProvider(
                 LocalDs provides designStringsFor(lang), LocalStrings provides stringsFor(lang), LocalTouch provides false,
@@ -112,11 +132,16 @@ class HomeTvStructureTest {
                 val done = remember { mutableStateOf(heroFocusDone) }
                 val clock = remember { mutableLongStateOf(System.currentTimeMillis()) }
                 val extras = remember { mutableStateOf(emptyMap<String, HeroExtras>()) }
+                val D = LocalDs.current
+                titles = mapOf(
+                    HomeSectionId.CHANNELS to D.sportLiveNow, HomeSectionId.TOP10 to D.homeTop10, HomeSectionId.RESUME to D.continueWatching,
+                    HomeSectionId.NEW_EPISODES to D.extNewEpisodes, HomeSectionId.RECENT_CHANNELS to D.recentlyWatched, HomeSectionId.LATEST_MOVIES to D.latestMovies,
+                )
                 Box(Modifier.fillMaxSize().background(Ux.Bg)) {
                     val current = heroSource.value
                     HomeTvContent(
                         slot = if (current != null) HomeTopSlot.HERO else HomeTopSlot.NONE, hero = current, heroIndex = 0, heroCount = 1, heroExtras = extras,
-                        rows = data, providerCount = 3, clock = clock, sportOn = false, sportLive = null,
+                        rows = rowsState.value, providerCount = 3, clock = clock, sportOn = false, sportLive = null,
                         heroFocusDone = done.value, onHeroFocused = { done.value = true },
                         playHistory = {}, openPoster = {}, playChannel = {}, onShortcut = {}, onGoSport = {},
                         onWatchHero = {}, onInfoHero = {},
@@ -443,5 +468,110 @@ class HomeTvStructureTest {
             org.junit.Assert.assertNotEquals("piste = blanc par défaut (thème clair : $light)", androidx.compose.ui.graphics.Color.White.copy(alpha = 0.22f), t)
             assertEquals(Ux.Text.copy(alpha = 0.10f), t)
         }
+    }
+
+    // ───────────── Rangées d'affiches et Top 10 : mémoire de rangée, grand chiffre, focus à 10 % ─────────────
+
+    /** Accueil avec « Derniers films » juste sous « En direct » : les deux rangées d'affiches sont composées dès le départ. */
+    private fun setHomePosters(lang: AppLang = AppLang.French) {
+        val base = HomeLayout.defaultFor(true)
+        val layout = base.move(HomeBlock.LATEST_MOVIES, -(base.order.indexOf(HomeBlock.LATEST_MOVIES) - base.order.indexOf(HomeBlock.CHANNELS) - 1))
+        // Sans image « À la une » : les trois premières rangées tiennent à l'écran, donc sont toutes composées.
+        setHome(hero = null, layout = layout, lang = lang)
+    }
+
+    /** Élément focalisable d'une affiche d'accueil (le `testTag` est posé sur la cellule, pas sur la surface cliquable). */
+    private fun poster(key: String) = rule.onNode(isFocusable() and hasAnyAncestor(hasTestTag("home-poster-$key")))
+
+    private fun focusPoster(key: String) { poster(key).requestFocus(); rule.waitForIdle(); poster(key).assertIsFocused() }
+
+    private fun tagStartsWith(prefix: String) = SemanticsMatcher("testTag commence par $prefix") {
+        (SemanticsProperties.TestTag in it.config && it.config[SemanticsProperties.TestTag].startsWith(prefix))
+    }
+
+    @Test fun affiches_memoireDeRangee_basPuisHaut_etHautPuisBas() {
+        setHomePosters()
+        focusPoster("m3")
+        press(Key.DirectionDown); poster("m3").assertIsNotFocused()
+        press(Key.DirectionUp); poster("m3").assertIsFocused()
+        press(Key.DirectionUp); poster("m3").assertIsNotFocused()
+        press(Key.DirectionDown); poster("m3").assertIsFocused()
+    }
+
+    @Test fun top10_memoireDeRangee_basPuisHaut_etHautPuisBas() {
+        setHomePosters()
+        focusPoster("t3")
+        press(Key.DirectionDown); poster("t3").assertIsNotFocused()
+        press(Key.DirectionUp); poster("t3").assertIsFocused()
+        press(Key.DirectionUp); poster("t3").assertIsNotFocused()
+        press(Key.DirectionDown); poster("t3").assertIsFocused()
+    }
+
+    @Test fun affiches_droite_uneALaFois_rienApresLaDerniere_gaucheRevient() {
+        setHomePosters()
+        focusPoster("m1")
+        for (i in 2..6) { press(Key.DirectionRight); poster("m$i").assertIsFocused() }
+        press(Key.DirectionRight); poster("m6").assertIsFocused()
+        press(Key.DirectionLeft); poster("m5").assertIsFocused()
+    }
+
+    @Test fun top10_droite_uneALaFois_rienApresLaDerniere() {
+        setHomePosters()
+        focusPoster("t1")
+        for (i in 2..10) { press(Key.DirectionRight); poster("t$i").assertIsFocused() }
+        press(Key.DirectionRight); poster("t10").assertIsFocused()
+    }
+
+    @Test fun affiches_enArabe_suiventLOrdreDeLecture() {
+        setHomePosters(AppLang.Arabic)
+        val b1 = poster("m1").getUnclippedBoundsInRoot(); val b2 = poster("m2").getUnclippedBoundsInRoot()
+        assertTrue("en RTL l'affiche 2 est à gauche de l'affiche 1", b2.left.value < b1.left.value)
+        focusPoster("m1")
+        press(Key.DirectionLeft); poster("m2").assertIsFocused()
+        press(Key.DirectionRight); poster("m1").assertIsFocused()
+        press(Key.DirectionRight); poster("m1").assertIsFocused()
+    }
+
+    @Test fun affiches_memoire_garde_uneCarteDisparue_neLaisseJamaisLaRangeeInatteignable() {
+        setHomePosters()
+        focusPoster("m3")
+        press(Key.DirectionDown)
+        poster("m3").assertIsNotFocused()
+        // La rangée reçoit de nouvelles données : la carte quittée n'existe plus.
+        rule.runOnIdle { rowsState.value = rowsState.value.copy(latestMovies = (1..4).map { posterUi("n", it) }) }
+        rule.waitForIdle()
+        poster("m3").assertDoesNotExist()
+        press(Key.DirectionUp)
+        rule.onNode(isFocused() and hasAnyAncestor(tagStartsWith("home-poster-n"))).assertExists()
+        // Et la rangée reste atteignable dans les deux sens.
+        press(Key.DirectionDown); press(Key.DirectionUp)
+        rule.onNode(isFocused() and hasAnyAncestor(tagStartsWith("home-poster-n"))).assertExists()
+    }
+
+    @Test fun descente_complete_chaqueRangeeUneFois_unSeulFocus_toujoursVisible_puisRemontee() {
+        setHome(hero = heroWithBackdrop)
+        val expected = rowsState.value.order.map { id -> titles[id] ?: error("rangée imprévue $id") }
+        val screen = rule.onRoot().getUnclippedBoundsInRoot()
+        // Titre de la rangée d'un élément : le dernier titre connu dont le bas est au-dessus de l'élément.
+        fun rowOfFocus(): String {
+            val f = rule.onNode(isFocused()).getUnclippedBoundsInRoot()
+            return expected.filter { t -> rule.onAllNodes(hasText(t)).fetchSemanticsNodes().isNotEmpty() }
+                .map { t -> t to rule.onAllNodes(hasText(t))[0].getUnclippedBoundsInRoot() }
+                .filter { (_, b) -> b.bottom.value <= f.top.value + 0.5f }.maxByOrNull { (_, b) -> b.bottom.value }!!.first
+        }
+        val seen = mutableListOf<String>()
+        repeat(expected.size) {
+            press(Key.DirectionDown)
+            assertEquals("un seul élément focalisé", 1, rule.onAllNodes(isFocused()).fetchSemanticsNodes().size)
+            val f = rule.onNode(isFocused()).getUnclippedBoundsInRoot()
+            assertTrue("élément focalisé hors écran : $f", f.left.value >= screen.left.value && f.right.value <= screen.right.value && f.top.value >= screen.top.value && f.bottom.value <= screen.bottom.value + 0.5f)
+            seen += rowOfFocus()
+        }
+        assertEquals("rangées visitées dans l'ordre d'affichage", expected, seen)
+        val last = rule.onNode(isFocused()).fetchSemanticsNode().id
+        press(Key.DirectionDown)
+        assertEquals("▼ sur la dernière rangée ne change rien", last, rule.onNode(isFocused()).fetchSemanticsNode().id)
+        repeat(expected.size) { press(Key.DirectionUp) }
+        rule.onNodeWithTag("hero-watch").assertIsFocused()
     }
 }
