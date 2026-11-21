@@ -52,8 +52,18 @@ class XtreamStreamingTest {
         assertTrue(r.single().streamUrl.endsWith("/live/test/test/7.ts"))
     }
 
-    @Test fun reponseObjetErreur_donneListeVide() = runBlocking {
-        val r = client(body = """{"user_info":{"auth":0}}""").withLiveStreams(provider) { it.toList() }
+    /** Compte refusé (`auth=0`) : exception explicite, plus une liste vide qui effaçait le catalogue (voir CompteExpireCatalogueTest). */
+    @Test fun reponseCompteRefuse_leveAccountRefused() {
+        try {
+            runBlocking { client(body = """{"user_info":{"auth":0}}""").withLiveStreams(provider) { it.toList() } }
+            fail("attendu : AccountRefusedException")
+        } catch (e: com.ultratv.tv.nativeapp.data.net.AccountRefusedException) {
+            assertTrue(!e.expired)
+        }
+    }
+
+    @Test fun reponseObjetSansCompte_donneListeVide() = runBlocking {
+        val r = client(body = """{"error":"inconnu"}""").withLiveStreams(provider) { it.toList() }
         assertTrue(r.isEmpty())
     }
 
