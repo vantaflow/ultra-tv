@@ -45,7 +45,8 @@ Les équipes, ligues, le QR code et le code d'envoi y sont des emplacements.
   rangées cochées de l'accueil tactile (`MOBILE_SECTIONS`), focus rendu au bon élément après une modale, clés de listes
   départagées, messages d'erreur du lecteur et de la synchronisation.
 - Une fonction existante qui disparaît. Tout ce qui est accessible aujourd'hui le reste, au pire derrière « Plus ».
-- Un accueil plus lent ou saccadé sur les box modestes (1 Go de mémoire, Android 7).
+- Une interface plus lente ou moins fluide qu'aujourd'hui, sur n'importe quel appareil, et en particulier sur les box
+  modestes (1 Go de mémoire, Android 7).
 - Un focus ambigu à la télécommande : à tout moment un seul élément focalisé, visible à trois mètres.
 
 ## Contraintes
@@ -124,12 +125,31 @@ Décidé par l'auteur du document, à corriger si besoin :
 - **Messages d'erreur du lecteur** (écran 19) : `PlayErrorText` et `ErrorPanel`, livrés en 1.3.72 ; le lot 5 ne change
   que la mise en page (chaîne nommée au-dessus du titre).
 
-## Mesure pour les appareils modestes
+## Performance et fluidité : exigence de premier rang
 
-Il n'y a pas de budget chiffré. Le critère est comparatif, sur le profil « peu de mémoire » (`LocalLowRam`, à lire dans
-l'accueil au même titre que dans `Images.kt`) : après un lot, l'accueil ne produit pas plus de lignes `perf stall` ni un
-taux d'images lentes plus élevé dans les mesures que l'appli journalise déjà (`perf … frames=… janky=…`) qu'avant le lot,
-sur le même appareil ou émulateur. Sur ce profil, l'image à la une est fixe (pas de rotation ni de fondu) et sans flou.
+Demande explicite du propriétaire à la validation de ce document : les performances et la fluidité doivent rester au
+meilleur niveau. Ce n'est pas réservé aux appareils modestes ; c'est une condition d'acceptation de chaque lot.
+
+Mesure, avant et après chaque lot, sur le même appareil ou émulateur, pour l'écran refait :
+- les mesures que l'appli journalise déjà : lignes `perf <écran> frames=… janky=… slow=… p95≈…` et `perf stall … route=…` ;
+- le délai jusqu'au premier écran utilisable au démarrage à froid quand le lot touche l'accueil ou les profils.
+
+Un lot n'est pas fusionné si, pour son écran, le taux d'images lentes ou le p95 se dégrade, ou si de nouvelles lignes
+`perf stall` apparaissent. Les chiffres avant / après figurent dans la PR.
+
+Règles de construction :
+- listes paresseuses partout, avec `key` stable et `contentType` ; aucune liste composée d'un bloc ;
+- images demandées à la taille affichée ; l'image de fond plein écran est une seule image, décodée à la taille de
+  l'écran, jamais un flou calculé pendant un défilement ;
+- pas de recomposition de tout l'écran quand le focus bouge : l'état de focus reste local à la carte ;
+- l'agrandissement au focus passe par `graphicsLayer` (pas de nouvelle mesure de la rangée) ;
+- les voiles sur image sont des dégradés dessinés une fois, pas des calques empilés qui se redessinent ;
+- l'image à la une ne change qu'une fois le focus arrêté et jamais pendant un défilement rapide ;
+- le travail de données reste hors du fil principal, comme aujourd'hui (`flowOn`, formatage hors composition).
+
+Appareils modestes (`LocalLowRam`, ou Android antérieur à 12) : image à la une fixe, sans rotation ni fondu, sans flou ;
+animations réduites selon `LocalAnimations`. Le profil de démarrage livré avec l'APK (`.dm`) est régénéré quand un lot
+change l'écran d'accueil.
 
 ## Lots et ordre
 
