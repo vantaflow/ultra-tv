@@ -38,6 +38,14 @@ class GuideProgrammeCacheTest {
         assertEquals(emptyList<Long>(), c.missing(listOf(1), 0, 9 * h))
     }
 
+    @Test fun une_extension_qui_relit_un_programme_reinsere_le_remplace_par_son_debut() {
+        val c = GuideProgrammeCache()
+        c.put(listOf(1), 0, 6 * h, listOf(e(1, 1, 0, 2), e(2, 1, 2, 4)))
+        // Synchro en cours : le programme de 2 h a été réinséré (nouvel identifiant, même début).
+        c.put(listOf(1), 3 * h, 9 * h, listOf(e(20, 1, 2, 4), e(3, 1, 4, 7)))
+        assertEquals("un seul programme par début, le plus récent", listOf(1L, 20L, 3L), c.snapshot().getValue(1).map { it.id })
+    }
+
     @Test fun une_plage_disjointe_remplace_au_lieu_de_declarer_le_trou_charge() {
         val c = GuideProgrammeCache()
         c.put(listOf(1), 0, 6 * h, listOf(e(1, 1, 0, 2)))

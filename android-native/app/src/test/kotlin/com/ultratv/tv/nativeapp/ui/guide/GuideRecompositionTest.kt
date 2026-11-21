@@ -467,4 +467,27 @@ class GuideRecompositionTest {
         assertEquals("l'action ramène à maintenant (onDay(0))", before + 1, dayRequests)
         assertEquals(0, day)
     }
+
+    // ── I1 : fin d'une synchro du guide, programmes réinsérés avec de NOUVEAUX identifiants. ──
+
+    private fun reimport() { programmes = programmes.mapValues { (_, l) -> l.map { it.copy(id = it.id + 500_000) } }; rule.waitForIdle() }
+
+    @Test fun i1_reimport_avec_nouveaux_identifiants_garde_le_focus_sur_le_meme_programme() {
+        mount()
+        val t = windowOf(4)[1]
+        focusOn(t.title)
+        reimport()
+        assertFocusOn(t.title)
+    }
+
+    @Test fun i1_apres_reimport_le_bord_de_fenetre_retrouve_le_programme_voisin() {
+        mount()
+        val last = windowOf(4).last()
+        val next = all.getValue(4).first { it.startMs >= last.endMs }
+        focusOn(last.title)
+        reimport()
+        press(Key.DirectionRight)
+        assertFocusOn(next.title)
+        assertEquals(at(2, 30), windowStart)
+    }
 }

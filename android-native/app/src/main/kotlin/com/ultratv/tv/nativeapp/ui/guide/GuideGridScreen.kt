@@ -746,7 +746,8 @@ private fun CategoryChip(label: String, selected: Boolean, onClick: () -> Unit) 
  * ensuite (même image), effacée à la première prise ou à la touche suivante : jamais de focus déplacé à retardement.
  */
 internal class GuideFocusPlan {
-    var progId = -1L
+    /** Programme visé, désigné par sa chaîne et son DÉBUT (unique par chaîne en base) : un réimport du guide change les identifiants, pas les horaires. */
+    var progStart = Long.MIN_VALUE
     var channelId = -1L
     var firstOfRow = false
     /** Vrai pendant [take] : l'entrée de la grille (première case) ne détourne pas la demande de focus. */
@@ -759,10 +760,10 @@ internal class GuideFocusPlan {
         try { runCatching { target.requestFocus() } } finally { entering = false }
     }
 
-    fun clear() { progId = -1L; channelId = -1L; firstOfRow = false }
+    fun clear() { progStart = Long.MIN_VALUE; channelId = -1L; firstOfRow = false }
 
-    fun wants(channelId: Long, progId: Long, firstShown: Boolean): Boolean =
-        (this.progId == progId) || (firstOfRow && firstShown && this.channelId == channelId)
+    fun wants(channelId: Long, startMs: Long, firstShown: Boolean): Boolean =
+        this.channelId == channelId && ((progStart != Long.MIN_VALUE && progStart == startMs) || (firstOfRow && firstShown))
 }
 
 /** Ligne de 84 px : colonne chaîne (logo fixe + nom) puis programmes positionnés par l'heure, 8 px d'écart. */
@@ -770,6 +771,7 @@ internal class GuideFocusPlan {
 private fun GuideRow(
     c: ChannelEntity, progs: List<EpgEntity>, windowStart: Long, gridW: Dp, nameColPx: Int, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, clock: androidx.compose.runtime.State<Long>,
     plan: GuideFocusPlan, firstModifier: Modifier, onSelect: (EpgEntity) -> Unit, onRemind: (EpgEntity) -> Unit, onFocusProg: (EpgEntity) -> Unit,
+    onFocusRefresh: (EpgEntity) -> Unit = {},
     nowProvider: () -> Long = { System.currentTimeMillis() },
 ) {
     ProbeRow(c.id)
@@ -803,14 +805,16 @@ private fun GuideRow(
                 val slot = slots[idx] ?: return@forEachIndexed
                 val isNow = p.startMs <= nowMs && p.endMs > nowMs
                 val w = (gridW * slot.widthFrac - 8.design).coerceAtLeast(24.design)
-                // Une case par programme (clé = identifiant) : une liste qui change garde le nœud, donc le focus, des programmes qui restent.
-                key(p.id) {
+                // Une case par programme, clé = son DÉBUT (unique dans une ligne : index unique (chaîne, début) en base, et
+                // [normalizeRow] rend des débuts strictement croissants) : une liste qui change garde le nœud, donc le focus, des
+                // programmes qui restent, même quand un réimport du guide leur donne de nouveaux identifiants.
+                key(p.startMs) {
                 // Cible de focus posée avant un changement de la grille : prise par la case qui la compose, dans la même image.
-                val taker = if (plan.wants(c.id, p.id, idx == firstShown)) remember { androidx.compose.ui.focus.FocusRequester() } else null
+                val taker = if (plan.wants(c.id, p.startMs, idx == firstShown)) remember { androidx.compose.ui.focus.FocusRequester() } else null
                 // Après l'image qui a posé la case : le focus perdu par les cases retirées est déjà rendu ailleurs, la prise vient APRÈS.
                 if (taker != null) LaunchedEffect(taker) {
                     androidx.compose.runtime.withFrameNanos { }
-                    if (plan.wants(c.id, p.id, idx == firstShown)) { plan.clear(); plan.take(taker) }
+                    if (plan.wants(c.id, p.startMs, idx == firstShown)) { plan.clear(); plan.take(taker) }
                 }
                 FocusSurface(
                     onClick = { onSelect(p) },
@@ -826,6 +830,9 @@ private fun GuideRow(
                         .then(if (idx == firstShown) firstModifier else Modifier),
                 ) { f ->
                     ProbeCell(p.id)
+                    // Case focalisée dont le programme a été relu (réimport : nouvel identifiant, description corrigée) : la sélection
+                    // suit, sans déplacer le focus (l'en-tête et les boutons agissent sur le programme à jour).
+                    if (f) androidx.compose.runtime.SideEffect { onFocusRefresh(p) }
                     val wPx = (w.value * 2).toInt()      // largeur en px de maquette
                     // Sous ~90 px : fond seul (le titre apparaît dans le panneau du bas). Entre 90 et 200 px : titre seul.
                     if (wPx >= 90) Column(Modifier.fillMaxSize().clip(RoundedCornerShape(14.design)).padding(horizontal = if (wPx < 200) 10.design else 18.design, vertical = 12.design), verticalArrangement = Arrangement.spacedBy(4.design, Alignment.CenterVertically)) {
@@ -908,8 +915,9 @@ internal fun GuideTvContent(
                     val forward = (dir == FocusDirection.Right) == (layoutDirection == androidx.compose.ui.unit.LayoutDirection.Ltr)
                     focusedProg.value?.let { (ch, p) ->
                         val list = progsFor(ch.id)
-                        val at = list.indexOfFirst { it.id == p.id }
-                        if (at >= 0) list.getOrNull(at + if (forward) 1 else -1)?.let { plan.progId = it.id }
+                        // Par l'heure de début : l'identifiant change à chaque réimport du guide.
+                        val at = list.indexOfFirst { it.startMs == p.startMs }
+                        if (at >= 0) list.getOrNull(at + if (forward) 1 else -1)?.let { plan.channelId = ch.id; plan.progStart = it.startMs }
                     }
                     onWindowStart(windowStart + if (forward) 3 * SLOT_MS else -3 * SLOT_MS)
                 }
@@ -1048,6 +1056,7 @@ internal fun GuideTvContent(
                                 c, progs, windowStart, gridW, nameColPx, D, clock, plan,
                                 firstModifier = Modifier.focusRequester(entry),
                                 onSelect = { p -> onSelect(c, p) }, onRemind = { p -> onRemind(c, p) }, onFocusProg = { p -> focusedProg.value = c to p },
+                                onFocusRefresh = { p -> focusedProg.value?.let { (fc, fp) -> if (fc.id == c.id && fp.startMs == p.startMs && fp != p) focusedProg.value = c to p } },
                                 nowProvider = nowProvider,
                             )
                         } else Spacer(Modifier.height(84.designT))

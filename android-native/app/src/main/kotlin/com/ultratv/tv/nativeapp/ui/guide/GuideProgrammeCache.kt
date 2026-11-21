@@ -39,7 +39,7 @@ internal class GuideProgrammeCache(private val maxChannels: Int = 200) {
             val old = entries[id]
             val incoming = byChannel[id].orEmpty()
             val extend = old != null && old.generation == generation && old.from <= to && old.to >= from
-            val raw = if (extend) mergeById(old!!.raw, incoming) else incoming
+            val raw = if (extend) mergeByStart(old!!.raw, incoming) else incoming
             val rows = normalizeRow(raw)
             val keep = old != null && old.rows == rows
             entries[id] = Entry(
@@ -61,12 +61,16 @@ internal class GuideProgrammeCache(private val maxChannels: Int = 200) {
 
     fun clear() { entries.clear() }
 
-    private fun mergeById(old: List<EpgEntity>, incoming: List<EpgEntity>): List<EpgEntity> {
+    /**
+     * Fusion par DÉBUT (unique par chaîne en base) : un programme réinséré par une synchro en cours (nouvel identifiant, même
+     * horaire) remplace l'ancien au lieu de s'y ajouter ; la version lue en dernier gagne.
+     */
+    private fun mergeByStart(old: List<EpgEntity>, incoming: List<EpgEntity>): List<EpgEntity> {
         if (incoming.isEmpty()) return old
-        val byId = LinkedHashMap<Long, EpgEntity>(old.size + incoming.size)
-        for (e in old) byId[e.id] = e
-        for (e in incoming) byId[e.id] = e
-        return byId.values.toList()
+        val byStart = LinkedHashMap<Long, EpgEntity>(old.size + incoming.size)
+        for (e in old) byStart[e.startMs] = e
+        for (e in incoming) byStart[e.startMs] = e
+        return byStart.values.toList()
     }
 }
 
