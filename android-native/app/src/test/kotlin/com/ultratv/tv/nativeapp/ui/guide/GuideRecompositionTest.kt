@@ -70,10 +70,16 @@ class GuideRecompositionTest {
     private val all: Map<Long, List<EpgEntity>> by lazy {
         buildAll().mapValues { (id, l) ->
             (if (id in hole) l.filter { it.endMs <= at(0, 0) || it.startMs >= at(6, 0) } else l).let { r -> if (id in shortGuide) r.filter { it.startMs < at(5, 0) } else r }
+                .let { r -> if (id in noTomorrow) r.filter { it.startMs < at(0, 0) + 24 * 3_600_000L } else r }
         }
     }
     /** Chaînes dont le guide s'arrête au premier programme commençant après 05:00 (fin des données). */
     private var shortGuide: Set<Long> = emptySet()
+    /** Chaînes sans aucun programme le lendemain. */
+    private var noTomorrow: Set<Long> = emptySet()
+    /** Changement de jour au clavier : programmes lus plus tard (comme la requête Room), pas dans le même rappel. */
+    private var asyncDay = false
+    private var readyWindow by mutableStateOf<Long?>(null)
 
     private fun buildAll(): Map<Long, List<EpgEntity>> = chans.associate { c ->
         val out = ArrayList<EpgEntity>()
@@ -110,11 +116,15 @@ class GuideRecompositionTest {
         if (visibleIds.isEmpty()) return
         val (from, to) = guideNeededRange(windowStart)
         val missing = cache.missing(visibleIds, from, to)
-        if (missing.isEmpty()) return
+        if (missing.isEmpty()) { readyWindow = windowStart; return }
         val (fFrom, fTo) = guideFetchRange(windowStart)
         val rows = missing.flatMap { rangeOf(it, fFrom, fTo) }
         if (cache.put(missing, fFrom, fTo, rows)) programmes = cache.snapshot()
+        readyWindow = windowStart
     }
+
+    /** Comme GuideGridViewModel.covers : les programmes des lignes visibles couvrent déjà la fenêtre [w]. */
+    private fun covers(w: Long): Boolean { val (f, t) = guideNeededRange(w); return lastVisible.isEmpty() || cache.missing(lastVisible, f, t).isEmpty() }
 
     private fun mount() {
         I18n.init(ApplicationProvider.getApplicationContext())
@@ -134,7 +144,10 @@ class GuideRecompositionTest {
                         groups = listOf(DirectCategory(CATEGORY_ALL, null, chans.size)), group = CATEGORY_ALL, guideLoad = GuideLoad.Idle, nameColPx = 260,
                         groupName = { "Toutes" },
                         nowProvider = { nowBase + (nowTick++ % 1_000) },
-                        onDay = { d -> dayRequests++; day = d; windowStart = if (d == 0) at(1, 0) else at(20, 0); vmOnVisible(lastVisible) }, onWindowStart = { windowStart = it; vmOnVisible(lastVisible) }, onGroup = {},
+                        onDay = { d -> dayRequests++; day = d; windowStart = if (d == 0) at(1, 0) else at(20, 0); vmOnVisible(lastVisible) },
+                        onDayShift = { d, w -> day = d; windowStart = w; if (!asyncDay) vmOnVisible(lastVisible) },
+                        readyFor = { w -> covers(w) || readyWindow == w },
+                        onWindowStart = { windowStart = it; vmOnVisible(lastVisible) }, onGroup = {},
                         onVisible = { ids -> lastVisible = ids; vmOnVisible(ids) },
                         onRetry = {},
                         onSelect = { _, _ -> }, onWatch = { watched = it.name }, onRemind = { _, _ -> }, onRecord = { _, _ -> },
@@ -546,5 +559,53 @@ class GuideRecompositionTest {
         val first = all.getValue(5).first()
         assertFocusOn(first.title)
         assertTrue(first.startMs >= windowStart)
+    }
+
+    // ── I4 : ⏩ ⏪ avec un chargement ASYNCHRONE de l'autre jour. ──
+
+    private fun frames(n: Int) { rule.mainClock.autoAdvance = false; repeat(n) { rule.mainClock.advanceTimeByFrame() }; rule.mainClock.autoAdvance = true }
+
+    @Test fun i4_jour_suivant_asynchrone_le_focus_reste_puis_va_sur_la_meme_chaine_a_la_meme_heure() {
+        asyncDay = true
+        mount()
+        val p = windowOf(5)[2]
+        focusOn(p.title)
+        rule.mainClock.autoAdvance = false
+        rule.onRoot().performKeyInput { keyDown(Key.MediaFastForward); keyUp(Key.MediaFastForward) }
+        repeat(6) { rule.mainClock.advanceTimeByFrame() }
+        rule.mainClock.autoAdvance = true
+        assertEquals(1, day)
+        assertFocusOn(p.title)   // pendant le chargement : la case conservée garde le focus
+        rule.runOnIdle { vmOnVisible(lastVisible) }   // les programmes du lendemain arrivent
+        rule.waitForIdle()
+        val day1 = 24 * 3_600_000L
+        val expected = all.getValue(5).first { p.startMs + day1 >= it.startMs && p.startMs + day1 < it.endMs }
+        assertFocusOn(expected.title)
+    }
+
+    @Test fun i4_jour_suivant_chaine_absente_le_focus_va_sur_la_ligne_la_plus_proche() {
+        asyncDay = true
+        noTomorrow = setOf(5L)
+        mount()
+        val p = windowOf(5)[2]
+        focusOn(p.title)
+        press(Key.MediaFastForward)
+        assertFocusOn(p.title)
+        rule.runOnIdle { vmOnVisible(lastVisible) }
+        rule.waitForIdle()
+        val f = focusedText()
+        assertTrue("focus attendu sur une chaîne voisine (4 ou 6), trouvé : $f", f.startsWith("P4-") || f.startsWith("P6-"))
+    }
+
+    @Test fun i4_jour_precedent_revient_sur_la_meme_chaine() {
+        asyncDay = true
+        mount()
+        val p = windowOf(6)[1]
+        focusOn(p.title)
+        press(Key.MediaFastForward); rule.runOnIdle { vmOnVisible(lastVisible) }; rule.waitForIdle()
+        assertTrue(focusedText().startsWith("P6-"))
+        press(Key.MediaRewind); rule.runOnIdle { vmOnVisible(lastVisible) }; rule.waitForIdle()
+        assertEquals(0, day)
+        assertFocusOn(p.title)
     }
 }
