@@ -2,6 +2,8 @@ package com.ultratv.tv.nativeapp.ui.live
 
 import com.ultratv.tv.nativeapp.i18n.locale
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -18,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -227,7 +230,10 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
         val selectedCatFocus = remember { FocusRequester() }
         val catListFocus = remember { FocusRequester() }
         var contentFocused by remember { mutableStateOf(false) }
-        LiveBackToCategories(contentFocused, selectedCatFocus, catListFocus)
+        // Colonne des catégories : état de défilement gardé, positionnée sur la catégorie en cours à l'ouverture.
+        val selectedCatIndex = cats.indexOfFirst { it.id == selected }
+        val catState = rememberLiveCategoryListState(selectedCatIndex)
+        LiveBackToCategories(contentFocused, catState, selectedCatIndex, selectedCatFocus, catListFocus)
         // ── Catégories (340) ──
         Column(
             Modifier.width(340.design).fillMaxHeight().padding(start = 48.design, end = 24.design, top = 54.design),
@@ -238,7 +244,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
             val focus = LocalFocusManager.current
             // OK sur une catégorie : le focus passe aux chaînes, à droite en LTR, à GAUCHE en arabe (sinon il partait vers le menu).
             val towardChannels = com.ultratv.tv.nativeapp.ui.common.towardContent(androidx.compose.ui.platform.LocalLayoutDirection.current)
-            LazyColumn(modifier = markMoved.focusRequester(catListFocus), verticalArrangement = Arrangement.spacedBy(10.design), contentPadding = PaddingValues(bottom = 54.design)) {
+            LazyColumn(modifier = markMoved.focusRequester(catListFocus), state = catState, verticalArrangement = Arrangement.spacedBy(10.design), contentPadding = PaddingValues(bottom = 54.design)) {
                 // Catégorie répétée par le fournisseur : clés départagées (règle commune), jamais de plantage.
                 val catKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(cats) { it.id }
                 items(cats.size, key = { catKeys[it] }, contentType = { "cat" }) { ci ->
@@ -838,7 +844,9 @@ private fun MobileLiveLayout(
             if (twoPane) androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.heightIn(max = 120.dp).verticalScroll(androidx.compose.foundation.rememberScrollState())) {
                 cats.forEach { c -> CatChip(chipLabel(c), c.id == selected) { onSelect(c.id) } }
             } else androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(cats, key = { it.id }, contentType = { "chip" }) { c -> CatChip(chipLabel(c), c.id == selected) { onSelect(c.id) } }
+                // Même règle commune que sur TV : une catégorie répétée par le fournisseur ne fait jamais planter.
+                val chipKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(cats) { it.id }
+                items(cats.size, key = { chipKeys[it] }, contentType = { "chip" }) { i -> val c = cats[i]; CatChip(chipLabel(c), c.id == selected) { onSelect(c.id) } }
             }
             com.ultratv.tv.nativeapp.ui.mobile.TouchRefresh(Modifier.weight(1f).fillMaxWidth()) {
                 ChannelList(channels, locked, favs, nowNext, selected, vm, clock, onFocusChannel = {}, onPlay = onTapChannel, onActions = onActions,
@@ -886,6 +894,26 @@ private fun MobilePreview(channel: ChannelEntity?, now: EpgEntity?, favorite: Bo
     }
 }
 
+/** La ligne [index] de la colonne est-elle (au moins en partie) affichée ? */
+internal fun LazyListState.isItemShown(index: Int): Boolean = layoutInfo.visibleItemsInfo.any { it.index == index }
+
+/**
+ * État de la colonne des catégories du Direct (TV). Son défilement est gardé (retour du plein écran, réouverture) et, dès
+ * que la colonne est mesurée, la catégorie en cours est amenée à l'écran si elle n'y est pas : à l'ouverture, on voit la
+ * catégorie mémorisée au lieu du haut de la liste. Ne fait que défiler : le focus n'est jamais déplacé ici.
+ */
+@Composable
+internal fun rememberLiveCategoryListState(selectedIndex: Int): LazyListState {
+    val state = rememberLazyListState()
+    LaunchedEffect(state, selectedIndex) {
+        if (selectedIndex < 0) return@LaunchedEffect
+        // Attente de la première mesure de la colonne (événement de mise en page, pas un délai).
+        androidx.compose.runtime.snapshotFlow { state.layoutInfo.totalItemsCount }.first { it > selectedIndex }
+        if (!state.isItemShown(selectedIndex)) state.scrollToItem(selectedIndex)
+    }
+    return state
+}
+
 /**
  * Retour dans la liste des chaînes (TV), comme Films et Séries : focus dans les chaînes ou dans l'aperçu → le focus revient
  * sur la catégorie EN COURS (à défaut sur la liste des catégories). Focus dans les catégories : ce gestionnaire est
@@ -893,10 +921,21 @@ private fun MobilePreview(channel: ChannelEntity?, now: EpgEntity?, favorite: Bo
  * inactif. Aucun focus différé : la demande est faite dans l'appui.
  */
 @Composable
-internal fun LiveBackToCategories(contentFocused: Boolean, selectedCategory: FocusRequester, categoryList: FocusRequester) {
+internal fun LiveBackToCategories(
+    contentFocused: Boolean, categoryState: LazyListState, selectedIndex: Int, selectedCategory: FocusRequester, categoryList: FocusRequester,
+) {
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     androidx.activity.compose.BackHandler(enabled = !touch && contentFocused) {
         fun tryFocus(r: FocusRequester) = try { r.requestFocus() } catch (e: IllegalStateException) { false }
-        if (!tryFocus(selectedCategory) && !tryFocus(categoryList)) com.ultratv.tv.nativeapp.RemoteLog.warn("live", "retour : aucune catégorie focalisable")
+        fun focusCategory() { if (!tryFocus(selectedCategory) && !tryFocus(categoryList)) com.ultratv.tv.nativeapp.RemoteLog.warn("live", "retour : aucune catégorie focalisable") }
+        if (selectedIndex >= 0 && !categoryState.isItemShown(selectedIndex)) {
+            // Catégorie en cours hors de l'écran (longue liste) : la colonne y défile d'abord — scrollToItem rend la main
+            // une fois la ligne mesurée et composée — puis elle reçoit le focus. Aucun délai.
+            scope.launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
+                categoryState.scrollToItem(selectedIndex)
+                focusCategory()
+            }
+        } else focusCategory()
     }
 }
