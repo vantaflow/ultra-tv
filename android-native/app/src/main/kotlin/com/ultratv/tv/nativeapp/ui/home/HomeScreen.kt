@@ -23,7 +23,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.key
 import kotlinx.coroutines.launch
@@ -299,11 +298,8 @@ internal fun HomeTvContent(
     val pivotSpec = remember { HomePivotSpec { topFocusFlag[0] } }
     // Dernière carte focalisée, sauvegardée avec l'entrée de navigation : de retour d'une fiche, le focus y revient.
     val restore = rememberSaveable(saver = HomeFocusRestore.Saver) { HomeFocusRestore() }
-    // Abandon de la restauration si l'élément quitté n'existe plus (données changées) : tout redevient candidat bien avant
-    // la fin des essais de la demande de focus initiale (3 s). Aucune demande de focus ici.
-    // Données là et carte quittée absente : [HomeFocusRestore] le voit tout de suite (rangées et ordre déclarés ici), le délai n'est que le dernier recours.
-    val order = rows.order
-    SideEffect { if (order.isNotEmpty()) restore.registerOrder(order.mapTo(HashSet()) { it.name }) }
+    // Dernier recours de la restauration : après [HomeFocusRestore.RESTORE_MS] tout redevient candidat, bien avant la fin des essais de la
+    // demande de focus initiale (3 s). Une carte disparue des données d'une rangée déjà là est vue plus tôt (voir RegisterRowKeys). Aucune demande de focus ici.
     LaunchedEffect(restore) {
         if (restore.pending) { kotlinx.coroutines.delay(HomeFocusRestore.RESTORE_MS); restore.pending = false }
     }
@@ -314,6 +310,7 @@ internal fun HomeTvContent(
         }.collect { off -> if (off) { if (animsOff) listState.scrollToItem(0) else listState.animateScrollToItem(0) } }
     }
     // Raccourcis : une rangée comme les autres, seulement si l'utilisateur les affiche (masqués par défaut sur TV).
+    val order = rows.order
     // Bouton « Regarder » du bandeau : cible de ▲ depuis la rangée « En direct » quand elle est juste sous l'image.
     val heroWatch = remember { FocusRequester() }
     val sportAnchor = if (HomeSectionId.CHANNELS in order) HomeSectionId.CHANNELS else order.lastOrNull()

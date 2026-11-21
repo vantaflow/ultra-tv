@@ -63,7 +63,9 @@ import java.util.Calendar
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [34], qualifiers = "w960dp-h540dp-xhdpi")
+// Application neutre : UltraTvApp recopie les réglages (format de l'heure, langue…) dans EpgClock depuis une coroutine, ce qui écrasait
+// le format 24 h forcé ici un test sur deux (heure « 8:36 PM » dans les captures) ; ce test n'a pas besoin de l'application.
+@Config(sdk = [34], qualifiers = "w960dp-h540dp-xhdpi", application = android.app.Application::class)
 class HomeRenderTest {
     /** Langue de l'interface du rendu (variantes anglaises pour le README et le site en anglais). */
     private var lang: AppLang = AppLang.French
@@ -179,6 +181,8 @@ class HomeRenderTest {
         target.requestFocus()
         rule.waitForIdle()
         target.assertIsFocused()
+        // Garde : une heure en 12 h dans une capture de documentation serait un réglage global écrasé en douce.
+        assertTrue("horloge en 24 h", EpgClock.use24())
         val bmp = rule.onRoot().captureToImage().asAndroidBitmap()
         File(outDir, file).outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
         println("Accueil capture : ${File(outDir, file).absolutePath} (${bmp.width}x${bmp.height})")

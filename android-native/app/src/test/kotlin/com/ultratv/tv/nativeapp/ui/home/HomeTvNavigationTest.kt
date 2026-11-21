@@ -594,6 +594,32 @@ class HomeTvNavigationTest {
         focusNow("après le dernier recours")
     }
 
+    @Test fun retourSurLAccueil_rangeeQuiArriveApresLeRetour_laCarteQuitteeEstRestauree() {
+        mount()
+        downTo("home-poster-m")
+        repeat(2) { step(forward, "carte") }
+        assertEquals("home-poster-m3", focusNow("avant"))
+        val rangeeDAvant = rowsState.value.latestMovies
+        rule.runOnIdle { screen.value = "detail" }; rule.waitForIdle()
+        rule.onNodeWithTagExists("detail-button")
+        // Données partielles au retour : les autres rangées sont là, « Derniers films » n'est pas encore arrivée.
+        rule.runOnUiThread { rowsState.value = rowsState.value.copy(latestMovies = emptyList()) }
+        rule.mainClock.autoAdvance = false
+        rule.runOnUiThread { screen.value = "home" }
+        val passage = mutableListOf<String>()
+        repeat(30) {
+            rule.mainClock.advanceTimeByFrame()
+            rule.onAllNodes(isFocused()).fetchSemanticsNodes().forEach { n -> tagOf(n)?.let { t -> if (t != "detail-button" && !t.startsWith("rail-")) passage += t } }
+        }
+        assertEquals("tant que la rangée n'est pas là, aucune autre carte ne prend le focus", emptyList<String>(), passage.distinct())
+        // La rangée arrive 500 ms plus tard (bien avant le délai de dernier recours) : la carte quittée doit encore être restaurée.
+        rule.runOnUiThread { rowsState.value = rowsState.value.copy(latestMovies = rangeeDAvant) }
+        rule.mainClock.advanceTimeBy(600)
+        rule.mainClock.autoAdvance = true
+        rule.waitForIdle()
+        assertEquals("la carte quittée, pas un focus de remplacement", "home-poster-m3", focusNow("après l'arrivée de la rangée"))
+    }
+
     @Test fun retourSurLAccueil_donneesJamaisArrivees_restaurationAbandonnee_leBandeauReprendLeFocus() {
         mount()
         downTo("home-poster-m")

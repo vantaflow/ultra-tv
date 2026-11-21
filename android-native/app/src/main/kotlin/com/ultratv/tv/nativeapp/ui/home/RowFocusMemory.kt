@@ -81,21 +81,27 @@ internal class HomeFocusRestore(var saved: String? = null) {
     /**
      * Clés (en texte) des cartes de chaque rangée, d'après ses DONNÉES et non d'après ce que la liste paresseuse a composé :
      * une carte qui existe mais est hors de la fenêtre composée reste attendue. Posé par les rangées pendant l'attente seulement.
+     * Seule une rangée déclarée, composée et non vide peut décider : une rangée absente (données qui arrivent par morceaux)
+     * ou vide ne décide jamais, le délai de dernier recours reste la borne.
      */
     private val rowKeys = HashMap<String, Set<String>>()
-    /** Rangées existantes de la liste de l'accueil ; vide tant que les données ne sont pas arrivées (alors on attend le délai). */
-    @Volatile private var dataRows: Set<String> = emptySet()
 
-    fun registerRow(row: String, keys: Set<String>) { if (pending) rowKeys[row] = keys }
-    fun registerOrder(rows: Set<String>) { if (pending) dataRows = rows }
+    /** [keys] vide : rien n'est décidé (les données peuvent encore arriver) ; la déclaration précédente est alors retirée. */
+    fun registerRow(row: String, keys: Set<String>) {
+        if (!pending) return
+        if (keys.isEmpty()) rowKeys.remove(row) else rowKeys[row] = keys
+    }
 
-    /** Les données sont là et l'élément sauvegardé n'y figure plus : inutile d'attendre, personne ne le focalisera. */
+    /** La rangée quitte la composition : ses clés ne sont plus garanties à jour. */
+    fun unregisterRow(row: String) { rowKeys.remove(row) }
+
+    /** Les données d'une rangée déclarée sont là et l'élément sauvegardé n'y figure plus : inutile d'attendre. */
     private fun savedAbsentFromData(): Boolean {
         val s = saved ?: return false
         val row = savedRow ?: return false
         if (row == "HERO" || row == "SPORT") return false
-        rowKeys[row]?.let { return s.substring(row.length + 1) !in it }
-        return dataRows.isNotEmpty() && row !in dataRows
+        val keys = rowKeys[row] ?: return false
+        return s.substring(row.length + 1) !in keys
     }
 
     fun isPending(): Boolean {
@@ -143,6 +149,7 @@ internal fun RegisterRowKeys(memory: RowFocusMemory, data: Any?, keys: () -> Col
     if (!restore.pending) return
     val set = remember(restore, data) { keys().mapTo(HashSet()) { it.toString() } }
     SideEffect { restore.registerRow(memory.id, set) }
+    DisposableEffect(restore, memory) { onDispose { restore.unregisterRow(memory.id) } }
 }
 
 /** Bouton du bandeau « À la une » ([key] : watch, info, list) : mêmes règles de restauration que les cartes des rangées. */
