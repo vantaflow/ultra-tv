@@ -307,10 +307,13 @@ dependencies {
     testImplementation("com.squareup.okhttp3:mockwebserver:5.5.1")
 }
 
-// Appareil faible simulé pour le banc du guide : `-PtestHeap=192m` (tas des tests) et `-PtestCpus=2` (cœurs visibles de la JVM).
-// Sans ces propriétés, rien ne change pour les tests habituels.
+// Tas des tests : 2 Go par défaut (à 512 Mo, défaut de Gradle, la suite complète finit en OutOfMemoryError sous JDK 17,
+// celui de la CI) ; JVM de test renouvelée tous les 800 tests, filet contre les fuites cumulées de Robolectric.
+// Appareil faible simulé pour le banc du guide : `-PtestHeap=192m` (remplace le tas par défaut) et `-PtestCpus=2`
+// (cœurs visibles de la JVM).
 tasks.withType<Test>().configureEach {
-    (findProperty("testHeap") as String?)?.let { maxHeapSize = it }
+    maxHeapSize = (findProperty("testHeap") as String?) ?: "2g"
+    forkEvery = 800
     (findProperty("testCpus") as String?)?.let { jvmArgs("-XX:ActiveProcessorCount=$it") }
 }
 
