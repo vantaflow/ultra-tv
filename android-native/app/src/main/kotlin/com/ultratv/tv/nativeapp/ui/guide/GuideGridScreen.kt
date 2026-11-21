@@ -318,12 +318,12 @@ class GuideGridViewModel @Inject constructor(
     }
 
     /**
-     * Chaînes du groupe ayant un guide dans la JOURNÉE de la fenêtre (pas 55 000 lignes vides) : le groupe est filtré par Room
-     * (requêtes paginées), jamais en mémoire. La plage ne dépend que du jour ([guideChannelRange]) : décaler la fenêtre de 90 min
-     * ne reconstruit pas la liste (et ne la vide pas) ; une chaîne sans programme dans la fenêtre courante reste, ligne vide.
+     * Chaînes du groupe qui ont un guide (pas 55 000 lignes vides) : le groupe est filtré par Room (requêtes paginées), jamais
+     * en mémoire. La liste ne dépend pas de la fenêtre ([GUIDE_CHANNEL_RANGE]) : ni un décalage de 90 min, ni minuit, ni un
+     * changement de jour ne la reconstruisent (ni ne la vident) ; une chaîne sans programme dans la fenêtre reste, ligne vide.
      */
     val channels: kotlinx.coroutines.flow.Flow<PagingData<ChannelEntity>> =
-        combine(pid, _windowStart.map { guideChannelRange(it) }.distinctUntilChanged(), selectedGroup, hiddenStore.hidden, profiles.currentId) { id, range, g, hidden, prof -> arrayOf(id, range, g, hidden, prof) }
+        combine(pid, flowOf(GUIDE_CHANNEL_RANGE), selectedGroup, hiddenStore.hidden, profiles.currentId) { id, range, g, hidden, prof -> arrayOf(id, range, g, hidden, prof) }
             .distinctUntilChanged { a, b -> a.contentEquals(b) }
             .flatMapLatest { a ->
                 @Suppress("UNCHECKED_CAST") val id = a[0] as Long?; val range = a[1] as Pair<Long, Long>; val g = a[2] as String; val hidden = a[3] as Set<String>; val prof = a[4] as Long

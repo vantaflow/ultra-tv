@@ -1,7 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.guide
 
 import com.ultratv.tv.nativeapp.data.db.EpgEntity
-import java.util.Calendar
 
 /**
  * Cache des programmes du Guide, PAR CHAÎNE et PAR PLAGE de temps (pur, testé en JVM) : un décalage de la fenêtre ne le vide
@@ -75,19 +74,12 @@ internal class GuideProgrammeCache(private val maxChannels: Int = 200) {
 }
 
 /**
- * Plage de chaînes du Guide pour la fenêtre commençant à [windowStart] : TOUTE la journée locale de la fenêtre, plus la
- * fenêtre qui la déborde après minuit. Elle ne change qu'au changement de jour : ◀ / ▶ au bord de la fenêtre (90 min) ne
- * reconstruit plus la liste paginée des chaînes. Toute fenêtre [w, w + 3 h] commençant ce jour-là y tient.
+ * Plage de la liste des chaînes du Guide : TOUTE chaîne qui a un guide, quelle que soit la fenêtre affichée. La liste
+ * paginée ne dépend donc jamais du temps : ◀ / ▶ au bord (même en passant minuit) et ⏪ ⏩ ne la reconstruisent pas (un
+ * nouveau Pager repartait du premier lot de 30 : au-delà, la ligne focalisée disparaissait avec son focus). Une chaîne sans
+ * programme dans la fenêtre courante reste une ligne vide, traversée par ▼ / ▲.
  */
-internal fun guideChannelRange(windowStart: Long): Pair<Long, Long> {
-    val cal = Calendar.getInstance().apply {
-        timeInMillis = windowStart
-        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-    }
-    val dayStart = cal.timeInMillis
-    cal.add(Calendar.DAY_OF_YEAR, 1)
-    return dayStart to cal.timeInMillis + GUIDE_WINDOW_MS
-}
+internal val GUIDE_CHANNEL_RANGE: Pair<Long, Long> = 0L to Long.MAX_VALUE
 
 /** Plage de programmes chargée pour les lignes visibles quand la fenêtre commence à [windowStart] : la fenêtre et sa voisine de chaque côté. */
 internal fun guideNeededRange(windowStart: Long): Pair<Long, Long> = (windowStart - GUIDE_WINDOW_MS) to (windowStart + 2 * GUIDE_WINDOW_MS)

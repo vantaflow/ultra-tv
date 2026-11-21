@@ -31,6 +31,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Guide TV, télécommande : quand la première chaîne de la liste n'a aucun programme dans la plage affichée (chaîne « événement », « Demain » le soir), le focus se pose à l'ouverture sur la première chaîne qui en a un, et ▼ depuis les jours ou les catégories entre bien dans la grille. Une chaîne sans programme à cette heure se traverse avec ▼ / ▲. Si aucune chaîne visible n'a de programme, le Guide affiche « Aucun programme pour cette période » avec « Revenir à maintenant » (et « Toutes les chaînes » dans une catégorie) au lieu d'une grille vide.
 - Guide TV, télécommande : à la fin d'une mise à jour du guide, le focus reste sur le programme sélectionné au lieu de partir sur « Regarder » ou de disparaître.
 - Guide TV, télécommande : ◀ / ▶ restent sur la chaîne. Au bout des programmes disponibles (programmes passés effacés, fin du guide), la plage horaire s'arrête au lieu de défiler dans le vide et de perdre la sélection ; ◀ au début de la plage recule bien dans le temps au lieu de sauter sur les jours, et ▶ sur le dernier programme d'une chaîne ne saute plus en biais sur une autre chaîne.
+- Guide TV : la liste des chaînes reste la même quelle que soit l'heure ou le jour affichés (toutes les chaînes qui ont un guide). Passer minuit avec ▶ ne fait plus remonter la liste ni perdre la sélection au-delà de la 30e chaîne ; une chaîne sans programme ce jour-là apparaît en ligne vide. Même liste sur téléphone et tablette.
 
 ## [1.3.72] — 2026-11-21 (Android)
 
