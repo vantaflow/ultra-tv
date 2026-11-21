@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Stalker : quand plusieurs adresses du serveur répondent, l'appli retient celle où le portail accepte la MAC, au lieu de la première qui répond (la synchronisation échouait ensuite avec « identifiants refusés »).
+
 ## [1.3.69] — 2026-11-20 (Android)
 
 ### Corrigé
