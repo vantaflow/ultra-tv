@@ -244,7 +244,7 @@ private fun AnnouncementDialog(shown: Announcement, vm: AnnouncementViewModel) {
 fun AnnouncementHistoryPane(vm: AnnouncementViewModel = hiltViewModel()) {
     val D = com.ultratv.tv.nativeapp.i18n.LocalDs.current
     val list = remember { vm.history() }
-    val fmt = remember(D.lang) { java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM) }
+    val fmt = remember(D.lang) { java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM, com.ultratv.tv.nativeapp.i18n.DisplayLocale.of(D.lang)) }
     com.ultratv.tv.nativeapp.ui.design.PaneTitle(D.rubMessages)
     if (list.isEmpty()) {
         Text(D.noMessages, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 32.spx)

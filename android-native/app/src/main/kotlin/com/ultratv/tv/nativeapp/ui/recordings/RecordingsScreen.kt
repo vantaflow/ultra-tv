@@ -211,5 +211,5 @@ fun formatBytes(b: Long): String = when {
     b == 0L -> "0 Mo"
     b < 1024L * 1024 -> "${(b / 1024).coerceAtLeast(1)} Ko"
     b < 1024L * 1024 * 1024 -> "${b / (1024 * 1024)} Mo"
-    else -> String.format(java.util.Locale.getDefault(), "%.1f Go", b / (1024.0 * 1024 * 1024))
+    else -> String.format(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current(), "%.1f Go", b / (1024.0 * 1024 * 1024))
 }

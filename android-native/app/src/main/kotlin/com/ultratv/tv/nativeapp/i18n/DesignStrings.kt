@@ -344,7 +344,7 @@ class DesignStrings(val lang: AppLang) {
     val engineExo get() = tx(R.string.ds_engine_exo)
     val engineVlc get() = tx(R.string.ds_engine_vlc)
     fun sections(n: Int) = tp(R.plurals.ds_sections, n, n)
-    fun channels(n: Int): String { val f = java.text.NumberFormat.getIntegerInstance().format(n); return tp(R.plurals.ds_channels, n, f) }
+    fun channels(n: Int): String { val f = java.text.NumberFormat.getIntegerInstance(locale).format(n); return tp(R.plurals.ds_channels, n, f) }
     fun categoryHeader(name: String, n: Int) = "$name · ${channels(n)}"
     // Gérer les catégories
     val settingsTitle get() = tx(R.string.ds_settings_title)
@@ -360,8 +360,8 @@ class DesignStrings(val lang: AppLang) {
     val moveHint get() = tx(R.string.ds_move_hint)
     val noFilterSupport get() = tx(R.string.ds_no_filter_support)
     fun channelsOf(n: Int) = channels(n)
-    fun moviesOf(n: Int): String { val f = java.text.NumberFormat.getIntegerInstance().format(n); return tp(R.plurals.ds_movies_of, n, f) }
-    fun seriesOf(n: Int): String { val f = java.text.NumberFormat.getIntegerInstance().format(n); return tp(R.plurals.ds_series_of, n, f) }
+    fun moviesOf(n: Int): String { val f = java.text.NumberFormat.getIntegerInstance(locale).format(n); return tp(R.plurals.ds_movies_of, n, f) }
+    fun seriesOf(n: Int): String { val f = java.text.NumberFormat.getIntegerInstance(locale).format(n); return tp(R.plurals.ds_series_of, n, f) }
     val lockedTitle get() = tx(R.string.ds_locked_title)
     val lockedSubtitle get() = tx(R.string.ds_locked_subtitle)
     // Réglages
@@ -391,7 +391,7 @@ class DesignStrings(val lang: AppLang) {
     val modeLaunch get() = tx(R.string.ds_mode_launch)
     val modeLaunchDesc get() = tx(R.string.ds_mode_launch_desc)
     val modeScheduled get() = tx(R.string.ds_mode_scheduled)
-    fun modeScheduledDesc(h: Int) = tx(R.string.ds_mode_scheduled_desc, "%02d".format(h))
+    fun modeScheduledDesc(h: Int) = tx(R.string.ds_mode_scheduled_desc, "%02d".format(locale, h))
     val modeManual get() = tx(R.string.ds_mode_manual)
     val modeManualDesc get() = tx(R.string.ds_mode_manual_desc)
     val contentToSync get() = tx(R.string.ds_content_to_sync)

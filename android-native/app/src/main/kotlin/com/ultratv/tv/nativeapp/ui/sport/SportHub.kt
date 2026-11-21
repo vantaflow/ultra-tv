@@ -452,7 +452,7 @@ internal fun SportTvContent(
     modifier: Modifier = Modifier,
     hub: HubState = HubState(),
 ) {
-    val locale = remember(D.lang) { D.lang.code.takeIf { it.length in 2..3 }?.let { Locale.forLanguageTag(it) } ?: Locale.getDefault() }
+    val locale = remember(D.lang) { com.ultratv.tv.nativeapp.i18n.DisplayFormats.sportLocale(D.lang) }
     val lists = rememberHubLists(st, D, hub, clock)
     val showSections = !st.loading && st.hasSource
     val open: (LiveCardModel) -> Unit = { m ->
@@ -521,7 +521,7 @@ internal fun SportTouchContent(
     modifier: Modifier = Modifier,
     hub: HubState = HubState(),
 ) {
-    val locale = remember(D.lang) { D.lang.code.takeIf { it.length in 2..3 }?.let { Locale.forLanguageTag(it) } ?: Locale.getDefault() }
+    val locale = remember(D.lang) { com.ultratv.tv.nativeapp.i18n.DisplayFormats.sportLocale(D.lang) }
     val lists = rememberHubLists(st, D, hub, clock)
     val showSections = !st.loading && st.hasSource
     val open: (LiveCardModel) -> Unit = { m ->

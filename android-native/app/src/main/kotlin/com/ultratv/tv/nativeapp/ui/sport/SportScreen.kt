@@ -242,7 +242,7 @@ internal data class UpcomingItem(val dayStartMs: Long, val entry: SportEntry)
 internal fun shortDay(D: DesignStrings, dayStartMs: Long, nowMs: Long, locale: Locale): String = when (SportLogic.dayOffset(dayStartMs, nowMs)) {
     0 -> D.sportToday
     1 -> D.sportTomorrow
-    else -> SimpleDateFormat("EEE d", locale).format(Date(dayStartMs)).replaceFirstChar { it.titlecase(locale) }
+    else -> SimpleDateFormat("EEE d", com.ultratv.tv.nativeapp.i18n.DisplayLocale.latin(locale)).format(Date(dayStartMs)).replaceFirstChar { it.titlecase(locale) }
 }
 
 /** Pastille d'action : repos = bouton, [active] (rappel posé) = teinte « en cours » ; focus = fond de focus. */
