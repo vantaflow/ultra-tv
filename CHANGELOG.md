@@ -16,6 +16,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Corrigé
 - Arabe : les rangées de l'accueil et du catalogue ne sont plus rognées au bord de départ.
 - Arabe : les nombres s'affichent partout en chiffres latins. Cinq textes (temps d'écran, enregistrements en cours, onglets) sortaient en chiffres arabo-indiens sur certains appareils, à côté de chiffres latins ailleurs.
+- Guide TV : dans l'en-tête, « Regarder » et « Enregistrer » ne sont plus rognés quand le programme est en cours avec un titre long. Le titre reste sur une ligne (« … »), et la description cède la place avant les boutons, y compris avec une grande taille de texte.
 
 ## [1.3.72] — 2026-11-21 (Android)
 

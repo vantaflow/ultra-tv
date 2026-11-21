@@ -41,6 +41,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.DisposableEffect
 import kotlinx.coroutines.flow.collectLatest
@@ -435,11 +436,17 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
  * comme dans le dialogue d'actions).
  */
 @Composable
-private fun ProgramInfo(
+internal fun ProgramInfo(
     sel: androidx.compose.runtime.State<Pair<ChannelEntity, EpgEntity>?>, clock: androidx.compose.runtime.State<Long>,
     D: com.ultratv.tv.nativeapp.i18n.DesignStrings, progressLine: String?, modifier: Modifier,
     onWatch: (ChannelEntity) -> Unit, onRemind: (ChannelEntity, EpgEntity) -> Unit, onRecord: (ChannelEntity, EpgEntity) -> Unit,
 ) {
+    // Zone de HAUTEUR FIXE (300 unités) : pas de passage à la ligne automatique (le titre long passait sur deux lignes et
+    // rognait « Regarder » / « Enregistrer »), et les boutons sont mesurés AVANT le contenu secondaire.
+    // Pire cas (unités de maquette, taille de texte × s, ligne de texte ≈ 1,37 × corps) : boutons 6 + 56 s, progression du
+    // chargement ≈ 22 s, deux écarts de 12 → 30 + 78 s ≤ 124 pour s = 1,3 ; le reste (≥ 176) va à l'intitulé, au titre
+    // (une ligne, « … »), à la barre « en cours » puis à la description, qui cède la première (2 lignes, 1 ligne, rien).
+    com.ultratv.tv.nativeapp.ui.design.NoTextWrap {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.design, Alignment.CenterVertically)) {
         val s = sel.value
         if (s == null) { Text(D.noProgramInfo, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 2); return@Column }
@@ -447,17 +454,26 @@ private fun ProgramInfo(
         val nowMs = clock.value
         val isNow = p.startMs <= nowMs && p.endMs > nowMs
         val head = (if (isNow) "${D.nowBadge} · " else "") + "${ch.title} · ${EpgClock.range(p.startMs, p.endMs)}"
-        Text(
-            head.uppercase(), color = Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 17.spx, letterSpacing = 0.75.sp,
-            maxLines = 1, overflow = TextOverflow.Ellipsis,
-            style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content),
-        )
-        Text(p.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 52.spx, lineHeight = 58.spx, letterSpacing = (-1).spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        if (isNow) Row(Modifier.widthIn(max = 900.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.design)) {
-            Box(Modifier.weight(1f)) { com.ultratv.tv.nativeapp.ui.common.EpgProgressBar(p.startMs, p.endMs, clock, heightDp = 4f) }
-            Text(D.minutesRemaining(com.ultratv.tv.nativeapp.ui.common.EpgProgress.remainingMinutes(p.endMs, nowMs)), color = Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1, softWrap = false)
+        Column(Modifier.weight(1f, fill = false).clipToBounds(), verticalArrangement = Arrangement.spacedBy(12.design)) {
+            Text(
+                head.uppercase(), color = Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 17.spx, letterSpacing = 0.75.sp,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content),
+            )
+            Text(p.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 52.spx, lineHeight = 58.spx, letterSpacing = (-1).spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (isNow) Row(Modifier.widthIn(max = 900.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.design)) {
+                Box(Modifier.weight(1f)) { com.ultratv.tv.nativeapp.ui.common.EpgProgressBar(p.startMs, p.endMs, clock, heightDp = 4f) }
+                Text(D.minutesRemaining(com.ultratv.tv.nativeapp.ui.common.EpgProgress.remainingMinutes(p.endMs, nowMs)), color = Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1, softWrap = false)
+            }
+            // La description prend la place qui reste : deux lignes si elles tiennent, une sinon, et rien plutôt que coupée.
+            p.description?.takeIf { it.isNotBlank() }?.let { desc ->
+                androidx.compose.foundation.layout.BoxWithConstraints(Modifier.weight(1f, fill = false)) {
+                    val lineH = with(androidx.compose.ui.platform.LocalDensity.current) { 32.spx.toPx() }
+                    val lines = (constraints.maxHeight / lineH).toInt().coerceIn(0, 2)
+                    if (lines > 0) Text(desc, color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 32.spx, maxLines = lines, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 900.design))
+                }
+            }
         }
-        p.description?.takeIf { it.isNotBlank() }?.let { Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 32.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 900.design)) }
         val acts = programActionState(p, null, nowMs)
         Row(Modifier.padding(top = 6.design), horizontalArrangement = Arrangement.spacedBy(12.design)) {
             com.ultratv.tv.nativeapp.ui.design.PillButton(D.watch, onClick = { onWatch(ch) }, heightPx = 56, hPadPx = 26, fontPx = 19, weight = FontWeight.Bold, bg = Ux.Accent)
@@ -466,6 +482,7 @@ private fun ProgramInfo(
         }
         // Des programmes sont déjà là mais le guide continue d'arriver : progression visible, jamais muette.
         if (progressLine != null) Text(progressLine, color = Ux.AccentInk, fontFamily = Manrope, fontSize = 16.spx, maxLines = 1)
+    }
     }
 }
 
