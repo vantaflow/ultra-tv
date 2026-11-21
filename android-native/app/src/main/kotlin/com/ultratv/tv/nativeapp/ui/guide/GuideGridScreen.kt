@@ -101,6 +101,7 @@ import com.ultratv.tv.nativeapp.i18n.guideGroupEmpty
 import com.ultratv.tv.nativeapp.i18n.guideWindowEmpty
 import com.ultratv.tv.nativeapp.i18n.guideBackToNow
 import com.ultratv.tv.nativeapp.i18n.guideAllChannels
+import com.ultratv.tv.nativeapp.i18n.guideNoProgrammeDay
 import com.ultratv.tv.nativeapp.i18n.guideGroupPill
 import com.ultratv.tv.nativeapp.i18n.guideGroupTitle
 import com.ultratv.tv.nativeapp.i18n.recNoSpace
@@ -181,14 +182,25 @@ fun normalizeRow(items: List<EpgEntity>): List<EpgEntity> {
 
 /**
  * Nouveau début de fenêtre quand ◀ / ▶ bute sur le bord ([forward] : vers l'avenir) avec [focused] sélectionné.
- * - un programme voisin existe dans les données : décalage de 90 min (il entre dans la fenêtre et prend le focus) ;
+ * - un programme voisin [neighbour] existe dans les données : décalage de 90 min, ou davantage s'il le faut pour qu'il entre
+ *   dans la fenêtre (trou de 3 h ou plus dans le guide de la chaîne : la fenêtre saute par-dessus) ; il prend le focus ;
  * - sinon (programmes passés purgés, fin du guide) : la fenêtre ne va que jusqu'au bout du programme focalisé (arrondi à la
  *   demi-heure), jamais au-delà des données : la case focalisée reste visible, jamais de fenêtre vide. Rendre [windowStart]
  *   veut dire « butée » (la touche est consommée, rien ne bouge).
  */
-internal fun guideEdgeShift(windowStart: Long, forward: Boolean, focused: EpgEntity?, hasNeighbour: Boolean): Long {
+internal fun guideEdgeShift(windowStart: Long, forward: Boolean, focused: EpgEntity?, neighbour: EpgEntity?): Long {
     val step = 3 * SLOT_MS
-    if (hasNeighbour || focused == null) return windowStart + if (forward) step else -step
+    if (neighbour != null) return if (forward) {
+        val w = windowStart + step
+        // Trou dans le guide (le voisin ne serait pas dans la fenêtre décalée de 90 min) : la fenêtre saute jusqu'à lui, qui
+        // commence une demi-heure après son début.
+        if (neighbour.startMs < w + GUIDE_WINDOW_MS) w else Math.floorDiv(neighbour.startMs, SLOT_MS) * SLOT_MS - SLOT_MS
+    } else {
+        val w = windowStart - step
+        // Symétrique : le voisin finit une demi-heure avant la fin de la fenêtre.
+        if (neighbour.endMs > w) w else Math.floorDiv(neighbour.endMs + SLOT_MS - 1, SLOT_MS) * SLOT_MS + SLOT_MS - GUIDE_WINDOW_MS
+    }
+    if (focused == null) return windowStart + if (forward) step else -step
     return if (forward) {
         val end = (focused.endMs + SLOT_MS - 1) / SLOT_MS * SLOT_MS   // demi-heure qui suit la fin
         maxOf(windowStart, minOf(windowStart + step, end - GUIDE_WINDOW_MS))
@@ -438,6 +450,7 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
     var previewChoice by remember { mutableStateOf(false) }
     val firstChannel = channels.peekOrNull(0)?.takeIf { !it.isSeparator }
     val nameColPx = LocalChannelDisplay.current.guideNameWidth.tvPx
+    val railMenu = com.ultratv.tv.nativeapp.ui.components.LocalRailMenu.current
 
     // Lecture et enregistrement hissés : partagés par le dialogue du programme et par les boutons du panneau du haut.
     val watchLive: (ChannelEntity) -> Unit = { ch ->
@@ -484,6 +497,9 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
         preview = { sel, m -> if (pvm != null) GuidePreviewPane(sel, vm, m, pvm, videoPreview, firstChannel) },
         previewLabel = if (shared != null && pvm != null) lp.guideChip + " " + (if (videoPreview) lp.on else lp.off) else null,
         onPreviewSetting = { previewChoice = true },
+        readFor = { id -> programmesState.value.containsKey(id) },
+        onStartEdge = { railMenu?.open() },
+        instantScroll = GuideDebug.instantScroll,
     )
     if (previewChoice && pvm != null) com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(
         lp.row, listOf("auto" to lp.autoLowRam, "on" to lp.on, "off" to lp.off), pv.mode,
@@ -811,10 +827,14 @@ internal class GuideFocusPlan {
     fun clear() { progStart = Long.MIN_VALUE; atMs = Long.MIN_VALUE; channelId = -1L }
 
     /** Indice, dans la ligne [channelId], de la case qui doit prendre le focus (-1 : aucune). [slots] : cases affichées (null = hors fenêtre). */
-    fun targetIndex(channelId: Long, progs: List<EpgEntity>, slots: List<Slot?>, firstShown: Int): Int {
+    fun targetIndex(channelId: Long, progs: List<EpgEntity>, slots: List<Slot?>, firstShown: Int, windowStart: Long): Int {
         if (this.channelId != channelId) return -1
         if (progStart != Long.MIN_VALUE) return progs.indices.firstOrNull { progs[it].startMs == progStart && slots[it] != null } ?: -1
-        if (atMs != Long.MIN_VALUE) return progs.indices.firstOrNull { slots[it] != null && atMs >= progs[it].startMs && atMs < progs[it].endMs } ?: firstShown
+        // Instant hors de la fenêtre affichée (⏪ ⏩ pendant le chargement de l'autre jour) : rien à prendre pour l'instant.
+        if (atMs != Long.MIN_VALUE) return if (atMs < windowStart || atMs >= windowStart + GUIDE_WINDOW_MS) -1
+            else progs.indices.firstOrNull { slots[it] != null && atMs >= progs[it].startMs && atMs < progs[it].endMs }
+                // Rien à cet instant (trou) : la case affichée la plus proche dans le temps.
+                ?: progs.indices.filter { slots[it] != null }.minByOrNull { maxOf(progs[it].startMs - atMs, atMs - progs[it].endMs, 0L) } ?: firstShown
         return -1
     }
 }
@@ -858,10 +878,12 @@ private fun GuideCellTexts(content: @Composable () -> Unit) {
         val all = W >= 100.dp.roundToPx()
         val padH = (if (all) 18 else 10).design.roundToPx(); val padV = 12.design.roundToPx(); val gap = 4.design.roundToPx()
         val inner = androidx.compose.ui.unit.Constraints(0, maxOf(0, W - 2 * padH), 0, maxOf(0, H - 2 * padV))
-        val pls = (if (all) ms else ms.take(1)).map { it.measure(inner) }
+        val pls = (if (all) ms else ms.take(1)).map { it.measure(inner) }.toMutableList()
+        // Ce qui ne tient pas en hauteur tombe (l'horaire, puis le badge Replay) : le titre n'est jamais rogné.
+        while (pls.size > 1 && pls.sumOf { it.height } + gap * (pls.size - 1) > H - 2 * padV) pls.removeAt(pls.size - 1)
         val total = pls.sumOf { it.height } + gap * (pls.size - 1)
         layout(W, H) {
-            var y = padV + (H - 2 * padV - total) / 2
+            var y = maxOf(padV, padV + (H - 2 * padV - total) / 2)
             for (pl in pls) { pl.placeRelative(padH, y); y += pl.height + gap }
         }
     }
@@ -871,7 +893,7 @@ private fun GuideCellTexts(content: @Composable () -> Unit) {
 @Composable
 private fun GuideRow(
     c: ChannelEntity, progs: List<EpgEntity>, windowStart: Long, window: androidx.compose.runtime.State<Long>, gridW: Dp, nameColPx: Int, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, clock: androidx.compose.runtime.State<Long>,
-    plan: GuideFocusPlan, firstModifier: Modifier, onSelect: (EpgEntity) -> Unit, onRemind: (EpgEntity) -> Unit, onFocusProg: (EpgEntity) -> Unit,
+    plan: GuideFocusPlan, planGen: Int, firstModifier: Modifier, onSelect: (EpgEntity) -> Unit, onRemind: (EpgEntity) -> Unit, onFocusProg: (EpgEntity) -> Unit,
     onFocusRefresh: (EpgEntity) -> Unit = {},
     nowProvider: () -> Long = { System.currentTimeMillis() },
 ) {
@@ -910,7 +932,7 @@ private fun GuideRow(
         // La liste peut dépasser la fenêtre (cache par plage) : la « première » case est la première AFFICHÉE.
         val firstShown = remember(slots) { slots.indexOfFirst { it != null } }
         // Cible de focus posée avant un changement de la grille (lue seulement quand elle vise cette chaîne).
-        val planIdx = plan.targetIndex(c.id, progs, slots, firstShown)
+        val planIdx = plan.targetIndex(c.id, progs, slots, firstShown, windowStart)
         Box(Modifier.width(gridW).fillMaxHeight()) {
             progs.forEachIndexed { idx, p ->
                 if (slots[idx] == null) return@forEachIndexed
@@ -925,7 +947,7 @@ private fun GuideRow(
                     // Fonction à part, aux paramètres stables : une ligne recomposée (case qui entre au bord de la fenêtre, arrivée de
                     // programmes) saute les cases qui n'ont pas changé.
                     GuideCell(
-                        c.id, p, isNow, replay, isFirst = idx == firstShown, isTarget = idx == planIdx, plan, window, gridW, probe, D, clock,
+                        c.id, p, isNow, replay, isFirst = idx == firstShown, targetGen = if (idx == planIdx) planGen else -1, plan, window, gridW, probe, D, clock,
                         firstModifier, onSelect, onRemind, onFocusProg, onFocusRefresh, nowProvider,
                     )
                 }
@@ -937,7 +959,7 @@ private fun GuideRow(
 /** Case d'un programme dans une ligne du Guide TV (voir [GuideRow]). */
 @Composable
 private fun GuideCell(
-    channelId: Long, p: EpgEntity, isNow: Boolean, replay: Boolean, isFirst: Boolean, isTarget: Boolean, plan: GuideFocusPlan,
+    channelId: Long, p: EpgEntity, isNow: Boolean, replay: Boolean, isFirst: Boolean, targetGen: Int, plan: GuideFocusPlan,
     window: androidx.compose.runtime.State<Long>, gridW: Dp, probe: GuideProbe?, D: com.ultratv.tv.nativeapp.i18n.DesignStrings,
     clock: androidx.compose.runtime.State<Long>, firstModifier: Modifier,
     onSelect: (EpgEntity) -> Unit, onRemind: (EpgEntity) -> Unit, onFocusProg: (EpgEntity) -> Unit, onFocusRefresh: (EpgEntity) -> Unit,
@@ -945,9 +967,11 @@ private fun GuideCell(
 ) {
     // Cible de focus posée avant un changement de la grille : prise par la case qui la compose, une image plus tard (le focus
     // perdu par les cases retirées est alors déjà rendu ailleurs), seulement si elle est toujours visée.
+    // [targetGen] : génération de la cible (une nouvelle cible sur la même case est reprise), -1 : pas visée.
+    val isTarget = targetGen >= 0
     val taker = if (isTarget) remember { androidx.compose.ui.focus.FocusRequester() } else null
     val stillTarget = androidx.compose.runtime.rememberUpdatedState(isTarget)
-    if (taker != null) LaunchedEffect(taker) {
+    if (taker != null) LaunchedEffect(taker, targetGen) {
         androidx.compose.runtime.withFrameNanos { }
         if (stillTarget.value && plan.channelId == channelId) { plan.clear(); plan.take(taker) }
     }
@@ -1011,6 +1035,12 @@ internal fun GuideTvContent(
     onPreviewSetting: () -> Unit = {},
     /** Instant « maintenant » des cases de la grille (injectable pour un rendu de test figé). */
     nowProvider: () -> Long = { System.currentTimeMillis() },
+    /** Programmes de la chaîne déjà lus (liste vide comprise), quelle que soit la fenêtre : décide la ligne « rien ce jour-là ». */
+    readFor: (Long) -> Boolean = loadedFor,
+    /** ◀ (▶ en arabe) à la butée du temps, appui neuf : ouvre le menu latéral. */
+    onStartEdge: () -> Unit = {},
+    /** Défilement vertical de la grille sans animation (réglage caché de mesure, voir [GuideDebug]). */
+    instantScroll: Boolean = false,
 ) {
     ProbeScreen()
     // Fenêtre AFFICHÉE : la demandée dès que les programmes des lignes visibles la couvrent (décalage au bord : tout de suite,
@@ -1032,6 +1062,22 @@ internal fun GuideTvContent(
     // Un élément de l'écran a le focus (jours, catégories, boutons, grille) : le focus initial tardif ne le reprend plus. Lu
     // seulement par le focus initial (tableau simple : aucune recomposition).
     val screenFocus = remember { BooleanArray(1) }
+    // Touches pressées sur cet écran (hors touches de modification) et instant d'arrivée : « l'utilisateur a agi » (même règle
+    // que l'accueil, [InputClock] : la touche OK qui a ouvert le Guide depuis le menu ne compte pas).
+    val keyCount = remember { IntArray(1) }
+    val inKey = remember { BooleanArray(1) }
+    val view = androidx.compose.ui.platform.LocalView.current
+    val openedAt = remember { android.os.SystemClock.uptimeMillis() }
+    val userActed = { keyCount[0] > 0 || com.ultratv.tv.nativeapp.ui.common.InputClock.lastKeyMs > openedAt }
+    // Dernier élément de la grille qui a eu le focus : une case ou un bouton du message « Aucun programme ». Écrit à chaque
+    // prise de focus, jamais à la perte (l'ordre des rappels à la disparition d'un élément n'est pas garanti).
+    val gridFocusKind = remember { IntArray(1) }
+    // Cible de focus posée ([plan]) : la ligne visée se recompose pour la prendre (seule cette ligne lit ce compteur).
+    val planTick = remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val rescueScope = androidx.compose.runtime.rememberCoroutineScope()
+    val rescueJob = remember { arrayOfNulls<kotlinx.coroutines.Job>(1) }
+    val overlays = com.ultratv.tv.nativeapp.ui.common.LocalOverlayHost.current
+    val rail = com.ultratv.tv.nativeapp.ui.components.LocalRailMenu.current
     val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
     Column(
         modifier.fillMaxSize().padding(start = 48.design, end = 56.design, top = 40.design, bottom = 12.design)
@@ -1039,7 +1085,13 @@ internal fun GuideTvContent(
             // Au bord de la fenêtre, DROITE / GAUCHE font défiler le temps de 90 min au lieu de buter : le focus reste sur la
             // même chaîne, sur le programme qui suit (ou précède) dans le temps.
             .onPreviewKeyEvent { e ->
-                if (e.type == KeyEventType.KeyDown) plan.clear()   // une cible de focus périmée ne doit jamais reprendre le focus plus tard
+                if (e.type == KeyEventType.KeyDown) {
+                    plan.clear()   // une cible de focus périmée ne doit jamais reprendre le focus plus tard
+                    // Toute touche (hors touches de modification) : le focus initial tardif et le rattrapage du focus n'agissent plus.
+                    if (e.key != Key.ShiftLeft && e.key != Key.ShiftRight) keyCount[0]++
+                }
+                // Touche en cours de traitement (jusqu'à la fin de son traitement, déplacement du focus compris).
+                if (!inKey[0]) { inKey[0] = true; view.post { inKey[0] = false } }
                 // ⏪ ⏩ : un jour en arrière / en avant (Hier … après-demain), sans quitter la grille.
                 if (e.type == KeyEventType.KeyDown && (e.key == Key.MediaRewind || e.key == Key.MediaFastForward)) {
                     val d = (day + if (e.key == Key.MediaFastForward) 1 else -1).coerceIn(-1, 2)
@@ -1048,11 +1100,11 @@ internal fun GuideTvContent(
                         // case focalisée, jusqu'à l'arrivée des programmes de ce jour ; le focus va alors sur le programme de la même
                         // chaîne à la même heure (à défaut sa première case affichée, ou la ligne voisine la plus proche).
                         val w = java.util.Calendar.getInstance().apply { timeInMillis = windowStart; add(java.util.Calendar.DAY_OF_YEAR, d - day) }.timeInMillis
-                        if (inGrid) focusedProg.value?.let { (ch, p) ->
+                        if (inGrid && gridFocusKind[0] == FOCUS_CELL) focusedProg.value?.let { (ch, p) ->
                             // Instant visé : celui du ⏪ ⏩ précédent tant que le focus est resté sur le programme qui le couvre (un aller-
                             // retour revient sur le même programme), sinon le début visible du programme focalisé.
                             val base = if (dayAnchor[0] == ch.id && dayAnchor[1] >= p.startMs && dayAnchor[1] < p.endMs) dayAnchor[1] else maxOf(p.startMs, shownWindow)
-                            plan.channelId = ch.id; plan.atMs = base + (w - shownWindow)
+                            plan.channelId = ch.id; plan.atMs = base + (w - shownWindow); planTick.intValue++
                             dayAnchor[0] = ch.id; dayAnchor[1] = plan.atMs
                         }
                         onDayShift(d, w)
@@ -1062,8 +1114,9 @@ internal fun GuideTvContent(
                 if (e.type != KeyEventType.KeyDown || (e.key != Key.DirectionRight && e.key != Key.DirectionLeft)) return@onPreviewKeyEvent false
                 val dir = if (e.key == Key.DirectionRight) FocusDirection.Right else FocusDirection.Left
                 // Hors de la grille (jours, catégories) : navigation normale — avant, la touche était
-                // avalée et GAUCHE ne menait plus au menu depuis « Hier ».
-                if (!inGrid) return@onPreviewKeyEvent false
+                // avalée et GAUCHE ne menait plus au menu depuis « Hier ». Sur les boutons du message « Aucun programme »
+                // (dans la grille, mais pas une case) : navigation normale entre eux, jamais un décalage de la fenêtre.
+                if (!inGrid || gridFocusKind[0] != FOCUS_CELL) return@onPreviewKeyEvent false
                 // Le temps va vers la droite en gauche-à-droite, vers la gauche en arabe (positions miroitées).
                 val forward = (dir == FocusDirection.Right) == (layoutDirection == androidx.compose.ui.unit.LayoutDirection.Ltr)
                 val sel = focusedProg.value
@@ -1077,10 +1130,14 @@ internal fun GuideTvContent(
                 // (la case d'une autre ligne qui dépasse à droite) : on reste sur la ligne, et la fenêtre défile ou bute.
                 val neighbourShown = next != null && slotFor(next.startMs, next.endMs, shownWindow) != null
                 if (sel != null && !neighbourShown || !focus.moveFocus(dir)) {
-                    val shifted = guideEdgeShift(shownWindow, forward, sel?.second, next != null)
+                    val shifted = guideEdgeShift(shownWindow, forward, sel?.second, next)
                     if (shifted != shownWindow || shownWindow != windowStart) {
-                        if (next != null && sel != null) { plan.channelId = sel.first.id; plan.progStart = next.startMs }
+                        if (next != null && sel != null) { plan.channelId = sel.first.id; plan.progStart = next.startMs; planTick.intValue++ }
                         onWindowStart(shifted)
+                    } else if (!forward && next == null && e.nativeKeyEvent.repeatCount == 0) {
+                        // Butée vers le passé (plus aucun programme plus tôt) : un appui NEUF ouvre le menu latéral, comme ◀ depuis
+                        // le premier élément des autres écrans (même chemin que Retour). Une touche maintenue n'y va jamais.
+                        onStartEdge()
                     }
                 }
                 true
@@ -1166,22 +1223,6 @@ internal fun GuideTvContent(
             val entryTarget: () -> FocusRequester? = {
                 state.layoutInfo.visibleItemsInfo.firstNotNullOfOrNull { info -> peekAt(info.index)?.takeIf { hasCell(it.id) }?.let { rowEntry[it.id] } }
             }
-            // Après un changement de la fenêtre affichée (⏪ ⏩, bord) : si la grille avait le focus et l'a perdu (case focalisée
-            // retirée sans qu'aucune case ne reprenne la cible, par exemple une chaîne sans programme ce jour-là), le focus revient
-            // sur la ligne visible qui a une case la plus proche de cette chaîne. Deux images après le changement : après la prise
-            // normale par la case visée ([GuideFocusPlan]), jamais à retardement ni quand le focus est déjà ailleurs dans la grille.
-            val hadGridFocus = remember(shownWindow) { androidx.compose.runtime.snapshots.Snapshot.withoutReadObservation { inGrid } }
-            LaunchedEffect(shownWindow) {
-                if (!hadGridFocus) return@LaunchedEffect
-                repeat(2) { androidx.compose.runtime.withFrameNanos { } }
-                if (inGrid) return@LaunchedEffect
-                val chId = plan.channelId.takeIf { it != -1L } ?: focusedProg.value?.first?.id ?: return@LaunchedEffect
-                plan.clear()
-                val visible = state.layoutInfo.visibleItemsInfo.mapNotNull { info -> peekAt(info.index)?.let { info.index to it.id } }
-                val from = visible.firstOrNull { it.second == chId }?.first ?: visible.firstOrNull()?.first ?: return@LaunchedEffect
-                visible.filter { hasCell(it.second) }.minByOrNull { kotlin.math.abs(it.first - from) * 2 + (if (it.first > from) 1 else 0) }
-                    ?.let { rowEntry[it.second] }?.let { plan.take(it) }
-            }
             // Aucune case dans aucune ligne visible, programmes lus : un message et des actions, jamais une grille muette.
             val windowEmpty by remember {
                 androidx.compose.runtime.derivedStateOf {
@@ -1190,18 +1231,92 @@ internal fun GuideTvContent(
                 }
             }
             val emptyAction = remember { FocusRequester() }
-            // Focus initial : une seule fois, dès qu'une ligne visible a une case (ou que le message est affiché) ; ensuite il ne
-            // reprend plus le focus à un autre endroit (jours, catégories, autre case) quand les programmes changent.
+            // Rattrapage du focus : l'élément focalisé de la grille a disparu (case retirée par ⏪ ⏩, un réimport qui change son
+            // heure de début, la fin des données ; bouton du message retiré quand la grille se remplit) et PLUS RIEN n'a le focus.
+            // Ordre : le programme de la même chaîne à la même heure, sinon la ligne visible la plus proche qui a une case (même
+            // heure), sinon le premier bouton du message. N'agit jamais si un élément a le focus (jours, catégories, menu, fenêtre)
+            // ni après une touche pressée depuis la disparition : il ne déplace pas un focus, il rend un focus perdu.
+            val peekNow = androidx.compose.runtime.rememberUpdatedState(peekAt)
+            // Lambda stable (remember) : passée à chaque ligne sans les recomposer.
+            val rescue: () -> Unit = remember { rescue@{
+                rescueJob[0]?.cancel()
+                val kind = gridFocusKind[0]
+                val sel = focusedProg.value
+                val chId = when {
+                    plan.pending -> plan.channelId
+                    kind == FOCUS_CELL -> sel?.first?.id ?: -1L
+                    else -> -1L
+                }
+                val atMs = when {
+                    plan.pending && plan.progStart != Long.MIN_VALUE -> plan.progStart
+                    plan.pending && plan.atMs != Long.MIN_VALUE -> plan.atMs
+                    // Milieu de la partie affichée du programme perdu : un début corrigé de quelques minutes reste couvert.
+                    sel != null -> (maxOf(sel.second.startMs, lastShown[0]) + minOf(sel.second.endMs, lastShown[0] + GUIDE_WINDOW_MS)) / 2
+                    else -> lastShown[0]
+                }
+                // L'élément qui avait le focus est-il toujours là ? Un focus déplacé sans touche (lecteur d'écran, focus posé par
+                // programme) alors que la case reste affichée n'est pas une disparition : rien à rendre.
+                val lostStart = sel?.second?.startMs
+                val stillThere = {
+                    if (kind == FOCUS_MESSAGE) windowEmpty
+                    else lostStart != null && sel.first.id.let { id ->
+                        state.layoutInfo.visibleItemsInfo.any { peekNow.value(it.index)?.id == id } &&
+                            progsNow.value(id).any { it.startMs == lostStart && slotFor(it.startMs, it.endMs, windowNow.value) != null }
+                    }
+                }
+                val keys0 = keyCount[0]; val input0 = com.ultratv.tv.nativeapp.ui.common.InputClock.lastKeyMs
+                rescueJob[0] = rescueScope.launch {
+                    var asked = -1L
+                    repeat(RESCUE_MAX_FRAMES) {
+                        androidx.compose.runtime.withFrameNanos { }
+                        if (keyCount[0] != keys0 || com.ultratv.tv.nativeapp.ui.common.InputClock.lastKeyMs != input0) return@launch
+                        // La grille a repris le focus, ou une fenêtre / le menu l'a (jamais sans touche, sauf une alerte) : rien à rendre.
+                        // Un focus posé par Compose lui-même ailleurs dans l'écran (premier élément, « Regarder ») après la disparition
+                        // n'est pas un choix de l'utilisateur : il est repris.
+                        if (inGrid || overlays?.hasModal == true || rail?.expanded == true) return@launch
+                        if (it == 0 && !plan.pending && stillThere()) return@launch
+                        val visible = state.layoutInfo.visibleItemsInfo.mapNotNull { info -> peekNow.value(info.index)?.let { info.index to it.id } }
+                        val withCell = visible.filter { hasCell(it.second) }
+                        if (withCell.isNotEmpty()) {
+                            val from = visible.firstOrNull { it.second == chId }?.first ?: if (chId == -1L) -1 else withCell.first().first
+                            // Bouton du message disparu (ou aucune ancre) : la première case de la grille revenue.
+                            val row = if (from == -1) withCell.first()
+                                else withCell.minBy { kotlin.math.abs(it.first - from) * 2 + (if (it.first > from) 1 else 0) }
+                            if (from == -1) { rowEntry[row.second]?.let { r -> if (runCatching { r.requestFocus() }.getOrDefault(false)) return@launch } }
+                            else if (asked != row.second) {
+                                // La case de cette ligne qui couvre l'instant visé prend le focus (la ligne se recompose pour elle).
+                                plan.clear(); plan.channelId = row.second; plan.atMs = atMs.coerceIn(lastShown[0], lastShown[0] + GUIDE_WINDOW_MS - 1); planTick.intValue++
+                                asked = row.second
+                            }
+                        } else if (windowEmpty) {
+                            if (runCatching { emptyAction.requestFocus() }.getOrDefault(false)) return@launch
+                        }
+                    }
+                }
+            } }
+            // Focus initial : dès qu'une ligne visible a une case (ou que le message est affiché), y compris quand les programmes
+            // arrivent après la première composition et qu'un focus par défaut est tombé entre-temps sur une pastille (« Hier ») ;
+            // jamais quand l'utilisateur a déjà pressé une touche sur cet écran ni quand la grille a déjà le focus.
             val initialDone = remember { BooleanArray(1) }
             val entryReady by remember {
                 androidx.compose.runtime.derivedStateOf { if (initialDone[0]) true else windowEmpty || state.layoutInfo.visibleItemsInfo.any { info -> peekAt(info.index)?.let { hasCell(it.id) } == true } }
             }
             RequestInitialFocus(
-                emptyAction, hasFocus = { if (inGrid || screenFocus[0]) initialDone[0] = true; initialDone[0] }, key = entryReady,
+                emptyAction, hasFocus = { if (inGrid || userActed()) initialDone[0] = true; initialDone[0] }, key = entryReady,
                 target = { entryTarget() ?: emptyAction },
             )
             BoxWithConstraints(
-                Modifier.fillMaxWidth().weight(1f).onFocusChanged { inGrid = it.hasFocus }
+                Modifier.fillMaxWidth().weight(1f)
+                    .onFocusChanged {
+                        val had = inGrid
+                        inGrid = it.hasFocus
+                        // Focus perdu HORS d'une touche (élément retiré par une mise à jour de la grille) : rattrapage. Un focus que
+                        // l'utilisateur déplace (▲ vers les jours, Retour vers le menu) part pendant la touche : jamais repris.
+                        if (it.hasFocus) rescueJob[0]?.cancel() else if (had && !inKey[0]) rescue()
+                    }
+                    // Cible d'entrée de l'écran ([com.ultratv.tv.nativeapp.ui.common.ScreenFocusHost]) : à l'ouverture, le focus
+                    // par défaut vise la grille (sa première case) et non l'élément en haut à gauche (la pastille « Hier »).
+                    .then(com.ultratv.tv.nativeapp.ui.common.screenEntryTarget())
                     // Entrée (↓ depuis les jours) : sur la première ligne qui a une case, au programme affiché en premier, et non sur
                     // la case qui se trouve sous l'onglet. Sortie par → interdite : au bord droit, la fenêtre défile de 90 min
                     // (onPreviewKeyEvent) au lieu de sauter sur l'onglet « Samedi ».
@@ -1225,24 +1340,39 @@ internal fun GuideTvContent(
                         .graphicsLayer { alpha = if (com.ultratv.tv.nativeapp.ui.common.EpgProgress.nowLineFraction(clock.value, shownWindow, GUIDE_WINDOW_MS) != null) 1f else 0f }
                         .background(accent),
                 )
+                val readNow = androidx.compose.runtime.rememberUpdatedState(readFor)
+                GuideScrollSpec(instantScroll) {
                 LazyColumn(state = state, verticalArrangement = Arrangement.spacedBy(8.design), contentPadding = PaddingValues(top = 8.design, bottom = 24.design)) {
                     items(count = channelCount, key = itemKey, contentType = { "row" }) { i ->
                         val c = channelAt(i)
                         if (c != null) {
                             // Liste de CETTE chaîne seulement : l'élément ne se recompose que si elle change.
                             val progs by remember(c.id, progsFor) { androidx.compose.runtime.derivedStateOf { progsFor(c.id) } }
-                            val entry = remember(c.id) { rowEntry.getOrPut(c.id) { FocusRequester() } }
-                            GuideRow(
-                                c, progs, shownWindow, shownState, gridW, nameColPx, D, clock, plan,
-                                firstModifier = Modifier.focusRequester(entry),
-                                onSelect = { p -> onSelect(c, p) }, onRemind = { p -> onRemind(c, p) }, onFocusProg = { p -> focusedProg.value = c to p },
-                                onFocusRefresh = { p -> focusedProg.value?.let { (fc, fp) -> if (fc.id == c.id && fp.startMs == p.startMs && fp != p) focusedProg.value = c to p } },
-                                nowProvider = nowProvider,
-                            )
+                            // Chaîne lue sans AUCUN programme ce jour-là : ligne compacte et estompée. Critère sur tout le jour de la
+                            // fenêtre (programmes lus pour la journée) : il ne change pas pendant ◀ ▶ dans la journée.
+                            val nothingToday by remember(c.id, progsFor) { androidx.compose.runtime.derivedStateOf { readNow.value(c.id) && guideNothingThatDay(progs, shownState.value) } }
+                            if (nothingToday) GuideNoProgrammeRow(c, nameColPx, D)
+                            else {
+                                val entry = remember(c.id) { rowEntry.getOrPut(c.id) { FocusRequester() } }
+                                // Seule la ligne visée par une cible de focus posée se recompose quand le compteur change.
+                                val planGen by remember(c.id) { androidx.compose.runtime.derivedStateOf { val t = planTick.intValue; if (plan.channelId == c.id) t else -1 } }
+                                GuideRow(
+                                    c, progs, shownWindow, shownState, gridW, nameColPx, D, clock, plan, planGen,
+                                    firstModifier = Modifier.focusRequester(entry),
+                                    onSelect = { p -> onSelect(c, p) }, onRemind = { p -> onRemind(c, p) },
+                                    onFocusProg = { p -> gridFocusKind[0] = FOCUS_CELL; focusedProg.value = c to p },
+                                    onFocusRefresh = { p -> focusedProg.value?.let { (fc, fp) -> if (fc.id == c.id && fp.startMs == p.startMs && fp != p) focusedProg.value = c to p } },
+                                    nowProvider = nowProvider,
+                                )
+                            }
                         } else Spacer(Modifier.height(84.designT))
                     }
                 }
-                if (windowEmpty) GuideWindowEmpty(D, showAll = group != com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL, nowAction = emptyAction, onNow = { onDay(0) }, onAll = { onGroup(com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL) })
+                }
+                if (windowEmpty) GuideWindowEmpty(
+                    D, showAll = group != com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL, nowAction = emptyAction,
+                    onFocused = { gridFocusKind[0] = FOCUS_MESSAGE }, onNow = { onDay(0) }, onAll = { onGroup(com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL) },
+                )
                 NowPill(clock, shownWindow, nameColPx.design, gridW)
             }
         }
@@ -1254,9 +1384,13 @@ internal fun GuideTvContent(
  * muette. [nowAction] reçoit le focus à l'entrée (▼ depuis les jours) ou à l'ouverture.
  */
 @Composable
-private fun GuideWindowEmpty(D: com.ultratv.tv.nativeapp.i18n.DesignStrings, showAll: Boolean, nowAction: FocusRequester, onNow: () -> Unit, onAll: () -> Unit) {
+private fun GuideWindowEmpty(
+    D: com.ultratv.tv.nativeapp.i18n.DesignStrings, showAll: Boolean, nowAction: FocusRequester, onFocused: () -> Unit,
+    onNow: () -> Unit, onAll: () -> Unit,
+) {
+    // Fond plein : recouvre les lignes vides (et leurs mentions « Pas de programme ce jour-là ») sous le message.
     Column(
-        Modifier.fillMaxWidth().padding(top = 48.design),
+        Modifier.fillMaxSize().background(Ux.Bg).onFocusChanged { if (it.hasFocus) onFocused() }.padding(top = 48.design),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.design),
     ) {
         Text(D.guideWindowEmpty, color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 33.spx, maxLines = 3)
@@ -1265,6 +1399,50 @@ private fun GuideWindowEmpty(D: com.ultratv.tv.nativeapp.i18n.DesignStrings, sho
             if (showAll) com.ultratv.tv.nativeapp.ui.design.PillButton(D.guideAllChannels, onClick = onAll, heightPx = 56, hPadPx = 26, fontPx = 19)
         }
     }
+}
+
+internal const val FOCUS_CELL = 1
+internal const val FOCUS_MESSAGE = 2
+/** Durée maximale du rattrapage d'un focus perdu (en images) : le temps que les programmes d'un autre jour arrivent. */
+private const val RESCUE_MAX_FRAMES = 90
+
+/**
+ * Chaîne lue sans aucun programme ce jour-là : ligne compacte et estompée (nom, mention), sans rien de focalisable — ▼ / ▲ la
+ * traversent d'un seul appui. Un seul nœud pour le lecteur d'écran : « chaîne, Pas de programme ce jour-là ».
+ */
+@Composable
+private fun GuideNoProgrammeRow(c: ChannelEntity, nameColPx: Int, D: com.ultratv.tv.nativeapp.i18n.DesignStrings) {
+    val label = D.guideNoProgrammeDay
+    Row(
+        Modifier.fillMaxWidth().height(40.designT).clearAndSetSemantics { contentDescription = "${c.title}, $label" },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            c.title, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 16.spx, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.width(nameColPx.design).padding(horizontal = 14.design),
+            style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content),
+        )
+        Text(label, color = Ux.Text3, fontFamily = Manrope, fontSize = 15.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 18.design))
+    }
+}
+
+/**
+ * Défilement vertical de la grille : animé (par défaut), ou immédiat avec [instant] (réglage caché de mesure, [GuideDebug]) —
+ * même distance, sans animation.
+ */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+private fun GuideScrollSpec(instant: Boolean, content: @Composable () -> Unit) {
+    if (!instant) { content(); return }
+    val base = androidx.compose.foundation.gestures.LocalBringIntoViewSpec.current
+    val spec = remember(base) {
+        object : androidx.compose.foundation.gestures.BringIntoViewSpec {
+            @Suppress("OVERRIDE_DEPRECATION", "DEPRECATION")
+            override val scrollAnimationSpec: androidx.compose.animation.core.AnimationSpec<Float> = androidx.compose.animation.core.snap()
+            override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float) = base.calculateScrollDistance(offset, size, containerSize)
+        }
+    }
+    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides spec, content = content)
 }
 
 // ───────────────────────── Tactile ─────────────────────────
@@ -1338,7 +1516,9 @@ private fun GuideTouch(
                     LazyColumn(state = state, verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 16.dp), modifier = Modifier.weight(1f)) {
                         items(count = channels.itemCount, key = safeKey1, contentType = { "row" }) { i ->
                             val c = channels.getOrNull(i)
-                            if (c != null) TouchGuideRow(c, programmes[c.id].orEmpty(), windowStart, hScroll.value, chanW, onSelect = { p -> onSelect(c, p) }, onRemind = { p -> onRemind(c, p) })
+                            // Chaîne lue sans aucun programme ce jour-là : ligne compacte qui le dit (plus de ligne vide muette).
+                            if (c != null && programmes.containsKey(c.id) && guideNothingThatDay(programmes[c.id].orEmpty(), windowStart)) TouchNoProgrammeRow(c, hScroll.value, chanW, D)
+                            else if (c != null) TouchGuideRow(c, programmes[c.id].orEmpty(), windowStart, hScroll.value, chanW, onSelect = { p -> onSelect(c, p) }, onRemind = { p -> onRemind(c, p) })
                             else Spacer(Modifier.height(TOUCH_ROW_H))
                         }
                     }
@@ -1347,6 +1527,20 @@ private fun GuideTouch(
                 if (nowFrac in 0f..1f) Box(Modifier.offset(x = chanW + gridW * nowFrac).width(2.dp).fillMaxHeight().background(Ux.Accent))
             }
         }
+    }
+}
+
+/** Guide tactile : chaîne sans aucun programme ce jour-là, ligne compacte et estompée (nom et mention épinglés à gauche). */
+@Composable
+internal fun TouchNoProgrammeRow(c: ChannelEntity, scrollPx: Int, chanW: androidx.compose.ui.unit.Dp, D: com.ultratv.tv.nativeapp.i18n.DesignStrings) {
+    val label = D.guideNoProgrammeDay
+    Row(
+        Modifier.width(chanW + TOUCH_SLOT_W * 6).height(36.dp).offset { androidx.compose.ui.unit.IntOffset(scrollPx, 0) }
+            .clearAndSetSemantics { contentDescription = "${c.title}, $label" },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(c.title, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(chanW).padding(end = 8.dp))
+        Text(label, color = Ux.Text3, fontFamily = Manrope, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -1385,3 +1579,6 @@ internal fun TouchGuideRow(c: ChannelEntity, progs: List<EpgEntity>, windowStart
         }
     }
 }
+
+
+

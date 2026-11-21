@@ -68,11 +68,25 @@ class GuideRecompositionTest {
 
     /** Programmes de 40 à 90 minutes, sur 3 jours à partir de 00:00, titres « Pc-i » uniques. */
     private val all: Map<Long, List<EpgEntity>> by lazy {
-        buildAll().mapValues { (id, l) ->
-            (if (id in hole) l.filter { it.endMs <= at(0, 0) || it.startMs >= at(6, 0) } else l).let { r -> if (id in shortGuide) r.filter { it.startMs < at(5, 0) } else r }
-                .let { r -> if (id in noTomorrow) r.filter { it.startMs < at(0, 0) + 24 * 3_600_000L } else r }
+        buildAll().mapValues { (id, l0) ->
+            var r = l0
+            if (id in gap) r = r.filter { it.endMs <= at(1, 0) || it.startMs >= at(6, 0) }
+            if (id in hole) r = r.filter { it.endMs <= at(0, 0) || it.startMs >= at(6, 0) }
+            if (id in shortGuide) r = r.filter { it.startMs < at(5, 0) }
+            if (id in noTomorrow) r = r.filter { it.startMs < at(0, 0) + 24 * 3_600_000L }
+            if (id in noToday) r = r.filter { it.startMs >= at(0, 0) + 24 * 3_600_000L }
+            r
         }
     }
+    /** Chaînes sans aucun programme entre 01:00 et 06:00 (trou de 5 h dans leur guide). */
+    private var gap: Set<Long> = emptySet()
+    /** Chaînes sans aucun programme aujourd'hui (rien avant demain 00:00). */
+    private var noToday: Set<Long> = emptySet()
+    /** Après « Toutes les chaînes » : guide complet (aucun trou). */
+    private var filled = false
+    private val full by lazy { buildAll() }
+    private var group by mutableStateOf(CATEGORY_ALL)
+    private var startEdge = 0
     /** Chaînes dont le guide s'arrête au premier programme commençant après 05:00 (fin des données). */
     private var shortGuide: Set<Long> = emptySet()
     /** Chaînes sans aucun programme le lendemain. */
@@ -94,7 +108,7 @@ class GuideRecompositionTest {
     }
 
     /** Programmes d'une chaîne qui touchent [from, to] (comme la requête Room `rangeForChannels`). */
-    private fun rangeOf(id: Long, from: Long, to: Long) = all[id].orEmpty().filter { it.endMs >= from && it.startMs <= to }
+    private fun rangeOf(id: Long, from: Long, to: Long) = (if (filled) full else all)[id].orEmpty().filter { it.endMs >= from && it.startMs <= to }
 
     private val probe = GuideProbe()
     private var windowStart by mutableStateOf(at(1, 0))
@@ -131,6 +145,7 @@ class GuideRecompositionTest {
 
     private fun mount() {
         I18n.init(ApplicationProvider.getApplicationContext())
+        com.ultratv.tv.nativeapp.ui.common.InputClock.lastKeyMs = 0L   // horloge des touches partagée entre tests (objet)
         rule.setContent {
             CompositionLocalProvider(
                 LocalDs provides designStringsFor(AppLang.French), LocalStrings provides stringsFor(AppLang.French), LocalTouch provides false,
@@ -144,13 +159,15 @@ class GuideRecompositionTest {
                     GuideTvContent(
                         channelCount = chans.size, channelAt = { chans[it] }, peekAt = { chans[it] }, itemKey = { chans[it].id },
                         progsFor = { programmes[it].orEmpty() }, loadedFor = { programmes.containsKey(it) }, windowStart = windowStart, day = day, D = D, clock = clock,
-                        groups = listOf(DirectCategory(CATEGORY_ALL, null, chans.size)), group = CATEGORY_ALL, guideLoad = GuideLoad.Idle, nameColPx = 260,
+                        groups = listOf(DirectCategory(CATEGORY_ALL, null, chans.size), DirectCategory("c", "Catégorie", chans.size)), group = group, guideLoad = GuideLoad.Idle, nameColPx = 260,
+                        onStartEdge = { startEdge++ },
                         groupName = { "Toutes" },
                         nowProvider = { nowBase + (nowTick++ % 1_000) },
                         onDay = { d -> dayRequests++; day = d; windowStart = if (d == 0) at(1, 0) else at(20, 0); vmOnVisible(lastVisible) },
                         onDayShift = { d, w -> day = d; windowStart = w; if (!asyncDay) vmOnVisible(lastVisible) },
                         readyFor = { w -> covers(w) || readyWindow == w },
-                        onWindowStart = { windowStart = it; vmOnVisible(lastVisible) }, onGroup = {},
+                        onWindowStart = { windowStart = it; vmOnVisible(lastVisible) },
+                        onGroup = { g -> group = g; if (g == CATEGORY_ALL) { filled = true; cache.clear(); programmes = emptyMap(); readyWindow = null; vmOnVisible(lastVisible) } },
                         onVisible = { ids -> lastVisible = ids; vmOnVisible(ids) },
                         onRetry = {},
                         onSelect = { _, _ -> }, onWatch = { watched = it.name }, onRemind = { _, _ -> }, onRecord = { _, _ -> },
@@ -625,8 +642,11 @@ class GuideRecompositionTest {
     @Test fun m9_programmes_tardifs_le_focus_initial_ne_vole_pas_les_jours() {
         holdData = true
         mount()
+        // L'utilisateur est allé lui-même sur « Demain » (une touche pressée sur l'écran : ▶ puis ◀ entre les pastilles).
         rule.onNode(hasText("Demain") and hasClickAction()).performSemanticsAction(SemanticsActions.RequestFocus)
         rule.waitForIdle()
+        press(Key.DirectionRight); press(Key.DirectionLeft)
+        assertEquals("Demain", focusedText())
         holdData = false
         rule.runOnIdle { vmOnVisible(lastVisible) }
         rule.waitForIdle()
@@ -661,5 +681,177 @@ class GuideRecompositionTest {
         rule.waitForIdle()
         assertEquals(setOf(3L), probe.rows.keys)
         assertEquals("aucune case affichée ne change : aucune recomposée", emptyMap<Long, Int>(), probe.cells)
+    }
+
+    // ── Ouverture (constat sur la box) : programmes ASYNCHRONES, focus par défaut tombé sur « Hier » sans touche. ──
+
+    private fun openWithLateProgrammes(defaultChip: String) {
+        holdData = true
+        mount()
+        // Focus par défaut posé par l'écran hôte sur l'élément en haut au début (aucune touche pressée).
+        rule.onNode(hasText(defaultChip) and hasClickAction()).performSemanticsAction(SemanticsActions.RequestFocus)
+        rule.waitForIdle()
+        holdData = false
+        rule.runOnIdle { vmOnVisible(lastVisible) }
+        rule.waitForIdle()
+    }
+
+    @Test fun ouverture_programmes_tardifs_sans_touche_le_focus_va_sur_la_premiere_case_et_l_en_tete_est_renseigne() {
+        openWithLateProgrammes("Hier")
+        val f = focusedText()
+        assertTrue("focus attendu sur une case de la chaîne 1, trouvé : $f", f.startsWith("P1-"))
+        val title = f.substringBefore(" / ")
+        rule.onNode(hasText(title) and !hasClickAction()).assertExists()   // en-tête : le programme focalisé
+    }
+
+    @Test fun ouverture_programmes_tardifs_en_arabe_le_focus_va_sur_la_premiere_case() {
+        rtl = true
+        openWithLateProgrammes("Hier")
+        assertTrue("focus : ${focusedText()}", focusedText().startsWith("P1-"))
+    }
+
+    // ── I-1 : il y a toujours un élément focalisé. ──
+
+    @Test fun i1a_jour_precedent_sans_aucun_programme_le_focus_va_sur_revenir_a_maintenant() {
+        mount()
+        focusOn(windowOf(4)[1].title)
+        press(Key.MediaRewind)   // hier : rien (programmes purgés)
+        assertEquals(-1, day)
+        rule.onNode(hasText("Aucun programme pour cette période", substring = true)).assertExists()
+        assertEquals("Revenir à maintenant", focusedText())
+    }
+
+    @Test fun i1b_toutes_les_chaines_depuis_le_message_le_focus_va_sur_une_case() {
+        hole = chans.map { it.id }.toSet()
+        group = "c"
+        mount()
+        assertEquals("focus initial sur le message", "Revenir à maintenant", focusedText())
+        press(Key.DirectionRight)
+        assertEquals("▶ va sur le bouton voisin (I-4)", "Toutes les chaînes", focusedText())
+        press(Key.Enter)
+        assertEquals(CATEGORY_ALL, group)
+        assertTrue("focus attendu sur une case de la grille revenue : ${focusedText()}", focusedText().startsWith("P1-"))
+    }
+
+    @Test fun i1c_reimport_qui_decale_le_debut_du_programme_focalise_le_focus_reste_sur_la_meme_chaine_a_la_meme_heure() {
+        mount()
+        val t = windowOf(4)[1]
+        focusOn(t.title)
+        // Guide corrigé de 5 minutes : nouveau début, nouvel identifiant.
+        programmes = programmes.mapValues { (id, l) -> if (id != 4L) l else l.map { if (it.startMs == t.startMs) it.copy(id = 4_999_001, startMs = t.startMs + 5 * 60_000L, title = "${t.title} corrigé") else it } }
+        rule.waitForIdle()
+        assertFocusOn("${t.title} corrigé")
+    }
+
+    // ── I-2 : un repli ne vole jamais un focus que l'utilisateur a déplacé. ──
+
+    @Test fun i2_droite_au_bord_puis_haut_aussitot_le_focus_reste_sur_les_jours() {
+        gap = setOf(4L)   // le programme suivant est loin : la case focalisée quitte la fenêtre au décalage
+        windowStart = at(0, 0)
+        mount()
+        val lastBefore = all.getValue(4).last { it.endMs <= at(1, 0) }
+        focusOn(lastBefore.title)
+        rule.mainClock.autoAdvance = false
+        rule.onRoot().performKeyInput { keyDown(Key.DirectionRight); keyUp(Key.DirectionRight) }
+        rule.onRoot().performKeyInput { keyDown(Key.DirectionUp); keyUp(Key.DirectionUp) }
+        repeat(10) { rule.mainClock.advanceTimeByFrame() }
+        rule.mainClock.autoAdvance = true
+        rule.waitForIdle()
+        val f = focusedText()
+        assertTrue("le focus doit rester hors de la grille (▲), trouvé : $f", !f.startsWith("P"))
+    }
+
+    @Test fun haut_vers_les_jours_n_est_jamais_repris() {
+        mount()
+        focusOn(windowOf(1)[1].title)
+        press(Key.DirectionUp)
+        val f = focusedText()
+        assertTrue("▲ depuis la première ligne quitte la grille : $f", !f.startsWith("P"))
+        repeat(5) { rule.mainClock.advanceTimeByFrame() }
+        rule.waitForIdle()
+        assertEquals(f, focusedText())
+    }
+
+    // ── I-3 : trou de 3 h ou plus dans le guide d'une chaîne. ──
+
+    @Test fun i3_trou_de_cinq_heures_droite_saute_sur_le_programme_suivant_de_la_meme_chaine() {
+        gap = setOf(4L)
+        windowStart = at(0, 0)
+        mount()
+        val lastBefore = all.getValue(4).last { it.endMs <= at(1, 0) }
+        val firstAfter = all.getValue(4).first { it.startMs >= at(6, 0) }
+        focusOn(lastBefore.title)
+        press(Key.DirectionRight)
+        assertFocusOn(firstAfter.title)
+        press(Key.DirectionLeft)
+        assertFocusOn(lastBefore.title)
+    }
+
+    // ── I-4 : ◀ ▶ sur les boutons du message naviguent entre eux, sans décaler la fenêtre. ──
+
+    @Test fun i4_message_gauche_droite_entre_les_boutons_sans_decaler_la_fenetre() {
+        hole = chans.map { it.id }.toSet()
+        group = "c"
+        mount()
+        val w = windowStart
+        assertEquals("Revenir à maintenant", focusedText())
+        press(Key.DirectionRight); assertEquals("Toutes les chaînes", focusedText())
+        press(Key.DirectionRight); assertEquals("Toutes les chaînes", focusedText())
+        press(Key.DirectionLeft); assertEquals("Revenir à maintenant", focusedText())
+        repeat(3) { press(Key.DirectionLeft) }
+        assertEquals("Revenir à maintenant", focusedText())
+        assertEquals("la fenêtre n'a pas bougé", w, windowStart)
+        press(Key.DirectionUp)
+        assertTrue("▲ remonte aux pastilles : ${focusedText()}", !focusedText().startsWith("Revenir") && !focusedText().startsWith("Toutes les"))
+    }
+
+    @Test fun i4_message_en_arabe_gauche_va_sur_le_bouton_suivant() {
+        rtl = true
+        hole = chans.map { it.id }.toSet()
+        group = "c"
+        mount()
+        assertEquals("Revenir à maintenant", focusedText())
+        press(Key.DirectionLeft); assertEquals("Toutes les chaînes", focusedText())
+        press(Key.DirectionRight); assertEquals("Revenir à maintenant", focusedText())
+    }
+
+    // ── ◀ à la butée : menu latéral (appui neuf seulement). ──
+
+    @Test fun gauche_a_la_butee_ouvre_le_menu_lateral_mais_pas_avant() {
+        mount()
+        focusOn(windowOf(4).first().title)
+        press(Key.DirectionLeft)   // recule une fois (P4-1 existe)
+        assertEquals("pas encore la butée", 0, startEdge)
+        val first = all.getValue(4).first()
+        assertFocusOn(first.title)
+        press(Key.DirectionLeft)
+        assertEquals("butée : ◀ ouvre le menu", 1, startEdge)
+        press(Key.DirectionRight)
+        assertEquals("▶ (plus tard) n'ouvre rien", 1, startEdge)
+    }
+
+    @Test fun droite_a_la_butee_en_arabe_ouvre_le_menu_lateral() {
+        rtl = true
+        mount()
+        focusOn(windowOf(5).first().title)
+        repeat(6) { press(Key.DirectionRight) }
+        assertTrue("en arabe, ▶ à la butée ouvre le menu : $startEdge", startEdge >= 1)
+    }
+
+    // ── Lignes sans aucun programme ce jour-là : compactes, annoncées, traversées d'un seul appui. ──
+
+    @Test fun ligne_sans_programme_ce_jour_la_compacte_annoncee_et_traversee() {
+        noToday = setOf(3L)
+        mount()
+        rule.onNode(androidx.compose.ui.test.hasContentDescription("Chaîne 3, Pas de programme ce jour-là")).assertExists()
+        focusOn(windowOf(2).first { it.startMs <= at(1, 31) && it.endMs > at(1, 31) }.title)
+        press(Key.DirectionDown)
+        assertTrue("▼ traverse la ligne compacte : ${focusedText()}", focusedText().startsWith("P4-"))
+        press(Key.DirectionUp)
+        assertTrue("▲ revient sur la chaîne 2 : ${focusedText()}", focusedText().startsWith("P2-"))
+        // ◀ ▶ dans la journée : la ligne reste compacte (même critère).
+        focusOn(windowOf(4).last().title)
+        press(Key.DirectionRight); press(Key.DirectionRight)
+        rule.onNode(androidx.compose.ui.test.hasContentDescription("Chaîne 3, Pas de programme ce jour-là")).assertExists()
     }
 }

@@ -142,11 +142,29 @@ class GuideProgrammeCacheTest {
     }
 
     @Test fun plages_de_programmes_la_plage_utile_tient_dans_la_plage_lue_pour_quatre_decalages_de_suite() {
-        val w = ms(21, 1, 0)
+        // Milieu de journée : la plage utile couvre tout le jour, passer minuit demande le jour suivant (voir guideNeededRange).
+        val w = ms(21, 12, 0)
         val (nf, nt) = guideNeededRange(w)
         val (ff, ft) = guideFetchRange(w)
         assertTrue(ff <= nf && ft >= nt)
         // Quatre décalages de 90 min dans un sens ou l'autre restent dans ce qui a été lu.
         for (k in -2..2) { val (a, b) = guideNeededRange(w + k * 90 * 60_000L); assertTrue("décalage $k", ff <= a && b <= ft) }
+    }
+
+    @Test fun plages_de_programmes_tout_le_jour_de_la_fenetre_est_lu() {
+        val w = ms(21, 1, 0)
+        val (nf, nt) = guideNeededRange(w)
+        assertTrue(nf <= ms(21, 0, 0)); assertTrue(nt >= ms(22, 0, 0))
+        val (ff, ft) = guideFetchRange(w)
+        assertTrue(ff <= nf && ft >= nt)
+    }
+
+    @Test fun rien_ce_jour_la_seulement_sans_programme_le_jour_ni_dans_la_fenetre() {
+        fun e(s: Long, en: Long) = EpgEntity(channelId = 1, title = "t", description = null, startMs = s, endMs = en)
+        assertTrue(guideNothingThatDay(emptyList(), ms(21, 12, 0)))
+        assertTrue(guideNothingThatDay(listOf(e(ms(20, 10, 0), ms(20, 11, 0))), ms(21, 12, 0)))
+        assertFalse(guideNothingThatDay(listOf(e(ms(21, 22, 0), ms(21, 23, 0))), ms(21, 1, 0)))
+        // Fenêtre à cheval sur minuit : un programme du lendemain dans la fenêtre compte.
+        assertFalse(guideNothingThatDay(listOf(e(ms(22, 0, 30), ms(22, 1, 0))), ms(21, 23, 30)))
     }
 }

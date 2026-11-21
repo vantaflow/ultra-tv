@@ -581,6 +581,7 @@
     <string name="dg_guide_window_empty">No programmes for this time period.</string>
     <string name="dg_guide_back_to_now">Back to now</string>
     <string name="dg_guide_all_channels">All channels</string>
+    <string name="dg_guide_no_programme_day">No programme that day</string>
     <string name="dg_channel_logos">Channel logos</string>
     <string name="dg_guide_name_width_label">Guide channel column</string>
     <string name="dg_guide_name_width_name_narrow">Narrow</string>

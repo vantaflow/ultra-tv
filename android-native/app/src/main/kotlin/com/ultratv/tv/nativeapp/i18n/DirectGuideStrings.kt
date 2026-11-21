@@ -54,6 +54,8 @@ val DesignStrings.guideGroupEmpty get() = tx(R.string.dg_guide_group_empty)
 val DesignStrings.guideWindowEmpty get() = tx(R.string.dg_guide_window_empty)
 val DesignStrings.guideBackToNow get() = tx(R.string.dg_guide_back_to_now)
 val DesignStrings.guideAllChannels get() = tx(R.string.dg_guide_all_channels)
+// Guide : chaîne sans aucun programme le jour affiché (ligne compacte).
+val DesignStrings.guideNoProgrammeDay get() = tx(R.string.dg_guide_no_programme_day)
 
 // Lisibilité du Guide : logos des chaînes et largeur de la colonne des noms (Réglages › Affichage).
 val DesignStrings.channelLogos get() = tx(R.string.dg_channel_logos)

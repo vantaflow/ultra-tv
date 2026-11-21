@@ -607,6 +607,7 @@
     <string name="dg_guide_window_empty">لا توجد برامج لهذه الفترة.</string>
     <string name="dg_guide_back_to_now">العودة إلى الآن</string>
     <string name="dg_guide_all_channels">كل القنوات</string>
+    <string name="dg_guide_no_programme_day">لا توجد برامج في هذا اليوم</string>
     <string name="dg_channel_logos">شعارات القنوات</string>
     <string name="dg_guide_name_width_label">عمود القنوات في الدليل</string>
     <string name="dg_guide_name_width_name_narrow">ضيّق</string>

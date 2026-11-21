@@ -59,4 +59,15 @@ class TouchGuideCellTest {
 
     @Test fun titreLong_horaireEntier() = check(1f)
     @Test fun titreLong_horaireEntier_tresGrand() = check(1.3f)
+
+    @Test fun ligneSansProgrammeCeJourLa_annonceeEtEstompee() {
+        I18n.init(ApplicationProvider.getApplicationContext())
+        val chan = ChannelEntity(id = 1, providerId = 1, remoteId = "1", name = "Sport 1", logo = null, categoryId = "c", streamUrl = "u", num = 1)
+        rule.setContent {
+            CompositionLocalProvider(LocalTouch provides true, com.ultratv.tv.nativeapp.i18n.LocalDs provides com.ultratv.tv.nativeapp.i18n.designStringsFor(com.ultratv.tv.nativeapp.i18n.AppLang.French)) {
+                TouchNoProgrammeRow(chan, 0, 100.dp, com.ultratv.tv.nativeapp.i18n.LocalDs.current)
+            }
+        }
+        rule.onNode(androidx.compose.ui.test.hasContentDescription("Sport 1, Pas de programme ce jour-là")).assertExists()
+    }
 }

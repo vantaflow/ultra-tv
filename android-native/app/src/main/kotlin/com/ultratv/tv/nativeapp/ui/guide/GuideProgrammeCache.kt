@@ -91,8 +91,33 @@ internal class GuideProgrammeCache(private val maxChannels: Int = 200) {
  */
 internal val GUIDE_CHANNEL_RANGE: Pair<Long, Long> = 0L to Long.MAX_VALUE
 
-/** Plage de programmes chargée pour les lignes visibles quand la fenêtre commence à [windowStart] : la fenêtre et sa voisine de chaque côté. */
-internal fun guideNeededRange(windowStart: Long): Pair<Long, Long> = (windowStart - GUIDE_WINDOW_MS) to (windowStart + 2 * GUIDE_WINDOW_MS)
+/** Début (minuit local) du jour calendaire qui contient [ms]. */
+internal fun guideDayStart(ms: Long): Long = java.util.Calendar.getInstance().apply {
+    timeInMillis = ms; set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0); set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
+}.timeInMillis
+
+/** Fin (minuit suivant, changement d'heure compris) du jour calendaire qui commence à [dayStart]. */
+internal fun guideDayEnd(dayStart: Long): Long = java.util.Calendar.getInstance().apply { timeInMillis = dayStart; add(java.util.Calendar.DAY_OF_YEAR, 1) }.timeInMillis
+
+/**
+ * Plage de programmes chargée pour les lignes visibles quand la fenêtre commence à [windowStart] : la fenêtre et sa voisine de
+ * chaque côté, et TOUT le jour de la fenêtre. « Rien ce jour-là » (ligne compacte) se décide donc sur des données complètes
+ * et ne change pas pendant ◀ ▶ dans la journée ; passer minuit demande le jour suivant (la fenêtre affichée attend sa lecture).
+ */
+internal fun guideNeededRange(windowStart: Long): Pair<Long, Long> {
+    val day = guideDayStart(windowStart)
+    return minOf(windowStart - GUIDE_WINDOW_MS, day) to maxOf(windowStart + 2 * GUIDE_WINDOW_MS, guideDayEnd(day))
+}
 
 /** Plage réellement demandée à la base quand il en manque : la plage utile élargie d'une fenêtre (3 h) de chaque côté, pour que plusieurs décalages de suite n'aient plus rien à lire. */
-internal fun guideFetchRange(windowStart: Long): Pair<Long, Long> = (windowStart - 2 * GUIDE_WINDOW_MS) to (windowStart + 3 * GUIDE_WINDOW_MS)
+internal fun guideFetchRange(windowStart: Long): Pair<Long, Long> {
+    val (from, to) = guideNeededRange(windowStart)
+    return minOf(from, windowStart - 2 * GUIDE_WINDOW_MS) to maxOf(to, windowStart + 3 * GUIDE_WINDOW_MS)
+}
+
+/** La chaîne n'a AUCUN programme le jour de la fenêtre [windowStart] ni dans la fenêtre elle-même ([progs] lus pour ce jour). */
+internal fun guideNothingThatDay(progs: List<EpgEntity>, windowStart: Long): Boolean {
+    val day = guideDayStart(windowStart)
+    val from = minOf(day, windowStart); val to = maxOf(guideDayEnd(day), windowStart + GUIDE_WINDOW_MS)
+    return progs.none { it.endMs > from && it.startMs < to }
+}
