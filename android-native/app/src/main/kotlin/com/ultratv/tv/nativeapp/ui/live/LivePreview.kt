@@ -96,6 +96,23 @@ object LivePreviewPolicy {
         })
     }
 
+    /**
+     * Guide : chaîne visée par l'aperçu. Sans sélection, la première chaîne de la liste (ouverture de l'écran) — sauf au retour
+     * du lecteur plein écran, où la liste restaurée va désigner la chaîne regardée : démarrer la première serait un flux ouvert
+     * pour rien (connexion unique) et un son qui n'est pas celui attendu.
+     */
+    fun <T : Any> guideTarget(selected: T?, first: T?, returningFromPlayer: Boolean): T? = selected ?: first.takeUnless { returningFromPlayer }
+
+    /** Le lecteur plein écran possède encore la session quand le Guide se recompose à son retour (le passage à l'aperçu vient après). */
+    fun returningFromPlayer(owner: LiveOwner): Boolean = owner == LiveOwner.FULLSCREEN
+
+    /**
+     * [decide] après lecture des verrous parentaux ([locked], lecture suspendue du magasin) : aucune décision, donc aucun
+     * flux, tant que la liste des verrous n'est pas connue (un StateFlow encore à sa valeur vide laisserait démarrer une chaîne verrouillée).
+     */
+    suspend fun decideChecked(owner: LiveOwner, playingRow: String?, focusedRow: String, locked: suspend () -> Set<String>): Action =
+        decide(owner, playingRow, focusedRow, focusedRow in locked(), false)
+
     /** Aperçu masqué (réglage) alors qu'un aperçu joue : il s'arrête tout de suite (jamais le plein écran). */
     fun stopWhenDisabled(enabled: Boolean, owner: LiveOwner): Boolean = !enabled && owner == LiveOwner.PREVIEW
 

@@ -695,6 +695,8 @@ private fun NavGraph(nav: androidx.navigation.NavHostController, simpleHome: Boo
         popExitTransition = { ExitTransition.None },
     ) {
         screen(Routes.HOME) {
+            // Mode simple : le drapeau « accueil neuf » posé par le menu n'est pas pour cet écran ; il ne doit pas rester posé pour un futur accueil classique.
+            if (simpleHome) androidx.compose.runtime.remember { com.ultratv.tv.nativeapp.ui.home.HomeFreshStart.consume() }
             if (simpleHome) com.ultratv.tv.nativeapp.ui.simple.SimpleHomeScreen(
                 onNavigate = { route -> nav.navigate(route) },
                 onPlay = { url, title -> nav.navigate(Routes.player(url, title)) },

@@ -5,6 +5,8 @@ import com.ultratv.tv.nativeapp.ui.player.engine.LiveOwner
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import kotlinx.coroutines.async
+import kotlinx.coroutines.test.runCurrent
 import org.junit.Test
 
 class LivePreviewPolicyTest {
@@ -88,5 +90,45 @@ class LivePreviewPolicyTest {
         assertFalse("jamais le plein écran", LivePreviewPolicy.stopWhenDisabled(false, LiveOwner.FULLSCREEN))
         assertFalse(LivePreviewPolicy.stopWhenDisabled(false, LiveOwner.NONE))
         assertFalse(LivePreviewPolicy.stopWhenDisabled(true, LiveOwner.PREVIEW))
+    }
+
+    // ── Retour du lecteur vers le Guide : la chaîne 1 ne joue pas avant la bonne ──
+
+    @Test
+    fun guide_ouvertureNeuve_lAperçuVisePremiereChaine_tantQuAucuneSelection() {
+        assertEquals("1", LivePreviewPolicy.guideTarget(selected = null, first = "1", returningFromPlayer = false))
+        assertEquals("37", LivePreviewPolicy.guideTarget(selected = "37", first = "1", returningFromPlayer = false))
+    }
+
+    @Test
+    fun guide_retourDuLecteur_neVisePasLaPremiereChaine_attendLaSelectionRestauree() {
+        assertEquals(null, LivePreviewPolicy.guideTarget(selected = null, first = "1", returningFromPlayer = true))
+        assertEquals("37", LivePreviewPolicy.guideTarget(selected = "37", first = "1", returningFromPlayer = true))
+    }
+
+    @Test
+    fun guide_retourDuLecteur_seulLePleinEcranEncoreProprietaireLeSignale() {
+        assertTrue(LivePreviewPolicy.returningFromPlayer(LiveOwner.FULLSCREEN))
+        assertFalse("aperçu d'un autre écran (Direct) : ouverture neuve", LivePreviewPolicy.returningFromPlayer(LiveOwner.PREVIEW))
+        assertFalse("rien ne joue : ouverture neuve", LivePreviewPolicy.returningFromPlayer(LiveOwner.NONE))
+    }
+
+    // ── Verrou parental : jamais de démarrage sur une liste de verrous inconnue ──
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test
+    fun guide_chaineVerrouillee_neDemarreJamais_memeSiLesVerrousArriventApresLaPremierePage() = kotlinx.coroutines.test.runTest {
+        val gate = kotlinx.coroutines.CompletableDeferred<Set<String>>()
+        val result = async { LivePreviewPolicy.decideChecked(LiveOwner.NONE, null, "1:7") { gate.await() } }
+        testScheduler.runCurrent()
+        assertFalse("pas de décision (donc pas de flux) tant que les verrous sont inconnus", result.isCompleted)
+        gate.complete(setOf("1:7"))
+        assertEquals(Action.KEEP, result.await())   // rien ne joue : rien à arrêter, et surtout aucun START
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test
+    fun guide_chaineLibre_demarreUneFoisLesVerrousConnus() = kotlinx.coroutines.test.runTest {
+        assertEquals(Action.START, LivePreviewPolicy.decideChecked(LiveOwner.NONE, null, "1:8") { setOf("1:7") })
     }
 }
