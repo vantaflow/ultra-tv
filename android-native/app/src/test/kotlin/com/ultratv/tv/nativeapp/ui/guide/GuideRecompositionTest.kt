@@ -37,6 +37,7 @@ import com.ultratv.tv.nativeapp.ui.common.design
 import com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL
 import com.ultratv.tv.nativeapp.ui.live.DirectCategory
 import com.ultratv.tv.nativeapp.ui.mobile.LocalTouch
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -153,10 +154,10 @@ class GuideRecompositionTest {
     }
 
     /** Compteurs d'un seul appui, et nombre d'images (frames) qui ont recomposé quelque chose. */
-    private class Snap(val rows: Map<Long, Int>, val cells: Map<Long, Int>, val header: Int, val preview: Int, val screen: Int, val frames: Int, val focus: String) {
+    private class Snap(val rows: Map<Long, Int>, val cells: Map<Long, Int>, val header: Int, val preview: Int, val screen: Int, val frames: Int, val focus: String, val detail: String = "") {
         val rowTotal get() = rows.values.sum()
         val cellTotal get() = cells.values.sum()
-        override fun toString() = "images=$frames écran=$screen lignes=$rowTotal(${rows.size}) cases=$cellTotal(${cells.size}) en-tête=$header aperçu=$preview -> focus : $focus"
+        override fun toString() = "images=$frames[$detail] écran=$screen lignes=$rowTotal(${rows.size}) cases=$cellTotal(${cells.size}) en-tête=$header aperçu=$preview -> focus : $focus"
     }
 
     private fun total() = probe.screen + probe.rowTotal + probe.cellTotal + probe.header + probe.preview
@@ -170,17 +171,23 @@ class GuideRecompositionTest {
         rule.mainClock.autoAdvance = false
         rule.onRoot().performKeyInput { keyDown(key); keyUp(key) }
         var frames = 0
-        var last = total()
-        repeat(40) {
-            rule.mainClock.advanceTimeByFrame()
-            val t = total()
-            if (t != last) frames++
-            last = t
+        val detail = StringBuilder()
+        var prev = intArrayOf(0, 0, 0, 0, 0)
+        fun cur() = intArrayOf(probe.screen, probe.rowTotal, probe.cellTotal, probe.header, probe.preview)
+        fun frame() {
+            val c = cur()
+            if (!c.contentEquals(prev)) {
+                frames++
+                detail.append(if (detail.isEmpty()) "" else " | ")
+                    .append(listOf("é", "l", "c", "h", "a").indices.filter { c[it] != prev[it] }.joinToString(" ") { "${listOf("é", "l", "c", "h", "a")[it]}${c[it] - prev[it]}" })
+            }
+            prev = c
         }
+        repeat(40) { rule.mainClock.advanceTimeByFrame(); frame() }
         rule.mainClock.autoAdvance = true
         rule.waitForIdle()
-        if (total() != last) frames++
-        val snap = Snap(HashMap(probe.rows), HashMap(probe.cells), probe.header, probe.preview, probe.screen, frames, focusedText())
+        frame()
+        val snap = Snap(HashMap(probe.rows), HashMap(probe.cells), probe.header, probe.preview, probe.screen, frames, focusedText(), detail.toString())
         println("COMPTEURS $name : $snap")
         return snap
     }
@@ -209,5 +216,52 @@ class GuideRecompositionTest {
         val lastTitle = rangeOf(4, at(1, 0), at(4, 0)).last().title
         focusOn(lastTitle)
         gesture("▶ au bord de la fenêtre", Key.DirectionRight)
+    }
+
+    // ── Plafonds verrouillés (cause 2.1 : l'heure ne fait plus recomposer les lignes ; cause 3.1 : sélection écrite au focus). ──
+
+    private fun channelOf(programId: Long) = programId / 100
+
+    @Test fun plafond_droite_gauche_dans_la_ligne_ne_touche_que_les_deux_cases() {
+        mount()
+        focusOn("P1-2")
+        val r = gesture("▶ dans la ligne", Key.DirectionRight)
+        assertEquals("aucune ligne recomposée", emptySet<Long>(), r.rows.keys)
+        assertEquals("seulement la case quittée et la case atteinte", setOf(102L, 103L), r.cells.keys)
+        assertEquals("l'écran n'est pas recomposé", 0, r.screen)
+        assertTrue("en-tête : une fois au plus (${r.header})", r.header <= 1)
+        val l = gesture("◀ dans la ligne", Key.DirectionLeft)
+        assertEquals(emptySet<Long>(), l.rows.keys)
+        assertEquals(setOf(102L, 103L), l.cells.keys)
+        assertTrue(l.header <= 1)
+    }
+
+    @Test fun plafond_bas_haut_ne_touche_que_les_deux_cases_et_la_ligne_qui_entre() {
+        mount()
+        focusOn("P1-2")
+        var from = focusedId()
+        for (i in 1..9) {
+            val r = gesture("▼ $i", Key.DirectionDown)
+            val to = focusedId()
+            assertTrue("au plus une ligne recomposée (celle qui entre) : ${r.rows.keys}", r.rows.size <= 1)
+            // Toute case recomposée est l'ancienne, la nouvelle, ou appartient à la ligne qui entre.
+            val stray = r.cells.keys.filter { it != from && it != to && channelOf(it) !in r.rows.keys }
+            assertEquals("cases recomposées hors du plan : $stray", emptyList<Long>(), stray)
+            assertTrue("en-tête : une fois au plus (${r.header})", r.header <= 1)
+            from = to
+        }
+        for (i in 1..3) {
+            val r = gesture("▲ $i", Key.DirectionUp)
+            val to = focusedId()
+            assertEquals("▲ dans les lignes déjà composées : aucune ligne", emptySet<Long>(), r.rows.keys)
+            assertEquals(setOf(from, to), r.cells.keys)
+            from = to
+        }
+    }
+
+    private fun focusedId(): Long {
+        val t = focusedText().substringBefore(" / ")   // « Pc-i »
+        val (c, i) = t.removePrefix("P").split("-").map { it.toLong() }
+        return c * 100 + i
     }
 }
