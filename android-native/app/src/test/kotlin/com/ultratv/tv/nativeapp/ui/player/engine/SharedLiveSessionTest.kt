@@ -493,6 +493,7 @@ class SharedLiveSessionTest {
 
     @Test
     fun apercu_sansImage_vueHorsEcran_aucunRepli_niErreur() {
+        shared.gateAudioOnPicture = true   // aperçu du Guide
         shared.preview("1:a", "1:a", "http://a", true, create)
         engines.single().flow.tryEmit(EngineEvent.Ready)
         scope.advanceTimeBy(40_000)
@@ -502,6 +503,7 @@ class SharedLiveSessionTest {
 
     @Test
     fun apercu_erreur_unSeulEssai_etatDErreurSansRepli() {
+        shared.gateAudioOnPicture = true   // aperçu du Guide
         shared.preview("1:a", "1:a", "http://a", true, create)
         engines.single().flow.tryEmit(EngineEvent.Error(PlayErrorKind.DECODER))
         scope.advanceTimeBy(20_000)
@@ -512,6 +514,7 @@ class SharedLiveSessionTest {
 
     @Test
     fun apercu_relanceDeLaMemeChaineMoinsDUneSecondeApres_pasDeSecondeOuverture() {
+        shared.gateAudioOnPicture = true   // aperçu du Guide
         shared.preview("1:a", "1:a", "http://a", true, create)
         engines.single().flow.tryEmit(EngineEvent.Error(PlayErrorKind.DECODER))
         assertEquals(Phase.ERROR, shared.session!!.state.value.phase)
@@ -521,6 +524,7 @@ class SharedLiveSessionTest {
 
     @Test
     fun pleinEcran_garde_les_replis_du_lecteur() {
+        shared.gateAudioOnPicture = true   // aperçu du Guide
         shared.preview("1:a", "1:a", "http://a", true, create)
         firstFrame()
         assertTrue(shared.openFullscreen("1:a", create))
@@ -528,5 +532,11 @@ class SharedLiveSessionTest {
         assertFalse(shared.session!!.previewMode)
         shared.demote()
         assertTrue(shared.session!!.previewMode)
+    }
+
+    @Test
+    fun apercuDuDirect_inchange_garde_les_replis() {
+        shared.preview("1:a", "1:a", "http://a", true, create)
+        assertFalse(shared.session!!.previewMode)
     }
 }

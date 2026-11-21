@@ -114,9 +114,10 @@ class SharedLiveSession(
         // Même chaîne relancée moins d'une seconde après son ouverture (erreur immédiate, double décision) : pas de seconde
         // ouverture du flux (connexion unique chez beaucoup de fournisseurs).
         val now = android.os.SystemClock.uptimeMillis()
-        if (owner == LiveOwner.PREVIEW && cur != null && key == _channelKey.value && now - lastPreviewStartMs < PREVIEW_REOPEN_MIN_MS) return false
+        if (gateAudioOnPicture && owner == LiveOwner.PREVIEW && cur != null && key == _channelKey.value && now - lastPreviewStartMs < PREVIEW_REOPEN_MIN_MS) return false
         val s = cur ?: create().also { session = it }
-        s.previewMode = true
+        // Aperçu du Guide seulement (le Direct garde son comportement) : un seul essai, sans cascade de replis.
+        s.previewMode = gateAudioOnPicture
         lastPreviewStartMs = now
         previewMuted = muted
         // Nouveau flux : l'image affichée (s'il y en avait une) était celle du précédent.
@@ -175,7 +176,7 @@ class SharedLiveSession(
         owner = LiveOwner.PREVIEW
         rowKey = _channelKey.value
         s.muted = previewMutedNow()
-        s.previewMode = true
+        s.previewMode = gateAudioOnPicture
         if (hosts == 0) armOrphan()
     }
 
