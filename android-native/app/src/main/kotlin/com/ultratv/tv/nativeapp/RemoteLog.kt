@@ -37,7 +37,18 @@ object RemoteLog {
     @Volatile var workerUrlOverride: String = ""
 
     private fun workerBase(): String? =
-        WorkerUrl.normalize(WorkerUrl.resolve(workerUrlOverride), allowCleartext = BuildConfig.DEBUG)
+        WorkerUrl.normalize(WorkerUrl.resolve(workerUrlOverride), allowCleartext = BuildConfig.DEBUG)?.takeUnless { blockedUnderTest(it) }
+
+    /**
+     * Tests unitaires (Robolectric) : rien ne part vers un vrai serveur. Depuis l'envoi sans compte, chaque passage de la
+     * suite déposait des centaines de faux plantages « robolectric » dans la télémétrie de production ; seul un serveur
+     * local (celui que le test lance lui-même) est accepté.
+     */
+    internal fun blockedUnderTest(base: String, fingerprint: String? = android.os.Build.FINGERPRINT): Boolean {
+        if (fingerprint != "robolectric") return false
+        val host = runCatching { java.net.URI(base).host }.getOrNull()?.lowercase() ?: return true
+        return host != "localhost" && host != "127.0.0.1" && host != "[::1]" && host != "::1"
+    }
 
     @Volatile private var tokenStore: DeviceTokenStore? = null
 
