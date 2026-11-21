@@ -59,9 +59,19 @@ object I18n {
             // Chiffres LATINS (nu-latn) aussi pour les textes à nombre (« %1\$d ») : sans cela, l'arabe mêlait des chiffres
             // arabo-indiens (5 textes formatés par les ressources) aux chiffres latins de tout le reste de l'interface, et le
             // résultat changeait selon la version d'Android ou de Java. L'extension ne change pas le dossier `values-xx` choisi.
-            cfg.setLocale(Locale.Builder().setLocale(Locale.forLanguageTag(resolved.code)).setUnicodeLocaleKeyword("nu", "latn").build())
+            cfg.setLocale(resourceLocale(resolved.code))
             ctx.createConfigurationContext(cfg).resources
         }
+    }
+
+    /**
+     * Langue des ressources d'une langue de l'appli. Chiffres latins (nu-latn) à partir d'Android 9 seulement : avant, le
+     * système ne comprend pas l'extension « -u-nu-latn », la prend pour une écriture latine imposée et écarte `values-ar`,
+     * `values-el` ou `values-th` — toute l'interface retomberait en anglais. Sous Android 7 et 8 : langue nue, comme avant.
+     */
+    internal fun resourceLocale(code: String, sdkInt: Int = android.os.Build.VERSION.SDK_INT): Locale {
+        val base = Locale.forLanguageTag(code)
+        return if (sdkInt >= android.os.Build.VERSION_CODES.P) Locale.Builder().setLocale(base).setUnicodeLocaleKeyword("nu", "latn").build() else base
     }
 
     fun string(lang: AppLang, id: Int, vararg args: Any): String {
