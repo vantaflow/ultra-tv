@@ -208,6 +208,13 @@ class PlaybackSession(
      * signalent jamais et restaient en SDR). Fixé par le lecteur avant chaque [start].
      */
     var hdrHint: Boolean = false
+    /**
+     * Aperçu (Guide, Direct) : une absence d'image ou un échec n'enchaîne pas les replis du plein écran (autre décodeur, autre
+     * moteur, nouvel essai) — un seul essai, puis l'état d'erreur (l'encadré garde le logo) ; la relance vient du changement de
+     * chaîne ou du retour du focus. Pas d'image tant que la vidéo n'est pas affichée (vue absente de l'écran) : ce n'est pas
+     * une panne. Fixé par [SharedLiveSession] (vrai pour l'aperçu, faux dès que le plein écran reprend la session).
+     */
+    var previewMode: Boolean = false
     private var hdrDiagJob: Job? = null
     private val reconnectAllowed get() = isLive && liveReconnect
 
@@ -567,6 +574,8 @@ class PlaybackSession(
     private fun armPictureWatchdog(e: PlayerEngine) {
         watchdog = scope.launch {
             delay(8_000)
+            // Aperçu dont la vidéo n'est pas à l'écran : aucune surface où rendre, ce n'est pas une panne du décodeur.
+            while (previewMode && !firstFrame && e.hasVideo && !e.view.isShown && engine === e) delay(2_000)
             if (!firstFrame && e.hasVideo) onError(PlayErrorKind.NO_PICTURE)
         }
     }
@@ -662,6 +671,14 @@ class PlaybackSession(
         startupJob?.cancel()
         errorJob?.cancel()
         errorJob = scope.launch {
+            if (previewMode) {
+                // Aperçu : un seul essai, aucun repli de décodeur ni de moteur (connexion unique, petite box) ; état d'erreur muet.
+                com.ultratv.tv.nativeapp.RemoteLog.warn("play", "preview error kind=$kind engine=${combo.engine} decoder=${combo.decoder} (no fallback)")
+                releaseEngine()
+                presenceJob?.cancel()
+                _state.value = _state.value.copy(phase = Phase.ERROR, error = kind, errorHttp = lastHttp)
+                return@launch
+            }
             if (PlaybackPlanner.shouldRetrySame(kind) && sameRetries < 1) {
                 sameRetries++
                 _notices.tryEmit(Notice.RETRYING)

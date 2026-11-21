@@ -87,6 +87,7 @@ class SharedLiveSession(
     private fun previewMutedNow() = previewMuted || (gateAudioOnPicture && !pictureShown)
 
     private var promoted = false
+    private var lastPreviewStartMs = Long.MIN_VALUE / 2
     private var pendingAdoption = false
     private var hosts = 0
     private var orphanJob: Job? = null
@@ -110,7 +111,13 @@ class SharedLiveSession(
             this.rowKey = rowKey; previewMuted = muted; cur.muted = previewMutedNow()
             return false
         }
+        // Même chaîne relancée moins d'une seconde après son ouverture (erreur immédiate, double décision) : pas de seconde
+        // ouverture du flux (connexion unique chez beaucoup de fournisseurs).
+        val now = android.os.SystemClock.uptimeMillis()
+        if (owner == LiveOwner.PREVIEW && cur != null && key == _channelKey.value && now - lastPreviewStartMs < PREVIEW_REOPEN_MIN_MS) return false
         val s = cur ?: create().also { session = it }
+        s.previewMode = true
+        lastPreviewStartMs = now
         previewMuted = muted
         // Nouveau flux : l'image affichée (s'il y en avait une) était celle du précédent.
         pictureShown = false
@@ -132,6 +139,8 @@ class SharedLiveSession(
         if (!instant) { session?.release(); _channelKey.value = null }
         if (session == null) session = create()
         session?.muted = false
+        // Plein écran : replis habituels du lecteur (autre décodeur, autre moteur).
+        session?.previewMode = false
         owner = LiveOwner.FULLSCREEN; promoted = instant
         orphanJob = scope.launch { delay(adoptTimeoutMs); if (owner == LiveOwner.FULLSCREEN && pendingAdoption) stop() }
         pendingAdoption = true
@@ -151,6 +160,7 @@ class SharedLiveSession(
         if (promoted && !playing) s.release()
         promoted = false; pendingAdoption = false; orphanJob?.cancel()
         s.muted = false
+        s.previewMode = false
         _channelKey.value = key
         return LiveAdoption(s, playing)
     }
@@ -165,6 +175,7 @@ class SharedLiveSession(
         owner = LiveOwner.PREVIEW
         rowKey = _channelKey.value
         s.muted = previewMutedNow()
+        s.previewMode = true
         if (hosts == 0) armOrphan()
     }
 
@@ -196,3 +207,6 @@ class SharedLiveSession(
 /** Session partagée du Direct (null hors de l'activité principale : aperçu vidéo et passage de main désactivés). */
 @UnstableApi
 val LocalSharedLive = staticCompositionLocalOf<SharedLiveSession?> { null }
+
+/** Délai minimal entre deux ouvertures du flux d'aperçu de la MÊME chaîne. */
+private const val PREVIEW_REOPEN_MIN_MS = 1_000L
