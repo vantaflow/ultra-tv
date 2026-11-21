@@ -18,6 +18,7 @@ Chemins abrégés : `K = android-native/app/src/main/kotlin/com/ultratv/tv/nativ
 - Aucune fonction ne disparaît. Le bloc `SHORTCUTS` reste proposé dans Réglages › Accueil.
 - Une préférence `home_order` / `home_hidden` non vide n'est jamais réinterprétée.
 - Performance : listes paresseuses avec `key` et `contentType` ; état de focus local à la carte ; agrandissement au focus par `graphicsLayer` ; voiles dessinés une fois (`drawWithCache`) ; une seule image de fond décodée à la taille affichée ; aucun flou.
+- Navigation à la télécommande logique et stable (voir la section du même nom dans la spec) : l'ordre du focus suit l'ordre visuel ; aucune direction ne perd le focus ni ne le pose sur un élément décoratif ; le focus ne bouge jamais sans touche ; il revient sur l'élément quitté.
 - Appareils modestes (`LocalLowRam` vrai, ou API < 31) : image à la une fixe, sans rotation ni fondu.
 - Tout nouveau texte : `strings.xml` en `values`, `values-fr`, `values-es`, `values-ar` + une ligne par langue dans `app/src/test/resources/i18n-golden/{en,fr,es,ar}.json`. Ce plan n'ajoute qu'un texte (tâche 4).
 - Aucune mention d'une appli concurrente dans le code, les commits, le README ou le CHANGELOG.
@@ -232,7 +233,29 @@ Valeurs : cellule Top 10 de **336** de large ; chiffre Sora ExtraBold **300**, t
 - [ ] **Step 4: Lancer** `--tests '*HeroRotationTest*' --tests '*HomeTvStructureTest*'` → passe.
 - [ ] **Step 5: Commit** — `Accueil TV : image à la une fixe sur les appareils modestes`.
 
-### Task 8: Mesure de fluidité, documents et PR
+### Task 8: Parcours complet de l'accueil à la télécommande
+
+**Files:**
+- Test: Create `T/ui/home/HomeTvNavigationTest.kt` (même montage que `HomeTvStructureTest` ; touches envoyées avec `performKeyInput`, voir `T/ui/settings/StalkerDialogFlowTest.kt` pour un hôte avec menu latéral et `ScreenFocusHost`)
+- Modify: `K/ui/home/HomeScreen.kt` seulement si un test révèle un défaut
+
+**Interfaces:**
+- Consumes: les `testTag` des tâches 3 à 6 (`hero-watch`, `hero-info`, `hero-list`, `home-channel-<id>`, `top10-rank-<n>`) ; ajouter au besoin `home-row-<HomeSectionId>` sur le conteneur de chaque rangée et `home-card-<clé>` sur les affiches.
+
+- [ ] **Step 1: Écrire les tests de parcours** (accueil complet : image à la une, rangée Direct, Top 10, deux rangées d'affiches ; français puis arabe pour le test 2) :
+  1. `descente_complete` : ▼ répété depuis `hero-watch` passe par chaque rangée dans l'ordre affiché, un élément focalisé et entièrement visible à chaque pas ; ▼ sur la dernière rangée ne change rien.
+  2. `ordre_horizontal` : dans une rangée, ▶ avance d'une carte à la fois jusqu'à « Tout voir » ou la dernière carte, où ▶ ne change rien ; ◀ revient carte par carte ; en arabe les directions sont inversées et cohérentes.
+  3. `remontee` : ▲ depuis chaque rangée remonte à la rangée précédente puis à l'image à la une ; ▲ depuis `hero-watch` laisse le focus sur un élément visible.
+  4. `memoire_de_rangee` : focus sur la 3e carte de la rangée Direct, ▼ puis ▲ : le focus revient sur la 3e carte, pas sur la première.
+  5. `rien_de_decoratif` : sur tout le parcours des tests 1 à 3, le nœud focalisé n'est jamais `home-hero`, `home-clock`, un `top10-rank-<n>` ni un point de pagination.
+  6. `donnees_qui_changent` : focus posé sur une affiche ; les rangées sont remplacées par une nouvelle liste contenant la même affiche (nouvelle instance de `HomeRows`) et l'image à la une change : le même élément reste focalisé.
+  7. `retour_sur_l_accueil` : focus sur une affiche, l'accueil quitte la composition puis y revient (comme après une fiche, avec l'état sauvegardé) : le focus est sur la même affiche et `hero-watch` ne le reprend pas.
+- [ ] **Step 2: Lancer** `--tests '*HomeTvNavigationTest*'`. Un test qui échoue révèle un vrai défaut de navigation.
+- [ ] **Step 3: Corriger** chaque défaut dans `HomeScreen.kt` par le plus petit changement possible (`focusProperties`, `focusRestorer`, `focusGroup`, clé stable), en gardant les correctifs existants. Si un point ne peut pas être testé sous Robolectric, l'écrire dans le rapport avec ce qui garantit le comportement dans le code, plutôt qu'un test qui n'affirme rien.
+- [ ] **Step 4: Lancer** `--tests '*HomeTv*' --tests '*HomeRenderTest*' --tests '*StalkerDialogFlowTest*'` → passe.
+- [ ] **Step 5: Commit** — `Accueil TV : parcours à la télécommande vérifié par des tests`.
+
+### Task 9: Mesure de fluidité, documents et PR
 
 **Files:**
 - Modify: `CHANGELOG.md` (section « Non publié »), `README.md`, `README.fr.md` (description de l'accueil si elle cite la grille de raccourcis), `docs/screenshots/{fr,en,ar}/home*.png`

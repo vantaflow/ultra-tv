@@ -125,6 +125,31 @@ Décidé par l'auteur du document, à corriger si besoin :
 - **Messages d'erreur du lecteur** (écran 19) : `PlayErrorText` et `ErrorPanel`, livrés en 1.3.72 ; le lot 5 ne change
   que la mise en page (chaîne nommée au-dessus du titre).
 
+## Navigation à la télécommande : logique et stable, exigence de premier rang
+
+Demande explicite du propriétaire pendant l'exécution du premier lot. Comme la performance, c'est une condition
+d'acceptation de chaque lot, vérifiée par des tests qui envoient de vraies touches.
+
+Logique :
+- ▲ ▼ changent de rangée ou de bloc, ◀ ▶ parcourent ; l'ordre du focus suit l'ordre visuel, y compris en arabe (droite à
+  gauche) ;
+- depuis n'importe quel élément, chaque direction mène à un élément visible ou ne fait rien : jamais de focus perdu, hors
+  écran, ou sur un élément décoratif (image, voile, pastille, heure, chiffre du Top 10) ;
+- ◀ au début d'une rangée ouvre le menu latéral, et ▶ depuis le menu revient sur l'élément quitté ;
+- Retour remonte d'un niveau : il ferme un panneau, puis quitte l'écran ; il ne ferme jamais deux niveaux d'un coup.
+
+Stable :
+- le focus ne bouge jamais sans touche : ni quand l'image à la une change, ni quand une rangée se met à jour (synchro,
+  programme qui change, image qui arrive) ;
+- en revenant sur un écran, le focus est sur l'élément quitté ; en revenant sur une rangée, sur la carte quittée ;
+- la position de défilement suit le focus sans saut : l'élément focalisé est entièrement visible, la rangée ne se recale
+  pas toute seule ;
+- le focus initial d'un écran est toujours le même élément, donné une seule fois par visite.
+
+Chaque lot ajoute, pour son écran, un test de parcours : focus initial, les quatre directions depuis les éléments de
+bord, aller-retour avec le menu latéral, retour après ouverture d'une fiche ou d'un panneau, et mise à jour des données
+pendant que le focus est posé.
+
 ## Performance et fluidité : exigence de premier rang
 
 Demande explicite du propriétaire à la validation de ce document : les performances et la fluidité doivent rester au
