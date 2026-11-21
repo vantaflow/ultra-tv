@@ -117,6 +117,12 @@ object MediaLibraryLogic {
         }
     }
 
+    /**
+     * Rangée « Reprendre » : une tuile par titre, la plus récente d'abord, au plus [max]. Deux épisodes entamés d'une même
+     * série donnent chacun la tuile de la série : sans dédoublonnage la rangée portait deux clés identiques et plantait.
+     */
+    fun resumeTiles(started: List<Tile>, max: Int): List<Tile> = started.distinctBy { it.isSeries to it.id }.take(max)
+
     /** Rangée d'affiches : titres en cours d'abord, puis derniers ajouts, sans doublon, au plus [max]. */
     fun pickTiles(progressed: List<Tile>, latest: List<Tile>, max: Int): List<Tile> =
         (progressed + latest).distinctBy { it.isSeries to it.id }.take(max)

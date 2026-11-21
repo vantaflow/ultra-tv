@@ -62,7 +62,7 @@ fun ShareDevicesDialog(devices: List<CloudDevice>, selfId: String?, initial: Lis
             Text(C.shareTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 36.spx, maxLines = 1)
             LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(10.design)) {
                 item { CheckRow(C.allDevices, all) { all = !all } }
-                items(devices, key = { it.id }) { d ->
+                items(devices.distinctBy { it.id }, key = { it.id }) { d ->
                     val self = d.id == selfId
                     CheckRow(CloudSyncLogic.deviceDisplayName(d) + if (self) " (${C.thisOne})" else "", all || d.id in picked, enabled = !all && !self) {
                         picked = if (d.id in picked) picked - d.id else picked + d.id

@@ -153,6 +153,8 @@ fun SimpleCatalogScreen(kind: CatalogKind, onOpen: (Long) -> Unit, onBack: () ->
         val first = remember { FocusRequester() }
         var hasFocus by remember { mutableStateOf(false) }
         RequestInitialFocus(first, hasFocus = { hasFocus }, key = items.itemCount > 0)
+        // Même garde que le catalogue : un doublon passager de la pagination (synchro en cours) ne doit pas planter la grille.
+        val safeKey = com.ultratv.tv.nativeapp.ui.common.rememberSafeItemKey(items) { it.id }
         LazyVerticalGrid(
             // TV : colonnes adaptatives (5 en taille Grande, 6 en Moyenne, 7 en Petite) : le zoom du mode simple montre plus d'affiches.
             if (touch) GridCells.Fixed(3) else GridCells.Adaptive(140.dp),
@@ -160,7 +162,7 @@ fun SimpleCatalogScreen(kind: CatalogKind, onOpen: (Long) -> Unit, onBack: () ->
             contentPadding = PaddingValues(top = 12.design, bottom = 24.design),
             horizontalArrangement = Arrangement.spacedBy(36.design), verticalArrangement = Arrangement.spacedBy(36.design),
         ) {
-            items(items.itemCount, key = { i -> items.getOrNull(i)?.id ?: "p$i" }) { i ->
+            items(items.itemCount, key = safeKey) { i ->
                 val it = items.getOrNull(i) ?: return@items
                 FocusSurface(onClick = { onOpen(it.id) }, shape = RoundedCornerShape(28.design), bg = androidx.compose.ui.graphics.Color.Transparent, focusedBg = androidx.compose.ui.graphics.Color.Transparent, ringWidth = 8.design, focusedScale = 1.03f, modifier = if (i == 0) Modifier.focusRequester(first) else Modifier) { _ ->
                     // Marge sous l'affiche : l'anneau de sélection (8) et l'arrondi ne rognent plus le titre ni l'année.
