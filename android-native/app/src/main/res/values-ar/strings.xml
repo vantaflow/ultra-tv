@@ -604,6 +604,9 @@
     <string name="dg_guide_group_title">مجموعة القنوات</string>
     <string name="dg_guide_group_pill">المجموعة: %1$s</string>
     <string name="dg_guide_group_empty">لا توجد قناة في هذه المجموعة لها دليل في هذه الفترة.</string>
+    <string name="dg_guide_window_empty">لا توجد برامج لهذه الفترة.</string>
+    <string name="dg_guide_back_to_now">العودة إلى الآن</string>
+    <string name="dg_guide_all_channels">كل القنوات</string>
     <string name="dg_channel_logos">شعارات القنوات</string>
     <string name="dg_guide_name_width_label">عمود القنوات في الدليل</string>
     <string name="dg_guide_name_width_name_narrow">ضيّق</string>

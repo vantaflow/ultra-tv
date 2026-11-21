@@ -580,6 +580,9 @@
     <string name="dg_guide_group_title">Groupe de chaînes</string>
     <string name="dg_guide_group_pill">Groupe : %1$s</string>
     <string name="dg_guide_group_empty">Aucune chaîne de ce groupe n\'a de guide sur cette période.</string>
+    <string name="dg_guide_window_empty">Aucun programme pour cette période.</string>
+    <string name="dg_guide_back_to_now">Revenir à maintenant</string>
+    <string name="dg_guide_all_channels">Toutes les chaînes</string>
     <string name="dg_channel_logos">Logos des chaînes</string>
     <string name="dg_guide_name_width_label">Colonne des chaînes du guide</string>
     <string name="dg_guide_name_width_name_narrow">Étroite</string>

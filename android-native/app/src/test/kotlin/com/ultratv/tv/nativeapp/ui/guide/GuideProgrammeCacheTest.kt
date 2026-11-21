@@ -63,11 +63,13 @@ class GuideProgrammeCacheTest {
         assertEquals(setOf(1L, 2L), c.snapshot().keys)
     }
 
-    @Test fun une_chaine_sans_programme_est_marquee_chargee_sans_rien_publier() {
+    @Test fun une_chaine_sans_programme_est_publiee_une_fois_comme_lue_et_vide() {
         val c = GuideProgrammeCache()
-        assertFalse("rien d'affichable : pas de republication", c.put(listOf(7), 0, 6 * h, emptyList()))
+        assertTrue("première lecture : publiée (« lue, rien à cette heure »)", c.put(listOf(7), 0, 6 * h, emptyList()))
         assertEquals(emptyList<Long>(), c.missing(listOf(7), 0, 6 * h))
-        assertEquals(emptyMap<Long, List<EpgEntity>>(), c.snapshot())
+        assertEquals(mapOf(7L to emptyList<EpgEntity>()), c.snapshot())
+        c.invalidate()
+        assertFalse("relue toujours vide : rien à republier", c.put(listOf(7), 0, 6 * h, emptyList()))
     }
 
     @Test fun invalidate_marque_a_recharger_sans_effacer_les_listes_affichees() {
