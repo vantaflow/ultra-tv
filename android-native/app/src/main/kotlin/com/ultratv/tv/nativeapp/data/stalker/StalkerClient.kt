@@ -84,6 +84,26 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
         .followRedirects(true)
         .build()
 
+    /**
+     * Petits appels de LECTURE (poignée de main, profil et `do_auth` déclenchés par eux, create_link, set_played, présence,
+     * programme court) : connexion 5 s, lecture 8 s, appel complet 10 s. Un portail muet ne bloque plus « Chargement » des
+     * minutes. Les listes du catalogue (synchro) gardent le client ci-dessus, sans délai global.
+     */
+    private val okShort: OkHttpClient = ok.newBuilder()
+        .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(8, java.util.concurrent.TimeUnit.SECONDS)
+        .callTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
+
+    /** Marque de contexte : les requêtes faites dessous (session comprise) passent par [okShort]. */
+    internal object ShortCalls : kotlin.coroutines.AbstractCoroutineContextElement(ShortCallsKey)
+    internal object ShortCallsKey : kotlin.coroutines.CoroutineContext.Key<ShortCalls>
+
+    private suspend fun client(): OkHttpClient = if (kotlinx.coroutines.currentCoroutineContext()[ShortCallsKey] != null) okShort else ok
+
+    /** Délais (ms) du client des petits appels de lecture : connexion, lecture, appel complet (vérifiés par les tests). */
+    internal val shortTimeoutsMs: Triple<Int, Int, Int> get() = Triple(okShort.connectTimeoutMillis, okShort.readTimeoutMillis, okShort.callTimeoutMillis)
+
     /** Connexion à un portail : adresse saisie, MAC normalisée, identifiants facultatifs. */
     data class Account(
         val portal: String, val mac: String, val login: String = "", val password: String = "",
@@ -266,12 +286,15 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
             .build()
     }
 
-    private suspend fun get(a: Account, api: String, token: String?, params: List<Pair<String, String>>): String = withContext(Dispatchers.IO) {
-        ok.newCall(request(a, api, token, params)).execute().use { resp ->
+    private suspend fun get(a: Account, api: String, token: String?, params: List<Pair<String, String>>): String {
+      val http = client()
+      return withContext(Dispatchers.IO) {
+        http.newCall(request(a, api, token, params)).execute().use { resp ->
             // Pas d'URL dans le message : elle contient la MAC.
             if (!resp.isSuccessful) throw HttpStatusException(resp.code)
             resp.body?.string().orEmpty()
         }
+      }
     }
 
     private suspend fun raw(a: Account, s: Session, params: List<Pair<String, String>>): String = get(a, s.api, s.token, params)
@@ -508,7 +531,11 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
      * Lien de lecture à durée de vie courte (`create_link`), demandé au moment de jouer. Le préfixe de lecteur
      * (« ffmpeg », « auto ») est retiré. Échec du portail : la commande elle-même si elle est déjà une adresse jouable.
      */
-    suspend fun createLink(p: ProviderEntity, type: String, cmd: String, series: Int? = null, chId: String? = null): String {
+    suspend fun createLink(p: ProviderEntity, type: String, cmd: String, series: Int? = null, chId: String? = null): String = withContext(ShortCalls) {
+        createLinkShort(p, type, cmd, series, chId)
+    }
+
+    private suspend fun createLinkShort(p: ProviderEntity, type: String, cmd: String, series: Int?, chId: String?): String {
         if (type != "series") return createLinkAs(p, if (type == "vod") "vod" else "itv", cmd, series, chId)
         // Épisode du module `type=series` : la plupart des portails le servent par `vod/create_link`, les autres par
         // `series/create_link`. Premier refus : second module essayé ; échec des deux : la première erreur.
@@ -556,7 +583,7 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
      * les autres appels. Certains portails n'activent la session de lecture qu'après cet appel.
      */
     suspend fun setPlayed(p: ProviderEntity, channelId: String) {
-        call(accountOf(p), listOf("type" to "itv", "action" to "set_played", "itv_id" to channelId))
+        withContext(ShortCalls) { call(accountOf(p), listOf("type" to "itv", "action" to "set_played", "itv_id" to channelId)) }
     }
 
     /** [createLink], puis les en-têtes de lecture (jeton à jour : la session existe après l'appel). */
@@ -586,14 +613,14 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
      * que les autres appels. Le résultat (événements du portail) est ignoré.
      */
     suspend fun watchdog(p: ProviderEntity) {
-        call(accountOf(p), listOf("type" to "watchdog", "action" to "get_events", "cur_play_type" to "1", "event_active_id" to "0"))
+        withContext(ShortCalls) { call(accountOf(p), listOf("type" to "watchdog", "action" to "get_events", "cur_play_type" to "1", "event_active_id" to "0")) }
     }
 
     private fun cookie(a: Account) = "mac=${enc(a.mac)}; stb_lang=en; timezone=UTC"
 
     /** Programme court d'une chaîne (`itv/get_short_epg`). */
     suspend fun shortEpg(p: ProviderEntity, channelRemoteId: String, channelLocalId: Long): List<EpgEntity> =
-        StalkerParse.shortEpg(channelLocalId, call(accountOf(p), listOf("type" to "itv", "action" to "get_short_epg", "ch_id" to channelRemoteId, "size" to "10")))
+        StalkerParse.shortEpg(channelLocalId, withContext(ShortCalls) { call(accountOf(p), listOf("type" to "itv", "action" to "get_short_epg", "ch_id" to channelRemoteId, "size" to "10")) })
 
     /** Abonnement (`account_info/get_main_info`) ; null si le portail est injoignable. */
     suspend fun fetchAccount(p: ProviderEntity): XtreamAccount? = runCatching {

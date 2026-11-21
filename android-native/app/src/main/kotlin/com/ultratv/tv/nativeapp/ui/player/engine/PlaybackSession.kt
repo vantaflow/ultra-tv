@@ -11,6 +11,7 @@ import com.ultratv.tv.nativeapp.data.stalker.StalkerPlayLog
 import com.ultratv.tv.nativeapp.data.stalker.StreamOpen
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,6 +71,16 @@ private const val STARTUP_SLOW_MS = 25_000L
 /** Plafond absolu d'un démarrage qui progresse (VOD lente) : au-delà, même vivant, il est jugé figé. */
 private const val STARTUP_MAX_MS = 90_000L
 
+/**
+ * Plafond de la DEMANDE DE LIEN (portail Stalker : poignée de main + create_link ; serveur multimédia ; NAS) depuis l'appui :
+ * direct 12 s, film ou épisode 20 s (un épisode Stalker peut demander deux modules, `vod` puis `series`, 10 s chacun).
+ * Global pour l'appui tant qu'aucun lien n'a été obtenu (une nouvelle tentative après un refus rapide ne rouvre pas 12 s
+ * de plus) ; ensuite, par appel (repli de moteur, reconnexion du direct). La phase moteur garde son propre délai
+ * ([STARTUP_MS], prolongé tant que le chargement progresse) : un flux 4K lent à démarrer n'est pas coupé par ce plafond.
+ */
+internal const val OPEN_LIVE_MS = 12_000L
+internal const val OPEN_VOD_MS = 20_000L
+
 @UnstableApi
 class PlaybackSession(
     private val ctx: Context,
@@ -104,6 +115,8 @@ class PlaybackSession(
     private val presence: (suspend (String) -> Unit)? = null,
     private val presenceIntervalMs: Long = 120_000L,
     private val engineFactory: (EngineKind, EngineConfig) -> PlayerEngine = { k, c -> if (k == EngineKind.EXO) ExoEngine(ctx, c) else VlcEngine(ctx, c) },
+    /** Horloge monotone (ms) du plafond de la demande de lien ; temps virtuel dans les tests. */
+    private val nowMs: () -> Long = { android.os.SystemClock.elapsedRealtime() },
 ) {
     private val _state = MutableStateFlow(SessionState())
     val state: StateFlow<SessionState> = _state.asStateFlow()
@@ -155,6 +168,12 @@ class PlaybackSession(
     /** Dernier code HTTP vu et début de la lecture en cours : journal des reconnexions Stalker. */
     private var lastHttp: Int? = null
     private var playedSinceMs = 0L
+    /** Échéance de la demande de lien de l'appui en cours ([OPEN_LIVE_MS] / [OPEN_VOD_MS]) ; 0 = un lien a été obtenu. */
+    private var openDeadlineMs = 0L
+    private val openBudgetMs get() = if (isLive) OPEN_LIVE_MS else OPEN_VOD_MS
+
+    /** Appui (lancement, « Réessayer », choix manuel) : le plafond de la demande de lien repart de maintenant. */
+    private fun armOpenDeadline() { openDeadlineMs = if (needsOpener) nowMs() + openBudgetMs else 0L }
 
     // Diagnostic du flux (Réglages du lecteur › Statistiques) : mesures du flux en cours, remises à zéro à chaque ouverture.
     private var diagStartMs = 0L
@@ -270,6 +289,7 @@ class PlaybackSession(
 
     private fun begin(url: String, channelKey: String?, resumeMs: Long, found: com.ultratv.tv.nativeapp.data.m3u.StreamProps?) {
         this.url = url; this.key = channelKey; this.resumeMs = resumeMs
+        armOpenDeadline()
         this.props = found?.takeIf { it.isProtected }
         tried = mutableSetOf(); sameRetries = 0; manualSwitch = false
         hdrKind = null; hdrSwitched = false; hdrSurfaceTrial = false; hdrDiagJob?.cancel()
@@ -340,9 +360,18 @@ class PlaybackSession(
      */
     private suspend fun openNow(reconnecting: Boolean = false): StreamOpen? {
         if (!needsOpener) return StreamOpen(url)
+        // Plafond (voir OPEN_LIVE_MS) : reste de l'échéance de l'appui tant qu'aucun lien n'a été obtenu, sinon par appel.
+        val budget = if (!reconnecting && openDeadlineMs > 0L) minOf(openDeadlineMs - nowMs(), openBudgetMs) else openBudgetMs
+        // La demande tourne À CÔTÉ de l'attente : un appel réseau bloquant (OkHttp) n'est pas interruptible, l'attente si.
+        // Elle est annulée en sortie (délai, zap, fermeture) ; son résultat tardif est ignoré.
+        val holder = kotlinx.coroutines.SupervisorJob()
+        val pending = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.currentCoroutineContext().minusKey(Job) + holder).async { opener(url) }
         return try {
+            val o = (if (budget > 0L) kotlinx.coroutines.withTimeoutOrNull(budget) { pending.await() } else null)
+                ?: return openTimedOut(budget.coerceAtLeast(0L), reconnecting)
             // Jamais d'adresse stalker:// au moteur (il ne sait pas l'ouvrir → « problème réseau ») : un opener qui la rend telle quelle est un échec.
-            opener(url).also { if (StalkerLink.isStalker(it.url)) throw com.ultratv.tv.nativeapp.data.stalker.StalkerLinkException("unresolved") }
+            o.also { if (StalkerLink.isStalker(it.url)) throw com.ultratv.tv.nativeapp.data.stalker.StalkerLinkException("unresolved") }
+                .also { openDeadlineMs = 0L }
         } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (t: Throwable) {
             if (isStalkerUrl) {
                 android.util.Log.i("UltraPlay", StalkerPlayLog.openFailed(t))
@@ -357,11 +386,36 @@ class PlaybackSession(
                 }, StalkerPlayLog.httpOf(t), logged = true,
             )
             null
+        } finally {
+            holder.cancel()
         }
     }
 
+    /**
+     * Demande de lien sans réponse dans le plafond. Direct qui jouait (reconnexion) : compte comme un essai de reconnexion
+     * raté, la reconnexion bornée continue. Sinon : écran d'erreur « le flux ne démarre pas » TOUT DE SUITE, sans nouvelle
+     * tentative ni repli (chacun rouvrirait une attente). Journal sans adresse ni identifiant.
+     */
+    private fun openTimedOut(budget: Long, reconnecting: Boolean): StreamOpen? {
+        val line = "open timeout ms=$budget live=$isLive stalker=$isStalkerUrl reconnect=${reconnecting || (reconnectAllowed && everPlayed)}"
+        android.util.Log.i("UltraPlay", line)
+        com.ultratv.tv.nativeapp.RemoteLog.warn("play", line)
+        if (reconnecting || (reconnectAllowed && everPlayed)) {
+            if (reconnecting) reconnectJob = null   // sinon reconnectLive croit la reconnexion en cours et ne fait rien
+            onError(PlayErrorKind.NETWORK, null, logged = true)
+            return null
+        }
+        network.onError()
+        startupJob?.cancel(); errorJob?.cancel()
+        releaseEngine()
+        presenceJob?.cancel()
+        if (diagErrors.size < 20) diagErrors += StreamDiagnostic.ErrorEvent(PlayErrorKind.START_TIMEOUT, null)
+        _state.value = _state.value.copy(phase = Phase.ERROR, error = PlayErrorKind.START_TIMEOUT, errorHttp = null, buffering = false)
+        return null
+    }
+
     /** « Réessayer » / retour sur l'appli : tout repart de zéro (sinon, compteur à 8 = écran d'erreur à la 1re coupure). */
-    fun retry() { tried = mutableSetOf(); sameRetries = 0; reconnects = 0; everPlayed = false; launch(combo) }
+    fun retry() { tried = mutableSetOf(); sameRetries = 0; reconnects = 0; everPlayed = false; armOpenDeadline(); launch(combo) }
 
     /** « Recharger » pendant une mise en mémoire tampon : relance le même flux (VOD : à la position courante, direct : même chaîne). */
     fun reload() {
@@ -373,7 +427,7 @@ class PlaybackSession(
     /** Changement manuel (pilule « Lecteur ») : on le mémorise tout de suite pour cette chaîne. */
     fun switchTo(c0: Combo) {
         val c = PlaybackPlanner.manualCombo(c0, isProtected)   // flux protégé : le choix VLC est ignoré
-        manualSwitch = true; tried = mutableSetOf(); combo = c; if (!isProtected) key?.let { memory.remember(it, c, null) }; launch(c)
+        manualSwitch = true; tried = mutableSetOf(); combo = c; if (!isProtected) key?.let { memory.remember(it, c, null) }; armOpenDeadline(); launch(c)
     }
 
     /** Choix manuel de la piste audio : appliqué, puis sa langue est retenue pour ce titre (jamais l'identifiant de piste). */
@@ -384,7 +438,7 @@ class PlaybackSession(
         if (lang != null) key?.let { memory.rememberAudioLang(it, lang) }
     }
 
-    fun setBufferPreset(p: BufferPreset) { presetOverride = p; key?.let { memory.remember(it, null, p) }; launch(combo) }
+    fun setBufferPreset(p: BufferPreset) { presetOverride = p; key?.let { memory.remember(it, null, p) }; armOpenDeadline(); launch(combo) }
 
     /** Ouvre [u] sur [e] : en flux protégé, avec ses propriétés de licence. */
     private fun loadOn(e: PlayerEngine, u: String = url, resume: Long = resumeMs) {

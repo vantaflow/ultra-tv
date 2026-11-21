@@ -68,6 +68,24 @@ class StalkerClientTest {
     private fun provider(password: String = "") = ProviderEntity(id = 5, name = "P", kind = "STALKER", baseUrl = portal().trimEnd('/'), username = mac, password = password)
     private fun client(store: StalkerEndpointStore = StalkerEndpointStore.inMemory()) = StalkerClient(OkHttpClient(), store)
 
+    /**
+     * S2 : petits appels de lecture en délais courts (5 s / 8 s / 10 s), listes du catalogue inchangées. Portail local qui
+     * met 9 s à répondre : create_link échoue au délai de lecture (8 s) au lieu d'attendre ; la liste des genres, elle,
+     * attend sa réponse (synchro inchangée).
+     */
+    @Test fun lienDeLecture_delaisCourts_listesDuCatalogueInchangees() = runBlocking {
+        assertEquals(Triple(5_000, 8_000, 10_000), client().shortTimeoutsMs)
+        routes["itv/create_link"] = { json("""{"js":{"cmd":"ffmpeg http://127.0.0.1/s/1.ts"}}""").setHeadersDelay(9, java.util.concurrent.TimeUnit.SECONDS) }
+        routes["itv/get_genres"] = { json("""{"js":[{"id":"1","title":"Infos"}]}""").setHeadersDelay(9, java.util.concurrent.TimeUnit.SECONDS) }
+        val c = client()
+        val t0 = System.nanoTime()
+        val failure = runCatching { c.createLink(provider(), "itv", "ch1") }.exceptionOrNull()
+        val ms = (System.nanoTime() - t0) / 1_000_000
+        assertTrue("create_link doit échouer sur délai, obtenu : $failure", failure is java.io.InterruptedIOException)
+        assertTrue("échec en moins de 9 s (délai de lecture 8 s), mesuré $ms ms", ms < 9_000)
+        assertEquals(1, c.genres(provider()).size)
+    }
+
     @Test fun sonde_trouveLoadPhp_memoriseEtEnvoieLesEnTetesMag() = runBlocking {
         val store = StalkerEndpointStore.inMemory()
         val api = client(store).probe(StalkerClient.Account(portal(), mac))
