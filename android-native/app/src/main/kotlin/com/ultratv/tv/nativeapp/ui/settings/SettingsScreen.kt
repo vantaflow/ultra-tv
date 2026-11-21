@@ -952,6 +952,7 @@ private fun AboutPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, app:
     SettingsCard {
         // Dons (Ko-fi) : en tête de la rubrique, discret (une ligne comme les autres).
         SupportRow(D)
+        PaymentRow(D)
         PrefRow(D.version, com.ultratv.tv.nativeapp.BuildConfig.VERSION_NAME) { }
         PrefRow(D.checkUpdates, msg.orEmpty()) {
             scope.launch {

@@ -120,10 +120,10 @@ fun SwitchPrefRow(label: String, on: Boolean, modifier: Modifier = Modifier, hin
  * Téléphone : la ligne grandit avec son texte (libellé sur 2 lignes, aide sur 3) au lieu d'une hauteur fixe qui coupait
  * les libellés longs ; TV : hauteur fixe inchangée.
  */
-private fun Modifier.settingsRowHeight(touch: Boolean, px: Int): Modifier =
+internal fun Modifier.settingsRowHeight(touch: Boolean, px: Int): Modifier =
     if (touch) this.heightIn(min = px.designT) else this.height(px.designT)
 
-private fun settingsRowInner(touch: Boolean): Modifier =
+internal fun settingsRowInner(touch: Boolean): Modifier =
     if (touch) Modifier.fillMaxWidth().padding(horizontal = 32.design, vertical = 14.design) else Modifier.fillMaxSize().padding(horizontal = 32.design)
 
 /** Titre de rubrique (Sora 36) avec description d'une ligne facultative. */
