@@ -54,6 +54,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.testTag
+import com.ultratv.tv.nativeapp.ui.design.imageScrims
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ultratv.tv.nativeapp.ui.design.Text
@@ -234,8 +236,8 @@ fun HomeScreen(
 }
 
 /**
- * Accueil TV sans ViewModel (rendu testable) : en-tête (salutation, sources, heure), « À la une » + raccourcis, puis les
- * rangées. Les rangées arrivent toutes prêtes ([HomeRows]) ; [emptyTop] dessine l'encart des états sans « À la une »
+ * Accueil TV sans ViewModel (rendu testable) : « À la une » en image plein écran (titre et boutons dessinés dessus, heure en haut à droite) ou, sans
+ * lui, l'en-tête (salutation, sources, heure) ; puis les rangées (raccourcis compris, quand l'utilisateur les affiche). Les rangées arrivent toutes prêtes ([HomeRows]) ; [emptyTop] dessine l'encart des états sans « À la une »
  * (aucune source, erreur, chargement) et [sportRow] la rangée « Sport en direct » quand la rubrique est activée.
  */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -278,9 +280,8 @@ internal fun HomeTvContent(
             !listState.isScrollInProgress && (listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0)
         }.collect { off -> if (off) { if (animsOff) listState.scrollToItem(0) else listState.animateScrollToItem(0) } }
     }
-    // Raccourcis à côté de « À la une » (maquette) ; sans « À la une » ils gardent leur rangée à part.
-    val embedShortcuts = slot == HomeTopSlot.HERO && hero != null && HomeSectionId.SHORTCUTS in rows.order
-    val order = remember(rows, embedShortcuts) { if (embedShortcuts) rows.order.filter { it != HomeSectionId.SHORTCUTS } else rows.order }
+    // Raccourcis : une rangée comme les autres, seulement si l'utilisateur les affiche (masqués par défaut sur TV).
+    val order = rows.order
     val sportAnchor = if (HomeSectionId.CHANNELS in order) HomeSectionId.CHANNELS else order.lastOrNull()
     val sportTile = if (sportOn) SportTile(sportLive, onGoSport) else null
     val stats = remember(providerCount, rows.shortcuts, D) {
@@ -302,17 +303,18 @@ internal fun HomeTvContent(
         ) {
             item(key = "top", contentType = slot.name) {
                 CompositionLocalProvider(LocalBringIntoViewSpec provides inheritedSpec) {
-                    Column(Modifier.onFocusChanged { topFocusFlag[0] = it.hasFocus; topHasFocus = it.hasFocus }.padding(start = HomeStart, top = 44.design, end = 72.design), verticalArrangement = Arrangement.spacedBy(30.design)) {
-                        HomeGreeting(clock, stats)
-                        if (slot == HomeTopSlot.HERO) {
-                            if (hero != null) Row(Modifier.fillMaxWidth().height(420.design), horizontalArrangement = Arrangement.spacedBy(28.design)) {
-                                Hero(
-                                    hero, heroExtras, onWatch = onWatchHero, onInfo = onInfoHero, takeFocus = !heroFocusDone, onFocused = onHeroFocused, onFocusTop = scrollTop,
-                                    index = heroIndex, count = heroCount, modifier = Modifier.weight(1f).fillMaxHeight(),
-                                )
-                                if (embedShortcuts) ShortcutGrid(rows.shortcuts, sportTile, onShortcut, Modifier.width(420.design).fillMaxHeight())
-                            }
-                        } else if (slot != HomeTopSlot.NONE) emptyTop()
+                    Column(Modifier.onFocusChanged { topFocusFlag[0] = it.hasFocus; topHasFocus = it.hasFocus }) {
+                        if (slot == HomeTopSlot.HERO && hero != null) {
+                            // Image pleine largeur de la zone de contenu : aucune marge horizontale sur cet élément.
+                            Hero(
+                                hero, heroExtras, onWatch = onWatchHero, onInfo = onInfoHero, takeFocus = !heroFocusDone, onFocused = onHeroFocused, onFocusTop = scrollTop,
+                                index = heroIndex, count = heroCount, clock = clock, modifier = Modifier.fillMaxWidth().height(HeroHeight).testTag("home-hero"),
+                            )
+                        } else Column(Modifier.padding(start = HomeStart, top = 44.design, end = 72.design), verticalArrangement = Arrangement.spacedBy(30.design)) {
+                            // Salutation seulement sans image « À la une » (avec elle, l'heure se lit sur l'image).
+                            HomeGreeting(clock, stats)
+                            if (slot != HomeTopSlot.NONE && slot != HomeTopSlot.HERO) emptyTop()
+                        }
                     }
                 }
             }
@@ -337,6 +339,19 @@ private val HomeStart get() = 56.design
 /** Tuile « Sport » des raccourcis (rubrique activée) : [live] directs en cours (null = inconnu), [onClick] ouvre l'écran Sport. */
 private class SportTile(val live: Int?, val onClick: () -> Unit)
 
+/** Hauteur de l'image « À la une » (maquette). */
+private val HeroHeight get() = 600.design
+
+/** Texte posé sur l'image « À la une » : clair dans les deux thèmes (l'image est toujours voilée de sombre). */
+private val HeroInk = Color(0xFFF4F5F7)
+private val HeroInk2 = Color(0xFFD5D8DE)
+
+/** Heure : l'horloge est lue ICI (State non déballé plus haut) ; seule cette feuille se recompose chaque minute. */
+@Composable
+private fun HomeClock(clock: State<Long>, color: Color, modifier: Modifier = Modifier) {
+    Text(EpgClock.wall(clock.value), color = color, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 30.spx, maxLines = 1, softWrap = false, modifier = modifier.testTag("home-clock"))
+}
+
 /** Salutation selon l'heure, sources et compteurs, puis l'heure à droite (l'horloge est lue ICI : seul ce bandeau se recompose). */
 @Composable
 private fun HomeGreeting(clock: State<Long>, stats: String) {
@@ -344,11 +359,11 @@ private fun HomeGreeting(clock: State<Long>, stats: String) {
     val now = clock.value
     val hour = remember(now / 60_000L) { java.util.Calendar.getInstance().apply { timeInMillis = now }.get(java.util.Calendar.HOUR_OF_DAY) }
     val word = when { hour in 5..11 -> D.greetMorning; hour in 12..17 -> D.greetAfternoon; else -> D.greetEvening }
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.design)) {
+    Row(Modifier.fillMaxWidth().testTag("home-greeting"), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.design)) {
         Text(word, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 34.spx, maxLines = 1, softWrap = false)
         if (stats.isNotEmpty()) Text("· $stats", color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
         Spacer(Modifier.weight(1f))
-        Text(EpgClock.wall(now), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 30.spx, maxLines = 1, softWrap = false)
+        HomeClock(clock, Ux.Text)
     }
 }
 
@@ -505,22 +520,10 @@ private fun shortcutIcon(id: ShortcutId): String = when (id) {
     ShortcutId.GUIDE -> Icons.Guide
 }
 
-/** Six raccourcis en grille de deux colonnes à droite de « À la une » (une seule colonne de hauteur fixe : pas de liste paresseuse). */
-@Composable
-private fun ShortcutGrid(items: List<ShortcutUi>, sport: SportTile?, onSelect: (ShortcutId) -> Unit, modifier: Modifier) {
-    val tiles = remember(items, sport != null) { shortcutDisplay(items, sport != null).chunked(2) }
-    Column(modifier.focusGroup(), verticalArrangement = Arrangement.spacedBy(14.design)) {
-        for (pair in tiles) Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.design)) {
-            for (sc in pair) ShortcutTile(sc, sport, Modifier.weight(1f).fillMaxHeight(), onSelect)
-            if (pair.size == 1) Spacer(Modifier.weight(1f))
-        }
-    }
-}
-
-/** Rangée de raccourcis quand « À la une » est absent (aucun titre, chargement…) : une ligne, tuiles à largeurs égales. */
+/** Rangée de raccourcis (quand l'utilisateur les affiche) : une ligne, tuiles à largeurs égales. */
 @Composable
 private fun ShortcutsRow(items: List<ShortcutUi>, sport: SportTile?, onSelect: (ShortcutId) -> Unit) {
-    Row(Modifier.homeRow().padding(end = 96.design), horizontalArrangement = Arrangement.spacedBy(16.design)) {
+    Row(Modifier.homeRow().padding(end = 96.design).testTag("home-shortcuts"), horizontalArrangement = Arrangement.spacedBy(16.design)) {
         shortcutDisplay(items, sport != null).forEach { sc -> ShortcutTile(sc, sport, Modifier.weight(1f).height(110.design), onSelect) }
     }
 }
@@ -579,36 +582,41 @@ private fun Section(title: String, content: @Composable () -> Unit) {
 @Composable
 private fun Hero(
     h: HeroItem, extras: State<Map<String, HeroExtras>>, onWatch: (HeroItem) -> Unit, onInfo: (HeroItem) -> Unit,
-    takeFocus: Boolean, onFocused: () -> Unit, onFocusTop: () -> Unit, index: Int = 0, count: Int = 1, modifier: Modifier = Modifier,
+    takeFocus: Boolean, onFocused: () -> Unit, onFocusTop: () -> Unit, clock: State<Long>, index: Int = 0, count: Int = 1, modifier: Modifier = Modifier,
 ) = com.ultratv.tv.nativeapp.ui.design.NoTextWrap {
     // Bandeau de hauteur fixe : pas de ligne de plus (les boutons « Regarder / Plus d'infos » étaient écrasés).
-    HeroBody(h, extras, onWatch, onInfo, takeFocus, onFocused, onFocusTop, index, count, modifier)
+    HeroBody(h, extras, onWatch, onInfo, takeFocus, onFocused, onFocusTop, clock, index, count, modifier)
 }
 
 @Composable
 private fun HeroBody(
     h: HeroItem, extras: State<Map<String, HeroExtras>>, onWatch: (HeroItem) -> Unit, onInfo: (HeroItem) -> Unit,
-    takeFocus: Boolean, onFocused: () -> Unit, onFocusTop: () -> Unit, index: Int, count: Int, modifier: Modifier,
+    takeFocus: Boolean, onFocused: () -> Unit, onFocusTop: () -> Unit, clock: State<Long>, index: Int, count: Int, modifier: Modifier,
 ) {
     val D = LocalDs.current
     val requester = remember { FocusRequester() }
     var focused by remember { mutableStateOf(false) }
     if (takeFocus) RequestInitialFocus(requester, hasFocus = { focused })
-    // Carte arrondie : image à droite, panneau de texte de 640 px à gauche sur un voile simple (aucun flou).
-    Box(modifier.clip(RoundedCornerShape(32.design)).background(Ux.Tone)) {
+    val rtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
+    // Thème clair : le voile bas ne fond PAS vers la page claire (le texte clair y serait illisible) ; l'image garde un bord bas sombre.
+    val pageColor = if (Ux.themeLight) HeroScrimBase else Ux.Bg
+    // Image pleine largeur, titre et boutons dessinés dessus (aucun panneau opaque) ; voiles dessinés une fois (aucun flou).
+    Box(modifier.background(HeroScrimBase)) {
         // UNE seule image de fond. Fondu léger entre deux titres (coupé net si les animations sont désactivées).
         androidx.compose.animation.Crossfade(targetState = h, animationSpec = com.ultratv.tv.nativeapp.ui.design.LocalAnimations.current.let { if (it.rotateHero) it.tween<Float>(500) else androidx.compose.animation.core.snap<Float>() }, label = "hero") { cur ->
             Box(Modifier.fillMaxSize()) {
                 if (cur.backdrop != null) {
-                    BackdropImage(cur.backdrop, Modifier.fillMaxSize(), decodeSize = DpSize(1232.design, 420.design))
+                    BackdropImage(cur.backdrop, Modifier.fillMaxSize(), decodeSize = DpSize(1920.design, HeroHeight))
+                    Box(Modifier.fillMaxSize().imageScrims(rtl = rtl, pageColor = pageColor))
                 } else {
-                    // Sans image paysage : l'affiche 2:3 à droite, dans une zone fixe (jamais étirée).
-                    PosterImage(cur.poster, cur.title, Modifier.align(Alignment.CenterEnd).padding(end = 120.design).height(360.design).width(240.design), radius = 20, kind = if (cur.kind == HeroItem.Kind.SERIES) com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV else com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, decodeSize = DpSize(240.design, 360.design))
+                    // Sans image paysage : voiles puis l'affiche 2:3 à droite, dans une zone fixe de 300 × 450 (jamais étirée, jamais voilée).
+                    Box(Modifier.fillMaxSize().imageScrims(rtl = rtl, pageColor = pageColor))
+                    PosterImage(cur.poster, cur.title, Modifier.align(Alignment.BottomEnd).padding(end = 120.design, bottom = 60.design).height(450.design).width(300.design), radius = 20, kind = if (cur.kind == HeroItem.Kind.SERIES) com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV else com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, decodeSize = DpSize(300.design, 450.design))
                 }
             }
         }
         Column(
-            Modifier.align(Alignment.CenterStart).fillMaxHeight().width(640.design).background(Ux.Bg.copy(alpha = 0.72f)).padding(horizontal = 48.design, vertical = 44.design),
+            Modifier.align(Alignment.BottomStart).padding(start = HomeStart, bottom = 52.design).widthIn(max = 820.design),
             verticalArrangement = Arrangement.spacedBy(14.design, Alignment.Bottom),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
@@ -620,19 +628,21 @@ private fun HeroBody(
             }
             HeroTitle(h, extras)
             HeroPlot(h, extras)
-            Row(Modifier.padding(top = 6.design), horizontalArrangement = Arrangement.spacedBy(12.design)) {
+            Row(Modifier.padding(top = 6.design), horizontalArrangement = Arrangement.spacedBy(14.design)) {
                 PillButton(
-                    D.watch, onClick = { onWatch(h) }, heightPx = 58, hPadPx = 28, fontPx = 19, weight = FontWeight.Bold,
+                    D.watch, onClick = { onWatch(h) }, heightPx = 76, hPadPx = 40, fontPx = 28, weight = FontWeight.Bold,
                     iconPath = Icons.Play, iconFill = true, bg = Ux.Cta,
-                    modifier = Modifier.focusRequester(requester).onFocusChanged { focused = it.isFocused; if (it.isFocused) { onFocused(); onFocusTop() } },
+                    modifier = Modifier.testTag("hero-watch").focusRequester(requester).onFocusChanged { focused = it.isFocused; if (it.isFocused) { onFocused(); onFocusTop() } },
                 )
                 PillButton(
-                    D.homeMoreInfo, onClick = { onInfo(h) }, heightPx = 58, hPadPx = 26, fontPx = 19, weight = FontWeight.Bold,
-                    modifier = Modifier.onFocusChanged { if (it.isFocused) onFocusTop() },
+                    D.homeMoreInfo, onClick = { onInfo(h) }, heightPx = 76, hPadPx = 36, fontPx = 26, weight = FontWeight.Bold,
+                    modifier = Modifier.testTag("hero-info").onFocusChanged { if (it.isFocused) onFocusTop() },
                 )
             }
         }
-        // Points de pagination (titre affiché / nombre de titres « à la une »).
+        // Heure en haut à droite de l'image (lue dans HomeClock : l'écran ne se recompose pas chaque minute).
+        HomeClock(clock, HeroInk, Modifier.align(Alignment.TopEnd).padding(top = 44.design, end = 72.design))
+        // Points de pagination (titre affiché / nombre de titres « à la une »), en bas à droite de l'image.
         if (count > 1) Row(Modifier.align(Alignment.BottomEnd).padding(end = 28.design, bottom = 24.design), horizontalArrangement = Arrangement.spacedBy(10.design)) {
             repeat(count) { i ->
                 Box(Modifier.height(8.design).width(if (i == index) 28.design else 8.design).clip(RoundedCornerShape(4.design)).background(if (i == index) Color.White else Color.White.copy(alpha = 0.4f)))
@@ -641,6 +651,9 @@ private fun HeroBody(
     }
 }
 
+/** Fond de l'image « À la une » avant son chargement (et derrière l'affiche) : le voile sombre des deux thèmes. */
+private val HeroScrimBase = Color(0xFF0A0C10)
+
 /** « 2013 | Drame | 1 h 41 min » puis pastilles IMDb et Rotten Tomatoes ; les notes arrivent plus tard (State lu ICI seulement). */
 @Composable
 private fun HeroInfoRow(h: HeroItem, extras: State<Map<String, HeroExtras>>) {
@@ -648,20 +661,20 @@ private fun HeroInfoRow(h: HeroItem, extras: State<Map<String, HeroExtras>>) {
     val line = remember(h.key, D) { heroInfoLine(h.year, h.genre, h.runtimeMin?.let { runtimeLabel(it, D.hourShort, D.minShort) }) }
     val badges = heroRatingBadges(extras.value[h.key]?.ratings, h.rating)
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
-        if (line.isNotEmpty()) Text(line, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 17.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+        if (line.isNotEmpty()) Text(line, color = HeroInk2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 17.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
         badges.imdb?.let { Text(it, color = Color(0xFF0A0A0C), fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 15.spx, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(6.design)).background(Color(0xFFF5C518)).padding(horizontal = 8.design, vertical = 2.design)) }
-        badges.fallback?.let { Text(it, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 17.spx, maxLines = 1) }
-        badges.rt?.let { Text("\uD83C\uDF45 $it", color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 17.spx, maxLines = 1) }
+        badges.fallback?.let { Text(it, color = HeroInk, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 17.spx, maxLines = 1) }
+        badges.rt?.let { Text("\uD83C\uDF45 $it", color = HeroInk, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 17.spx, maxLines = 1) }
     }
 }
 
 /** Titre du bandeau : logo officiel (Fanart.tv) s'il existe et une fois chargé, sinon le titre texte (State lu ICI seulement). */
 @Composable
 private fun HeroTitle(h: HeroItem, extras: State<Map<String, HeroExtras>>) {
-    com.ultratv.tv.nativeapp.ui.detail.TitleLogo(extras.value[h.key]?.logo, h.title, maxWidth = 540.design, maxHeight = 150.design) {
+    com.ultratv.tv.nativeapp.ui.detail.TitleLogo(extras.value[h.key]?.logo, h.title, maxWidth = 820.design, maxHeight = 200.design) {
         Text(
-            h.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 60.spx, lineHeight = 62.spx,
-            letterSpacing = (-0.75).sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
+            h.title, color = HeroInk, fontFamily = Sora, fontWeight = FontWeight.ExtraBold, fontSize = 96.spx, lineHeight = 98.spx,
+            letterSpacing = (-1.5).sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -670,7 +683,7 @@ private fun HeroTitle(h: HeroItem, extras: State<Map<String, HeroExtras>>) {
 @Composable
 private fun HeroPlot(h: HeroItem, extras: State<Map<String, HeroExtras>>) {
     val text = h.plot?.takeIf { it.isNotBlank() } ?: extras.value[h.key]?.overview
-    if (text != null) Text(text, color = Ux.Text2, fontFamily = Manrope, fontSize = 20.spx, lineHeight = 30.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 920.design))
+    if (text != null) Text(text, color = HeroInk2, fontFamily = Manrope, fontSize = 20.spx, lineHeight = 30.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 820.design))
 }
 
 @Composable
