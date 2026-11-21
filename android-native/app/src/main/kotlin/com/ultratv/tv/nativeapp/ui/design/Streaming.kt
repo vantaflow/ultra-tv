@@ -92,11 +92,11 @@ const val PROGRESS_FILL_TAG = "progress_fill"
 /** Fraction bornée à 0..1 ; NaN vaut 0. */
 fun progressFraction(f: Float): Float = if (f.isNaN()) 0f else f.coerceIn(0f, 1f)
 
-/** Barre de progression de 6 unités : piste blanche à 22 %, remplissage accent. */
+/** Barre de progression de 6 unités : piste (blanc à 22 % par défaut, pour une image), remplissage accent. */
 @Composable
-fun ProgressLine(fraction: Float, modifier: Modifier = Modifier) {
+fun ProgressLine(fraction: Float, modifier: Modifier = Modifier, track: Color = Color.White.copy(alpha = 0.22f)) {
     val f = progressFraction(fraction)
-    Box(modifier.height(6.design).clip(RoundedCornerShape(3.design)).background(Color.White.copy(alpha = 0.22f))) {
+    Box(modifier.height(6.design).clip(RoundedCornerShape(3.design)).background(track)) {
         Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(Ux.Accent).testTag(PROGRESS_FILL_TAG))
     }
 }

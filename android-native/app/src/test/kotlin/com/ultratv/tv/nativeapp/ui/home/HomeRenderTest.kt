@@ -36,6 +36,7 @@ import com.ultratv.tv.nativeapp.ui.components.RAIL_COLLAPSED_PX
 import com.ultratv.tv.nativeapp.ui.design.Ux
 import com.ultratv.tv.nativeapp.ui.mobile.LocalTouch
 import org.junit.After
+import org.junit.Before
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -62,7 +63,9 @@ class HomeRenderTest {
     private val outDir = File("build/outputs/ui-v2").also { it.mkdirs() }
 
     /** Le thème est un état global : toujours remis au sombre, même si un rendu échoue. */
-    @After fun resetTheme() { Ux.themeLight = false }
+    @Before fun fakeImages() { installFakeImageLoader() }
+
+    @After fun resetTheme() { Ux.themeLight = false; resetImageLoader() }
 
     private fun channel(id: Long, num: Int, name: String) =
         ChannelEntity(id = id, providerId = 1, remoteId = "$id", name = name, logo = null, categoryId = null, streamUrl = "u", num = num)
@@ -163,6 +166,10 @@ class HomeRenderTest {
     /** Focus sur « Plus d'infos » dans les deux thèmes : le seul bouton à porter l'anneau doit se lire. */
     @Test fun capture_tv_fr_info_sombre() { render(light = false, file = "home-tv-fr-info.png", sport = false, focusTag = "hero-info") }
     @Test fun capture_tv_fr_info_clair() { render(light = true, file = "home-tv-fr-light-info.png", sport = false, focusTag = "hero-info") }
+
+    /** Focus sur une vignette de la rangée « En direct » dans les deux thèmes : anneau du thème, vignette agrandie. */
+    @Test fun capture_tv_fr_direct_focus_sombre() { render(light = false, file = "home-tv-fr-direct-focus.png", sport = false, focusTag = "home-channel-4") }
+    @Test fun capture_tv_fr_direct_focus_clair() { render(light = true, file = "home-tv-fr-light-direct-focus.png", sport = false, focusTag = "home-channel-4") }
 
     @Test fun capture_tv_en_sombre() { lang = AppLang.English; render(light = false, file = "home-tv-en.png", sport = true) }
     @Test fun capture_tv_ar_sombre() { lang = AppLang.Arabic; render(light = false, file = "home-tv-ar.png", sport = true) }

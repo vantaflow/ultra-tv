@@ -45,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.composed
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.unit.DpSize
@@ -478,22 +479,25 @@ private fun PosterRow(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit)
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 private fun ChannelRow(cards: List<ChannelCardUi>, onPlay: (ChannelEntity) -> Unit, seeAll: String, up: FocusRequester?, onSeeAll: () -> Unit) {
-    // Marge verticale : la carte focalisée grandit de 6 % (haut et bas) et la rangée rogne ce qui dépasse.
     // ▲ depuis n'importe quelle carte, à la sortie du groupe : « Regarder » (sans cela, la recherche géométrique choisit le bouton le plus proche, à droite).
+    val memory = remember { ChannelRowFocus() }
     val rowModifier = if (up != null) Modifier.focusProperties { exit = { d -> if (d == androidx.compose.ui.focus.FocusDirection.Up) up else FocusRequester.Default } }.homeRow() else Modifier.homeRow()
-    LazyRow(rowModifier, horizontalArrangement = Arrangement.spacedBy(20.design), contentPadding = PaddingValues(start = RowBleed, end = 96.design, top = 14.design, bottom = 14.design)) {
-        items(cards.distinctBy { it.channel.id }, key = { it.channel.id }, contentType = { "channel" }) { c -> ChannelCard(c) { onPlay(c.channel) } }
+    LazyRow(
+        rowModifier.testTag("home-channel-row").onFocusChanged { memory.hasFocus = it.hasFocus }, horizontalArrangement = Arrangement.spacedBy(20.design),
+        // Marge verticale : la carte focalisée grandit de 6 % (haut et bas) et la rangée rogne ce qui dépasse.
+        contentPadding = PaddingValues(start = RowBleed, end = 96.design, top = 14.design, bottom = 14.design)) {
+        items(cards.distinctBy { it.channel.id }, key = { it.channel.id }, contentType = { "channel" }) { c -> ChannelCard(c, memory) { onPlay(c.channel) } }
         // « Tout voir » : dernière carte de la rangée (un lien en haut à droite du titre capterait le focus en descendant).
-        item(key = "see-all", contentType = "see-all") { SeeAllCard(seeAll, onSeeAll) }
+        item(key = "see-all", contentType = "see-all") { SeeAllCard(seeAll, memory, onSeeAll) }
     }
 }
 
 /** Dernière carte d'une rangée : ouvre l'écran complet. Même hauteur, même focus que les vignettes de chaîne. */
 @Composable
-private fun SeeAllCard(label: String, onClick: () -> Unit) {
+private fun SeeAllCard(label: String, memory: ChannelRowFocus, onClick: () -> Unit) {
     FocusSurface(
-        onClick = onClick, shape = RoundedCornerShape(16.design), bg = Ux.Card, focusedBg = Ux.Card, focusedScale = 1.06f, ringWidth = 5.design, ringColor = channelRingColor(),
-        modifier = Modifier.width(220.design).height(CHANNEL_CARD_HEIGHT).testTag("home-channel-see-all"),
+        onClick = onClick, shape = RoundedCornerShape(16.design), bg = Ux.Card, focusedBg = Ux.Card, focusedScale = 1.06f, ringWidth = 5.design,
+        modifier = Modifier.width(220.design).height(CHANNEL_CARD_HEIGHT).rowMemory(memory, "see-all").testTag("home-channel-see-all"),
     ) { _ ->
         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
             Text(label, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -792,9 +796,26 @@ private fun ResumeCard(c: ResumeCardUi, onClick: () -> Unit) {
 // Hauteur d'une vignette : cadre qui contient du texte (titre, horaire), donc en unité « designT » (grandit avec la taille de texte choisie).
 private val CHANNEL_CARD_HEIGHT get() = 220.designT
 
-/** Anneau de focus des vignettes : blanc en thème sombre ; en thème clair le blanc se perdrait sur la page, on garde l'anneau d'accent. */
-@Composable
-private fun channelRingColor(): Color? = if (Ux.themeLight) null else Color.White
+/**
+ * Mémoire de la rangée « En direct » : la recherche directionnelle de Compose choisit la carte la plus proche
+ * (focusRestorer ne sert pas aux touches ▲ ▼), donc revenir sur la rangée tombait sur une carte voisine de celle quittée.
+ * Quand le focus est hors de la rangée, seule la dernière carte focalisée reste candidate (si elle est encore composée :
+ * jamais d'impasse). Objet simple lu au moment de la recherche : aucun état Compose, aucune recomposition.
+ */
+private class ChannelRowFocus {
+    var hasFocus = false
+    var last: Any? = null
+    val composed = HashSet<Any>()
+    fun canFocus(key: Any) = hasFocus || last == null || last !in composed || key == last
+}
+
+private fun Modifier.rowMemory(memory: ChannelRowFocus, key: Any): Modifier = composed {
+    androidx.compose.runtime.DisposableEffect(memory, key) { memory.composed += key; onDispose { memory.composed -= key } }
+    this.focusProperties { canFocus = memory.canFocus(key) }.onFocusChanged { if (it.isFocused) memory.last = key }
+}
+
+/** Piste de la progression d'une vignette posée sur la page : jeton du thème (le blanc par défaut de ProgressLine est fait pour une image). */
+internal fun channelTrackColor(): Color = Ux.Text.copy(alpha = 0.10f)
 
 /**
  * Vignette chaîne « En direct maintenant » (392 × 220) : en haut pastille EN DIRECT, logo et nom de la chaîne ; en bas
@@ -802,11 +823,11 @@ private fun channelRingColor(): Color? = if (Ux.themeLight) null else Color.Whit
  * Le focus se lit par l'anneau et l'agrandissement (fond inchangé : les textes gardent leurs jetons).
  */
 @Composable
-private fun ChannelCard(card: ChannelCardUi, onClick: () -> Unit) {
+private fun ChannelCard(card: ChannelCardUi, memory: ChannelRowFocus, onClick: () -> Unit) {
     val c = card.channel
     FocusSurface(
-        onClick = onClick, shape = RoundedCornerShape(16.design), bg = Ux.Card, focusedBg = Ux.Card, focusedScale = 1.06f, ringWidth = 5.design, ringColor = channelRingColor(),
-        modifier = Modifier.width(392.design).height(CHANNEL_CARD_HEIGHT).testTag("home-channel-${c.id}"),
+        onClick = onClick, shape = RoundedCornerShape(16.design), bg = Ux.Card, focusedBg = Ux.Card, focusedScale = 1.06f, ringWidth = 5.design,
+        modifier = Modifier.width(392.design).height(CHANNEL_CARD_HEIGHT).rowMemory(memory, c.id).testTag("home-channel-${c.id}"),
     ) { _ ->
         Row(Modifier.align(Alignment.TopStart).fillMaxWidth().padding(start = 18.design, end = 18.design, top = 16.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
             LiveBadge()
@@ -820,7 +841,7 @@ private fun ChannelCard(card: ChannelCardUi, onClick: () -> Unit) {
                 Text(now, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 26.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (card.timeRange != null) Text(card.timeRange, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            if (card.progress != null) ProgressLine(card.progress, Modifier.align(Alignment.BottomStart).fillMaxWidth())
+            if (card.progress != null) ProgressLine(card.progress, Modifier.align(Alignment.BottomStart).fillMaxWidth(), track = channelTrackColor())
         }
     }
 }

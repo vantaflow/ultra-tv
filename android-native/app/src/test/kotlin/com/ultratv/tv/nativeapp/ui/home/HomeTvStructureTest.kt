@@ -20,6 +20,7 @@ import com.ultratv.tv.nativeapp.ui.design.designT
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.requestFocus
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.height
 import androidx.compose.ui.unit.width
 import androidx.test.core.app.ApplicationProvider
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
+import com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity
 import com.ultratv.tv.nativeapp.i18n.AppLang
 import com.ultratv.tv.nativeapp.i18n.I18n
 import com.ultratv.tv.nativeapp.i18n.LocalDs
@@ -38,6 +40,7 @@ import com.ultratv.tv.nativeapp.ui.common.design
 import com.ultratv.tv.nativeapp.ui.design.Ux
 import com.ultratv.tv.nativeapp.ui.mobile.LocalTouch
 import org.junit.After
+import org.junit.Before
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -58,7 +61,9 @@ import org.robolectric.annotation.GraphicsMode
 class HomeTvStructureTest {
     @get:Rule val rule = createComposeRule()
 
-    @After fun resetTheme() { Ux.themeLight = false }
+    @Before fun fakeImages() { installFakeImageLoader() }
+
+    @After fun resetTheme() { Ux.themeLight = false; resetImageLoader() }
 
     private val heroWithBackdrop = HeroItem(
         kind = HeroItem.Kind.MOVIE, id = 1, title = "Orbite basse", year = 2024, genre = "Science-fiction", rating = 7.8,
@@ -68,9 +73,15 @@ class HomeTvStructureTest {
 
     private fun rows(layout: HomeLayout): HomeRows {
         fun ch(i: Int) = ChannelEntity(id = i.toLong(), providerId = 1, remoteId = "$i", name = "Nova $i", logo = null, categoryId = null, streamUrl = "u", num = i)
+        fun resume(i: Int) = ResumeCardUi(
+            key = "r$i", entry = WatchHistoryEntity(providerId = 1, kind = "MOVIE", remoteId = "$i", title = "Film $i", poster = null, streamUrl = "u"),
+            title = "Film $i", progress = 0.4f, minutesLeft = 30,
+        )
         return HomeRows(
             // Trois chaînes : deux avec programme en cours, une sans (la carte montre alors seulement la chaîne).
             channels = listOf(ChannelCardUi(ch(1), "Esprits criminels", "20:00 – 21:00", 0.6f), ChannelCardUi(ch(2), "Le grand journal", "20:30 – 21:30", 0.3f), ChannelCardUi(ch(3), null)),
+            resume = listOf(resume(1), resume(2)), recentChannels = listOf(resume(3)),
+            newEpisodes = listOf(NewEpisodeCardUi(21, "Les Gardiens du phare", null, 2023, 8.1, 2, 7, 0L, aired = true)),
             shortcuts = shortcutsOf(HomeCounts(channels = 1240, movies = 30435, series = 4028, favorites = 12), emptyList(), null, null),
             layout = layout,
         )
@@ -97,6 +108,8 @@ class HomeTvStructureTest {
                 // Mode clavier (télécommande) : sans lui, les éléments cliquables ne prennent pas le focus.
                 val inputMode = androidx.compose.ui.platform.LocalInputModeManager.current
                 androidx.compose.runtime.SideEffect { inputMode.requestInputMode(androidx.compose.ui.input.InputMode.Keyboard) }
+                // Comme l'écran réel : le bandeau ne reprend plus le focus une fois qu'il l'a eu.
+                val done = remember { mutableStateOf(heroFocusDone) }
                 val clock = remember { mutableLongStateOf(System.currentTimeMillis()) }
                 val extras = remember { mutableStateOf(emptyMap<String, HeroExtras>()) }
                 Box(Modifier.fillMaxSize().background(Ux.Bg)) {
@@ -104,7 +117,7 @@ class HomeTvStructureTest {
                     HomeTvContent(
                         slot = if (current != null) HomeTopSlot.HERO else HomeTopSlot.NONE, hero = current, heroIndex = 0, heroCount = 1, heroExtras = extras,
                         rows = data, providerCount = 3, clock = clock, sportOn = false, sportLive = null,
-                        heroFocusDone = heroFocusDone, onHeroFocused = {},
+                        heroFocusDone = done.value, onHeroFocused = { done.value = true },
                         playHistory = {}, openPoster = {}, playChannel = {}, onShortcut = {}, onGoSport = {},
                         onWatchHero = {}, onInfoHero = {},
                         heroInList = inList, onToggleHeroList = { h -> toggled += h; inList.value = if (h.key in inList.value) inList.value - h.key else inList.value + h.key },
@@ -298,9 +311,13 @@ class HomeTvStructureTest {
 
     @Test fun direct_bas_depuisChaqueBouton_vaSurLaPremiereCarte() {
         setHome(hero = heroWithBackdrop)
+        rule.onNodeWithTag("hero-watch").assertIsFocused()
         press(Key.DirectionDown); rule.onNodeWithTag("home-channel-1").assertIsFocused()
-        press(Key.DirectionUp); press(Key.DirectionRight); press(Key.DirectionDown); rule.onNodeWithTag("home-channel-1").assertIsFocused()
-        press(Key.DirectionUp); press(Key.DirectionRight); press(Key.DirectionDown); rule.onNodeWithTag("home-channel-1").assertIsFocused()
+        press(Key.DirectionUp); rule.onNodeWithTag("hero-watch").assertIsFocused()
+        press(Key.DirectionRight); rule.onNodeWithTag("hero-info").assertIsFocused()
+        press(Key.DirectionDown); rule.onNodeWithTag("home-channel-1").assertIsFocused()
+        press(Key.DirectionUp); press(Key.DirectionRight); press(Key.DirectionRight); rule.onNodeWithTag("hero-list").assertIsFocused()
+        press(Key.DirectionDown); rule.onNodeWithTag("home-channel-1").assertIsFocused()
     }
 
     @Test fun direct_droite_uneCarteALaFois_jusqua_ToutVoir_puisRien_etGaucheRevient() {
@@ -329,11 +346,17 @@ class HomeTvStructureTest {
         val first = rule.onNodeWithTag("home-channel-1").getUnclippedBoundsInRoot()
         val seeAllHeight = rule.onNodeWithTag("home-channel-see-all").getUnclippedBoundsInRoot().height.value
         assertEquals(first.height.value, seeAllHeight, 1f)
-        repeat(4) {
+        val screen = rule.onRoot().getUnclippedBoundsInRoot()
+        repeat(5) {
             val f = rule.onNode(isFocused()).getUnclippedBoundsInRoot()
-            assertTrue("carte coupée à gauche : ${f.left}", f.left.value >= 0f)
-            assertTrue("carte coupée à droite : ${f.right}", f.right.value <= 960f)
-            assertTrue("carte coupée en bas : ${f.bottom}", f.bottom.value <= 540f)
+            val row = rule.onNodeWithTag("home-channel-row").getUnclippedBoundsInRoot()
+            // Agrandissement de 6 % : 3 % de la taille de chaque côté (les bornes non rognées l'ignorent).
+            val mx = f.width.value * 0.03f; val my = f.height.value * 0.03f
+            val l = f.left.value - mx; val r = f.right.value + mx; val t = f.top.value - my; val b = f.bottom.value + my
+            assertTrue("carte agrandie coupée à gauche : $l", l >= screen.left.value && l >= row.left.value)
+            assertTrue("carte agrandie coupée à droite : $r (écran ${screen.right})", r <= screen.right.value && r <= row.right.value)
+            assertTrue("carte agrandie coupée en haut : $t", t >= row.top.value && t >= screen.top.value)
+            assertTrue("carte agrandie coupée en bas : $b (écran ${screen.bottom})", b <= row.bottom.value && b <= screen.bottom.value)
             press(Key.DirectionRight)
         }
     }
@@ -364,5 +387,61 @@ class HomeTvStructureTest {
         rule.onNode(hasText("Nova 1") and inCard, useUnmergedTree = true).assertExists()
         rule.onNode(hasText("Esprits criminels") and inCard, useUnmergedTree = true).assertExists()
         rule.onNode(hasText("20:00 – 21:00") and inCard, useUnmergedTree = true).assertExists()
+    }
+
+    // ───────────── Navigation : cas limites de la rangée ─────────────
+
+    @Test fun direct_sansImageALaUne_haut_gardeLeFocusSurLaRangee() {
+        setHome(hero = null)
+        rule.onNodeWithTag("home-channel-2").requestFocus()
+        rule.waitForIdle()
+        rule.onNodeWithTag("home-channel-2").assertIsFocused()
+        press(Key.DirectionUp)
+        rule.onNodeWithTag("home-channel-2").assertIsFocused()
+    }
+
+    @Test fun direct_memoireDeRangee_basPuisHaut_revientSurLaMemeCarte() {
+        setHome(hero = heroWithBackdrop)
+        press(Key.DirectionDown); press(Key.DirectionRight); press(Key.DirectionRight)
+        rule.onNodeWithTag("home-channel-3").assertIsFocused()
+        press(Key.DirectionDown)
+        rule.onNodeWithTag("home-channel-3").assertIsNotFocused()
+        press(Key.DirectionUp)
+        rule.onNodeWithTag("home-channel-3").assertIsFocused()
+    }
+
+    /** Le montage de test n'a pas de menu latéral : ◀ sur la première carte laisse le focus sur elle. */
+    @Test fun direct_gaucheSurLaPremiereCarte_resteSurElle_sansMenuLateral() {
+        setHome(hero = heroWithBackdrop)
+        press(Key.DirectionDown)
+        press(Key.DirectionLeft)
+        rule.onNodeWithTag("home-channel-1").assertIsFocused()
+    }
+
+    @Test fun direct_haut_depuisUneRangeeBasse_remonteJusquaRegarder_sansBlocage() {
+        setHome(hero = heroWithBackdrop)
+        // Descend jusqu'à la dernière rangée : le bandeau n'est plus composé quand l'accueil a assez défilé.
+        repeat(6) { press(Key.DirectionDown) }
+        rule.onNodeWithTag("hero-watch").assertDoesNotExist()
+        var last = rule.onNode(isFocused()).fetchSemanticsNode().id
+        val trace = mutableListOf<Int>()
+        for (i in 1..12) {
+            press(Key.DirectionUp)
+            if (rule.onAllNodes(hasTestTag("hero-watch")).fetchSemanticsNodes().isNotEmpty() && runCatching { rule.onNodeWithTag("hero-watch").assertIsFocused() }.isSuccess) break
+            val now = rule.onNode(isFocused()).fetchSemanticsNode().id
+            trace += now
+            assertTrue("le focus est resté bloqué au pas $i (éléments : $trace)", now != last)
+            last = now
+        }
+        rule.onNodeWithTag("hero-watch").assertIsFocused()
+    }
+
+    @Test fun direct_pisteDeProgression_estUnJetonDuTheme_pasLeBlancParDefaut() {
+        for (light in listOf(false, true)) {
+            Ux.themeLight = light
+            val t = channelTrackColor()
+            org.junit.Assert.assertNotEquals("piste = blanc par défaut (thème clair : $light)", androidx.compose.ui.graphics.Color.White.copy(alpha = 0.22f), t)
+            assertEquals(Ux.Text.copy(alpha = 0.10f), t)
+        }
     }
 }
