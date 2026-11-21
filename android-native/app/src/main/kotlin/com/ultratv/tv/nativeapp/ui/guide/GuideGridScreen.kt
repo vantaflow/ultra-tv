@@ -625,9 +625,10 @@ private fun GuidePreviewPane(
         LaunchedEffect(shared) { shared.env = pvm.env() }
         LaunchedEffect(pv.sound) { shared.applyPreviewMuted(!pv.sound) }
         LaunchedEffect(shared, pv.delayMs) {
-            // Chaîne du programme focalisé, lue après le délai du réglage ; collectLatest : jamais deux flux.
-            // Première chaîne (ouverture de l'écran, aperçu réactivé) : lancée tout de suite ; les suivantes après la pause.
-            with(com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy) { snapshotFlow { target() }.immediateThenDebounced(guideDelayMs(pv.delayMs)) }.collectLatest { c ->
+            // Chaîne du programme focalisé, lue après le délai ; collectLatest : jamais deux flux.
+            // Première chaîne (ouverture de l'écran, aperçu réactivé) : lancée tout de suite ; ensuite 0,7 s après un arrêt sur
+            // une chaîne, 1,5 s tant que la liste est parcourue (voir [LivePreviewPolicy.immediateThenSettled]).
+            with(com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy) { snapshotFlow { target() }.immediateThenSettled(guideSettledDelayMs(pv.delayMs), guideDelayMs(pv.delayMs)) }.collectLatest { c ->
                 val row = com.ultratv.tv.nativeapp.ui.live.channelKey(c)
                 when (com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.decideChecked(shared.owner, shared.rowKey, row) { vm.lockedKeys() }) {
                     com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.Action.KEEP -> Unit

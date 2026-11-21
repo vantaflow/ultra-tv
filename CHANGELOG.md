@@ -15,6 +15,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Télécommande (TV) : sur l'Accueil, le Guide, le Direct, Films, Séries et les autres écrans du menu, Retour ouvre le menu latéral avec le focus sur l'écran courant, au lieu d'afficher seulement « Maintenez Retour pour quitter ». Menu ouvert, Retour garde la règle d'avant (retour à l'accueil, puis le message de sortie). Fenêtres et sous-niveaux gardent la priorité.
 - Accueil TV : en revenant à l'accueil par le menu latéral, il s'ouvre comme à neuf (liste en haut, bandeau « À la une » entier, focus sur « Regarder », rangées au début). La carte quittée n'est retrouvée qu'au retour d'une fiche ou du lecteur.
 - Guide TV : un réglage « Aperçu : Activé / Désactivé » dans la rangée des jours (même réglage que Réglages › Lecture › Aperçu vidéo dans le Direct). Activé, l'aperçu démarre dès l'ouverture du Guide sur la première chaîne, sans délai, avec le son en même temps que l'image ; désactivé, aucun flux ne démarre et l'encadré montre le logo.
+- Guide TV, télécommande : les déplacements ◀ ▶ ▼ ▲ sont plus fluides (seules les cases touchées sont redessinées, plus tout le guide à chaque arrivée de programmes), ◀ / ▶ au bord de la plage horaire fait défiler le temps en gardant la même chaîne, et l'aperçu de la chaîne démarre plus vite quand on s'arrête dessus (0,7 s au lieu de 1,5 s, toujours 1,5 s tant qu'on parcourt la liste).
 
 ### Corrigé
 - Arabe : les rangées de l'accueil et du catalogue ne sont plus rognées au bord de départ.

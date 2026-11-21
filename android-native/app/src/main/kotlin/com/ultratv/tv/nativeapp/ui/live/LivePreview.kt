@@ -81,6 +81,34 @@ object LivePreviewPolicy {
     const val GUIDE_MIN_DELAY_MS = 1_500L
     fun guideDelayMs(ms: Int): Long = maxOf(delayMs(ms), GUIDE_MIN_DELAY_MS)
 
+    /** Guide : délai après un déplacement ISOLÉ (arrêt sur une chaîne), au moins 0,7 s. */
+    const val GUIDE_SETTLED_DELAY_MS = 700L
+    fun guideSettledDelayMs(ms: Int): Long = maxOf(delayMs(ms), GUIDE_SETTLED_DELAY_MS)
+
+    /**
+     * Guide, délai adaptatif : comme [immediateThenDebounced] (première chaîne tout de suite, la dernière seule retenue), mais
+     * une chaîne atteinte par un déplacement isolé part après [settledMs] ; si au moins 2 changements de chaîne (celui-ci
+     * compris) ont eu lieu dans les [windowMs] précédentes, la liste est en train d'être parcourue et l'aperçu attend
+     * [browsingMs]. Parcourir la liste, même lentement (un appui par seconde), n'ouvre donc aucun flux par appui
+     * (connexion unique chez certains fournisseurs) ; seul le premier déplacement après un arrêt peut partir plus tôt.
+     */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    fun <T : Any> Flow<T?>.immediateThenSettled(
+        settledMs: Long, browsingMs: Long, windowMs: Long = GUIDE_MIN_DELAY_MS,
+        now: () -> Long = { android.os.SystemClock.uptimeMillis() },
+    ): Flow<T> = flow {
+        var first = true   // par collecte : un aperçu réactivé repart tout de suite
+        val moves = ArrayDeque<Long>()
+        emitAll(this@immediateThenSettled.distinctUntilChanged().transformLatest { v ->
+            if (v == null) return@transformLatest
+            val t = now()
+            moves.addLast(t)
+            while (moves.isNotEmpty() && t - moves.first() > windowMs) moves.removeFirst()
+            if (first) first = false else delay(if (moves.size >= 2) browsingMs else settledMs)
+            emit(v)
+        })
+    }
+
     /**
      * Guide : déclencheurs de l'aperçu à partir de la sélection. La PREMIÈRE chaîne non nulle (ouverture de l'écran,
      * réactivation de l'aperçu) part tout de suite ; les suivantes attendent [delayMs] sans nouveau déplacement, la dernière
