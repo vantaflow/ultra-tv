@@ -223,6 +223,11 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
         onWatch = { c -> if ("${c.providerId}:${c.remoteId}" in locked) pinPrompt = c else play(c) },
         onActions = { actionsFor = it },
     ) else Row(Modifier.fillMaxSize()) {
+        // Retour depuis les chaînes ou l'aperçu : focus sur la catégorie en cours (puis Retour racine : menu latéral).
+        val selectedCatFocus = remember { FocusRequester() }
+        val catListFocus = remember { FocusRequester() }
+        var contentFocused by remember { mutableStateOf(false) }
+        LiveBackToCategories(contentFocused, selectedCatFocus, catListFocus)
         // ── Catégories (340) ──
         Column(
             Modifier.width(340.design).fillMaxHeight().padding(start = 48.design, end = 24.design, top = 54.design),
@@ -231,7 +236,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
             Text(D.directTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 40.spx, modifier = Modifier.padding(bottom = 10.design), maxLines = 1)
             val markMoved = Modifier.onPreviewKeyEvent { e -> if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && (e.key == androidx.compose.ui.input.key.Key.DirectionUp || e.key == androidx.compose.ui.input.key.Key.DirectionDown)) userMoved = true; false }
             val focus = LocalFocusManager.current
-            LazyColumn(modifier = markMoved, verticalArrangement = Arrangement.spacedBy(10.design), contentPadding = PaddingValues(bottom = 54.design)) {
+            LazyColumn(modifier = markMoved.focusRequester(catListFocus), verticalArrangement = Arrangement.spacedBy(10.design), contentPadding = PaddingValues(bottom = 54.design)) {
                 // Catégorie répétée par le fournisseur : clés départagées (règle commune), jamais de plantage.
                 val catKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(cats) { it.id }
                 items(cats.size, key = { catKeys[it] }, contentType = { "cat" }) { ci ->
@@ -239,6 +244,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
                     CategoryRow(
                         label = when (c.id) { CATEGORY_FAVORITES -> D.catFavorites; CATEGORY_ALL -> D.catAll; else -> prettyCategoryName(c.name.orEmpty()) },
                         count = c.count, selected = c.id == selected, locked = c.locked,
+                        modifier = if (c.id == selected) Modifier.focusRequester(selectedCatFocus) else Modifier,
                         onFocus = { if (userMoved) vm.selectCategory(c.id) },
                         onClick = { vm.selectCategory(c.id); focus.moveFocus(FocusDirection.Right) },
                     )
@@ -247,6 +253,8 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
         }
         Box(Modifier.width(0.5f.dp1()).fillMaxHeight().background(Ux.Surface))
 
+        // Chaînes + aperçu : un seul suivi du focus (Retour vers les catégories), même mise en page qu'avant.
+        Row(Modifier.weight(1f).fillMaxHeight().onFocusChanged { contentFocused = it.hasFocus }) {
         // ── Chaînes (640) ──
         Column(
             Modifier.width(700.design).fillMaxHeight().padding(horizontal = 32.design).padding(top = 54.design)
@@ -300,6 +308,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
             D = D, modifier = Modifier.weight(1f).fillMaxHeight(),
             video = if (videoSession != null && shared != null) ({ logo -> SharedVideo(videoSession, shared, logo) }) else null,
         )
+        }
     }
 
     pinPrompt?.let { ch ->
@@ -359,13 +368,13 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
 private fun Float.dp1() = androidx.compose.ui.unit.Dp(this)
 
 @Composable
-private fun CategoryRow(label: String, count: Int, selected: Boolean, locked: Boolean, onFocus: () -> Unit, onClick: () -> Unit) {
+private fun CategoryRow(label: String, count: Int, selected: Boolean, locked: Boolean, onFocus: () -> Unit, onClick: () -> Unit, modifier: Modifier = Modifier) {
     FocusSurface(
         onClick = onClick, shape = RoundedCornerShape(16.design),
         bg = if (selected) Ux.Surface2 else Color.Transparent,
         ringWidth = 5.design,
         // Hauteur minimale : un nom de catégorie long passe sur 2 lignes au lieu d'être coupé par « … ».
-        modifier = Modifier.fillMaxWidth().heightIn(min = 64.designT).onFocusChanged { if (it.isFocused) onFocus() },
+        modifier = modifier.fillMaxWidth().heightIn(min = 64.designT).onFocusChanged { if (it.isFocused) onFocus() },
     ) { f ->
         Row(Modifier.fillMaxWidth().heightIn(min = 64.designT).height(androidx.compose.foundation.layout.IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
             if (selected && !f) Box(Modifier.width(4.design).fillMaxHeight().background(Ux.Accent)) else Spacer(Modifier.width(4.design))
@@ -872,5 +881,20 @@ private fun MobilePreview(channel: ChannelEntity?, now: EpgEntity?, favorite: Bo
             PillButton(if (favorite == true) D.removeFavorite else D.addFavorite, onFavorite, heightPx = 88, hPadPx = 36, fontPx = 28)
             PillButton("⋯", onMore, heightPx = 88, hPadPx = 32, fontPx = 28)
         }
+    }
+}
+
+/**
+ * Retour dans la liste des chaînes (TV), comme Films et Séries : focus dans les chaînes ou dans l'aperçu → le focus revient
+ * sur la catégorie EN COURS (à défaut sur la liste des catégories). Focus dans les catégories : ce gestionnaire est
+ * inactif et le Retour racine ouvre le menu latéral. Les fenêtres (enregistrées après) gardent la priorité ; tactile :
+ * inactif. Aucun focus différé : la demande est faite dans l'appui.
+ */
+@Composable
+internal fun LiveBackToCategories(contentFocused: Boolean, selectedCategory: FocusRequester, categoryList: FocusRequester) {
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    androidx.activity.compose.BackHandler(enabled = !touch && contentFocused) {
+        fun tryFocus(r: FocusRequester) = try { r.requestFocus() } catch (e: IllegalStateException) { false }
+        if (!tryFocus(selectedCategory) && !tryFocus(categoryList)) com.ultratv.tv.nativeapp.RemoteLog.warn("live", "retour : aucune catégorie focalisable")
     }
 }
