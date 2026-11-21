@@ -80,7 +80,8 @@ object CatchupFormats {
         val durSec = ((endMs - startMs) / 1000).coerceAtLeast(60)
         val offSec = ((nowMs - startMs) / 1000).coerceAtLeast(0)
         val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = startMs }
-        fun two(n: Int) = "%02d".format(n)
+        // Locale.ROOT : la locale par défaut peut être remise en arabe par le framework, l'adresse serait fausse (replay en échec).
+        fun two(n: Int) = String.format(java.util.Locale.ROOT, "%02d", n)
         val named = mapOf(
             "utc" to startSec.toString(), "start" to startSec.toString(),
             "utcend" to (endMs / 1000).toString(), "end" to (endMs / 1000).toString(),

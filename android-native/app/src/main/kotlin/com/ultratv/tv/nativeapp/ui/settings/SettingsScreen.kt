@@ -164,8 +164,8 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
     val lastSync = syncProvider?.let { maxOf(it.lastLiveSyncAt, it.lastVodSyncAt, it.lastSeriesSyncAt, it.lastEpgSyncAt) } ?: 0L
     val subs = listOf(
         if (providers.isEmpty()) D.setSourcesNone else D.setSourcesCount(providers.size) + (if (kindNames.isEmpty()) "" else " · " + kindNames.joinToString(", ")),
-        if (lastSync <= 0L) D.neverSynced else D.setAgo(ago(D, System.currentTimeMillis() - lastSync)),
-        D.activeDisabled.format(catTotals.enabled, catTotals.disabled),
+        if (lastSync <= 0L) D.neverSynced else D.setAgo(agoText(D, System.currentTimeMillis() - lastSync)),
+        activeDisabledText(D, catTotals.enabled, catTotals.disabled),
         themeLabel(D, pp.theme) + " · " + D.setSportSummary(if (pp.sportSection) D.on else D.offState),
         D.setSubPlayback,
         D.setSubParental,
@@ -632,7 +632,7 @@ private fun SyncPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, onNav
     val extraLabel = com.ultratv.tv.nativeapp.data.xmltv.ExtraEpg.labelOf(p.extraEpg)
         ?: if (isCustom) D.guideCustomLabel(com.ultratv.tv.nativeapp.data.xmltv.GuideAddress.hostOf(p.extraEpg).ifBlank { "…" }) else D.extraGuideOff
     val last = provider?.let { maxOf(it.lastLiveSyncAt, it.lastVodSyncAt, it.lastSeriesSyncAt, it.lastEpgSyncAt) } ?: 0L
-    val subtitle = if (last <= 0L) D.neverSynced else D.lastUpdate.format(ago(D, System.currentTimeMillis() - last), nextText(p.syncMode, p.syncHour, p.syncIntervalHours, last))
+    val subtitle = if (last <= 0L) D.neverSynced else D.lastUpdate.format(agoText(D, System.currentTimeMillis() - last), nextText(p.syncMode, p.syncHour, p.syncIntervalHours, last))
 
     // Téléphone : la barre du haut porte déjà le titre ; état sur toute la largeur puis bouton dessous, et les quatre modes
     // en liste (libellé et description en entier) au lieu de quatre cartes côte à côte tronquées.
@@ -664,7 +664,7 @@ private fun SyncPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, onNav
     }
     SettingsCard {
         SwitchPrefRow(D.wifiOnly, p.syncUnmeteredOnly) { panes.setUnmetered(it) }
-        PrefRow(D.manageCategories, D.activeDisabled.format(totals.enabled, totals.disabled)) { onNavigate("categories") }
+        PrefRow(D.manageCategories, activeDisabledText(D, totals.enabled, totals.disabled)) { onNavigate("categories") }
     }
     if (extraOpen) ChoiceDialog(
         D.extraGuide,
@@ -702,10 +702,14 @@ private fun ContentRow(icon: String, label: String, meta: String, on: Boolean, o
     }
 }
 
-private fun ago(D: DesignStrings, ms: Long): String {
+/** « il y a 5 min » / « il y a 3 h » : langue de l'appli, chiffres latins (jamais la locale par défaut). */
+internal fun agoText(D: DesignStrings, ms: Long): String {
     val m = ms / 60_000
-    return when { m < 1 -> D.minutesShort.format(1); m < 60 -> D.minutesShort.format(m.toInt()); m < 48 * 60 -> D.hoursShort.format((m / 60).toInt()); else -> D.hoursShort.format((m / 60).toInt()) }
+    return when { m < 1 -> D.minutesShort.format(D.locale, 1); m < 60 -> D.minutesShort.format(D.locale, m.toInt()); else -> D.hoursShort.format(D.locale, (m / 60).toInt()) }
 }
+
+/** « 12 actives · 3 désactivées » : langue de l'appli, chiffres latins. */
+internal fun activeDisabledText(D: DesignStrings, enabled: Int, disabled: Int): String = D.activeDisabled.format(D.locale, enabled, disabled)
 
 private fun nextText(mode: String, hour: Int, intervalH: Int, last: Long): String = when (mode) {
     "scheduled" -> com.ultratv.tv.nativeapp.ui.common.EpgClock.hourLabel(hour)
@@ -720,7 +724,7 @@ private fun CategoriesPane(panes: SettingsPanesViewModel, onNavigate: (String) -
     val D = LocalDs.current
     val totals by panes.categoryTotals.collectAsState()
     PaneTitle(D.rubCategories, D.categoriesFooter)
-    SettingsCard { PrefRow(D.manageCategories, D.activeDisabled.format(totals.enabled, totals.disabled)) { onNavigate("categories") } }
+    SettingsCard { PrefRow(D.manageCategories, activeDisabledText(D, totals.enabled, totals.disabled)) { onNavigate("categories") } }
 }
 
 // ───────────────────────── Affichage ─────────────────────────

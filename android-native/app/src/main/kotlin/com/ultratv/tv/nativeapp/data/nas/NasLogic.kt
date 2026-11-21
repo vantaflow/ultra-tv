@@ -206,7 +206,7 @@ object Nas {
             next = ep + 1
             EpisodeEntity(
                 seriesId = seriesRowId, remoteId = rid, season = d.season, episode = ep,
-                title = d.title.ifBlank { "S%02dE%02d".format(d.season, ep) },
+                title = d.title.ifBlank { com.ultratv.tv.nativeapp.i18n.LatinDigits.episodeTag(d.season, ep) },
                 streamUrl = NasLink.build(providerId, d.file.path), container = NasNames.extensionOf(d.file.name).ifEmpty { null }, plot = null,
             )
         }

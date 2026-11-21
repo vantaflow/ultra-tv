@@ -21,7 +21,7 @@ object ProgrammeInfo {
     fun durationLabel(ms: Long): String? {
         if (ms <= 0) return null
         val m = (ms / 60_000).toInt().coerceAtLeast(1)
-        return if (m >= 60) "${m / 60} h ${"%02d".format(m % 60)}" else "$m min"
+        return if (m >= 60) "${m / 60} h ${String.format(java.util.Locale.ROOT, "%02d", m % 60)}" else "$m min"
     }
 
     /** Ligne « Ensuite 21:30 · Titre » ; null sans programme suivant. */

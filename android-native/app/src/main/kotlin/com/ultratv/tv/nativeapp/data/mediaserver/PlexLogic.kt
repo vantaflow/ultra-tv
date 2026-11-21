@@ -187,7 +187,7 @@ object Plex {
     fun durationText(ms: Long?): String? {
         if (ms == null || ms <= 0) return null
         val s = ms / 1000
-        return "%02d:%02d:%02d".format(s / 3600, s / 60 % 60, s % 60)
+        return String.format(java.util.Locale.ROOT, "%02d:%02d:%02d", s / 3600, s / 60 % 60, s % 60) // persisté : chiffres latins
     }
 
     fun toMovie(providerId: Long, base: String, it: Item, categoryId: String?): MovieEntity = MovieEntity(

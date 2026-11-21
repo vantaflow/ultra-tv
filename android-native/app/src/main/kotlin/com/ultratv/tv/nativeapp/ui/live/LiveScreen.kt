@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.live
 
+import com.ultratv.tv.nativeapp.i18n.locale
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.foundation.background
@@ -376,7 +377,7 @@ private fun CategoryRow(label: String, count: Int, selected: Boolean, locked: Bo
                     style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content),
                 )
                 Spacer(Modifier.width(8.design))
-                Text(java.text.NumberFormat.getIntegerInstance().format(count), color = if (f) Ux.OnFocus2 else if (selected) Ux.Text else Ux.Muted, fontFamily = Manrope, fontSize = 24.spx, maxLines = 1)
+                Text(com.ultratv.tv.nativeapp.ui.home.formatCount(count, LocalDs.current.locale), color = if (f) Ux.OnFocus2 else if (selected) Ux.Text else Ux.Muted, fontFamily = Manrope, fontSize = 24.spx, maxLines = 1)
             }
         }
     }
@@ -762,7 +763,7 @@ private fun Int.sp() = androidx.compose.ui.unit.TextUnit(this.toFloat(), android
 
 internal fun durationText(D: DesignStrings, ms: Long): String {
     val m = (ms / 60_000).toInt()
-    return if (m >= 60) D.hourShort.format(m / 60) + if (m % 60 != 0) " " + D.minShort.format(m % 60) else "" else D.minShort.format(m)
+    return if (m >= 60) D.hourShort.format(D.locale, m / 60) + if (m % 60 != 0) " " + D.minShort.format(D.locale, m % 60) else "" else D.minShort.format(D.locale, m)
 }
 
 private fun qualityName(q: Int) = when (q) { 4 -> "4K"; 3 -> "FHD"; 2 -> "HD"; 1 -> "SD"; else -> "—" }

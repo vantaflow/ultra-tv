@@ -79,7 +79,7 @@ class SeriesDetailViewModel @Inject constructor(
         seriesName: String, seriesRemoteId: String, providerId: Long, episode: EpisodeEntity,
         onReady: (url: String, title: String) -> Unit,
     ) {
-        val tag = "S${"%02d".format(episode.season)}E${"%02d".format(episode.episode)}"
+        val tag = com.ultratv.tv.nativeapp.i18n.LatinDigits.episodeTag(episode.season, episode.episode)
         // Titre lisible (lecteur, « Reprendre la lecture ») : nom nettoyé de la série, pas « 4K-NF - … (2023) (KR) », et
         // titre d'épisode sans la répétition de la série et du marqueur.
         val seriesTitle = _series.value?.title?.takeIf { it.isNotBlank() } ?: seriesName

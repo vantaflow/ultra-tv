@@ -301,11 +301,7 @@ private fun ResumeCard(c: ResumeCardUi, D: DesignStrings, onClick: () -> Unit) {
     // Titre nettoyé dans le ViewModel ; seul le libellé localisé est formaté ici, une fois.
     val meta = remember(c.minutesLeft, D) {
         val mins = c.minutesLeft
-        when {
-            mins == null -> null
-            mins >= 60 -> D.hourMinLeft.format(mins / 60, mins % 60)
-            else -> D.minLeft.format(mins)
-        }
+        mins?.let { com.ultratv.tv.nativeapp.ui.home.minutesLeftLabel(D, it) }
     }
     val title = c.title
     Column(Modifier.width(200.dp).clip(RoundedCornerShape(14.dp)).clickable(onClickLabel = title, onClick = onClick), verticalArrangement = Arrangement.spacedBy(8.dp)) {

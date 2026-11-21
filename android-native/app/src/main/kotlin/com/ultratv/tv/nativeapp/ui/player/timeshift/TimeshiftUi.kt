@@ -6,5 +6,5 @@ package com.ultratv.tv.nativeapp.ui.player.timeshift
  */
 fun behindLabel(sec: Int): String {
     val h = sec / 3600; val m = sec % 3600 / 60; val s = sec % 60
-    return "−" + if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%02d:%02d".format(m, s)
+    return "−" + if (h > 0) String.format(java.util.Locale.ROOT, "%d:%02d:%02d", h, m, s) else String.format(java.util.Locale.ROOT, "%02d:%02d", m, s)
 }

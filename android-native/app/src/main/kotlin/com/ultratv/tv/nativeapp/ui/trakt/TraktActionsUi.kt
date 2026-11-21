@@ -262,7 +262,7 @@ private fun TraktSeriesDialog(
                     itemsIndexed(sortedEps, key = { i, _ -> epKeys[i] }) { _, ep ->
                         val ref = EpisodeRef(ep.season, ep.episode)
                         val seen = ref.key in st.episodes
-                        val label = "S${"%02d".format(ep.season)}E${"%02d".format(ep.episode)}" + ep.title.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()
+                        val label = com.ultratv.tv.nativeapp.i18n.LatinDigits.episodeTag(ep.season, ep.episode) + ep.title.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()
                         ActionRow(label, Icons.Check, seen, compact = true) { vm.setEpisodes(D, listOf(ref), !seen) }
                     }
                 }

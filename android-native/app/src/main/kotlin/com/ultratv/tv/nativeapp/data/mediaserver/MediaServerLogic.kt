@@ -203,7 +203,7 @@ object MediaServer {
         val ms = ticks?.div(TICKS_PER_MS) ?: return null
         if (ms <= 0) return null
         val s = ms / 1000
-        return "%02d:%02d:%02d".format(s / 3600, s / 60 % 60, s % 60)
+        return String.format(java.util.Locale.ROOT, "%02d:%02d:%02d", s / 3600, s / 60 % 60, s % 60) // persisté : chiffres latins
     }
 
     /** Valeur croissante pour « derniers ajoutés » : date de création (ISO) en secondes depuis 1970, 0 si absente ou illisible. */

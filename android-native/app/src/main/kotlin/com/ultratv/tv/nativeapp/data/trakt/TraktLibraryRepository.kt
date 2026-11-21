@@ -374,7 +374,7 @@ class TraktCatalogMatcher(
             } else {
                 val s = series.byId(card.id) ?: continue
                 val ep = episodes(card.id, budget).firstOrNull { it.season == p.season && it.episode == p.episode } ?: continue
-                val tag = "S${"%02d".format(ep.season)}E${"%02d".format(ep.episode)}"
+                val tag = com.ultratv.tv.nativeapp.i18n.LatinDigits.episodeTag(ep.season, ep.episode)
                 out += PlaybackHit(pid, "EPISODE", ep.remoteId, "${s.name} · $tag · ${ep.title}", ep.image ?: s.poster ?: s.backdrop, ep.streamUrl, s.remoteId,
                     p.progress, p.pausedAt, runtimeMs.takeIf { it > 0 } ?: TraktResume.parseDurationMs(ep.duration))
             }

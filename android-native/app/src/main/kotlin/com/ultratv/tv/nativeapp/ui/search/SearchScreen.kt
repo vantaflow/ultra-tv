@@ -652,7 +652,7 @@ private fun BestResult(b: Any, openMovie: (MovieEntity) -> Unit, openSeries: (Se
     val meta = listOfNotNull(
         if (m != null) D.searchTabMovies else D.searchTabSeries,
         year?.toString(),
-        m?.duration?.takeIf { it.isNotBlank() },
+        m?.duration?.takeIf { it.isNotBlank() }?.let { com.ultratv.tv.nativeapp.i18n.LatinDigits.normalize(it) },
         ratingLabel(m?.rating ?: s?.rating, D),
     ).joinToString("  ·  ")
     val plot = (m?.plot ?: s?.plot)?.takeIf { it.isNotBlank() }

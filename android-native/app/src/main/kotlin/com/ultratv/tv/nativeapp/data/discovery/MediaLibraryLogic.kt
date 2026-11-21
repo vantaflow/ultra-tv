@@ -82,7 +82,7 @@ object MediaLibraryLogic {
     /** Compte à rebours d'expiration du code Plex, « m:ss » (jamais négatif). */
     fun countdown(msLeft: Long): String {
         val s = (msLeft.coerceAtLeast(0) / 1000)
-        return "%d:%02d".format(s / 60, s % 60)
+        return String.format(java.util.Locale.ROOT, "%d:%02d", s / 60, s % 60)
     }
 
     /** Nom de fichier d'un lien `nas://` : dernier segment du chemin, pour le panneau « Reconnu automatiquement ». */

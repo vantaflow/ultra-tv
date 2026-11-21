@@ -109,7 +109,7 @@ private val HMS_RE = Regex("""\d{1,2}:\d{2}(:\d{2})?""")
 
 /** « 01:52:00 » ou « 112 » → minutes ; null si illisible ou nul. */
 fun durationMinutes(raw: String?): Int? {
-    val t = raw?.trim().orEmpty()
+    val t = com.ultratv.tv.nativeapp.i18n.LatinDigits.normalize(raw?.trim().orEmpty()) // durée persistée en chiffres arabo-indiens par une ancienne version
     val mins = when {
         t.isEmpty() -> null
         t.all { it.isDigit() } -> t.toIntOrNull()
