@@ -87,6 +87,44 @@ class StalkerClientTest {
         assertTrue(seen.any { it.requestUrl!!.encodedPath == "/stalker_portal/c/portal.php" })
     }
 
+    /** Un autre panneau répond aussi à /stalker_portal/c/portal.php (jeton donné, MAC inconnue) : le vrai portail est retenu. */
+    @Test fun sonde_pointDEntreeQuiRefuseLaMac_passeAuSuivant() = runBlocking {
+        val other = MockWebServer()
+        val hits = CopyOnWriteArrayList<String>()
+        other.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val url = request.requestUrl!!
+                val action = url.queryParameter("action")
+                hits += "${url.encodedPath} $action"
+                return when (url.encodedPath) {
+                    "/stalker_portal/c/portal.php" -> if (action == "handshake") json("""{"js":{"token":"WRONG"}}""") else json("Authorization failed.")
+                    "/stalker_portal/server/load.php" -> when (action) {
+                        "handshake" -> json("""{"js":{"token":"GOOD"}}""")
+                        else -> if (request.getHeader("Authorization") == "Bearer GOOD") json("""{"js":{"id":"1"}}""") else json("Authorization failed.")
+                    }
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        other.start()
+        try {
+            val store = StalkerEndpointStore.inMemory()
+            val url = other.url("/stalker_portal/c/").toString()
+            val api = client(store).probe(StalkerClient.Account(url, mac))
+            assertTrue(api.endsWith("/stalker_portal/server/load.php"))
+            assertEquals(api, store.get(url))
+        } finally { other.shutdown() }
+    }
+
+    /** Profil refusé partout : comportement d'avant, le premier point d'entrée qui donne un jeton est gardé. */
+    @Test fun sonde_profilRefusePartout_premierJetonGarde() = runBlocking {
+        routes["stb/get_profile"] = { json("Authorization failed.") }
+        val store = StalkerEndpointStore.inMemory()
+        val api = client(store).probe(StalkerClient.Account(portal(), mac))
+        assertTrue(api.endsWith("/stalker_portal/server/load.php"))
+        assertEquals(api, store.get(portal()))
+    }
+
     @Test fun pointDEntreeMemorise_plusDeSondeEnsuite() = runBlocking {
         val store = StalkerEndpointStore.inMemory()
         client(store).probe(StalkerClient.Account(portal(), mac))
