@@ -76,6 +76,50 @@ class LivePreviewPolicyTest {
         }
     }
 
+    // ── Aperçu du Guide : délai adaptatif (0,7 s après un arrêt, 1,5 s pendant un parcours) ──
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private fun collectSettled(vararg steps: Pair<Long, String?>): List<Pair<Long, String>> {
+        val out = mutableListOf<Pair<Long, String>>()
+        kotlinx.coroutines.test.runTest {
+            with(LivePreviewPolicy) {
+                timed(*steps).immediateThenSettled(700, 1_500, now = { testScheduler.currentTime }).collect { out += testScheduler.currentTime to it }
+            }
+        }
+        return out
+    }
+
+    @Test fun guide_delaiAdaptatif_bornes() {
+        assertEquals(700L, LivePreviewPolicy.guideSettledDelayMs(LivePreviewPolicy.DEFAULT_DELAY_MS))
+        assertEquals(1_000L, LivePreviewPolicy.guideSettledDelayMs(1_000))
+        assertEquals(3_000L, LivePreviewPolicy.guideSettledDelayMs(3_000))
+    }
+
+    @Test fun guide_deplacementIsole_partApres700ms() {
+        // A à l'ouverture (tout de suite) ; B, seul déplacement depuis 1,5 s : 0,7 s après.
+        assertEquals(listOf(0L to "A", 5_700L to "B"), collectSettled(0L to "A", 5_000L to "B"))
+    }
+
+    @Test fun guide_parcoursAUnAppuiParDemiSeconde_unSeulFlux_1500msApresLeDernier() {
+        // 8 ▼ espacés de 0,5 s après un arrêt : aucune chaîne intermédiaire ne part, la dernière 1,5 s après son appui.
+        val steps = arrayOf<Pair<Long, String?>>(0L to "A") + (1..8).map { (5_000L + (it - 1) * 500L) to "C$it" }
+        assertEquals(listOf(0L to "A", 5_000L + 7 * 500L + 1_500L to "C8"), collectSettled(*steps))
+    }
+
+    @Test fun guide_parcoursLent_unAppuiParSeconde_seulLePremierPeutPartir() {
+        // Un appui par seconde : le 1er déplacement après l'arrêt n'est pas interrompu à temps (0,7 s), les suivants attendent 1,5 s.
+        val steps = arrayOf<Pair<Long, String?>>(0L to "A") + (1..5).map { (5_000L + (it - 1) * 1_000L) to "C$it" }
+        assertEquals(listOf(0L to "A", 5_700L to "C1", 9_000L + 1_500L to "C5"), collectSettled(*steps))
+    }
+
+    @Test fun guide_arretApresParcours_repasseA700ms() {
+        // Parcours (2 déplacements rapprochés), puis long arrêt et un déplacement isolé : de nouveau 0,7 s.
+        assertEquals(
+            listOf(0L to "A", 5_300L + 1_500L to "C", 10_000L + 700L to "D"),
+            collectSettled(0L to "A", 5_000L to "B", 5_300L to "C", 10_000L to "D"),
+        )
+    }
+
     @Test
     fun guide_selectionQuiArriveTard_partImmediatement_etNeRepartPasSurLaMemeChaine() {
         with(LivePreviewPolicy) {
