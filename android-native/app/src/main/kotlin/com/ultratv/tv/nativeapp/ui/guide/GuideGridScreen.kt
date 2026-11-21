@@ -657,21 +657,46 @@ private fun GuidePreviewPane(
     // Propriétaire observé : au retour du plein écran, [SharedLiveSession.demote] arrive APRÈS la recomposition du guide ;
     // sans cette lecture, l'aperçu restait sur le logo alors que le son de la chaîne continuait.
     val ownerNow by (shared?.ownerState ?: MutableStateFlow(com.ultratv.tv.nativeapp.ui.player.engine.LiveOwner.NONE)).collectAsState()
-    val session = shared?.session?.takeIf {
-        videoPreview && playingKey != null && ownerNow == com.ultratv.tv.nativeapp.ui.player.engine.LiveOwner.PREVIEW &&
-            channel != null && shared.rowKey == com.ultratv.tv.nativeapp.ui.live.channelKey(channel)
+    // Session d'aperçu vivante, quelle que soit la chaîne qu'elle lit : la vidéo RESTE composée d'une chaîne à l'autre (la
+    // retirer détruisait la surface et bloquait le fil principal pendant que le lecteur la relâchait, puis il fallait la
+    // recréer avant la première image de la chaîne suivante).
+    val live = shared?.session?.takeIf {
+        videoPreview && playingKey != null && ownerNow == com.ultratv.tv.nativeapp.ui.player.engine.LiveOwner.PREVIEW
     }
-    val pic by (session?.state ?: NO_SESSION_STATE).collectAsState()
+    // Elle lit la chaîne montrée : seulement alors son image (et son son) sont présentés.
+    val matches = live != null && channel != null && shared.rowKey == com.ultratv.tv.nativeapp.ui.live.channelKey(channel)
+    val pic by (live?.takeIf { matches }?.state ?: NO_SESSION_STATE).collectAsState()
     // Image affichée, ou flux audio seul (radio) prêt : le son part, l'encadré garde le logo.
-    val shown = session != null && pic.showsMedia
+    val shown = matches && pic.showsMedia
     if (shared != null) LaunchedEffect(shared, shown) { shared.setPictureShown(shown) }
+    GuidePreviewVideo(channel, live, shared, matches, modifier)
+}
+
+/**
+ * Encadré de l'aperçu : la vidéo de la session [live] reste composée tant que la session vit, même quand elle lit encore
+ * une autre chaîne que [channel] ([matches] faux) ; le logo opaque de la chaîne montrée la recouvre alors. Sans session :
+ * le logo seul.
+ */
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+@Composable
+internal fun GuidePreviewVideo(
+    channel: ChannelEntity?, live: com.ultratv.tv.nativeapp.ui.player.engine.PlaybackSession?,
+    shared: com.ultratv.tv.nativeapp.ui.player.engine.SharedLiveSession?, matches: Boolean, modifier: Modifier,
+) {
     Box(modifier.clip(RoundedCornerShape(24.design)).background(Ux.Tone), contentAlignment = Alignment.Center) {
         if (channel != null) {
             val logo: @Composable () -> Unit = { ChannelBigMark(channel, com.ultratv.tv.nativeapp.ui.common.shownChannelNumber(channel), Modifier.fillMaxSize(), radius = 24, pad = 80, bg = Ux.Tone) }
-            if (session != null && shared != null) com.ultratv.tv.nativeapp.ui.live.SharedVideo(session, shared, logo) else logo()
+            if (live != null && shared != null) {
+                // Ancienne chaîne encore à l'écran sous la nouvelle sélection : le logo opaque de la chaîne montrée la recouvre
+                // (un seul logo : celui de la vidéo n'est demandé que pour la chaîne qu'elle lit).
+                com.ultratv.tv.nativeapp.ui.live.SharedVideo(live, shared, if (matches) logo else NO_LOGO)
+                if (!matches) logo()
+            } else logo()
         }
     }
 }
+
+private val NO_LOGO: @Composable () -> Unit = {}
 
 private val NO_PREVIEW_PREFS = MutableStateFlow(com.ultratv.tv.nativeapp.ui.live.LivePreviewPrefs.Values())
 
