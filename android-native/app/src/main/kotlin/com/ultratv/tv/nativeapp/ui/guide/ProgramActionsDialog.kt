@@ -118,17 +118,20 @@ fun ProgramActionsDialog(
 private const val BELL = "M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21a2 2 0 0 0 4 0"
 
 @Composable
-private fun ActionButton(label: String, hint: String, icon: String, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
+internal fun ActionButton(label: String, hint: String, icon: String, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
     FocusSurface(
         onClick = { if (enabled) onClick() }, shape = RoundedCornerShape(20.design), bg = Ux.Surface, ringWidth = 5.design, focusedScale = 1f,
         modifier = modifier.height(92.design).alpha(if (enabled) 1f else 0.45f),
     ) { f ->
+        // Hauteur fixe (92) : un libellé qui passait sur deux lignes écrasait l'indication dessous.
+        com.ultratv.tv.nativeapp.ui.design.NoTextWrap {
         Row(Modifier.fillMaxSize().padding(horizontal = 24.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.design)) {
             DIcon(icon, 28.design, if (f) Ux.TextOnLight else Ux.Text, strokeWidth = 2.2f)
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.design)) {
                 Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 23.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(hint, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
+        }
         }
     }
 }
