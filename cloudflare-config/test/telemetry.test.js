@@ -3,9 +3,11 @@ import { env } from "cloudflare:workers";
 import { describe, it, expect } from "vitest";
 import worker from "../src/index.js";
 import { call, freshIp, ORIGIN, newAccount, pairDevice, allKv, d1Rows, bearer, basic, OPS } from "./helpers.js";
-import { purgeTelemetry, recordEvent, EVENT_TTL_S, CRASH_TTL_S, ANON_TTL_S } from "../src/telemetry.js";
+import { afterEach } from "vitest";
+import { purgeTelemetry, recordEvent, EVENT_TTL_S, CRASH_TTL_S, ANON_TTL_S, __resetTelemetryBreaker } from "../src/telemetry.js";
 
 const DAY = 86400_000;
+afterEach(() => __resetTelemetryBreaker()); // une panne simulée n'ouvre pas le coupe-circuit pour les tests suivants
 
 describe("journaux et plantages en D1", () => {
   it("un événement et un crash sont écrits en D1, aucune écriture KV, et la page d'admin les affiche", async () => {
@@ -64,16 +66,19 @@ describe("dégradation : la télémétrie en panne ne casse rien d'autre, et le 
   });
 
   for (const [nom, db] of [["tables de télémétrie indisponibles", telemetryDown(false)], ["D1 qui lève (télémétrie)", telemetryDown(true)]]) {
-    it(`${nom} : journal et plantage en 503 (l'appareil les garde), ping anonyme et authentification normaux, rien en KV`, async () => {
+    it(`${nom} : journal en 200 dropped.storage, plantage en 503, ping anonyme et authentification normaux, rien en KV`, async () => {
       const acct = await newAccount(); const dev = await pairDevice(acct);
       const e = { ...env, DB: db };
       const kvBefore = JSON.stringify(await allKv());
-      // Mode Turso simulé : la base remplacée ici n'est pas celle qu'utilise l'adaptateur (panne non injectée).
-      const down = env.TURSO_AUTH_TOKEN ? 200 : 503;
+      // Mode Turso simulé : la base remplacée ici n'est pas celle qu'utilise l'adaptateur (panne non injectée ; la panne
+      // Turso est testée dans telemetry-outage.test.js).
+      const turso = Boolean(env.TURSO_AUTH_TOKEN);
       const ev = await post(e, "/api/event", dev.token, dev.ip, { level: "error", message: `x-${nom}` });
-      expect(ev.status).toBe(down);
-      if (down === 503) expect(await ev.json()).toEqual({ error: "storage" });
-      expect((await post(e, "/api/crash", dev.token, dev.ip, { stack: "x" })).status).toBe(down);
+      expect(ev.status).toBe(200);
+      if (!turso) expect(await ev.json()).toEqual({ ok: false, stored: 0, dropped: { filtered: 0, storage: 1 } });
+      const crash = await post(e, "/api/crash", dev.token, dev.ip, { stack: "x" });
+      expect(crash.status).toBe(turso ? 200 : 503);
+      if (!turso) expect(await crash.json()).toEqual({ error: "storage" });
       const ping = await worker.fetch(new Request(ORIGIN + "/api/anon/ping", {
         method: "POST", headers: { "cf-connecting-ip": freshIp(), origin: ORIGIN, "content-type": "application/json" }, body: JSON.stringify({ install: crypto.randomUUID() }),
       }), e);

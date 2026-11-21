@@ -4,7 +4,9 @@
 //
 // Dégradation : sans binding `DB`, ou si D1 échoue, on n'écrit JAMAIS en repli dans KV (ce serait reconsommer le
 // quota). Les lectures et les relevés annexes échouent en silence ; l'écriture d'un journal ou d'un plantage, elle,
-// le signale (`recordEvent(s)` → `ok: false`) pour que la route réponde 503 et que l'appareil garde sa ligne.
+// le signale (`recordEvent(s)` → `ok: false`) : la route répond 503 pour un plantage (renvoyé au démarrage suivant),
+// 200 avec `dropped.storage` pour des journaux (l'appli réessaierait en boucle). Coupe-circuit : après un échec
+// d'écriture, les journaux ne sollicitent plus la base pendant 60 s (par isolat).
 //
 // Transition : les anciennes lignes KV (`event:*`, `crash:*`, `anon:*`) ne sont plus lues par les vues
 // d'administration (elles expirent seules, au plus 7 / 30 / 180 jours). Seule exception : à la première insertion
@@ -72,10 +74,21 @@ const bindEvent = (db, kind, entry) => db.prepare(INSERT_EVENT).bind(kind, entry
   entry.versionCode ?? null, entry.device ?? null, entry.acct ?? null, entry.country ?? null, entry.level ?? null, entry.tag ?? null,
   entry.message ?? null, entry.androidSdk ?? null, entry.stack ?? null);
 
-/** Écriture qui signale l'échec (au lieu de l'avaler comme `safe`) ; base absente = échec. */
+/**
+ * Coupe-circuit des journaux (par isolat) : pendant BREAKER_MS après un échec d'écriture (quota Turso épuisé, base
+ * indisponible), les journaux ne tentent plus l'écriture et la route répond aussitôt, sans appel à la base. Les
+ * plantages, rares et précieux, tentent toujours.
+ */
+export const BREAKER_MS = 60_000;
+let breakerUntil = 0;
+/** Tests seulement : referme le coupe-circuit. */
+export function __resetTelemetryBreaker() { breakerUntil = 0; }
+
+/** Écriture qui signale l'échec (au lieu de l'avaler comme `safe`) ; base absente = échec (et coupe-circuit ouvert). */
 async function write(env, fn) {
-  if (!env?.DB) return false;
+  if (!env?.DB) { breakerUntil = Date.now() + BREAKER_MS; return false; }
   try { await fn(env.DB); return true; } catch (e) {
+    breakerUntil = Date.now() + BREAKER_MS;
     console.error("telemetrie D1 (ecriture):", sanitizeLog(String(e?.message ?? ""), 300));
     return false;
   }
@@ -83,30 +96,32 @@ async function write(env, fn) {
 
 /**
  * Enregistre un journal ou un plantage ([entry] = objet construit par `ingest`, déjà nettoyé).
- * Renvoie `{ ok, stored, filtered }` : `filtered` = écartée par le tri (doublon de 30 min, échantillonnage des infos) ;
- * `ok: false` = la base a refusé l'écriture (l'appelant répond 503, l'appareil réessaiera).
+ * Renvoie `{ ok, stored, filtered, failed }` : `filtered` = écartée par le tri (doublon de 30 min, échantillonnage des
+ * infos) ; `ok: false` = non écrite (base en échec, ou coupe-circuit ouvert pour un journal), `failed` lignes perdues.
  */
 export async function recordEvent(env, kind, entry) {
-  if (env?.TELEMETRY_FILTER !== "off" && !keepEvent(kind, entry)) return { ok: true, stored: 0, filtered: 1 };
-  if (!(await write(env, (db) => bindEvent(db, kind, entry).run()))) {
-    recent.delete(dedupKey(entry)); // le renvoi de l'appareil ne doit pas passer pour un doublon
-    return { ok: false, stored: 0, filtered: 0 };
+  if (env?.TELEMETRY_FILTER !== "off" && !keepEvent(kind, entry)) return { ok: true, stored: 0, filtered: 1, failed: 0 };
+  const skip = kind !== "crash" && Date.now() < breakerUntil;
+  if (skip || !(await write(env, (db) => bindEvent(db, kind, entry).run()))) {
+    recent.delete(dedupKey(entry)); // un renvoi (plantage au démarrage suivant) ne doit pas passer pour un doublon
+    return { ok: false, stored: 0, filtered: 0, failed: 1, breaker: skip };
   }
   await maybePurge(env);
-  return { ok: true, stored: 1, filtered: 0 };
+  return { ok: true, stored: 1, filtered: 0, failed: 0 };
 }
 
 /** Enregistre un lot de journaux : tri `keepEvent`, puis UNE écriture groupée (un seul batch). Même retour que `recordEvent`. */
 export async function recordEvents(env, kind, entries) {
   const kept = env?.TELEMETRY_FILTER !== "off" ? entries.filter((e) => keepEvent(kind, e)) : entries;
   const filtered = entries.length - kept.length;
-  if (!kept.length) return { ok: true, stored: 0, filtered };
-  if (!(await write(env, (db) => db.batch(kept.map((entry) => bindEvent(db, kind, entry)))))) {
+  if (!kept.length) return { ok: true, stored: 0, filtered, failed: 0 };
+  const skip = kind !== "crash" && Date.now() < breakerUntil;
+  if (skip || !(await write(env, (db) => db.batch(kept.map((entry) => bindEvent(db, kind, entry)))))) {
     for (const e of kept) recent.delete(dedupKey(e));
-    return { ok: false, stored: 0, filtered };
+    return { ok: false, stored: 0, filtered, failed: kept.length, breaker: skip };
   }
   await maybePurge(env);
-  return { ok: true, stored: kept.length, filtered };
+  return { ok: true, stored: kept.length, filtered, failed: 0 };
 }
 
 /** Ligne D1 `events` → entrée de journal / plantage (même format que les anciennes entrées KV). */

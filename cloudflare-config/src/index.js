@@ -791,7 +791,11 @@ async function anonPing(req, env) {
   const rawPlatform = body.value.platform;
   const platform = platformOf(rawPlatform);
   if (rawPlatform != null && rawPlatform !== "" && !platform) return json({ error: "platform" }, 400);
-  await anonTouch(env, await anonKey(install), req, { version: appVersionOf(body.value.version), platform, model: modelOf(body.value.model) });
+  // Relevé d'un test unitaire (Robolectric) : acquitté, jamais écrit (comme les journaux).
+  if (typeof body.value.model === "string" && /robolectric/i.test(body.value.model)) return json({ ok: true });
+  // Modèle : texte libre de l'appareil, nettoyé comme un journal (e-mail, MAC…) puis raccourci.
+  const model = modelOf(sanitizeLog(body.value.model, 128));
+  await anonTouch(env, await anonKey(install), req, { version: appVersionOf(body.value.version), platform, model });
   return json({ ok: true });
 }
 
@@ -1865,12 +1869,20 @@ const int = (v) => (Number.isFinite(v) ? Math.trunc(v) : null);
  */
 const isTestDevice = (b) => typeof b?.device === "string" && /robolectric/i.test(b.device);
 
-/** Réponse d'ingestion : 503 si la base a refusé l'écriture (l'appareil garde ses lignes), sinon le bilan sans contenu. */
-function ingestReply(route, res, extra = {}) {
+/**
+ * Réponse d'ingestion, toujours sans contenu. Écriture refusée par la base (ou coupe-circuit ouvert) :
+ * - plantage : 503 + Retry-After (l'appli garde le fichier et ne le renvoie qu'au démarrage suivant : pas de boucle) ;
+ * - journaux : 200 `{ ok: false, stored: 0, dropped: { storage: n } }`. L'appli réessaie tout code >= 500 sans lire
+ *   Retry-After, et sa file pleine relance un envoi à chaque nouvelle ligne : un 503 ferait réessayer toute la flotte
+ *   pendant une panne longue (quota Turso épuisé), au prix du quota de requêtes Worker. Ces lignes sont perdues.
+ */
+function ingestReply(route, res, extra = {}, isCrash = false) {
   const dropped = { filtered: res?.filtered || 0, ...extra.dropped };
   if (!res?.ok) {
-    console.error(JSON.stringify({ telemetry: route, error: "storage", ...extra, dropped }));
-    return json({ error: "storage" }, 503, { "retry-after": "60" });
+    const failed = res?.failed ?? 1;
+    console.error(JSON.stringify({ telemetry: route, error: "storage", ...(res?.breaker ? { breaker: true } : {}), ...extra, dropped: { ...dropped, storage: failed } }));
+    if (isCrash) return json({ error: "storage" }, 503, { "retry-after": "60" });
+    return json({ ok: false, ...(extra.accepted !== undefined ? { accepted: extra.accepted } : {}), stored: 0, dropped: { ...dropped, storage: failed } });
   }
   if (Object.entries(extra.dropped || {}).some(([, n]) => n > 0)) console.log(JSON.stringify({ telemetry: route, stored: res.stored, dropped }));
   return json({ ok: true, ...(extra.accepted !== undefined ? { accepted: extra.accepted } : {}), stored: res.stored, dropped });
@@ -1931,7 +1943,7 @@ async function ingest(req, env, kind) {
     ? { ...base, androidSdk: int(b.androidSdk), stack: sanitizeLog(b.stack, 32 * 1024, o) }
     : cleanEvent(base, b, o);
   // D1 (pas KV : une écriture par événement épuisait le quota gratuit) ; conservation 7 jours, 30 jours pour les crashs.
-  return ingestReply(`/api/${kind}`, await recordEvent(env, kind, entry));
+  return ingestReply(`/api/${kind}`, await recordEvent(env, kind, entry), {}, isCrash);
 }
 
 /** Journal nettoyé (mêmes bornes que `/api/event`) à partir d'un objet reçu. */
@@ -2015,7 +2027,7 @@ async function anonIngest(req, env, kind) {
     device: sanitizeLog(b.device, 128, o) || null, acct: null, country: countryOf(req),
   };
   if (isCrash) {
-    return ingestReply("/api/anon/crash", await recordEvent(env, "crash", { ...base, androidSdk: int(b.androidSdk), stack: sanitizeLog(b.stack, ANON_STACK_MAX, o) }));
+    return ingestReply("/api/anon/crash", await recordEvent(env, "crash", { ...base, androidSdk: int(b.androidSdk), stack: sanitizeLog(b.stack, ANON_STACK_MAX, o) }), {}, true);
   }
   const valid = b.events.filter((e) => e && typeof e === "object");
   const entries = valid.slice(0, ANON_EVENTS_KEPT).map((e) => {

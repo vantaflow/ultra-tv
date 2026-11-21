@@ -5,6 +5,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { env } from "cloudflare:workers";
 import vectors from "./fixtures/sanitize-vectors.json";
 import worker from "../src/index.js";
+import { __resetTelemetryBreaker } from "../src/telemetry.js";
 import { call, freshIp, newAccount, pairDevice, bearer, ORIGIN } from "./helpers.js";
 
 const leaky = vectors.filter((v) => !v.name.startsWith("intact"));
@@ -122,21 +123,25 @@ describe("ingestion : pertes signalées, jamais silencieuses", () => {
     };
   };
 
-  it("routes sans compte : écriture refusée par la base → 503, puis l'envoi suivant passe", async () => {
+  it("routes sans compte : écriture refusée → journaux 200 dropped.storage, plantage 503 ; ensuite le plantage passe", async () => {
     const { real, db } = failingDb();
     env.DB = db;
     try {
       const install = crypto.randomUUID();
       const ev = await call("/api/anon/events", { method: "POST", ip: freshIp(), json: { install, version: "8.7.1", events: [{ level: "error", message: "perdue?" }] } });
-      expect(ev.status).toBe(503);
-      expect(ev.headers.get("retry-after")).toBe("60");
-      expect((await anon("/api/anon/crash", { version: "8.7.1", stack: "s" })).status).toBe(503);
+      expect(ev.status).toBe(200);
+      expect((await ev.json()).dropped.storage).toBe(1);
+      const crash = await anon("/api/anon/crash", { version: "8.7.1", stack: "s" });
+      expect(crash.status).toBe(503);
+      expect(crash.headers.get("retry-after")).toBe("60");
     } finally {
       env.DB = real;
+      __resetTelemetryBreaker();
     }
     expect(await rowsOf("8.7.1")).toEqual([]);
+    expect((await anon("/api/anon/crash", { version: "8.7.1", stack: "s" })).status).toBe(200);
     expect((await anon("/api/anon/events", { version: "8.7.1", events: [{ level: "error", message: "perdue?" }] })).status).toBe(200);
-    expect((await rowsOf("8.7.1")).length).toBe(1);
+    expect((await rowsOf("8.7.1")).length).toBe(2);
   });
 
   it("lot sans compte de 50 lignes : la réponse dit combien sont gardées et pourquoi les autres sont écartées", async () => {
