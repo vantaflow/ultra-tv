@@ -150,7 +150,7 @@ class NetworkMonitor @Inject constructor(@ApplicationContext private val ctx: Co
     val sample: StateFlow<NetSample> = _sample.asStateFlow()
 
     init {
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+        CoroutineScope(SupervisorJob() + Dispatchers.IO + com.ultratv.tv.nativeapp.BackgroundTasks.handler("network")).launch {
             publish()
             runCatching {
                 cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
@@ -284,7 +284,7 @@ class AdaptiveProfile @Inject constructor(
     @ApplicationContext private val ctx: Context,
     private val network: NetworkMonitor,
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default + com.ultratv.tv.nativeapp.BackgroundTasks.handler("adaptive"))
     private val sp = ctx.getSharedPreferences("adaptive_device", Context.MODE_PRIVATE)
     private val source: DeviceInfoSource = AndroidDeviceInfoSource(ctx)
     private var previousQuality: NetQuality? = null

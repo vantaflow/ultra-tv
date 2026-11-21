@@ -584,7 +584,7 @@ class ProviderRepository @Inject constructor(
         }.await()
     }
 
-    private val syncScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+    private val syncScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO + com.ultratv.tv.nativeapp.BackgroundTasks.handler("sync"))
     private val syncMutex = kotlinx.coroutines.sync.Mutex()
 
     /** Une source M3U dont l'adresse est de type Xtream (get.php…) ? Alors elle peut passer en Xtream Codes. */
@@ -1287,7 +1287,7 @@ class ProviderRepository @Inject constructor(
         if (kind == "LIVE" && p.kind == "XTREAM") scheduleEpgRefresh(providerId)
     }
 
-    private val epgScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+    private val epgScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO + com.ultratv.tv.nativeapp.BackgroundTasks.handler("epg"))
     @Volatile private var epgJob: kotlinx.coroutines.Job? = null
 
     /** Guide re-téléchargé 60 s après la DERNIÈRE activation de catégorie (plusieurs activations = un seul téléchargement). */

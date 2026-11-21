@@ -29,7 +29,7 @@ class ProfileRepository(
     private val hook: ProfileSwitchHook? = null,
 ) {
     @Inject constructor(dao: ProfileDao, state: ProfileStateStore, log: ProfileSyncLog, hook: com.ultratv.tv.nativeapp.data.repo.ProfileSwitcher) :
-        this(dao, state, CoroutineScope(SupervisorJob() + Dispatchers.Default), log, hook)
+        this(dao, state, CoroutineScope(SupervisorJob() + Dispatchers.Default + com.ultratv.tv.nativeapp.BackgroundTasks.handler("profiles")), log, hook)
 
     /** Appelé aussi pour un profil créé par la synchro entre appareils (voir [applySharedProfiles]). */
     internal suspend fun profileCreated(id: Long) { runCatching { hook?.onProfileCreated(id) } }

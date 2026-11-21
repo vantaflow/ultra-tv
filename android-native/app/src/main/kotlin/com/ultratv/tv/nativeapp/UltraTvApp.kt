@@ -67,7 +67,11 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
     @Inject lateinit var memoryPrefs: dagger.Lazy<com.ultratv.tv.nativeapp.data.memory.MemoryPrefs>
     @Inject lateinit var memoryManager: dagger.Lazy<com.ultratv.tv.nativeapp.data.memory.MemoryManager>
 
-    private val bgScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    // Gestionnaire d'exceptions : une tâche de fond qui échoue est journalisée, elle ne tue plus l'appli au démarrage.
+    private val bgScope = CoroutineScope(SupervisorJob() + Dispatchers.IO + BackgroundTasks.handler("app"))
+
+    /** Tâche de démarrage protégée individuellement : l'échec de l'une est journalisé et n'empêche pas les suivantes. */
+    private fun startTask(label: String, block: suspend CoroutineScope.() -> Unit) = BackgroundTasks.launch(bgScope, "app.$label", block)
 
     private val weakDecodeDispatcher by lazy {
         java.util.concurrent.Executors.newFixedThreadPool(1) { r ->
@@ -196,7 +200,7 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
         // clients Xtream / M3U / XMLTV, tous les DAO, la base) et CloudSyncManager (lectures synchrones de préférences
         // dans son constructeur). Sans cela, ils étaient construits sur le thread principal — injection de MainActivity
         // puis ViewModels du premier écran — avant la première image. Les singletons Dagger (DoubleCheck) sont sûrs entre fils.
-        bgScope.launch { runCatching { providerRepo.get(); cloudSync.get() } }
+        startTask("warmup") { runCatching { providerRepo.get(); cloudSync.get() } }
 
         // Tell RemoteLog who we are before anyone calls it.
         // Version lue dans BuildConfig : pas d'appel système (Binder) synchrone avant le premier écran.
@@ -211,7 +215,7 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
         // Mirror the telemetry toggle from DataStore into RemoteLog's volatile
         // flag so disabling it from Settings takes effect immediately for
         // every subsequent event/crash POST.
-        bgScope.launch {
+        startTask("prefs") {
             prefsStore.get().flow.collect { p ->
                 RemoteLog.telemetryEnabled = p.telemetryEnabled
                 RemoteLog.workerUrlOverride = p.workerBaseUrl
@@ -227,23 +231,23 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
 
         // Relevé anonyme d'installation (appareils sans compte) : au plus une fois par jour, seulement si la télémétrie est
         // activée. Différé de quelques secondes : rien d'urgent au démarrage, jamais bloquant.
-        bgScope.launch { kotlinx.coroutines.delay(10_000); runCatching { anonPing.get().reportIfDue() } }
+        startTask("anonPing") { kotlinx.coroutines.delay(10_000); runCatching { anonPing.get().reportIfDue() } }
 
         // Google TV : Watch Next + chaîne Favoris, alimentés par la base (sans effet hors Android TV).
         // Démarrée après le premier écran : ses observateurs de base n'ont rien d'urgent.
         // runCatching : sous Robolectric, l'application est recréée à chaque test et ce réveil différé tombait pendant le
         // test SUIVANT (environnement détruit) — exception attribuée à un autre test (UncaughtExceptionsBeforeTest).
-        bgScope.launch { kotlinx.coroutines.delay(8_000); runCatching { googleTv.get().start(bgScope) } }
+        startTask("googleTv") { kotlinx.coroutines.delay(8_000); runCatching { googleTv.get().start(bgScope) } }
 
         // Sources visibles par profil : la source active suit le profil courant.
-        bgScope.launch { runCatching { profileSources.get().start(bgScope) } }
+        startTask("profileSources") { runCatching { profileSources.get().start(bgScope) } }
 
         // Téléchargements hors ligne : table de lecture locale, purge des sources supprimées, reprise de la file.
-        bgScope.launch { runCatching { downloads.get().start(bgScope) } }
+        startTask("downloads") { runCatching { downloads.get().start(bgScope) } }
 
         // Trakt : recharge la dernière bibliothèque du disque et calcule les rangées de la source active dès le lancement
         // (l'accueil les trouve déjà prêtes), puis relit le réseau selon la règle des 15 min. runCatching : jamais bloquant.
-        bgScope.launch {
+        startTask("trakt") {
             runCatching {
                 val repo = traktRepo.get()
                 repo.restore()
@@ -259,7 +263,7 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
 
         // Nettoyage automatique (fichiers temporaires anciens, cache d'images au-delà de la limite) 30 s après le départ,
         // et planification quotidienne via WorkManager ; sans effet pendant une synchro ni si le réglage est coupé.
-        bgScope.launch {
+        startTask("memory") {
             // Tampons de pause du direct laissés par un plantage ou une appli tuée : purgés tout de suite, quel que soit le réglage.
             runCatching { memoryManager.get().purgeTimeshiftOrphans() }
             kotlinx.coroutines.delay(30_000)
@@ -269,15 +273,15 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
 
         // Base migrée depuis la version 17 : ordre précalculé du Direct rempli en tâche de fond, après le premier écran
         // (sans effet une fois fait ; le Direct le lance aussi tout de suite s'il est ouvert avant).
-        bgScope.launch { runCatching { liveOrderBackfill.get().ensure(delayMs = 4_000) } }
+        startTask("liveOrder") { runCatching { liveOrderBackfill.get().ensure(delayMs = 4_000) } }
 
         // Chiffre les mots de passe fournisseurs hérités (clair -> AES-GCM Keystore).
-        bgScope.launch { runCatching { secretsMigrator.get().migrate() } }
+        startTask("secrets") { runCatching { secretsMigrator.get().migrate() } }
         // Anciennes catégories masquées (globales) → profil Principal, une seule fois.
-        bgScope.launch { runCatching { hiddenCategories.get().importLegacyOnce() } }
+        startTask("hiddenCategories") { runCatching { hiddenCategories.get().importLegacyOnce() } }
         // Chaînes masquées globales → tous les profils (une seule fois), puis projections du profil courant (chaînes masquées,
         // ordre des catégories) alignées sur lui : sans effet si rien n'a changé depuis le dernier lancement.
-        bgScope.launch {
+        startTask("channelHiding") {
             runCatching {
                 profileChannelHiding.get().importLegacyOnce()
                 val id = profileRepo.get().currentId.first()
@@ -301,7 +305,7 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
         // builds strip them) — the player will just not show the Cast button.
         // En arrière-plan : l'initialisation de Play Services Cast coûte plusieurs
         // dizaines de ms sur le thread principal au démarrage.
-        bgScope.launch {
+        startTask("cast") {
             runCatching {
                 com.google.android.gms.cast.framework.CastContext.getSharedInstance(
                     this@UltraTvApp, java.util.concurrent.Executors.newSingleThreadExecutor(),

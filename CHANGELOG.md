@@ -34,6 +34,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Guide TV : la liste des chaînes reste la même quelle que soit l'heure ou le jour affichés (toutes les chaînes qui ont un guide). Passer minuit avec ▶ ne fait plus remonter la liste ni perdre la sélection au-delà de la 30e chaîne ; une chaîne sans programme ce jour-là apparaît en ligne vide. Même liste sur téléphone et tablette.
 - Guide TV, télécommande : ⏩ / ⏪ (jour suivant / précédent) gardent la même heure et la même chaîne. Pendant le chargement de l'autre jour, la sélection reste sur le programme en cours ; elle passe ensuite au programme de la même chaîne à la même heure, ou, si la chaîne n'a rien ce jour-là, sur la chaîne voisine la plus proche.
 - Guide TV, aperçu : appuyer sur Accueil juste après avoir changé de chaîne n'ouvre plus de flux muet en arrière-plan (il occupait la connexion du fournisseur) ; au retour dans le Guide, l'aperçu de la chaîne sélectionnée repart aussitôt au lieu de rester sur le logo. Revenir sur une chaîne dont l'aperçu était tombé en erreur le relance. Le son de la chaîne précédente est coupé dès que la sélection change de chaîne.
+- Démarrage : une tâche de fond qui échoue au lancement (lecture des réglages, état du réseau, synchronisation, journal) est notée dans le journal au lieu de fermer l'appli, et n'empêche plus les tâches suivantes de démarrer.
 
 ## [1.3.72] — 2026-11-21 (Android)
 

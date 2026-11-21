@@ -81,7 +81,7 @@ object RemoteLog {
         return Request.Builder().url("$base$anonPath").post(body.toString().toRequestBody(JSON)).build()
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + BackgroundTasks.handler("remoteLog"))
 
     // Two clients: events tolerate slow networks; the crash path must return
     // quickly because the process is about to be killed.
