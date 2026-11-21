@@ -13,6 +13,10 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.isFocusable
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import com.ultratv.tv.nativeapp.ui.design.designT
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performKeyInput
@@ -63,9 +67,10 @@ class HomeTvStructureTest {
     private val heroPosterOnly = heroWithBackdrop.copy(backdrop = null, poster = "https://exemple.invalid/affiche.jpg")
 
     private fun rows(layout: HomeLayout): HomeRows {
-        val ch = ChannelEntity(id = 1, providerId = 1, remoteId = "1", name = "Nova 1", logo = null, categoryId = null, streamUrl = "u", num = 1)
+        fun ch(i: Int) = ChannelEntity(id = i.toLong(), providerId = 1, remoteId = "$i", name = "Nova $i", logo = null, categoryId = null, streamUrl = "u", num = i)
         return HomeRows(
-            channels = listOf(ChannelCardUi(ch, "Esprits criminels", "20:00 – 21:00", 0.6f)),
+            // Trois chaînes : deux avec programme en cours, une sans (la carte montre alors seulement la chaîne).
+            channels = listOf(ChannelCardUi(ch(1), "Esprits criminels", "20:00 – 21:00", 0.6f), ChannelCardUi(ch(2), "Le grand journal", "20:30 – 21:30", 0.3f), ChannelCardUi(ch(3), null)),
             shortcuts = shortcutsOf(HomeCounts(channels = 1240, movies = 30435, series = 4028, favorites = 12), emptyList(), null, null),
             layout = layout,
         )
@@ -280,5 +285,84 @@ class HomeTvStructureTest {
         val node = rule.onNodeWithTag("hero-list").fetchSemanticsNode()
         val desc = node.config[androidx.compose.ui.semantics.SemanticsProperties.ContentDescription]
         assertEquals(listOf("Ma liste"), desc)
+    }
+
+    // ───────────── Rangée « En direct maintenant » en vignettes larges ─────────────
+
+    @Test fun direct_premiereCarte_392Par220() {
+        setHome(hero = heroWithBackdrop)
+        val b = rule.onNodeWithTag("home-channel-1").getUnclippedBoundsInRoot()
+        assertEquals(392.design.value, b.width.value, 1f)
+        assertEquals(220.designT.value, b.height.value, 1f)
+    }
+
+    @Test fun direct_bas_depuisChaqueBouton_vaSurLaPremiereCarte() {
+        setHome(hero = heroWithBackdrop)
+        press(Key.DirectionDown); rule.onNodeWithTag("home-channel-1").assertIsFocused()
+        press(Key.DirectionUp); press(Key.DirectionRight); press(Key.DirectionDown); rule.onNodeWithTag("home-channel-1").assertIsFocused()
+        press(Key.DirectionUp); press(Key.DirectionRight); press(Key.DirectionDown); rule.onNodeWithTag("home-channel-1").assertIsFocused()
+    }
+
+    @Test fun direct_droite_uneCarteALaFois_jusqua_ToutVoir_puisRien_etGaucheRevient() {
+        setHome(hero = heroWithBackdrop)
+        press(Key.DirectionDown)
+        press(Key.DirectionRight); rule.onNodeWithTag("home-channel-2").assertIsFocused()
+        press(Key.DirectionRight); rule.onNodeWithTag("home-channel-3").assertIsFocused()
+        press(Key.DirectionRight); rule.onNodeWithTag("home-channel-see-all").assertIsFocused()
+        press(Key.DirectionRight); rule.onNodeWithTag("home-channel-see-all").assertIsFocused()
+        press(Key.DirectionLeft); rule.onNodeWithTag("home-channel-3").assertIsFocused()
+        press(Key.DirectionLeft); rule.onNodeWithTag("home-channel-2").assertIsFocused()
+        press(Key.DirectionLeft); rule.onNodeWithTag("home-channel-1").assertIsFocused()
+    }
+
+    @Test fun direct_haut_depuisNImporteQuelleCarte_revientSurRegarder() {
+        setHome(hero = heroWithBackdrop)
+        press(Key.DirectionDown); press(Key.DirectionRight); press(Key.DirectionRight); press(Key.DirectionRight)
+        rule.onNodeWithTag("home-channel-see-all").assertIsFocused()
+        press(Key.DirectionUp)
+        rule.onNodeWithTag("hero-watch").assertIsFocused()
+    }
+
+    @Test fun direct_carteFocalisee_entierementVisible_etToutVoirAMemeHauteur() {
+        setHome(hero = heroWithBackdrop)
+        press(Key.DirectionDown)
+        val first = rule.onNodeWithTag("home-channel-1").getUnclippedBoundsInRoot()
+        val seeAllHeight = rule.onNodeWithTag("home-channel-see-all").getUnclippedBoundsInRoot().height.value
+        assertEquals(first.height.value, seeAllHeight, 1f)
+        repeat(4) {
+            val f = rule.onNode(isFocused()).getUnclippedBoundsInRoot()
+            assertTrue("carte coupée à gauche : ${f.left}", f.left.value >= 0f)
+            assertTrue("carte coupée à droite : ${f.right}", f.right.value <= 960f)
+            assertTrue("carte coupée en bas : ${f.bottom}", f.bottom.value <= 540f)
+            press(Key.DirectionRight)
+        }
+    }
+
+    @Test fun direct_enArabe_suitLOrdreDeLecture() {
+        setHome(hero = heroWithBackdrop, lang = AppLang.Arabic)
+        press(Key.DirectionDown); rule.onNodeWithTag("home-channel-1").assertIsFocused()
+        val c1 = rule.onNodeWithTag("home-channel-1").getUnclippedBoundsInRoot()
+        val c2 = rule.onNodeWithTag("home-channel-2").getUnclippedBoundsInRoot()
+        assertTrue("en RTL la carte 2 est à gauche de la carte 1", c2.left.value < c1.left.value)
+        press(Key.DirectionLeft); rule.onNodeWithTag("home-channel-2").assertIsFocused()
+        press(Key.DirectionRight); rule.onNodeWithTag("home-channel-1").assertIsFocused()
+    }
+
+    @Test fun direct_carteAvecProgramme_aSaProgression_carteSansProgramme_non() {
+        setHome(hero = heroWithBackdrop)
+        val fill = hasTestTag(com.ultratv.tv.nativeapp.ui.design.PROGRESS_FILL_TAG)
+        rule.onNode(fill and hasAnyAncestor(hasTestTag("home-channel-1")), useUnmergedTree = true).assertExists()
+        rule.onNode(fill and hasAnyAncestor(hasTestTag("home-channel-3")), useUnmergedTree = true).assertDoesNotExist()
+        // La carte sans programme montre quand même la chaîne.
+        rule.onNode(hasText("Nova 3") and hasAnyAncestor(hasTestTag("home-channel-3")), useUnmergedTree = true).assertExists()
+    }
+
+    @Test fun direct_carteAvecProgramme_montreBadge_chaine_titre_horaire() {
+        setHome(hero = heroWithBackdrop)
+        val inCard = hasAnyAncestor(hasTestTag("home-channel-1"))
+        rule.onNode(hasText("EN DIRECT") and inCard, useUnmergedTree = true).assertExists()
+        rule.onNode(hasText("Nova 1") and inCard, useUnmergedTree = true).assertExists()
+        rule.onNode(hasText("Esprits criminels") and inCard, useUnmergedTree = true).assertExists()
+        rule.onNode(hasText("20:00 – 21:00") and inCard, useUnmergedTree = true).assertExists()
     }
 }

@@ -45,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.focus.onFocusChanged
@@ -290,6 +291,8 @@ internal fun HomeTvContent(
     }
     // Raccourcis : une rangée comme les autres, seulement si l'utilisateur les affiche (masqués par défaut sur TV).
     val order = rows.order
+    // Bouton « Regarder » du bandeau : cible de ▲ depuis la rangée « En direct » quand elle est juste sous l'image.
+    val heroWatch = remember { FocusRequester() }
     val sportAnchor = if (HomeSectionId.CHANNELS in order) HomeSectionId.CHANNELS else order.lastOrNull()
     val sportTile = if (sportOn) SportTile(sportLive, onGoSport) else null
     val stats = remember(providerCount, rows.shortcuts, D) {
@@ -316,7 +319,7 @@ internal fun HomeTvContent(
                             // Image pleine largeur de la zone de contenu : aucune marge horizontale sur cet élément.
                             Hero(
                                 hero, heroExtras, onWatch = onWatchHero, onInfo = onInfoHero, inList = heroInList, onToggleList = onToggleHeroList, takeFocus = !heroFocusDone, onFocused = onHeroFocused, onFocusTop = scrollTop,
-                                index = heroIndex, count = heroCount, clock = clock, modifier = Modifier.fillMaxWidth().height(HeroHeight).testTag("home-hero"),
+                                index = heroIndex, count = heroCount, clock = clock, watchRequester = heroWatch, modifier = Modifier.fillMaxWidth().height(HeroHeight).testTag("home-hero"),
                             )
                         } else Column(Modifier.padding(start = HomeStart, top = 44.design, end = 72.design), verticalArrangement = Arrangement.spacedBy(30.design)) {
                             // Salutation seulement sans image « À la une » (avec elle, l'heure se lit sur l'image).
@@ -328,12 +331,13 @@ internal fun HomeTvContent(
             }
             items(order, key = { it.name }, contentType = { it.contentType }) { id ->
                 CompositionLocalProvider(LocalBringIntoViewSpec provides inheritedSpec) {
+                    val upTarget = if (slot == HomeTopSlot.HERO && hero != null && id == order.firstOrNull()) heroWatch else null
                     Box(Modifier.padding(start = HomeStart)) {
                         // Rubrique Sport activée : « Sport en direct » juste sous la rangée « Direct » (à défaut, en dernier).
                         if (sportOn && id == sportAnchor) Column(verticalArrangement = Arrangement.spacedBy(30.design)) {
-                            HomeSection(id, rows, sportTile, playHistory, openPoster, playChannel, onShortcut)
+                            HomeSection(id, rows, sportTile, playHistory, openPoster, playChannel, onShortcut, upTarget)
                             sportRow(Modifier.homeRow(), PaddingValues(start = RowBleed, end = 96.design))
-                        } else HomeSection(id, rows, sportTile, playHistory, openPoster, playChannel, onShortcut)
+                        } else HomeSection(id, rows, sportTile, playHistory, openPoster, playChannel, onShortcut, upTarget)
                     }
                 }
             }
@@ -406,6 +410,7 @@ private fun HomeSection(
     openPoster: (PosterCardUi) -> Unit,
     playChannel: (ChannelEntity) -> Unit,
     onShortcut: (ShortcutId) -> Unit,
+    upTarget: FocusRequester? = null,
 ) {
     val D = LocalDs.current
     when (id) {
@@ -434,7 +439,7 @@ private fun HomeSection(
         HomeSectionId.TOP_SERIES -> Section(D.topRatedSeries) { PosterRow(rows.topSeries, openPoster) }
         // « En direct maintenant » (maquette) ; le libellé est celui de la rubrique Sport, même sens.
         HomeSectionId.CHANNELS -> Section(if (rows.showingFavorites) D.favoriteChannels else D.sportLiveNow) {
-            ChannelRow(rows.channels, playChannel, D.seeAll) { onShortcut(if (rows.showingFavorites) ShortcutId.FAVORITES else ShortcutId.LIVE) }
+            ChannelRow(rows.channels, playChannel, D.seeAll, upTarget) { onShortcut(if (rows.showingFavorites) ShortcutId.FAVORITES else ShortcutId.LIVE) }
         }
     }
 }
@@ -470,23 +475,30 @@ private fun PosterRow(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit)
     }
 }
 
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
-private fun ChannelRow(cards: List<ChannelCardUi>, onPlay: (ChannelEntity) -> Unit, seeAll: String, onSeeAll: () -> Unit) {
-    LazyRow(Modifier.homeRow(), horizontalArrangement = Arrangement.spacedBy(16.design), contentPadding = PaddingValues(start = RowBleed, end = 96.design)) {
+private fun ChannelRow(cards: List<ChannelCardUi>, onPlay: (ChannelEntity) -> Unit, seeAll: String, up: FocusRequester?, onSeeAll: () -> Unit) {
+    // Marge verticale : la carte focalisée grandit de 6 % (haut et bas) et la rangée rogne ce qui dépasse.
+    // ▲ depuis n'importe quelle carte, à la sortie du groupe : « Regarder » (sans cela, la recherche géométrique choisit le bouton le plus proche, à droite).
+    val rowModifier = if (up != null) Modifier.focusProperties { exit = { d -> if (d == androidx.compose.ui.focus.FocusDirection.Up) up else FocusRequester.Default } }.homeRow() else Modifier.homeRow()
+    LazyRow(rowModifier, horizontalArrangement = Arrangement.spacedBy(20.design), contentPadding = PaddingValues(start = RowBleed, end = 96.design, top = 14.design, bottom = 14.design)) {
         items(cards.distinctBy { it.channel.id }, key = { it.channel.id }, contentType = { "channel" }) { c -> ChannelCard(c) { onPlay(c.channel) } }
         // « Tout voir » : dernière carte de la rangée (un lien en haut à droite du titre capterait le focus en descendant).
         item(key = "see-all", contentType = "see-all") { SeeAllCard(seeAll, onSeeAll) }
     }
 }
 
-/** Dernière carte d'une rangée : ouvre l'écran complet. */
+/** Dernière carte d'une rangée : ouvre l'écran complet. Même hauteur, même focus que les vignettes de chaîne. */
 @Composable
 private fun SeeAllCard(label: String, onClick: () -> Unit) {
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(22.design), bg = Ux.Card, focusedBg = Ux.Cta, focusedScale = 1.03f, ringWidth = 0.dp, modifier = Modifier.width(220.design).height(CHANNEL_CARD_HEIGHT)) { f ->
+    FocusSurface(
+        onClick = onClick, shape = RoundedCornerShape(16.design), bg = Ux.Card, focusedBg = Ux.Card, focusedScale = 1.06f, ringWidth = 5.design, ringColor = channelRingColor(),
+        modifier = Modifier.width(220.design).height(CHANNEL_CARD_HEIGHT).testTag("home-channel-see-all"),
+    ) { _ ->
         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-            Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(label, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.width(10.design))
-            DIcon(Icons.Arrow, 26.design, if (f) Ux.TextOnLight else Ux.Text, strokeWidth = 2.4f)
+            DIcon(Icons.Arrow, 26.design, Ux.Text, strokeWidth = 2.4f)
         }
     }
 }
@@ -591,20 +603,20 @@ private fun Section(title: String, content: @Composable () -> Unit) {
 private fun Hero(
     h: HeroItem, extras: State<Map<String, HeroExtras>>, onWatch: (HeroItem) -> Unit, onInfo: (HeroItem) -> Unit,
     inList: State<Set<String>>, onToggleList: (HeroItem) -> Unit,
-    takeFocus: Boolean, onFocused: () -> Unit, onFocusTop: () -> Unit, clock: State<Long>, index: Int = 0, count: Int = 1, modifier: Modifier = Modifier,
+    takeFocus: Boolean, onFocused: () -> Unit, onFocusTop: () -> Unit, clock: State<Long>, index: Int = 0, count: Int = 1, watchRequester: FocusRequester? = null, modifier: Modifier = Modifier,
 ) = com.ultratv.tv.nativeapp.ui.design.NoTextWrap {
     // Bandeau de hauteur fixe : pas de ligne de plus (les boutons « Regarder / Plus d'infos » étaient écrasés).
-    HeroBody(h, extras, onWatch, onInfo, inList, onToggleList, takeFocus, onFocused, onFocusTop, clock, index, count, modifier)
+    HeroBody(h, extras, onWatch, onInfo, inList, onToggleList, takeFocus, onFocused, onFocusTop, clock, index, count, watchRequester, modifier)
 }
 
 @Composable
 private fun HeroBody(
     h: HeroItem, extras: State<Map<String, HeroExtras>>, onWatch: (HeroItem) -> Unit, onInfo: (HeroItem) -> Unit,
     inList: State<Set<String>>, onToggleList: (HeroItem) -> Unit,
-    takeFocus: Boolean, onFocused: () -> Unit, onFocusTop: () -> Unit, clock: State<Long>, index: Int, count: Int, modifier: Modifier,
+    takeFocus: Boolean, onFocused: () -> Unit, onFocusTop: () -> Unit, clock: State<Long>, index: Int, count: Int, watchRequester: FocusRequester?, modifier: Modifier,
 ) {
     val D = LocalDs.current
-    val requester = remember { FocusRequester() }
+    val requester = remember(watchRequester) { watchRequester ?: FocusRequester() }
     var focused by remember { mutableStateOf(false) }
     if (takeFocus) RequestInitialFocus(requester, hasFocus = { focused })
     val rtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
@@ -777,27 +789,38 @@ private fun ResumeCard(c: ResumeCardUi, onClick: () -> Unit) {
     }
 }
 
-private val CHANNEL_CARD_HEIGHT get() = 150.designT
+// Hauteur d'une vignette : cadre qui contient du texte (titre, horaire), donc en unité « designT » (grandit avec la taille de texte choisie).
+private val CHANNEL_CARD_HEIGHT get() = 220.designT
+
+/** Anneau de focus des vignettes : blanc en thème sombre ; en thème clair le blanc se perdrait sur la page, on garde l'anneau d'accent. */
+@Composable
+private fun channelRingColor(): Color? = if (Ux.themeLight) null else Color.White
 
 /**
- * Carte chaîne « En direct maintenant » (maquette) : logo, numéro · nom et horaire, titre du programme en cours et sa
- * progression ; OK lance la chaîne (contexte LIVE posé par le ViewModel).
+ * Vignette chaîne « En direct maintenant » (392 × 220) : en haut pastille EN DIRECT, logo et nom de la chaîne ; en bas
+ * titre du programme en cours et horaire ; progression collée au bord bas. Sans programme en cours : seulement la chaîne.
+ * Le focus se lit par l'anneau et l'agrandissement (fond inchangé : les textes gardent leurs jetons).
  */
 @Composable
 private fun ChannelCard(card: ChannelCardUi, onClick: () -> Unit) {
     val c = card.channel
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(22.design), bg = Ux.Card, focusedBg = Ux.Cta, focusedScale = 1.03f, ringWidth = 0.dp, modifier = Modifier.width(320.design).height(CHANNEL_CARD_HEIGHT)) { f ->
-        Column(Modifier.fillMaxSize().padding(horizontal = 18.design, vertical = 16.design), verticalArrangement = Arrangement.SpaceBetween) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.design)) {
-                LogoBox(c.logo, c.title, Modifier.width(48.design).height(48.design), radius = 13, pad = 4, bg = if (f) Color(0xFFE4E4E7) else Ux.Tile, decodeSize = DpSize(48.design, 48.design))
-                Column(Modifier.weight(1f)) {
-                    // Sans numéro : celui de la source est souvent propre à une catégorie (« 2 » partout sur une rangée mélangée).
-                    Text(c.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 17.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    if (card.timeRange != null) Text(card.timeRange, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 14.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
+    FocusSurface(
+        onClick = onClick, shape = RoundedCornerShape(16.design), bg = Ux.Card, focusedBg = Ux.Card, focusedScale = 1.06f, ringWidth = 5.design, ringColor = channelRingColor(),
+        modifier = Modifier.width(392.design).height(CHANNEL_CARD_HEIGHT).testTag("home-channel-${c.id}"),
+    ) { _ ->
+        Row(Modifier.align(Alignment.TopStart).fillMaxWidth().padding(start = 18.design, end = 18.design, top = 16.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
+            LiveBadge()
+            LogoBox(c.logo, c.title, Modifier.width(40.design).height(40.design), radius = 11, pad = 4, bg = Ux.Tile, decodeSize = DpSize(40.design, 40.design))
+            // Sans numéro : celui de la source est souvent propre à une catégorie (« 2 » partout sur une rangée mélangée).
+            Text(c.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        }
+        val now = card.nowTitle
+        if (now != null) {
+            Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(start = 18.design, end = 18.design, bottom = 20.design), verticalArrangement = Arrangement.spacedBy(2.design)) {
+                Text(now, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 26.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (card.timeRange != null) Text(card.timeRange, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Text(card.nowTitle ?: "", color = if (f) Ux.OnFocus2 else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 19.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            ProgressLine(card.progress ?: 0f, Modifier.fillMaxWidth().clip(RoundedCornerShape(2.design)), heightPx = 4, track = if (f) Ux.TextOnLight.copy(alpha = 0.12f) else Ux.Text.copy(alpha = 0.10f))
+            if (card.progress != null) ProgressLine(card.progress, Modifier.align(Alignment.BottomStart).fillMaxWidth())
         }
     }
 }

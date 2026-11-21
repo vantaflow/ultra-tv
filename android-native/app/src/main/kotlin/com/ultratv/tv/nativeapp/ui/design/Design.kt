@@ -171,6 +171,7 @@ fun FocusSurface(
     focusedScale: Float = 1.06f,
     ringWidth: Dp = 6.design,
     focusedBg: Color = Ux.Cta,
+    ringColor: Color? = null,
     onLongClick: (() -> Unit)? = null,
     content: @Composable BoxScope.(focused: Boolean) -> Unit,
 ) {
@@ -215,7 +216,7 @@ fun FocusSurface(
                 scaleX = s; scaleY = s
             }
             // Anneau seulement si sa largeur est positive (0 = focus par le seul fond, interface v2 : 0 dp tracerait un filet).
-            .then(if (focused && ringWidth.value > 0f) Modifier.border(ringWidth, Ux.Accent, shape) else Modifier)
+            .then(if (focused && ringWidth.value > 0f) Modifier.border(ringWidth, ringColor ?: Ux.Accent, shape) else Modifier)
             .clip(shape)
             .background(if (focused) focusedBg else bg)
             .combinedClickable(
