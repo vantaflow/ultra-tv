@@ -415,7 +415,15 @@ class GuideRecompositionTest {
         probe.clear()
         nowBase = at(1, 32); clock.longValue = at(1, 32)
         rule.waitForIdle()
-        assertTrue("minute suivante : chaque ligne visible une fois au plus : ${probe.rows}", probe.rows.values.all { it == 1 })
+        assertEquals("minute suivante, aucun programme terminé : aucune ligne", emptySet<Long>(), probe.rows.keys)
+        assertEquals(0, probe.screen)
+        // 01:40 : seules les lignes dont un programme se termine entre 01:32 et 01:40 changent, et seulement deux cases chacune.
+        probe.clear()
+        nowBase = at(1, 40); clock.longValue = at(1, 40)
+        rule.waitForIdle()
+        val changing = chans.map { it.id }.filter { id -> all.getValue(id).any { it.endMs > at(1, 32) && it.endMs <= at(1, 40) } }
+        assertTrue("lignes recomposées ${probe.rows.keys} ⊆ $changing", changing.containsAll(probe.rows.keys))
+        assertTrue("au plus deux cases par ligne (celle qui finit, celle qui commence) : ${probe.cells}", probe.cells.keys.groupBy { channelOf(it) }.values.all { it.size <= 2 })
         assertEquals(0, probe.screen)
     }
 

@@ -878,7 +878,12 @@ private fun GuideRow(
     ProbeRow(c.id)
     // « Maintenant » à la minute près, relu quand l'horloge partagée tourne : la ligne ne se recompose qu'à la minute (une
     // lecture directe de l'heure donnait une valeur différente à chaque composition, donc jamais de saut possible).
-    val nowMs by remember(nowProvider) { androidx.compose.runtime.derivedStateOf { clock.value; nowProvider() / 60_000L * 60_000L } }
+    // Programme EN COURS (son début) et nombre de programmes déjà TERMINÉS, relus quand l'horloge partagée tourne : la ligne ne se
+    // recompose que lorsqu'un programme se termine (teinte « en cours », badge Replay), plus à chaque minute.
+    val nowStart by remember(progs, nowProvider) {
+        androidx.compose.runtime.derivedStateOf { clock.value; val n = nowProvider(); progs.firstOrNull { it.startMs <= n && it.endMs > n }?.startMs ?: Long.MIN_VALUE }
+    }
+    val ended by remember(progs, nowProvider) { androidx.compose.runtime.derivedStateOf { clock.value; val n = nowProvider(); progs.count { it.endMs <= n } } }
     Row(Modifier.fillMaxWidth().height(84.designT)) {
         // Cellule de la chaîne (maquette) : numéro, logo 48 et nom dans une carte arrondie, 8 px avant les programmes.
         Row(Modifier.width(nameColPx.design).fillMaxHeight().padding(end = 8.design).clip(RoundedCornerShape(18.design)).background(Ux.Card2).padding(horizontal = 14.design), verticalAlignment = Alignment.CenterVertically) {
@@ -913,9 +918,10 @@ private fun GuideRow(
                 // [normalizeRow] rend des débuts strictement croissants) : une liste qui change garde le nœud, donc le focus, des
                 // programmes qui restent, même quand un réimport du guide leur donne de nouveaux identifiants.
                 key(p.startMs) {
-                    val isNow = p.startMs <= nowMs && p.endMs > nowMs
+                    val isNow = p.startMs == nowStart
                     // Programme passé encore rejouable : badge « Replay » (la lecture passe par « Revoir »), montré sur les cases larges.
-                    val replay = p.endMs <= nowMs && ReplayUrls.availability(c, p, nowMs) == ReplayAvailability.AVAILABLE
+                    // Les programmes sont triés (normalizeRow) : les [ended] premiers sont terminés.
+                    val replay = idx < ended && ReplayUrls.availability(c, p, nowProvider()) == ReplayAvailability.AVAILABLE
                     // Fonction à part, aux paramètres stables : une ligne recomposée (case qui entre au bord de la fenêtre, arrivée de
                     // programmes) saute les cases qui n'ont pas changé.
                     GuideCell(
