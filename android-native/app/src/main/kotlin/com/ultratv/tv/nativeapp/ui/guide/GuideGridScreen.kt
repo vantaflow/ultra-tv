@@ -953,9 +953,13 @@ internal fun GuideTvContent(
     val plan = remember { GuideFocusPlan() }
     // Dernier instant visé par ⏪ ⏩ (chaîne, instant) : voir le traitement de ces touches.
     val dayAnchor = remember { longArrayOf(-1L, Long.MIN_VALUE) }
+    // Un élément de l'écran a le focus (jours, catégories, boutons, grille) : le focus initial tardif ne le reprend plus. Lu
+    // seulement par le focus initial (tableau simple : aucune recomposition).
+    val screenFocus = remember { BooleanArray(1) }
     val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
     Column(
         modifier.fillMaxSize().padding(start = 48.design, end = 56.design, top = 40.design, bottom = 12.design)
+            .onFocusChanged { screenFocus[0] = it.hasFocus }
             // Au bord de la fenêtre, DROITE / GAUCHE font défiler le temps de 90 min au lieu de buter : le focus reste sur la
             // même chaîne, sur le programme qui suit (ou précède) dans le temps.
             .onPreviewKeyEvent { e ->
@@ -1117,7 +1121,7 @@ internal fun GuideTvContent(
                 androidx.compose.runtime.derivedStateOf { if (initialDone[0]) true else windowEmpty || state.layoutInfo.visibleItemsInfo.any { info -> peekAt(info.index)?.let { hasCell(it.id) } == true } }
             }
             RequestInitialFocus(
-                emptyAction, hasFocus = { if (inGrid) initialDone[0] = true; initialDone[0] }, key = entryReady,
+                emptyAction, hasFocus = { if (inGrid || screenFocus[0]) initialDone[0] = true; initialDone[0] }, key = entryReady,
                 target = { entryTarget() ?: emptyAction },
             )
             BoxWithConstraints(
