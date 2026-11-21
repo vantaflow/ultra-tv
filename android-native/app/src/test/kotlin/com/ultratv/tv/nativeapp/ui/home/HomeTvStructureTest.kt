@@ -624,7 +624,7 @@ class HomeTvStructureTest {
      * son anneau, reste dans l'écran aux deux bords ; vers la fin de la rangée la carte ne recule jamais (pas de saut ni
      * d'oscillation du défilement) ; chaque touche déplace d'UNE carte.
      */
-    private fun assertRowNeverClipped(block: HomeBlock, lang: AppLang, count: Int, scale: Float, tag: (Int) -> String, data: HomeRows.() -> HomeRows) {
+    private fun assertRowNeverClipped(block: HomeBlock, lang: AppLang, count: Int, scale: Float, tag: (Int) -> String, data: HomeRows.() -> HomeRows, rowTag: String? = null) {
         val base = HomeLayout.defaultFor(true)
         setHome(hero = null, layout = base.move(block, -base.order.indexOf(block)), lang = lang)
         rowsState.value = rowsState.value.data()
@@ -636,7 +636,14 @@ class HomeTvStructureTest {
         cardOf(tag(1)).requestFocus(); rule.waitForIdle(); cardOf(tag(1)).assertIsFocused()
         fun check(i: Int) {
             cardOf(tag(i)).assertIsFocused()
-            val (l, _, r, _) = enlarged(scale)
+            val (l, t, r, b) = enlarged(scale)
+            assertTrue("carte $i coupée en haut ($t)", t >= screen.top.value)
+            assertTrue("carte $i coupée en bas ($b / ${screen.bottom})", b <= screen.bottom.value)
+            if (rowTag != null) {
+                val row = rule.onNodeWithTag(rowTag).getUnclippedBoundsInRoot()
+                assertTrue("carte $i rognée en haut par la rangée ($t / ${row.top})", t >= row.top.value)
+                assertTrue("carte $i rognée en bas par la rangée ($b / ${row.bottom})", b <= row.bottom.value)
+            }
             assertTrue("carte $i coupée à gauche ($l)", l >= screen.left.value)
             assertTrue("carte $i coupée à droite ($r / ${screen.right})", r <= screen.right.value)
         }
@@ -663,10 +670,10 @@ class HomeTvStructureTest {
         copy(channels = (1..n).map { i -> ChannelCardUi(ChannelEntity(id = i.toLong(), providerId = 1, remoteId = "$i", name = "Nova $i", logo = null, categoryId = null, streamUrl = "u", num = i), null) })
     }
 
-    @Test fun rangeReprendre_jamaisRognee_enFrancais() = assertRowNeverClipped(HomeBlock.RESUME, AppLang.French, 8, 1.04f, { "home-resume-r$it" }, resumeRows(8))
-    @Test fun rangeReprendre_jamaisRognee_enArabe() = assertRowNeverClipped(HomeBlock.RESUME, AppLang.Arabic, 8, 1.04f, { "home-resume-r$it" }, resumeRows(8))
-    @Test fun rangeDirect_jamaisRognee_enFrancais() = assertRowNeverClipped(HomeBlock.CHANNELS, AppLang.French, 8, 1.06f, { "home-channel-$it" }, channelRows(8))
-    @Test fun rangeDirect_jamaisRognee_enArabe() = assertRowNeverClipped(HomeBlock.CHANNELS, AppLang.Arabic, 8, 1.06f, { "home-channel-$it" }, channelRows(8))
+    @Test fun rangeReprendre_jamaisRognee_enFrancais() = assertRowNeverClipped(HomeBlock.RESUME, AppLang.French, 8, 1.04f, { "home-resume-r$it" }, resumeRows(8), "home-resume-row")
+    @Test fun rangeReprendre_jamaisRognee_enArabe() = assertRowNeverClipped(HomeBlock.RESUME, AppLang.Arabic, 8, 1.04f, { "home-resume-r$it" }, resumeRows(8), "home-resume-row")
+    @Test fun rangeDirect_jamaisRognee_enFrancais() = assertRowNeverClipped(HomeBlock.CHANNELS, AppLang.French, 8, 1.06f, { "home-channel-$it" }, channelRows(8), "home-channel-row")
+    @Test fun rangeDirect_jamaisRognee_enArabe() = assertRowNeverClipped(HomeBlock.CHANNELS, AppLang.Arabic, 8, 1.06f, { "home-channel-$it" }, channelRows(8), "home-channel-row")
     @Test fun rangeTop10_jamaisRognee_enFrancais() = assertRowNeverClipped(HomeBlock.TOP10, AppLang.French, 10, 1.10f, { "home-poster-t$it" }, { this })
     @Test fun rangeTop10_jamaisRognee_enArabe() = assertRowNeverClipped(HomeBlock.TOP10, AppLang.Arabic, 10, 1.10f, { "home-poster-t$it" }, { this })
     @Test fun rangeAffiches_jamaisRognee_enArabe() = assertRowNeverClipped(HomeBlock.LATEST_MOVIES, AppLang.Arabic, 6, 1.10f, { "home-poster-m$it" }, { this })

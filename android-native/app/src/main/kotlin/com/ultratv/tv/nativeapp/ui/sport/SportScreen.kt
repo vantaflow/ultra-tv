@@ -97,7 +97,6 @@ import com.ultratv.tv.nativeapp.ui.common.RowBleed
 import com.ultratv.tv.nativeapp.ui.common.Toaster
 import com.ultratv.tv.nativeapp.ui.common.design
 import com.ultratv.tv.nativeapp.ui.common.rememberEpgClock
-import com.ultratv.tv.nativeapp.ui.common.rowBleedStart
 import com.ultratv.tv.nativeapp.ui.design.DIcon
 import com.ultratv.tv.nativeapp.ui.design.DarkPalette
 import com.ultratv.tv.nativeapp.ui.design.FocusSurface

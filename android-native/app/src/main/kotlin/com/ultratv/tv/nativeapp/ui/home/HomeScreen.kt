@@ -3,6 +3,7 @@ package com.ultratv.tv.nativeapp.ui.home
 import com.ultratv.tv.nativeapp.ui.design.designT
 import com.ultratv.tv.nativeapp.ui.common.RowBleed
 import com.ultratv.tv.nativeapp.ui.common.rowBleedStart
+import com.ultratv.tv.nativeapp.ui.common.RowEdgeMargin
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -227,6 +228,7 @@ fun HomeScreen(
         heroFocusDone = heroFocusDone, onHeroFocused = onHeroFocused,
         playHistory = playHistory, openPoster = openPoster, playChannel = playChannel, onShortcut = onShortcut, onGoSport = onGoSport,
         onWatchHero = watchHero, onInfoHero = openHero, heroInList = heroInList, onToggleHeroList = toggleHeroList,
+        heroRotates = heroRotates,
         emptyTop = {
             when (slot) {
                 HomeTopSlot.NO_SOURCE -> EmptyCard(D.homeNoSource, D.syncCloudHint, D.addSource, onGoSettings, D.cardCloud, onGoCloud, action3 = D.cardPhone, onAction3 = onGoPhone)
@@ -262,6 +264,8 @@ internal fun HomeTvContent(
     heroInList: State<Set<String>>, onToggleHeroList: (HeroItem) -> Unit,
     emptyTop: @Composable () -> Unit,
     sportRow: @Composable (Modifier, PaddingValues) -> Unit,
+    // Calculé UNE fois par l'appelant (l'écran le passe aussi au ViewModel) ; à défaut, lu ici.
+    heroRotates: Boolean = rememberHeroMayRotate(),
 ) {
     val D = LocalDs.current
     // Pivot VERTICAL seulement (haut de l'élément focalisé à 30 % de l'écran, comme le pivot TV de Compose) ; les
@@ -321,7 +325,7 @@ internal fun HomeTvContent(
                             // Image pleine largeur de la zone de contenu : aucune marge horizontale sur cet élément.
                             Hero(
                                 hero, heroExtras, onWatch = onWatchHero, onInfo = onInfoHero, inList = heroInList, onToggleList = onToggleHeroList, takeFocus = !heroFocusDone, onFocused = onHeroFocused, onFocusTop = scrollTop,
-                                index = heroIndex, count = heroCount, clock = clock, watchRequester = heroWatch, modifier = Modifier.fillMaxWidth().height(HeroHeight).testTag("home-hero"),
+                                index = heroIndex, count = heroCount, mayRotate = heroRotates, clock = clock, watchRequester = heroWatch, modifier = Modifier.fillMaxWidth().height(HeroHeight).testTag("home-hero"),
                             )
                         } else Column(Modifier.padding(start = HomeStart, top = 44.design, end = 72.design), verticalArrangement = Arrangement.spacedBy(30.design)) {
                             // Salutation seulement sans image « À la une » (avec elle, l'heure se lit sur l'image).
@@ -403,19 +407,6 @@ private class HomePivotSpec(private val topFocused: () -> Boolean) : BringIntoVi
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 private fun Modifier.homeRow(): Modifier = this.rowBleedStart(RowBleed).focusRestorer().focusGroup()
 
-/**
- * Défilement horizontal d'une rangée de cartes : la carte focalisée doit être visible EN ENTIER avec sa marge
- * d'agrandissement et son anneau, pas seulement collée au bord de l'écran, où elle serait rognée par la rangée.
- */
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-private class EdgeMarginSpec(private val margin: Float) : BringIntoViewSpec {
-    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
-        val lead = offset - margin
-        val trail = offset + size + margin - containerSize
-        return when { lead < 0f && trail > 0f -> 0f; lead < 0f -> lead; trail > 0f -> trail; else -> 0f }
-    }
-}
-
 /** Marge de bord des rangées d'affiches : 10 % de 200 (10) + décalage et épaisseur de l'anneau agrandis (11), arrondi. */
 private val PosterEdgeMargin get() = 24.design
 
@@ -424,15 +415,6 @@ private val ResumeEdgeMargin get() = 18.design
 
 /** Rangée « En direct » (392, zoom 6 % : 11,8 de chaque côté) + anneau (≈ 10,6), arrondi. */
 private val ChannelEdgeMargin get() = 24.design
-
-/** Marge de bord horizontale de la carte focalisée d'une rangée : [margin] reste visible entre elle et le bord de l'écran. */
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-@Composable
-private fun RowEdgeMargin(margin: androidx.compose.ui.unit.Dp, content: @Composable () -> Unit) {
-    val px = with(androidx.compose.ui.platform.LocalDensity.current) { margin.toPx() }
-    val spec = remember(px) { EdgeMarginSpec(px) }
-    CompositionLocalProvider(LocalBringIntoViewSpec provides spec, content = content)
-}
 
 @Composable
 private fun HomeSection(
@@ -481,7 +463,7 @@ private fun HomeSection(
 private fun ResumeRow(cards: List<ResumeCardUi>, onPlay: (WatchHistoryEntity) -> Unit) {
     val memory = rememberRowFocusMemory()
     RowEdgeMargin(ResumeEdgeMargin) {
-        LazyRow(Modifier.homeRow().then(memory.tracker), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PaddingValues(start = RowBleed, end = 96.design)) {
+        LazyRow(Modifier.homeRow().then(memory.tracker).testTag("home-resume-row"), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PaddingValues(start = RowBleed, end = 96.design, top = 18.design, bottom = 18.design)) {
             items(cards, key = { it.key }, contentType = { "resume" }) { c -> ResumeCard(c, rowMemory(memory, c.key).testTag("home-resume-${c.key}")) { onPlay(c.entry) } }
         }
     }
@@ -526,8 +508,8 @@ private fun ChannelRow(cards: List<ChannelCardUi>, onPlay: (ChannelEntity) -> Un
     RowEdgeMargin(ChannelEdgeMargin) {
         LazyRow(
             rowModifier.then(memory.tracker).testTag("home-channel-row"), horizontalArrangement = Arrangement.spacedBy(20.design),
-            // Marge verticale : la carte focalisée grandit de 6 % (haut et bas) et la rangée rogne ce qui dépasse.
-            contentPadding = PaddingValues(start = RowBleed, end = 96.design, top = 14.design, bottom = 14.design)) {
+            // Marge verticale : la carte focalisée grandit de 6 % (13 de chaque côté) + anneau (≈ 11) et la rangée rogne ce qui dépasse.
+            contentPadding = PaddingValues(start = RowBleed, end = 96.design, top = 24.design, bottom = 24.design)) {
             items(cards.distinctBy { it.channel.id }, key = { it.channel.id }, contentType = { "channel" }) { c -> ChannelCard(c, memory) { onPlay(c.channel) } }
             // « Tout voir » : dernière carte de la rangée (un lien en haut à droite du titre capterait le focus en descendant).
             item(key = "see-all", contentType = "see-all") { SeeAllCard(seeAll, memory, onSeeAll) }
@@ -675,10 +657,10 @@ private fun Section(title: String, content: @Composable () -> Unit) {
 private fun Hero(
     h: HeroItem, extras: State<Map<String, HeroExtras>>, onWatch: (HeroItem) -> Unit, onInfo: (HeroItem) -> Unit,
     inList: State<Set<String>>, onToggleList: (HeroItem) -> Unit,
-    takeFocus: Boolean, onFocused: () -> Unit, onFocusTop: () -> Unit, clock: State<Long>, index: Int = 0, count: Int = 1, watchRequester: FocusRequester? = null, modifier: Modifier = Modifier,
+    takeFocus: Boolean, onFocused: () -> Unit, onFocusTop: () -> Unit, clock: State<Long>, index: Int = 0, count: Int = 1, mayRotate: Boolean = false, watchRequester: FocusRequester? = null, modifier: Modifier = Modifier,
 ) = com.ultratv.tv.nativeapp.ui.design.NoTextWrap {
     // Bandeau de hauteur fixe : pas de ligne de plus (les boutons « Regarder / Plus d'infos » étaient écrasés).
-    HeroBody(h, extras, onWatch, onInfo, inList, onToggleList, takeFocus, onFocused, onFocusTop, clock, index, count, watchRequester, modifier)
+    HeroBody(h, extras, onWatch, onInfo, inList, onToggleList, takeFocus, onFocused, onFocusTop, clock, index, count, mayRotate, watchRequester, modifier)
 }
 
 /** API de l'appareil, lue UNE fois (jamais dans la composition). */
@@ -693,10 +675,9 @@ private fun rememberHeroMayRotate(): Boolean =
 private fun HeroBody(
     h: HeroItem, extras: State<Map<String, HeroExtras>>, onWatch: (HeroItem) -> Unit, onInfo: (HeroItem) -> Unit,
     inList: State<Set<String>>, onToggleList: (HeroItem) -> Unit,
-    takeFocus: Boolean, onFocused: () -> Unit, onFocusTop: () -> Unit, clock: State<Long>, index: Int, count: Int, watchRequester: FocusRequester?, modifier: Modifier,
+    takeFocus: Boolean, onFocused: () -> Unit, onFocusTop: () -> Unit, clock: State<Long>, index: Int, count: Int, mayRotate: Boolean, watchRequester: FocusRequester?, modifier: Modifier,
 ) {
     val D = LocalDs.current
-    val mayRotate = rememberHeroMayRotate()
     val requester = remember(watchRequester) { watchRequester ?: FocusRequester() }
     var focused by remember { mutableStateOf(false) }
     if (takeFocus) RequestInitialFocus(requester, hasFocus = { focused })

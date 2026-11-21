@@ -381,7 +381,7 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
     val heroMode = !touch && !split && chipsOrNull != null && lp != null && chips.isNotEmpty() && selected == null && !filter.narrows
     com.ultratv.tv.nativeapp.ui.mobile.TouchRefresh {
     if (heroMode) CatalogHeroHost(vm, kind, chips, filter, detecting, progress, onOpen) else Column(
-        Modifier.fillMaxSize().then(if (touch) Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp) else Modifier.padding(start = 72.design, end = 96.design, top = 54.design)),
+        Modifier.fillMaxSize().then(catalogPagePadding(touch)),
         verticalArrangement = Arrangement.spacedBy(if (touch) 12.dp else if (split) 20.design else 32.design),
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
@@ -400,19 +400,8 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
         // barre ici les affichait une seconde fois (tri en double au-dessus et au-dessous des catégories).
         if (split) lp?.let { ChoiceBar(vm, it, filter, split, touch, chips.size, listReq) }
         if (detecting && !touch) Text(D.genreHint, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        if (!split && touch) TouchFilterRow(vm, chips, selected, filter)
-        else if (!split) {
-        LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 14.design), contentPadding = PaddingValues(start = RowBleed)) {
-            item(key = "all") { Chip(D.allChip, selected == null) { vm.select(null) } }
-            items(chips, key = { it.remoteId }, contentType = { "chip" }) { c -> Chip(categoryLabel(c), selected == c.remoteId) { vm.select(c.remoteId) } }
-        }
-        // Tri et filtres : Tri · Note minimale · Période. Un filtre actif sur « Tous » affiche la grille filtrée.
-        LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 14.design), contentPadding = PaddingValues(start = RowBleed)) {
-            items(CatalogFilter.Sort.entries, key = { "s-${it.name}" }, contentType = { "chip" }) { o -> Chip(D.catalogSortName(o), filter.sort == o) { vm.setFilter(filter.copy(sort = o)) } }
-            items(CatalogFilter.RATINGS, key = { "r-$it" }, contentType = { "chip" }) { r -> Chip(if (r == 0) D.anyRating else "★ $r+", filter.minRating == r) { vm.setFilter(filter.copy(minRating = r)) } }
-            items(CatalogFilter.Period.entries, key = { "p-${it.name}" }, contentType = { "chip" }) { o -> Chip(D.periodName(o), filter.period == o) { vm.setFilter(filter.copy(period = o)) } }
-        }
-        }
+        if (!split && touch) TouchFilterRow(chips, selected, filter, vm::select, vm::setFilter)
+        else if (!split) CatalogChipRows(chips, selected, filter, vm::select, vm::setFilter)
         // Chargement : squelette de rangées à taille fixe (la mise en page ne saute plus quand les données arrivent).
         if (chipsOrNull == null || lp == null) { RowsSkeleton(touch); return@Column }
         if (split) {
@@ -458,6 +447,27 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
             }
         }
     }
+    }
+}
+
+/** Marges de page du catalogue (hors vue « Tous » TV) : les rangées à débordement de début s'y étendent (voir `rowBleedStart`). */
+internal fun catalogPagePadding(touch: Boolean): Modifier =
+    if (touch) Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp) else Modifier.padding(start = 72.design, end = 96.design, top = 54.design)
+
+/** TV, rangées : catégories (« Tous » + chaque catégorie) puis Tri · Note minimale · Période, une rangée de pastilles chacune. */
+@Composable
+internal fun CatalogChipRows(chips: List<CategoryChip>, selected: String?, filter: CatalogFilter, onSelect: (String?) -> Unit, onFilter: (CatalogFilter) -> Unit) {
+    val D = LocalDs.current
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 14.design), contentPadding = PaddingValues(start = RowBleed)) {
+        item(key = "all") { Chip(D.allChip, selected == null) { onSelect(null) } }
+        items(chips, key = { it.remoteId }, contentType = { "chip" }) { c -> Chip(categoryLabel(c), selected == c.remoteId) { onSelect(c.remoteId) } }
+    }
+    // Tri et filtres : Tri · Note minimale · Période. Un filtre actif sur « Tous » affiche la grille filtrée.
+    LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 14.design), contentPadding = PaddingValues(start = RowBleed)) {
+        items(CatalogFilter.Sort.entries, key = { "s-${it.name}" }, contentType = { "chip" }) { o -> Chip(D.catalogSortName(o), filter.sort == o) { onFilter(filter.copy(sort = o)) } }
+        items(CatalogFilter.RATINGS, key = { "r-$it" }, contentType = { "chip" }) { r -> Chip(if (r == 0) D.anyRating else "★ $r+", filter.minRating == r) { onFilter(filter.copy(minRating = r)) } }
+        items(CatalogFilter.Period.entries, key = { "p-${it.name}" }, contentType = { "chip" }) { o -> Chip(D.periodName(o), filter.period == o) { onFilter(filter.copy(period = o)) } }
     }
 }
 
@@ -521,23 +531,26 @@ private fun GenreProgressBanner(p: GenreDetector.Progress, touch: Boolean) {
  * puis « Tous » et les catégories.
  */
 @Composable
-private fun TouchFilterRow(vm: CatalogGridViewModel, chips: List<CategoryChip>, selected: String?, filter: CatalogFilter) {
+internal fun TouchFilterRow(chips: List<CategoryChip>, selected: String?, filter: CatalogFilter, onSelect: (String?) -> Unit, onFilter: (CatalogFilter) -> Unit) {
     val D = LocalDs.current
     var open by remember { mutableStateOf("") }
+    // Marge de bord au défilement : la pastille focalisée (zoom 6 % + anneau) n'est jamais collée au bord de l'écran.
+    com.ultratv.tv.nativeapp.ui.common.RowEdgeMargin(10.dp) {
     LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(start = RowBleed)) {
         item(key = "sort") { Chip("${D.catalogSortName(filter.sort)} ▾", filter.sort != CatalogFilter.Sort.entries.first()) { open = "sort" } }
         item(key = "rating") { Chip("${if (filter.minRating == 0) D.anyRating else "★ ${filter.minRating}+"} ▾", filter.minRating != 0) { open = "rating" } }
         item(key = "period") { Chip("${D.periodName(filter.period)} ▾", filter.period != CatalogFilter.Period.entries.first()) { open = "period" } }
-        item(key = "all") { Chip(D.allChip, selected == null) { vm.select(null) } }
-        items(chips, key = { it.remoteId }, contentType = { "chip" }) { c -> Chip(categoryLabel(c), selected == c.remoteId) { vm.select(c.remoteId) } }
+        item(key = "all") { Chip(D.allChip, selected == null) { onSelect(null) } }
+        items(chips, key = { it.remoteId }, contentType = { "chip" }) { c -> Chip(categoryLabel(c), selected == c.remoteId) { onSelect(c.remoteId) } }
+    }
     }
     when (open) {
         "sort" -> com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(D.catalogSortName(filter.sort), CatalogFilter.Sort.entries.map { it to D.catalogSortName(it) }, filter.sort,
-            { vm.setFilter(filter.copy(sort = it)); open = "" }, { open = "" })
+            { onFilter(filter.copy(sort = it)); open = "" }, { open = "" })
         "rating" -> com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(D.anyRating, CatalogFilter.RATINGS.map { it to (if (it == 0) D.anyRating else "★ $it+") }, filter.minRating,
-            { vm.setFilter(filter.copy(minRating = it)); open = "" }, { open = "" })
+            { onFilter(filter.copy(minRating = it)); open = "" }, { open = "" })
         "period" -> com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(D.periodName(filter.period), CatalogFilter.Period.entries.map { it to D.periodName(it) }, filter.period,
-            { vm.setFilter(filter.copy(period = it)); open = "" }, { open = "" })
+            { onFilter(filter.copy(period = it)); open = "" }, { open = "" })
     }
 }
 

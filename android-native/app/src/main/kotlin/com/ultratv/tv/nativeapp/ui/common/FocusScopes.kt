@@ -4,7 +4,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.key
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -377,3 +380,26 @@ class ContentFocusMemory {
 }
 
 val LocalContentFocusMemory = androidx.compose.runtime.staticCompositionLocalOf<ContentFocusMemory?> { null }
+
+/**
+ * Défilement horizontal d'une rangée de cartes : la carte focalisée doit être visible EN ENTIER avec sa marge
+ * d'agrandissement et son anneau, pas seulement collée au bord de l'écran, où elle serait rognée par la rangée.
+ */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+internal class EdgeMarginSpec(private val margin: Float) : BringIntoViewSpec {
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
+        val lead = offset - margin
+        val trail = offset + size + margin - containerSize
+        return when { lead < 0f && trail > 0f -> 0f; lead < 0f -> lead; trail > 0f -> trail; else -> 0f }
+    }
+}
+
+/** Marge de bord horizontale de la carte focalisée d'une rangée : [margin] reste visible entre elle et le bord de l'écran. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+fun RowEdgeMargin(margin: androidx.compose.ui.unit.Dp, content: @Composable () -> Unit) {
+    val px = with(androidx.compose.ui.platform.LocalDensity.current) { margin.toPx() }
+    val spec = remember(px) { EdgeMarginSpec(px) }
+    CompositionLocalProvider(LocalBringIntoViewSpec provides spec, content = content)
+}
+
