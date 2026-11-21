@@ -70,13 +70,29 @@ class SharedLiveSession(
     /** Son coupé dans l'aperçu (réglage « Son de l'aperçu ») ; réappliqué au retour du plein écran. */
     var previewMuted: Boolean = true
 
+    /**
+     * Aperçu à son conditionnel (Guide) : tant que l'hôte n'a pas déclaré [setPictureShown], le flux reste MUET, quel que
+     * soit « Son de l'aperçu ». Faux (Direct, lecteur) : comportement inchangé.
+     */
+    var gateAudioOnPicture: Boolean = false
+    private var pictureShown = false
+
+    /** Image de l'aperçu réellement affichée par l'hôte (vidéo dans l'encadré, pas le logo) : le son peut alors sortir. */
+    fun setPictureShown(shown: Boolean) {
+        pictureShown = shown
+        if (gateAudioOnPicture && owner == LiveOwner.PREVIEW) session?.muted = previewMutedNow()
+    }
+
+    /** Son coupé de l'aperçu : réglage de l'utilisateur, ou (Guide) image pas encore affichée dans l'encadré. */
+    private fun previewMutedNow() = previewMuted || (gateAudioOnPicture && !pictureShown)
+
     private var promoted = false
     private var pendingAdoption = false
     private var hosts = 0
     private var orphanJob: Job? = null
 
     /** Réglage « Son de l'aperçu » changé : appliqué tout de suite à l'aperçu en cours. */
-    fun applyPreviewMuted(muted: Boolean) { previewMuted = muted; if (owner == LiveOwner.PREVIEW) session?.muted = muted }
+    fun applyPreviewMuted(muted: Boolean) { previewMuted = muted; if (owner == LiveOwner.PREVIEW) session?.muted = previewMutedNow() }
 
     /** Lecture de l'aperçu prête (image affichée) pour la ligne [rowKey]. */
     fun isReady(rowKey: String): Boolean =
@@ -91,12 +107,14 @@ class SharedLiveSession(
         if (owner == LiveOwner.FULLSCREEN) return false
         val cur = session
         if (owner == LiveOwner.PREVIEW && cur != null && key == _channelKey.value && cur.state.value.phase != Phase.ERROR) {
-            this.rowKey = rowKey; previewMuted = muted; cur.muted = muted
+            this.rowKey = rowKey; previewMuted = muted; cur.muted = previewMutedNow()
             return false
         }
         val s = cur ?: create().also { session = it }
         previewMuted = muted
-        s.muted = muted
+        // Nouveau flux : l'image affichée (s'il y en avait une) était celle du précédent.
+        pictureShown = false
+        s.muted = previewMutedNow()
         s.liveReconnect = true
         owner = LiveOwner.PREVIEW; this.rowKey = rowKey; _channelKey.value = key; promoted = false
         s.start(url, key)
@@ -146,12 +164,12 @@ class SharedLiveSession(
         if (owner != LiveOwner.FULLSCREEN) return
         owner = LiveOwner.PREVIEW
         rowKey = _channelKey.value
-        s.muted = previewMuted
+        s.muted = previewMutedNow()
         if (hosts == 0) armOrphan()
     }
 
     /** Lecteur plein écran détruit sans [demote] (Accueil, veille, erreur, différé…) : tout est libéré. */
-    fun onFullscreenGone() { if (owner == LiveOwner.FULLSCREEN) stop() }
+    fun onFullscreenGone() { if (owner == LiveOwner.FULLSCREEN) { stop(); gateAudioOnPicture = false } }
 
     /** Un aperçu affiche la vidéo partagée. */
     fun hostAttached() { hosts++; orphanJob?.cancel() }

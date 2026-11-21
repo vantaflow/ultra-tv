@@ -265,4 +265,65 @@ class SharedLiveSessionTest {
         assertEquals(LiveOwner.NONE, shared.owner)
         assertTrue(live().isEmpty())
     }
+
+    // ── Aperçu du Guide : jamais de son sans image ──────────────────────────────────────────────
+
+    @Test
+    fun guide_sonCoupeTantQueLImageNEstPasAffichee_memeAvecLeSonActive() {
+        shared.gateAudioOnPicture = true
+        shared.preview("1:a", "1:a", "http://a", muted = false, create)    // réglage « Son de l'aperçu » activé
+        assertEquals("audio avant la première image", true, engines.single().muted)
+        firstFrame()
+        assertEquals("image rendue mais pas encore affichée dans l'encadré", true, engines.single().muted)
+        shared.setPictureShown(true)
+        assertEquals(false, engines.single().muted)
+        shared.setPictureShown(false)                                       // l'encadré ne montre plus la vidéo (focus ailleurs)
+        assertEquals(true, engines.single().muted)
+    }
+
+    @Test
+    fun guide_sonDesactive_resteMuetMemeImageAffichee() {
+        shared.gateAudioOnPicture = true
+        shared.preview("1:a", "1:a", "http://a", muted = true, create)
+        firstFrame(); shared.setPictureShown(true)
+        assertEquals(true, engines.single().muted)
+        shared.applyPreviewMuted(false)
+        assertEquals(false, engines.single().muted)
+        shared.applyPreviewMuted(true)
+        assertEquals(true, engines.single().muted)
+    }
+
+    @Test
+    fun guide_autreChaine_remetLeSonAZeroJusquALaNouvelleImage() {
+        shared.gateAudioOnPicture = true
+        shared.preview("1:a", "1:a", "http://a", muted = false, create)
+        firstFrame(); shared.setPictureShown(true)
+        assertEquals(false, engines.single().muted)
+        shared.preview("1:b", "1:b", "http://b", muted = false, create)     // le moteur en place enchaîne le flux suivant
+        assertEquals("ancienne image affichée : le nouveau flux ne doit pas s'entendre", true, engines.single().muted)
+        firstFrame(); shared.setPictureShown(true)
+        assertEquals(false, engines.single().muted)
+    }
+
+    @Test
+    fun guide_retourDuPleinEcran_muetJusquAuRetourDeLImage() {
+        shared.gateAudioOnPicture = true
+        shared.preview("1:a", "1:a", "http://a", muted = false, create)
+        firstFrame(); shared.setPictureShown(true)
+        shared.openFullscreen("1:a", create); shared.adopt("1:a")
+        assertEquals(false, engines.single().muted)                          // plein écran : le son revient toujours
+        shared.setPictureShown(false)                                        // l'hôte de l'aperçu a quitté l'écran
+        assertEquals("le plein écran garde son son", false, engines.single().muted)
+        shared.demote()
+        assertEquals(true, engines.single().muted)
+        shared.setPictureShown(true)
+        assertEquals(false, engines.single().muted)
+    }
+
+    @Test
+    fun direct_sansPorte_sonInchange() {
+        shared.preview("1:a", "1:a", "http://a", muted = false, create)
+        shared.setPictureShown(false)
+        assertNull("aucune coupure hors du Guide", engines.single().muted)
+    }
 }
