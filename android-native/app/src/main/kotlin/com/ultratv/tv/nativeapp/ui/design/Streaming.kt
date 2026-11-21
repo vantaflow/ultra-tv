@@ -12,7 +12,13 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -106,6 +112,12 @@ fun onImageButtonColors(primary: Boolean, focused: Boolean): OnImageColors = whe
     else -> OnImageColors(Color.White.copy(alpha = 0.16f), Color.White)
 }
 
+/** Anneau blanc de 5 puis liseré sombre de 5, dessinés DANS le bouton (déjà rogné à sa forme) : aucun calque en plus. */
+private fun Modifier.onImageRing(heightPx: Int): Modifier = this
+    .border(5.design, Color.White, RoundedCornerShape((heightPx / 2).design))
+    .padding(5.design)
+    .border(5.design, OnImageInk, RoundedCornerShape((heightPx / 2 - 5).design))
+
 /**
  * Bouton pilule posé sur une image (bandeau, fiche, lecteur). Construit sur [FocusSurface] comme [PillButton] (même
  * échelle au focus, même gestion tactile et cible minimale). Au focus : anneau blanc de 5, séparé du bouton par un
@@ -126,12 +138,7 @@ fun OnImageButton(
         modifier = if (touch) modifier.heightIn(min = heightPx.designT) else modifier.height(heightPx.designT),
     ) { f ->
         val ink = if (f) on.ink else rest.ink
-        // Anneau blanc puis liseré sombre dessinés DANS le bouton (déjà rogné à sa forme) : aucun calque en plus.
-        val ring = if (f && !touch) Modifier
-            .border(5.design, Color.White, RoundedCornerShape((heightPx / 2).design))
-            .padding(5.design)
-            .border(5.design, OnImageInk, RoundedCornerShape((heightPx / 2 - 5).design))
-        else Modifier
+        val ring = if (f && !touch) Modifier.onImageRing(heightPx) else Modifier
         Row(
             Modifier.then(ring).then(if (touch) Modifier.padding(horizontal = hPadPx.design, vertical = 8.design).heightIn(min = heightPx.designT) else Modifier.padding(horizontal = hPadPx.design).fillMaxHeight()),
             verticalAlignment = Alignment.CenterVertically,
@@ -141,6 +148,33 @@ fun OnImageButton(
                 Spacer(Modifier.width(14.design))
             }
             Text(text, color = ink, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = fontPx.spx, maxLines = if (touch) 2 else 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+        }
+    }
+}
+
+/**
+ * Bouton rond, icône seule, posé sur une image : mêmes couleurs, même anneau de focus et même taille que
+ * [OnImageButton] (carré de [heightPx]). [description] est lue par les lecteurs d'écran ; [state] (facultatif) dit l'état
+ * courant (ex. « dans la liste »).
+ */
+@Composable
+fun OnImageIconButton(
+    iconPath: String, description: String, onClick: () -> Unit, modifier: Modifier = Modifier, iconFill: Boolean = false,
+    heightPx: Int = 76, state: String? = null,
+) {
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    val rest = onImageButtonColors(primary = false, focused = false)
+    val on = onImageButtonColors(primary = false, focused = true)
+    FocusSurface(
+        onClick = onClick, shape = CircleShape, bg = rest.bg, focusedBg = on.bg, ringWidth = 0.dp,
+        modifier = modifier.size(heightPx.designT).semantics {
+            contentDescription = description
+            if (state != null) stateDescription = state
+        },
+    ) { f ->
+        val ring = if (f && !touch) Modifier.onImageRing(heightPx) else Modifier
+        Box(Modifier.then(ring).fillMaxSize(), contentAlignment = Alignment.Center) {
+            DIcon(iconPath, 28.design, if (f) on.ink else rest.ink, fill = iconFill, strokeWidth = 2.6f)
         }
     }
 }

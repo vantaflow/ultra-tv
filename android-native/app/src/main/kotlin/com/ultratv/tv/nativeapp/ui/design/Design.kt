@@ -247,6 +247,7 @@ object Icons {
     const val File = "M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M9 14h6M9 17h4"
     const val Arrow = "M5 12h14M13 6l6 6-6 6"
     const val Check = "M5 12l5 5 9-10"
+    const val Plus = "M12 5v14M5 12h14"
     const val Play = "M7 4v16l13-8z"
     const val Info = "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v6M12 7h.01"
     const val Chevron = "M15 6l-6 6 6 6"

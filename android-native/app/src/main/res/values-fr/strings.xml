@@ -1915,6 +1915,7 @@
     <string name="stalker_identity_hint">Seulement si votre fournisseur l’exige : recopiez ces valeurs depuis votre autre lecteur (ses réglages STB). Sinon, laissez vide.</string>
     <string name="stalker_field_serial">Numéro de série</string>
     <string name="ds_err_network_hint">Vérifiez votre connexion Internet. Si les autres chaînes fonctionnent, c\'est le serveur de celle-ci qui ne répond pas.</string>
+    <string name="ds_hero_my_list">Ma liste</string>
     <string name="ds_err_server_down">Le serveur du fournisseur a un problème</string>
     <string name="ds_err_server_down_hint">Le problème vient du fournisseur, pas de votre connexion. Réessayez dans quelques minutes ou choisissez une autre chaîne.</string>
     <string name="ds_err_too_many">Trop de connexions en même temps</string>

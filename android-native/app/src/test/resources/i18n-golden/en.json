@@ -666,6 +666,7 @@
   "DesignStrings/DesignStringsB1Kt.getStalkerFieldDeviceId2()": "Device ID 2",
   "DesignStrings/DesignStringsB1Kt.getStalkerFieldSignature()": "Signature",
   "DesignStrings/DesignStringsB1Kt.getErrNetworkHint()": "Check your Internet connection. If other channels play, this channel's server is not answering.",
+  "DesignStrings/DesignStringsB1Kt.getHeroMyList()": "My list",
   "DesignStrings/DesignStringsB1Kt.getErrServerDown()": "The provider's server is having a problem",
   "DesignStrings/DesignStringsB1Kt.getErrServerDownHint()": "The problem is on the provider's side, not your connection. Try again in a few minutes or pick another channel.",
   "DesignStrings/DesignStringsB1Kt.getErrTooMany()": "Too many connections at once",

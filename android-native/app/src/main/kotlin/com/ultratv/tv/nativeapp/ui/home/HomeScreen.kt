@@ -58,6 +58,7 @@ import androidx.compose.ui.platform.testTag
 import com.ultratv.tv.nativeapp.ui.design.imageScrims
 import com.ultratv.tv.nativeapp.ui.design.BOTTOM_SPAN
 import com.ultratv.tv.nativeapp.ui.design.OnImageButton
+import com.ultratv.tv.nativeapp.ui.design.OnImageIconButton
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ultratv.tv.nativeapp.ui.design.Text
@@ -66,6 +67,7 @@ import com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.cardPhone
 import com.ultratv.tv.nativeapp.i18n.homeChannelsCount
+import com.ultratv.tv.nativeapp.i18n.heroMyList
 import com.ultratv.tv.nativeapp.i18n.homeFavoritesCount
 import com.ultratv.tv.nativeapp.i18n.homeGuideSubtitle
 import com.ultratv.tv.nativeapp.i18n.homeLiveNow
@@ -156,6 +158,8 @@ fun HomeScreen(
     val hero = if (heroes.isEmpty()) null else heroes[heroIdx % heroes.size]
     // Notes IMDb / RT et synopsis de repli : State NON déballé ici, lu seulement par les pastilles et le synopsis du hero.
     val heroExtras = vm.heroExtras.collectAsStateWithLifecycle()
+    // State non déballé : seul le bouton rond de l'image « À la une » le lit.
+    val heroInList = vm.heroInList.collectAsStateWithLifecycle()
     val rows by vm.rows.collectAsStateWithLifecycle()
     // Lecture DIFFÉRÉE : seul l'encart de chargement lit le pourcentage (State non déballé ici), l'écran entier
     // n'est plus recomposé à chaque pour-cent de synchro.
@@ -177,6 +181,7 @@ fun HomeScreen(
     val playChannel: (ChannelEntity) -> Unit = remember(vm, onPlay) { { c -> vm.playChannel(c) { onPlay(c.streamUrl, c.title) } } }
     // « Regarder » : film → lecture directe ; série → fiche (l'épisode à reprendre y est choisi).
     val watchHero: (HeroItem) -> Unit = remember(vm, onPlay, openHero) { { h -> val u = h.streamUrl; if (u != null) { vm.playHero(h); onPlay(u, h.title) } else openHero(h) } }
+    val toggleHeroList: (HeroItem) -> Unit = remember(vm) { { h -> vm.toggleHeroList(h) } }
     val onShortcut: (ShortcutId) -> Unit = remember(onGoLive, onGoMovies, onGoSeries, onGoFavorites, onGoGuide) {
         { id -> when (id) { ShortcutId.LIVE -> onGoLive(); ShortcutId.MOVIES -> onGoMovies(); ShortcutId.SERIES -> onGoSeries(); ShortcutId.FAVORITES -> onGoFavorites(); ShortcutId.GUIDE -> onGoGuide() } }
     }
@@ -218,7 +223,7 @@ fun HomeScreen(
         rows = rows, providerCount = providers.size, clock = clock, sportOn = sportOn, sportLive = sportLive,
         heroFocusDone = heroFocusDone, onHeroFocused = onHeroFocused,
         playHistory = playHistory, openPoster = openPoster, playChannel = playChannel, onShortcut = onShortcut, onGoSport = onGoSport,
-        onWatchHero = watchHero, onInfoHero = openHero,
+        onWatchHero = watchHero, onInfoHero = openHero, heroInList = heroInList, onToggleHeroList = toggleHeroList,
         emptyTop = {
             when (slot) {
                 HomeTopSlot.NO_SOURCE -> EmptyCard(D.homeNoSource, D.syncCloudHint, D.addSource, onGoSettings, D.cardCloud, onGoCloud, action3 = D.cardPhone, onAction3 = onGoPhone)
@@ -251,6 +256,7 @@ internal fun HomeTvContent(
     playHistory: (WatchHistoryEntity) -> Unit, openPoster: (PosterCardUi) -> Unit, playChannel: (ChannelEntity) -> Unit,
     onShortcut: (ShortcutId) -> Unit, onGoSport: () -> Unit,
     onWatchHero: (HeroItem) -> Unit, onInfoHero: (HeroItem) -> Unit,
+    heroInList: State<Set<String>>, onToggleHeroList: (HeroItem) -> Unit,
     emptyTop: @Composable () -> Unit,
     sportRow: @Composable (Modifier, PaddingValues) -> Unit,
 ) {
@@ -309,7 +315,7 @@ internal fun HomeTvContent(
                         if (slot == HomeTopSlot.HERO && hero != null) {
                             // Image pleine largeur de la zone de contenu : aucune marge horizontale sur cet élément.
                             Hero(
-                                hero, heroExtras, onWatch = onWatchHero, onInfo = onInfoHero, takeFocus = !heroFocusDone, onFocused = onHeroFocused, onFocusTop = scrollTop,
+                                hero, heroExtras, onWatch = onWatchHero, onInfo = onInfoHero, inList = heroInList, onToggleList = onToggleHeroList, takeFocus = !heroFocusDone, onFocused = onHeroFocused, onFocusTop = scrollTop,
                                 index = heroIndex, count = heroCount, clock = clock, modifier = Modifier.fillMaxWidth().height(HeroHeight).testTag("home-hero"),
                             )
                         } else Column(Modifier.padding(start = HomeStart, top = 44.design, end = 72.design), verticalArrangement = Arrangement.spacedBy(30.design)) {
@@ -584,15 +590,17 @@ private fun Section(title: String, content: @Composable () -> Unit) {
 @Composable
 private fun Hero(
     h: HeroItem, extras: State<Map<String, HeroExtras>>, onWatch: (HeroItem) -> Unit, onInfo: (HeroItem) -> Unit,
+    inList: State<Set<String>>, onToggleList: (HeroItem) -> Unit,
     takeFocus: Boolean, onFocused: () -> Unit, onFocusTop: () -> Unit, clock: State<Long>, index: Int = 0, count: Int = 1, modifier: Modifier = Modifier,
 ) = com.ultratv.tv.nativeapp.ui.design.NoTextWrap {
     // Bandeau de hauteur fixe : pas de ligne de plus (les boutons « Regarder / Plus d'infos » étaient écrasés).
-    HeroBody(h, extras, onWatch, onInfo, takeFocus, onFocused, onFocusTop, clock, index, count, modifier)
+    HeroBody(h, extras, onWatch, onInfo, inList, onToggleList, takeFocus, onFocused, onFocusTop, clock, index, count, modifier)
 }
 
 @Composable
 private fun HeroBody(
     h: HeroItem, extras: State<Map<String, HeroExtras>>, onWatch: (HeroItem) -> Unit, onInfo: (HeroItem) -> Unit,
+    inList: State<Set<String>>, onToggleList: (HeroItem) -> Unit,
     takeFocus: Boolean, onFocused: () -> Unit, onFocusTop: () -> Unit, clock: State<Long>, index: Int, count: Int, modifier: Modifier,
 ) {
     val D = LocalDs.current
@@ -641,6 +649,7 @@ private fun HeroBody(
                     D.homeMoreInfo, onClick = { onInfo(h) },
                     modifier = Modifier.testTag("hero-info").onFocusChanged { if (it.isFocused) onFocusTop() },
                 )
+                HeroListButton(h, inList, onToggleList, Modifier.testTag("hero-list").onFocusChanged { if (it.isFocused) onFocusTop() })
             }
         }
         // Heure en haut à droite de l'image (lue dans HomeClock : l'écran ne se recompose pas chaque minute).
@@ -652,6 +661,20 @@ private fun HeroBody(
             }
         }
     }
+}
+
+/**
+ * Bouton rond « Ma liste » : « + » (hors liste) ou « ✓ » (dans la liste). L'état est lu ICI seulement : basculer
+ * recompose ce bouton, ni le bandeau ni la liste ; le focus reste sur le bouton (même nœud, mêmes clés).
+ */
+@Composable
+private fun HeroListButton(h: HeroItem, inList: State<Set<String>>, onToggle: (HeroItem) -> Unit, modifier: Modifier) {
+    val D = LocalDs.current
+    val on = h.key in inList.value
+    OnImageIconButton(
+        iconPath = if (on) Icons.Check else Icons.Plus, description = D.heroMyList, onClick = { onToggle(h) }, modifier = modifier,
+        state = if (on) D.removeFavorite else D.addFavorite,
+    )
 }
 
 /** Fond de l'image « À la une » avant son chargement (et derrière l'affiche) : le voile sombre des deux thèmes. L'emplacement de l'affiche de repli (#1B1F27, initiales claires) reste sombre aussi. */

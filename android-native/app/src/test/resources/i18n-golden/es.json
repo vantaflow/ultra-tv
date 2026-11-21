@@ -666,6 +666,7 @@
   "DesignStrings/DesignStringsB1Kt.getStalkerFieldDeviceId2()": "Device ID 2",
   "DesignStrings/DesignStringsB1Kt.getStalkerFieldSignature()": "Firma",
   "DesignStrings/DesignStringsB1Kt.getErrNetworkHint()": "Comprueba tu conexi\u00f3n a Internet. Si los dem\u00e1s canales funcionan, es el servidor de este canal el que no responde.",
+  "DesignStrings/DesignStringsB1Kt.getHeroMyList()": "Mi lista",
   "DesignStrings/DesignStringsB1Kt.getErrServerDown()": "El servidor del proveedor tiene un problema",
   "DesignStrings/DesignStringsB1Kt.getErrServerDownHint()": "El problema es del proveedor, no de tu conexi\u00f3n. Vuelve a intentarlo en unos minutos o elige otro canal.",
   "DesignStrings/DesignStringsB1Kt.getErrTooMany()": "Demasiadas conexiones a la vez",

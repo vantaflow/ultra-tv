@@ -74,6 +74,10 @@ class HomeTvStructureTest {
     /** Titre « à la une » courant : modifiable depuis un test pour simuler la rotation automatique. */
     private val heroSource = mutableStateOf<HeroItem?>(null)
 
+    /** « Ma liste » : titres à la une déjà dans les favoris, et les bascules demandées par le bouton rond. */
+    private val inList = mutableStateOf<Set<String>>(emptySet())
+    private val toggled = mutableListOf<HeroItem>()
+
     private fun setHome(
         hero: HeroItem?, layout: HomeLayout = HomeLayout.defaultFor(true), lang: AppLang = AppLang.French, heroFocusDone: Boolean = false,
     ) {
@@ -98,6 +102,7 @@ class HomeTvStructureTest {
                         heroFocusDone = heroFocusDone, onHeroFocused = {},
                         playHistory = {}, openPoster = {}, playChannel = {}, onShortcut = {}, onGoSport = {},
                         onWatchHero = {}, onInfoHero = {},
+                        heroInList = inList, onToggleHeroList = { h -> toggled += h; inList.value = if (h.key in inList.value) inList.value - h.key else inList.value + h.key },
                         emptyTop = {}, sportRow = { _, _ -> },
                     )
                 }
@@ -217,5 +222,63 @@ class HomeTvStructureTest {
         rule.onNodeWithTag("home-clock").assert(!isFocusable())
         rule.onNodeWithTag("home-hero").assert(!isFocusable())
         assertFalse(rule.onNodeWithTag("home-clock").fetchSemanticsNode().config.contains(androidx.compose.ui.semantics.SemanticsProperties.Focused))
+    }
+
+    // ───────────── « Ma liste » sur l'image ─────────────
+
+    @Test fun maListe_droiteDepuisInfo_atteintLeBoutonRond_gaucheRevient() {
+        setHome(hero = heroWithBackdrop)
+        press(Key.DirectionRight); press(Key.DirectionRight)
+        rule.onNodeWithTag("hero-list").assertIsFocused()
+        press(Key.DirectionLeft); rule.onNodeWithTag("hero-info").assertIsFocused()
+    }
+
+    @Test fun maListe_droiteDepuisLeBoutonRond_neFaitRienPerdre() {
+        setHome(hero = heroWithBackdrop)
+        press(Key.DirectionRight); press(Key.DirectionRight); press(Key.DirectionRight)
+        rule.onNodeWithTag("hero-list").assertIsFocused()
+    }
+
+    @Test fun maListe_bas_vaSurPremiereRangee() {
+        setHome(hero = heroWithBackdrop)
+        press(Key.DirectionRight); press(Key.DirectionRight); press(Key.DirectionDown)
+        assertFocusInFirstRow()
+    }
+
+    @Test fun maListe_enArabe_suitLOrdreDeLecture() {
+        setHome(hero = heroWithBackdrop, lang = AppLang.Arabic)
+        val info = rule.onNodeWithTag("hero-info").getUnclippedBoundsInRoot()
+        val list = rule.onNodeWithTag("hero-list").getUnclippedBoundsInRoot()
+        assertTrue("en RTL le bouton rond est à gauche de « Plus d'infos »", list.left.value < info.left.value)
+        press(Key.DirectionLeft); press(Key.DirectionLeft)
+        rule.onNodeWithTag("hero-list").assertIsFocused()
+        press(Key.DirectionLeft); rule.onNodeWithTag("hero-list").assertIsFocused()
+        press(Key.DirectionRight); rule.onNodeWithTag("hero-info").assertIsFocused()
+    }
+
+    @Test fun maListe_ok_appelleLaBascule_etGardeLeFocus() {
+        setHome(hero = heroWithBackdrop)
+        press(Key.DirectionRight); press(Key.DirectionRight)
+        press(Key.Enter)
+        assertEquals(listOf(heroWithBackdrop), toggled)
+        rule.onNodeWithTag("hero-list").assertIsFocused()
+        press(Key.Enter)
+        assertEquals(2, toggled.size)
+        rule.onNodeWithTag("hero-list").assertIsFocused()
+    }
+
+    @Test fun maListe_rondDe76_memeHauteurQueLesAutresBoutons() {
+        setHome(hero = heroWithBackdrop)
+        val info = rule.onNodeWithTag("hero-info").getUnclippedBoundsInRoot()
+        val list = rule.onNodeWithTag("hero-list").getUnclippedBoundsInRoot()
+        assertEquals(info.height.value, list.height.value, 0.5f)
+        assertEquals(list.height.value, list.width.value, 0.5f)
+    }
+
+    @Test fun maListe_descriptionLueParLesLecteursDEcran() {
+        setHome(hero = heroWithBackdrop)
+        val node = rule.onNodeWithTag("hero-list").fetchSemanticsNode()
+        val desc = node.config[androidx.compose.ui.semantics.SemanticsProperties.ContentDescription]
+        assertEquals(listOf("Ma liste"), desc)
     }
 }

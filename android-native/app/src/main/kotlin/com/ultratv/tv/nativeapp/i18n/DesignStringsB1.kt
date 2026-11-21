@@ -130,3 +130,6 @@ val DesignStrings.errFormatHint get() = tx(R.string.ds_err_format_hint)
 val DesignStrings.errDecoder get() = tx(R.string.ds_err_decoder)
 val DesignStrings.errDecoderHint get() = tx(R.string.ds_err_decoder_hint)
 val DesignStrings.errNoPicture get() = tx(R.string.ds_err_no_picture)
+
+// Accueil TV : bouton rond « Ma liste » sur l'image à la une (ajoute ou retire le titre des favoris).
+val DesignStrings.heroMyList get() = tx(R.string.ds_hero_my_list)

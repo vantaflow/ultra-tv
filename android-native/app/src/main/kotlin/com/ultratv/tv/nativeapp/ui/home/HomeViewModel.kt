@@ -349,6 +349,31 @@ class HomeViewModel @Inject constructor(
     val hero: StateFlow<HeroItem?> = heroes.map { it.firstOrNull() }.distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /**
+     * « Ma liste » = les favoris existants : clés ([HeroItem.key]) des titres à la une déjà en favori. Petit ensemble calculé hors
+     * fil principal, relu seulement quand les favoris de films ou de séries changent.
+     */
+    val heroInList: StateFlow<Set<String>> = pid.flatMapLatest { id ->
+        if (id == null) flowOf(emptySet())
+        else combine(catalog.favoritesByKind(id, "MOVIE"), catalog.favoritesByKind(id, "SERIES"), heroes) { movies, series, list ->
+            if (list.isEmpty()) emptySet() else {
+                val m = movies.mapTo(HashSet()) { it.remoteId }
+                val s = series.mapTo(HashSet()) { it.remoteId }
+                list.filter { if (it.kind == HeroItem.Kind.SERIES) it.remoteId in s else it.remoteId in m }.mapTo(HashSet()) { it.key }
+            }
+        }
+    }.distinctUntilChanged().flowOn(kotlinx.coroutines.Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
+    /** Bouton « Ma liste » de l'image à la une : même appel que les fiches (cœur des fiches film et série). */
+    fun toggleHeroList(h: HeroItem) {
+        val kind = if (h.kind == HeroItem.Kind.SERIES) "SERIES" else "MOVIE"
+        viewModelScope.launch {
+            val current = catalog.isFavorite(h.providerId, kind, h.remoteId).first()
+            catalog.setFavorite(h.providerId, kind, h.remoteId, !current)
+        }
+    }
+
     /** Favorites en premier ; sans favori, des chaînes avec logo. [favorite] dit lequel des deux. */
     val favoriteChannels: StateFlow<List<ChannelEntity>> = pid
         .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.favoriteChannels(id, 40).atMostEvery(1_000).snapshotWhile(syncing).visibleFor(id, "LIVE") { it.categoryId }.map { it.take(12) } }

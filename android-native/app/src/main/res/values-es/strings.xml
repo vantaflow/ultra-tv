@@ -1907,6 +1907,7 @@
     <string name="stalker_field_serial">Número de serie</string>
     <string name="stalker_field_signature">Firma</string>
     <string name="ds_err_network_hint">Comprueba tu conexión a Internet. Si los demás canales funcionan, es el servidor de este canal el que no responde.</string>
+    <string name="ds_hero_my_list">Mi lista</string>
     <string name="ds_err_server_down">El servidor del proveedor tiene un problema</string>
     <string name="ds_err_server_down_hint">El problema es del proveedor, no de tu conexión. Vuelve a intentarlo en unos minutos o elige otro canal.</string>
     <string name="ds_err_too_many">Demasiadas conexiones a la vez</string>

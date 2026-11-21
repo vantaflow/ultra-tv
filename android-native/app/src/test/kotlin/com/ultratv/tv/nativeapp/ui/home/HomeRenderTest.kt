@@ -123,6 +123,7 @@ class HomeRenderTest {
                             rows = data, providerCount = 3, clock = clock, sportOn = sport, sportLive = if (sport) 4 else null,
                             heroFocusDone = false, onHeroFocused = {},
                             playHistory = {}, openPoster = {}, playChannel = {}, onShortcut = {}, onGoSport = {},
+                            heroInList = remember { mutableStateOf(emptySet()) }, onToggleHeroList = {},
                             onWatchHero = {}, onInfoHero = {},
                             emptyTop = {}, sportRow = { _, _ -> },
                         )
