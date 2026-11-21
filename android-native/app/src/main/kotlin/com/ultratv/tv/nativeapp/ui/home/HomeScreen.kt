@@ -56,6 +56,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.testTag
 import com.ultratv.tv.nativeapp.ui.design.imageScrims
+import com.ultratv.tv.nativeapp.ui.design.BOTTOM_SPAN
+import com.ultratv.tv.nativeapp.ui.design.OnImageButton
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ultratv.tv.nativeapp.ui.design.Text
@@ -598,8 +600,10 @@ private fun HeroBody(
     var focused by remember { mutableStateOf(false) }
     if (takeFocus) RequestInitialFocus(requester, hasFocus = { focused })
     val rtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
-    // Thème clair : le voile bas ne fond PAS vers la page claire (le texte clair y serait illisible) ; l'image garde un bord bas sombre.
-    val pageColor = if (Ux.themeLight) HeroScrimBase else Ux.Bg
+    // Voile bas : sombre, il fond vers la page sur 40 % de la hauteur. Thème clair : le texte (clair) reste sur fond
+    // sombre, le fondu vers la page claire se limite aux 8 % du bas, sous les boutons (bord adouci, texte lisible).
+    val bottomFade = Ux.Bg
+    val bottomSpan = if (Ux.themeLight) 0.08f else BOTTOM_SPAN
     // Image pleine largeur, titre et boutons dessinés dessus (aucun panneau opaque) ; voiles dessinés une fois (aucun flou).
     Box(modifier.background(HeroScrimBase)) {
         // UNE seule image de fond. Fondu léger entre deux titres (coupé net si les animations sont désactivées).
@@ -607,11 +611,11 @@ private fun HeroBody(
             Box(Modifier.fillMaxSize()) {
                 if (cur.backdrop != null) {
                     BackdropImage(cur.backdrop, Modifier.fillMaxSize(), decodeSize = DpSize(1920.design, HeroHeight))
-                    Box(Modifier.fillMaxSize().imageScrims(rtl = rtl, pageColor = pageColor))
+                    Box(Modifier.fillMaxSize().imageScrims(rtl = rtl, pageColor = bottomFade, bottomSpan = bottomSpan))
                 } else {
                     // Sans image paysage : voiles puis l'affiche 2:3 à droite, dans une zone fixe de 300 × 450 (jamais étirée, jamais voilée).
-                    Box(Modifier.fillMaxSize().imageScrims(rtl = rtl, pageColor = pageColor))
-                    PosterImage(cur.poster, cur.title, Modifier.align(Alignment.BottomEnd).padding(end = 120.design, bottom = 60.design).height(450.design).width(300.design), radius = 20, kind = if (cur.kind == HeroItem.Kind.SERIES) com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV else com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, decodeSize = DpSize(300.design, 450.design))
+                    Box(Modifier.fillMaxSize().imageScrims(rtl = rtl, pageColor = bottomFade, bottomSpan = bottomSpan))
+                    PosterImage(cur.poster, cur.title, Modifier.align(Alignment.BottomEnd).padding(end = 120.design, bottom = 60.design).height(450.design).width(300.design), radius = 20, kind = if (cur.kind == HeroItem.Kind.SERIES) com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV else com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, decodeSize = DpSize(300.design, 450.design), background = Color(0xFF1B1F27), initialsColor = Color(0xFFA0A6B2))
                 }
             }
         }
@@ -629,13 +633,12 @@ private fun HeroBody(
             HeroTitle(h, extras)
             HeroPlot(h, extras)
             Row(Modifier.padding(top = 6.design), horizontalArrangement = Arrangement.spacedBy(14.design)) {
-                PillButton(
-                    D.watch, onClick = { onWatch(h) }, heightPx = 76, hPadPx = 40, fontPx = 28, weight = FontWeight.Bold,
-                    iconPath = Icons.Play, iconFill = true, bg = Ux.Cta,
+                OnImageButton(
+                    D.watch, onClick = { onWatch(h) }, primary = true, iconPath = Icons.Play, iconFill = true,
                     modifier = Modifier.testTag("hero-watch").focusRequester(requester).onFocusChanged { focused = it.isFocused; if (it.isFocused) { onFocused(); onFocusTop() } },
                 )
-                PillButton(
-                    D.homeMoreInfo, onClick = { onInfo(h) }, heightPx = 76, hPadPx = 36, fontPx = 26, weight = FontWeight.Bold,
+                OnImageButton(
+                    D.homeMoreInfo, onClick = { onInfo(h) },
                     modifier = Modifier.testTag("hero-info").onFocusChanged { if (it.isFocused) onFocusTop() },
                 )
             }
@@ -651,7 +654,7 @@ private fun HeroBody(
     }
 }
 
-/** Fond de l'image « À la une » avant son chargement (et derrière l'affiche) : le voile sombre des deux thèmes. */
+/** Fond de l'image « À la une » avant son chargement (et derrière l'affiche) : le voile sombre des deux thèmes. L'emplacement de l'affiche de repli (#1B1F27, initiales claires) reste sombre aussi. */
 private val HeroScrimBase = Color(0xFF0A0C10)
 
 /** « 2013 | Drame | 1 h 41 min » puis pastilles IMDb et Rotten Tomatoes ; les notes arrivent plus tard (State lu ICI seulement). */

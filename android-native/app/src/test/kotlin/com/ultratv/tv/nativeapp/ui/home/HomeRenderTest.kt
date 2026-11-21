@@ -14,9 +14,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.requestFocus
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.pressKey
 import androidx.test.core.app.ApplicationProvider
@@ -91,10 +94,10 @@ class HomeRenderTest {
         )
     }
 
-    private fun render(light: Boolean, file: String, sport: Boolean) {
+    private fun render(light: Boolean, file: String, sport: Boolean, layout: HomeLayout = HomeLayout.defaultFor(true), focusTag: String = "hero-watch") {
         I18n.init(ApplicationProvider.getApplicationContext())
         Ux.themeLight = light
-        val data = rows()
+        val data = rows().copy(layout = layout)
         // 20:36 : l'heure de la maquette (salutation du soir, horloge).
         val evening = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 20); set(Calendar.MINUTE, 36); set(Calendar.SECOND, 0) }.timeInMillis
         val hero = HeroItem(
@@ -130,6 +133,13 @@ class HomeRenderTest {
         rule.waitForIdle()
         rule.onRoot().performKeyInput { pressKey(Key.ShiftLeft) }
         rule.waitForIdle()
+        // Le bouton visé porte le focus dans la capture (le focus initial se fait après la première image).
+        // Passage par l'autre bouton : le focus initial pris avant le mode clavier n'affiche pas l'anneau.
+        rule.onNodeWithTag("hero-info").requestFocus()
+        rule.waitForIdle()
+        rule.onNodeWithTag(focusTag).requestFocus()
+        rule.waitForIdle()
+        rule.onNodeWithTag(focusTag).assertIsFocused()
         val bmp = rule.onRoot().captureToImage().asAndroidBitmap()
         File(outDir, file).outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
         println("Accueil capture : ${File(outDir, file).absolutePath} (${bmp.width}x${bmp.height})")
@@ -145,6 +155,13 @@ class HomeRenderTest {
         assertEquals(1920, bmp.width); assertEquals(1080, bmp.height)
         assertTrue(File(outDir, "home-tv-fr.png").length() > 10_000)
     }
+
+    /** Raccourcis réaffichés par l'utilisateur (masqués par défaut sur TV) : la rangée sous l'image. */
+    @Test fun capture_tv_fr_raccourcis() { render(light = false, file = "home-tv-fr-raccourcis.png", sport = true, layout = HomeLayout.defaultFor(true).toggle(HomeBlock.SHORTCUTS)) }
+
+    /** Focus sur « Plus d'infos » dans les deux thèmes : le seul bouton à porter l'anneau doit se lire. */
+    @Test fun capture_tv_fr_info_sombre() { render(light = false, file = "home-tv-fr-info.png", sport = false, focusTag = "hero-info") }
+    @Test fun capture_tv_fr_info_clair() { render(light = true, file = "home-tv-fr-light-info.png", sport = false, focusTag = "hero-info") }
 
     @Test fun capture_tv_en_sombre() { lang = AppLang.English; render(light = false, file = "home-tv-en.png", sport = true) }
     @Test fun capture_tv_ar_sombre() { lang = AppLang.Arabic; render(light = false, file = "home-tv-ar.png", sport = true) }
