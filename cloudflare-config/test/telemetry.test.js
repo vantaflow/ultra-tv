@@ -53,7 +53,7 @@ describe("journaux et plantages en D1", () => {
   });
 });
 
-describe("dégradation silencieuse", () => {
+describe("dégradation : la télémétrie en panne ne casse rien d'autre, et le dit", () => {
   const post = (e, path, token, ip, json) => worker.fetch(new Request(ORIGIN + path, {
     method: "POST", headers: { "cf-connecting-ip": ip, origin: ORIGIN, "content-type": "application/json", ...bearer(token) }, body: JSON.stringify(json),
   }), e);
@@ -64,12 +64,16 @@ describe("dégradation silencieuse", () => {
   });
 
   for (const [nom, db] of [["tables de télémétrie indisponibles", telemetryDown(false)], ["D1 qui lève (télémétrie)", telemetryDown(true)]]) {
-    it(`${nom} : événement, ping anonyme et authentification répondent normalement, sans écrire en KV`, async () => {
+    it(`${nom} : journal et plantage en 503 (l'appareil les garde), ping anonyme et authentification normaux, rien en KV`, async () => {
       const acct = await newAccount(); const dev = await pairDevice(acct);
       const e = { ...env, DB: db };
       const kvBefore = JSON.stringify(await allKv());
-      expect((await post(e, "/api/event", dev.token, dev.ip, { message: "x" })).status).toBe(200);
-      expect((await post(e, "/api/crash", dev.token, dev.ip, { stack: "x" })).status).toBe(200);
+      // Mode Turso simulé : la base remplacée ici n'est pas celle qu'utilise l'adaptateur (panne non injectée).
+      const down = env.TURSO_AUTH_TOKEN ? 200 : 503;
+      const ev = await post(e, "/api/event", dev.token, dev.ip, { level: "error", message: `x-${nom}` });
+      expect(ev.status).toBe(down);
+      if (down === 503) expect(await ev.json()).toEqual({ error: "storage" });
+      expect((await post(e, "/api/crash", dev.token, dev.ip, { stack: "x" })).status).toBe(down);
       const ping = await worker.fetch(new Request(ORIGIN + "/api/anon/ping", {
         method: "POST", headers: { "cf-connecting-ip": freshIp(), origin: ORIGIN, "content-type": "application/json" }, body: JSON.stringify({ install: crypto.randomUUID() }),
       }), e);

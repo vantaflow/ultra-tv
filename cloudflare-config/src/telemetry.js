@@ -2,12 +2,15 @@
 // Pourquoi : KV gratuit = 1 000 écritures par jour (erreur 10048) ; ces écritures très fréquentes sont donc en D1
 // (100 000 écritures par jour). Comptes, appareils et fournisseurs restent en KV (faible fréquence).
 //
-// Dégradation silencieuse : sans binding `DB`, ou si D1 échoue, la télémétrie est perdue mais la requête n'échoue
-// jamais, et on n'écrit JAMAIS en repli dans KV (ce serait reconsommer le quota).
+// Dégradation : sans binding `DB`, ou si D1 échoue, on n'écrit JAMAIS en repli dans KV (ce serait reconsommer le
+// quota). Les lectures et les relevés annexes échouent en silence ; l'écriture d'un journal ou d'un plantage, elle,
+// le signale (`recordEvent(s)` → `ok: false`) pour que la route réponde 503 et que l'appareil garde sa ligne.
 //
 // Transition : les anciennes lignes KV (`event:*`, `crash:*`, `anon:*`) ne sont plus lues par les vues
 // d'administration (elles expirent seules, au plus 7 / 30 / 180 jours). Seule exception : à la première insertion
 // d'une installation anonyme, on récupère `first` / `web` de l'ancienne ligne KV (lecture seulement).
+
+import { sanitizeLog } from "./sanitize.js";
 
 export const EVENT_TTL_S = 7 * 24 * 3600;
 export const CRASH_TTL_S = 30 * 24 * 3600;
@@ -22,7 +25,7 @@ const PURGE_PROBABILITY = 0.02;
 export async function safe(env, fn, fallback = null) {
   if (!env?.DB) return fallback;
   try { return await fn(env.DB); } catch (e) {
-    console.error("telemetrie D1:", e?.message);
+    console.error("telemetrie D1:", sanitizeLog(String(e?.message ?? ""), 300));
     return fallback;
   }
 }
@@ -47,10 +50,12 @@ export const INFO_SAMPLE = 10;
 const DEDUP_MS = 30 * 60_000;
 const recent = new Map(); // par isolat : même appareil, même étiquette, même message → une seule ligne par 30 min
 
+const dedupKey = (entry) => `${entry?.deviceId || entry?.mac || ""}|${entry?.tag || ""}|${String(entry?.message || "").slice(0, 120)}`;
+
 /** Garde-t-on cette entrée ? [rand] et [now] injectables pour les tests. */
 export function keepEvent(kind, entry, rand = Math.random, now = Date.now()) {
   if (kind === "crash") return true;
-  const key = `${entry?.deviceId || entry?.mac || ""}|${entry?.tag || ""}|${String(entry?.message || "").slice(0, 120)}`;
+  const key = dedupKey(entry);
   const last = recent.get(key);
   if (last && now - last < DEDUP_MS) return false;
   const level = String(entry?.level || "info").toLowerCase();
@@ -62,25 +67,46 @@ export function keepEvent(kind, entry, rand = Math.random, now = Date.now()) {
   return true;
 }
 
-/** Enregistre un journal ou un plantage ([entry] = objet construit par `ingest`). */
-export async function recordEvent(env, kind, entry) {
-  if (env?.TELEMETRY_FILTER !== "off" && !keepEvent(kind, entry)) return;
-  await safe(env, (db) => db.prepare(
-    "INSERT INTO events (kind, ts, device_id, mac, version, version_code, device, acct, country, level, tag, message, android_sdk, stack) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-  ).bind(kind, entry.ts, entry.deviceId ?? null, entry.mac ?? null, entry.version ?? null, entry.versionCode ?? null, entry.device ?? null,
-    entry.acct ?? null, entry.country ?? null, entry.level ?? null, entry.tag ?? null, entry.message ?? null, entry.androidSdk ?? null, entry.stack ?? null).run());
-  await maybePurge(env);
+const INSERT_EVENT = "INSERT INTO events (kind, ts, device_id, mac, version, version_code, device, acct, country, level, tag, message, android_sdk, stack) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+const bindEvent = (db, kind, entry) => db.prepare(INSERT_EVENT).bind(kind, entry.ts, entry.deviceId ?? null, entry.mac ?? null, entry.version ?? null,
+  entry.versionCode ?? null, entry.device ?? null, entry.acct ?? null, entry.country ?? null, entry.level ?? null, entry.tag ?? null,
+  entry.message ?? null, entry.androidSdk ?? null, entry.stack ?? null);
+
+/** Écriture qui signale l'échec (au lieu de l'avaler comme `safe`) ; base absente = échec. */
+async function write(env, fn) {
+  if (!env?.DB) return false;
+  try { await fn(env.DB); return true; } catch (e) {
+    console.error("telemetrie D1 (ecriture):", sanitizeLog(String(e?.message ?? ""), 300));
+    return false;
+  }
 }
 
-/** Enregistre un lot de journaux : tri `keepEvent`, puis UNE écriture groupée (un seul batch). */
+/**
+ * Enregistre un journal ou un plantage ([entry] = objet construit par `ingest`, déjà nettoyé).
+ * Renvoie `{ ok, stored, filtered }` : `filtered` = écartée par le tri (doublon de 30 min, échantillonnage des infos) ;
+ * `ok: false` = la base a refusé l'écriture (l'appelant répond 503, l'appareil réessaiera).
+ */
+export async function recordEvent(env, kind, entry) {
+  if (env?.TELEMETRY_FILTER !== "off" && !keepEvent(kind, entry)) return { ok: true, stored: 0, filtered: 1 };
+  if (!(await write(env, (db) => bindEvent(db, kind, entry).run()))) {
+    recent.delete(dedupKey(entry)); // le renvoi de l'appareil ne doit pas passer pour un doublon
+    return { ok: false, stored: 0, filtered: 0 };
+  }
+  await maybePurge(env);
+  return { ok: true, stored: 1, filtered: 0 };
+}
+
+/** Enregistre un lot de journaux : tri `keepEvent`, puis UNE écriture groupée (un seul batch). Même retour que `recordEvent`. */
 export async function recordEvents(env, kind, entries) {
   const kept = env?.TELEMETRY_FILTER !== "off" ? entries.filter((e) => keepEvent(kind, e)) : entries;
-  if (!kept.length) return;
-  await safe(env, (db) => db.batch(kept.map((entry) => db.prepare(
-    "INSERT INTO events (kind, ts, device_id, mac, version, version_code, device, acct, country, level, tag, message, android_sdk, stack) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-  ).bind(kind, entry.ts, entry.deviceId ?? null, entry.mac ?? null, entry.version ?? null, entry.versionCode ?? null, entry.device ?? null,
-    entry.acct ?? null, entry.country ?? null, entry.level ?? null, entry.tag ?? null, entry.message ?? null, entry.androidSdk ?? null, entry.stack ?? null))));
+  const filtered = entries.length - kept.length;
+  if (!kept.length) return { ok: true, stored: 0, filtered };
+  if (!(await write(env, (db) => db.batch(kept.map((entry) => bindEvent(db, kind, entry)))))) {
+    for (const e of kept) recent.delete(dedupKey(e));
+    return { ok: false, stored: 0, filtered };
+  }
   await maybePurge(env);
+  return { ok: true, stored: kept.length, filtered };
 }
 
 /** Ligne D1 `events` → entrée de journal / plantage (même format que les anciennes entrées KV). */
