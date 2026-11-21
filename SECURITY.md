@@ -37,19 +37,69 @@ TV box + your Cloudflare Worker), so the primary threats are:
   DENY`, `__Host-` SameSite=Strict session cookie, session-bound CSRF token plus
   `Origin` check, no open CORS.
 - **Crash/log dashboards** — protected by the server-side secret `OPS_TOKEN`
-  (never in the APK, never in a query string). Ingestion needs a paired device
-  token and is rate-limited and size-capped.
-- **Telemetry sanitiser** — the app *and* the Worker strip `?username=/?password=/
-  ?token=`, `user:pass@host`, `/live/<user>/<pass>/…` and Bearer tokens before
-  anything is stored.
+  (never in the APK, never in a query string).
+- **Telemetry ingestion** — two families of routes, all rate-limited and
+  size-capped:
+  - paired devices (`/api/event`, `/api/events`, `/api/crash`) authenticate
+    with their device token;
+  - devices without an account (`/api/anon/events`, `/api/anon/crash`, since
+    1.3.72) need no token: the routes are open, capped per IP, per install and
+    globally, keep at most 20 lines per batch and 16 KB per crash.
+  Lines whose device model is `robolectric` (unit tests) are acknowledged but
+  never stored. If the database rejects a write the Worker answers `503` (the
+  app keeps the line and retries) instead of a silent `ok`; responses report
+  how many lines were stored and why the others were dropped (duplicate,
+  sampling, invalid, over the batch cap, test device), never their content.
+- **What is stored** — per line: kind (log or crash), timestamp, level, tag,
+  message or stack trace, app version, Android SDK, device model, country
+  (from Cloudflare, never the IP address), a short non-reversible fingerprint
+  of the device (and, for paired devices, of the account: HMAC with a server
+  secret). Never the IP address, the account login, the install ID, or the MAC
+  label (the `mac` column is no longer filled). Logs are kept 7 days, crashes
+  30 days.
+- **Telemetry sanitiser** — the Worker is the last barrier, including for old
+  app versions that cannot be updated: every text field (message, stack, tag,
+  device model, version) is sanitised on all ingestion routes before anything
+  is written to the database or to the Worker's own logs
+  (`cloudflare-config/src/sanitize.js`, `sanitizeLog`). Rules, as an allow-list:
+  - **every URL** (`http`, `https`, `rtmp`, `rtsp`, `udp`, `mms`, `stalker:`, any
+    `scheme://`, also percent-encoded and JSON-escaped) is reduced to its
+    scheme, a stable 8-hex fingerprint of the host (`<host#…>`, `<lan#…>` for a
+    private address) and only the resource type: one known path word (`live`,
+    `movie`, `series`, `timeshift`, `hls`, `get.php`, `player_api.php`,
+    `portal.php`, `xmltv.php`…), the file extension (`.ts`, `.m3u8`, `.mkv`…)
+    and `?*` if there was a query. No other path segment, query value,
+    fragment or `user:pass@` survives, whatever characters the credentials
+    contain (spaces included: a URL cut by a space is followed over the next
+    words);
+  - outside URLs, values of sensitive keys are replaced by `<redacted>` in JSON
+    (`"password":"…"`, escaped or single-quoted too), query strings (also
+    `%3D`/`%26`-encoded, `;`-separated, any case) and headers: user name,
+    login, password, any `*token`, `*secret`, `*_key`, `api_key`, `auth`,
+    `authorization` (Bearer, Basic, MediaBrowser), `X-Plex-Token`,
+    `X-Emby-Token`, `mac`, `sn`, `device_id`, `signature`, session ids, e-mail;
+    whole `Cookie` / `Set-Cookie` / `Authorization` header lines;
+  - by shape: MAC addresses (`:`/`-`/`%3A`) → `<mac>`, e-mail → `<email>`, IPv4
+    and IPv6 → `<lan>` / `<ip>`, host names in network errors (`Unable to
+    resolve host`, `failed to connect to`, `Hostname … not verified`) →
+    `<host#…>`, JWTs, `Bearer …` and `utv_…` device tokens.
+  The fingerprint is an unkeyed FNV-1a hash: it groups errors of one provider
+  without naming it, but someone who already guesses a host name can confirm
+  it. HTTP codes, exception classes, messages, stack line numbers, durations
+  and codec names are kept. The app applies the same rules before sending
+  (`LogSanitizer.kt`); both sides are tested against the same vectors
+  (`cloudflare-config/test/fixtures/sanitize-vectors.json`). Free text that has
+  no recognisable shape (for example a provider name typed by the user) cannot
+  be detected by the Worker: the app must not send it.
 - **Web proxy (`web/cloudflare`)** — default-deny host allow-list, http(s) only,
   private/loopback/metadata IPs refused even if allow-listed, redirects
   re-validated hop by hop, GET/HEAD only, CORS limited to `ALLOWED_ORIGINS`.
 - **Telemetry** — always on in the Android app (no opt-out); payloads are
-  sanitised as described above (no credentials, MAC or full URLs). A device
-  without an account sends crash reports and error/warning lines only, through
-  the open, rate-limited `/api/anon/*` routes (device model, version and a
-  random install ID of which the Worker keeps a short fingerprint).
+  sanitised as described above (no credentials, MAC, e-mail, IP address or
+  full URL is stored). A device without an account sends crash reports and
+  error/warning lines only, through the open, rate-limited `/api/anon/*`
+  routes (device model, version and a random install ID of which the Worker
+  keeps a short fingerprint).
 - **Provider credentials at rest** — Room DB lives in app-private storage
   (`/data/data/<pkg>/files/`) which is unreadable by other apps on
   non-rooted devices.
