@@ -116,6 +116,7 @@ class HomeTvStructureTest {
 
     private fun setHome(
         hero: HeroItem?, layout: HomeLayout = HomeLayout.defaultFor(true), lang: AppLang = AppLang.French, heroFocusDone: Boolean = false,
+        lowRam: Boolean = false, heroCount: Int = 1, animations: com.ultratv.tv.nativeapp.ui.design.Animations = com.ultratv.tv.nativeapp.ui.design.Animations.NORMAL,
     ) {
         heroSource.value = hero
         I18n.init(ApplicationProvider.getApplicationContext())
@@ -123,6 +124,7 @@ class HomeTvStructureTest {
         rule.setContent {
             CompositionLocalProvider(
                 LocalDs provides designStringsFor(lang), LocalStrings provides stringsFor(lang), LocalTouch provides false,
+                com.ultratv.tv.nativeapp.ui.common.LocalLowRam provides lowRam, com.ultratv.tv.nativeapp.ui.design.LocalAnimations provides animations,
                 androidx.compose.ui.platform.LocalLayoutDirection provides if (lang.rtl) LayoutDirection.Rtl else LayoutDirection.Ltr,
             ) {
                 // Mode clavier (télécommande) : sans lui, les éléments cliquables ne prennent pas le focus.
@@ -140,7 +142,7 @@ class HomeTvStructureTest {
                 Box(Modifier.fillMaxSize().background(Ux.Bg)) {
                     val current = heroSource.value
                     HomeTvContent(
-                        slot = if (current != null) HomeTopSlot.HERO else HomeTopSlot.NONE, hero = current, heroIndex = 0, heroCount = 1, heroExtras = extras,
+                        slot = if (current != null) HomeTopSlot.HERO else HomeTopSlot.NONE, hero = current, heroIndex = 0, heroCount = heroCount, heroExtras = extras,
                         rows = rowsState.value, providerCount = 3, clock = clock, sportOn = false, sportLive = null,
                         heroFocusDone = done.value, onHeroFocused = { done.value = true },
                         playHistory = {}, openPoster = {}, playChannel = {}, onShortcut = {}, onGoSport = {},
@@ -165,6 +167,26 @@ class HomeTvStructureTest {
         rule.onNodeWithTag("home-clock").assertExists()
         rule.onNodeWithTag("home-greeting").assertDoesNotExist()
         rule.onNodeWithTag("hero-watch").assertIsFocused()
+    }
+
+    @Test fun pointsDePagination_seulementSiLeBandeauPeutDefiler() {
+        setHome(hero = heroWithBackdrop, heroCount = 3)
+        rule.onNodeWithTag("hero-dots").assertExists()
+    }
+
+    @Test fun pointsDePagination_absentsSurAppareilModeste_memeAvecPlusieursTitres() {
+        setHome(hero = heroWithBackdrop, heroCount = 3, lowRam = true)
+        rule.onNodeWithTag("hero-dots").assertDoesNotExist()
+    }
+
+    @Test fun pointsDePagination_absentsQuandUnSeulTitreEstPrepare() {
+        setHome(hero = heroWithBackdrop, heroCount = 1)
+        rule.onNodeWithTag("hero-dots").assertDoesNotExist()
+    }
+
+    @Test fun pointsDePagination_absentsQuandLesAnimationsSontReduites() {
+        setHome(hero = heroWithBackdrop, heroCount = 3, animations = com.ultratv.tv.nativeapp.ui.design.Animations(com.ultratv.tv.nativeapp.ui.design.AnimationLevel.SUBTLE))
+        rule.onNodeWithTag("hero-dots").assertDoesNotExist()
     }
 
     @Test fun aLaUne_sansImagePaysage_afficheDansSaZone() {

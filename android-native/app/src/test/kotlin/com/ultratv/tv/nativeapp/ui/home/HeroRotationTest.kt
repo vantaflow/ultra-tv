@@ -1,6 +1,8 @@
 package com.ultratv.tv.nativeapp.ui.home
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class HeroRotationTest {
@@ -54,5 +56,21 @@ class HeroPickTest {
         assertEquals(listOf("m1", "m3", "m5"), heroesToResolve(ms, 2, 6, 3, has).map { it.name })
         assertEquals(emptyList<H>(), heroesToResolve(ms, 6, 6, 3, has))
         assertEquals(8, heroesToResolve(ms, 0, 6, HERO_RESOLVE_MAX, has).size)
+    }
+}
+
+class HeroMayRotateTest {
+    @Test fun `le bandeau defile seulement si animations completes, assez de memoire et API 31 ou plus`() {
+        assertTrue(heroMayRotate(rotateHero = true, lowRam = false, sdk = 34))
+        assertTrue(heroMayRotate(rotateHero = true, lowRam = false, sdk = 31))
+        assertFalse(heroMayRotate(rotateHero = true, lowRam = true, sdk = 34))
+        assertFalse(heroMayRotate(rotateHero = true, lowRam = false, sdk = 30))
+        assertFalse(heroMayRotate(rotateHero = false, lowRam = false, sdk = 34))
+    }
+
+    @Test fun `un appareil modeste ne prepare qu'un seul titre`() {
+        assertEquals(1, heroPoolSize(heroMayRotate(true, lowRam = true, sdk = 34)))
+        assertEquals(1, heroPoolSize(heroMayRotate(true, lowRam = false, sdk = 24)))
+        assertEquals(HERO_POOL, heroPoolSize(heroMayRotate(true, lowRam = false, sdk = 34)))
     }
 }

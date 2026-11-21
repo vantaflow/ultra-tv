@@ -383,6 +383,13 @@ const val HERO_ROTATE_MS = 9_000L
  */
 fun heroPoolSize(rotating: Boolean): Int = if (rotating) HERO_POOL else 1
 
+/**
+ * « À la une » peut défiler (et se fondre) seulement au niveau d'animation complet, sur un appareil qui a de la mémoire
+ * ([lowRam] faux) et au moins l'API 31 ([sdk]) : sur une box modeste l'image reste FIXE (ni rotation, ni fondu), et le
+ * ViewModel ne prépare alors qu'un titre ([heroPoolSize]).
+ */
+internal fun heroMayRotate(rotateHero: Boolean, lowRam: Boolean, sdk: Int): Boolean = rotateHero && !lowRam && sdk >= 31
+
 /** Silence de la télécommande exigé avant de lancer un chargement réseau de confort (notes, logos, calendrier TVmaze). */
 const val BACKGROUND_QUIET_MS = 1_200L
 /** Attente maximale de ce silence : un utilisateur qui navigue sans arrêt ne bloque pas indéfiniment les compléments. */

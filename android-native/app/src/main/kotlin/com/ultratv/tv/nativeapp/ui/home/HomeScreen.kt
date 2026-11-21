@@ -147,14 +147,15 @@ fun HomeScreen(
     val D = LocalDs.current
     val providers by vm.providers.collectAsStateWithLifecycle()
     val loaded by vm.providersLoaded.collectAsStateWithLifecycle()
-    val heroAnim = com.ultratv.tv.nativeapp.ui.design.LocalAnimations.current
-    // Défilement de « À la une » seulement au niveau d'animation complet : le ViewModel ne prépare alors qu'un titre sinon.
-    vm.setHeroRotating(heroAnim.rotateHero)
+    // Défilement de « À la une » seulement au niveau d'animation complet sur un appareil non modeste : sinon image fixe
+    // et le ViewModel ne prépare qu'un titre.
+    val heroRotates = rememberHeroMayRotate()
+    vm.setHeroRotating(heroRotates)
     val heroes by vm.heroes.collectAsStateWithLifecycle()
     // « À la une » qui défile toutes les 9 s (sans focus volé : seul le contenu change, OK ouvre le titre affiché).
     var heroIdx by rememberSaveable { mutableStateOf(0) }
-    LaunchedEffect(heroes.size, heroAnim.rotateHero) {
-        if (heroes.size < 2 || !heroAnim.rotateHero) return@LaunchedEffect
+    LaunchedEffect(heroes.size, heroRotates) {
+        if (heroes.size < 2 || !heroRotates) return@LaunchedEffect
         while (true) { kotlinx.coroutines.delay(HERO_ROTATE_MS); heroIdx = (heroIdx + 1) % heroes.size }
     }
     val hero = if (heroes.isEmpty()) null else heroes[heroIdx % heroes.size]
@@ -669,6 +670,14 @@ private fun Hero(
     HeroBody(h, extras, onWatch, onInfo, inList, onToggleList, takeFocus, onFocused, onFocusTop, clock, index, count, watchRequester, modifier)
 }
 
+/** API de l'appareil, lue UNE fois (jamais dans la composition). */
+private val DeviceSdk = android.os.Build.VERSION.SDK_INT
+
+/** « À la une » peut défiler ici : niveau d'animation, mémoire de l'appareil et API réunis (voir [heroMayRotate]). */
+@Composable
+private fun rememberHeroMayRotate(): Boolean =
+    heroMayRotate(com.ultratv.tv.nativeapp.ui.design.LocalAnimations.current.rotateHero, com.ultratv.tv.nativeapp.ui.common.LocalLowRam.current, DeviceSdk)
+
 @Composable
 private fun HeroBody(
     h: HeroItem, extras: State<Map<String, HeroExtras>>, onWatch: (HeroItem) -> Unit, onInfo: (HeroItem) -> Unit,
@@ -676,6 +685,7 @@ private fun HeroBody(
     takeFocus: Boolean, onFocused: () -> Unit, onFocusTop: () -> Unit, clock: State<Long>, index: Int, count: Int, watchRequester: FocusRequester?, modifier: Modifier,
 ) {
     val D = LocalDs.current
+    val mayRotate = rememberHeroMayRotate()
     val requester = remember(watchRequester) { watchRequester ?: FocusRequester() }
     var focused by remember { mutableStateOf(false) }
     if (takeFocus) RequestInitialFocus(requester, hasFocus = { focused })
@@ -687,7 +697,7 @@ private fun HeroBody(
     // Image pleine largeur, titre et boutons dessinés dessus (aucun panneau opaque) ; voiles dessinés une fois (aucun flou).
     Box(modifier.background(HeroScrimBase)) {
         // UNE seule image de fond. Fondu léger entre deux titres (coupé net si les animations sont désactivées).
-        androidx.compose.animation.Crossfade(targetState = h, animationSpec = com.ultratv.tv.nativeapp.ui.design.LocalAnimations.current.let { if (it.rotateHero) it.tween<Float>(500) else androidx.compose.animation.core.snap<Float>() }, label = "hero") { cur ->
+        androidx.compose.animation.Crossfade(targetState = h, animationSpec = if (mayRotate) com.ultratv.tv.nativeapp.ui.design.LocalAnimations.current.tween<Float>(500) else androidx.compose.animation.core.snap<Float>(), label = "hero") { cur ->
             Box(Modifier.fillMaxSize()) {
                 if (cur.backdrop != null) {
                     BackdropImage(cur.backdrop, Modifier.fillMaxSize(), decodeSize = DpSize(1920.design, HeroHeight))
@@ -727,7 +737,7 @@ private fun HeroBody(
         // Heure en haut à droite de l'image (lue dans HomeClock : l'écran ne se recompose pas chaque minute).
         HomeClock(clock, HeroInk, Modifier.align(Alignment.TopEnd).padding(top = 44.design, end = 72.design))
         // Points de pagination (titre affiché / nombre de titres « à la une »), en bas à droite de l'image.
-        if (count > 1) Row(Modifier.align(Alignment.BottomEnd).padding(end = 28.design, bottom = 24.design), horizontalArrangement = Arrangement.spacedBy(10.design)) {
+        if (count > 1 && mayRotate) Row(Modifier.testTag("hero-dots").align(Alignment.BottomEnd).padding(end = 28.design, bottom = 24.design), horizontalArrangement = Arrangement.spacedBy(10.design)) {
             repeat(count) { i ->
                 Box(Modifier.height(8.design).width(if (i == index) 28.design else 8.design).clip(RoundedCornerShape(4.design)).background(if (i == index) Color.White else Color.White.copy(alpha = 0.4f)))
             }
