@@ -16,7 +16,7 @@
 // 192.168.77.88, example.invalid) : n'y mettez jamais de donnée réelle.
 import { describe, it, expect } from "vitest";
 import vectors from "./fixtures/sanitize-vectors.json";
-import { sanitizeLog, reduceUrl, hostFingerprint, sha256, hmacSha256 } from "../src/sanitize.js";
+import { sanitizeLog, sanitizeText, reduceUrl, hostFingerprint, sha256, hmacSha256 } from "../src/sanitize.js";
 
 // Secret FICTIF d'empreinte d'hôte (jamais celui de la production).
 const KEY = "cle-de-test-fictive-pour-les-empreintes";
@@ -45,10 +45,25 @@ describe("sanitizeLog : vecteurs partagés", () => {
     }
   });
 
-  it("idempotent : nettoyer deux fois ne change rien (réécriture des anciennes lignes relançable)", () => {
+  // Les lignes déjà en base ont été écrites par l'ancien Worker (`sanitizeText`), de la même famille que `LogSanitizer`
+  // de l'appli : un mot de passe à espace y devient `password=<redacted> FIN`. Le nettoyage actuel doit retirer cette fin.
+  it.each(vectors.map((v) => [v.name, v]))("ligne écrite par l'ancien Worker (sanitizeText) : %s", (_name, v) => {
+    const old = sanitizeText(v.input, 32768);
+    for (const hostKey of [null, KEY]) {
+      const low = sanitizeLog(old, 32768, { hostKey }).toLowerCase();
+      // Les marques (`<redacted>`…) posées par l'ancien Worker lui-même ne sont pas une fuite.
+      for (const s of v.mustNotContain.filter((x) => !/^<[a-z]+>$/.test(x))) expect(low, `« ${s} » est resté (ancienne forme : ${old})`).not.toContain(s.toLowerCase());
+    }
+  });
+
+  it("idempotent : nettoyer deux fois ne change rien, sur le texte brut et sur l'ancienne forme, avec et sans clé", () => {
     for (const v of vectors) {
-      const once = sanitizeLog(v.input, 32768, { hostKey: KEY });
-      expect(sanitizeLog(once, 32768, { hostKey: KEY }), v.name).toBe(once);
+      for (const input of [v.input, sanitizeText(v.input, 32768)]) {
+        for (const hostKey of [null, KEY]) {
+          const once = sanitizeLog(input, 32768, { hostKey });
+          expect(sanitizeLog(once, 32768, { hostKey }), `${v.name} (${input === v.input ? "brut" : "ancienne forme"}, clé ${hostKey ? "oui" : "non"})`).toBe(once);
+        }
+      }
     }
   });
 });

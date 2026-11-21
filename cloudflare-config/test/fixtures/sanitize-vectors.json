@@ -1833,5 +1833,152 @@
     "mustContain": [
       "get.php?"
     ]
+  },
+  {
+    "name": "N1 déjà masqué : paramètre, fin du mot de passe après <redacted> (ancien Worker et LogSanitizer)",
+    "input": "GET http://fournisseur.invalid/player_api.php?username=<redacted>&password=<redacted> ZZFINZZ",
+    "mustNotContain": [
+      "fournisseur",
+      "ZZFINZZ"
+    ],
+    "mustContain": [
+      "player_api.php"
+    ]
+  },
+  {
+    "name": "N1 déjà masqué : paramètre au milieu de la requête, champs du journal ensuite",
+    "input": "UtvPlay échec http://fournisseur.invalid:8080/get.php?username=<redacted>&password=<redacted> ZZFINZZ&type=m3u vidéo=- audio=-",
+    "mustNotContain": [
+      "fournisseur",
+      "ZZFINZZ",
+      "m3u&"
+    ],
+    "mustContain": [
+      "get.php",
+      "vidéo=- audio=-"
+    ]
+  },
+  {
+    "name": "N1 déjà masqué : chemin Xtream long, fin du mot de passe après <redacted>",
+    "input": "lecture http://fournisseur.invalid/live/<redacted>/<redacted> ZZFINZZ/123.ts code=404",
+    "mustNotContain": [
+      "fournisseur",
+      "ZZFINZZ",
+      "ZZFINZZ/123.ts"
+    ],
+    "mustContain": [
+      "/live",
+      "code=404"
+    ]
+  },
+  {
+    "name": "N1 déjà masqué : chemin Xtream court sans extension",
+    "input": "http://fournisseur.invalid/live/<redacted>/<redacted> ZZFINZZ",
+    "mustNotContain": [
+      "fournisseur",
+      "ZZFINZZ"
+    ],
+    "mustContain": [
+      "/live"
+    ]
+  },
+  {
+    "name": "N1 déjà masqué : JSON, adresse dans une chaîne",
+    "input": "{\"url\":\"http://fournisseur.invalid/get.php?username=<redacted>&password=<redacted> ZZFINZZ\",\"ok\":true}",
+    "mustNotContain": [
+      "fournisseur",
+      "ZZFINZZ"
+    ],
+    "mustContain": [
+      "\"ok\":true}"
+    ]
+  },
+  {
+    "name": "N1 déjà masqué : JSON, clé password hors adresse",
+    "input": "{\"msg\":\"refus password=<redacted> ZZFINZZ\",\"code\":401}",
+    "mustNotContain": [
+      "ZZFINZZ"
+    ],
+    "mustContain": [
+      "\"code\":401}"
+    ]
+  },
+  {
+    "name": "N1 déjà masqué : clé password hors adresse, le champ suivant reste",
+    "input": "connexion refusée password=<redacted> ZZFINZZ code=401",
+    "mustNotContain": [
+      "ZZFINZZ"
+    ],
+    "mustContain": [
+      "password=<redacted>",
+      "code=401"
+    ]
+  },
+  {
+    "name": "N1 déjà masqué : identifiant à espace avant un autre paramètre",
+    "input": "username=<redacted> ZZFINZZ&password=<redacted>",
+    "mustNotContain": [
+      "ZZFINZZ"
+    ],
+    "mustContain": [
+      "password=<redacted>"
+    ]
+  },
+  {
+    "name": "N1 déjà masqué : plus de trois mots après le mot de passe",
+    "input": "password=<redacted> ZZFINZZ ZZFIN2ZZ ZZFIN3ZZ ZZFIN4ZZ",
+    "mustNotContain": [
+      "ZZFINZZ",
+      "ZZFIN2ZZ",
+      "ZZFIN3ZZ",
+      "ZZFIN4ZZ"
+    ],
+    "mustContain": []
+  },
+  {
+    "name": "N1 brut : plus de trois mots après le mot de passe (même règle que déjà masqué)",
+    "input": "password=ZZPASSZZ ZZFINZZ ZZFIN2ZZ ZZFIN3ZZ ZZFIN4ZZ",
+    "mustNotContain": [
+      "ZZPASSZZ",
+      "ZZFINZZ",
+      "ZZFIN2ZZ",
+      "ZZFIN3ZZ",
+      "ZZFIN4ZZ"
+    ],
+    "mustContain": []
+  },
+  {
+    "name": "N1 déjà masqué : identifiants de l autorité, hôte sans chemin",
+    "input": "échec http://<redacted>@fournisseur.invalid code=401",
+    "mustNotContain": [
+      "fournisseur"
+    ],
+    "mustContain": [
+      "code=401"
+    ]
+  },
+  {
+    "name": "règle saut du mot de schéma : le mot Basic reste lisible, seul le jeton est masqué",
+    "input": "authorization=Basic WlpVU0VSWlo6WlpQQVNTWlo= status=401",
+    "mustNotContain": [
+      "WlpVU0VSWlo6WlpQQVNTWlo="
+    ],
+    "mustContain": [
+      "authorization=Basic <redacted>",
+      "status=401"
+    ]
+  },
+  {
+    "name": "N1 hôte déjà masqué, chemin encore brut : le chemin est réduit, la marque gardée",
+    "input": "lecture http://<host>/ZZUSERZZ/ZZPASSZZ/1.ts et http://<host#0a1b2c3d4e5f>/live/ZZUSERZZ/ZZPASSZZ ZZFINZZ",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "ZZFINZZ"
+    ],
+    "mustContain": [
+      "http://<host>/*.ts",
+      "http://<host#0a1b2c3d4e5f>/live"
+    ]
   }
 ]

@@ -216,6 +216,8 @@ const isEncStop = (c) => isUrlStop(c) || c === "&" || c === "'" || c === ";" || 
 const TRAILING = ")]}'.,;:!?";
 const CONT_MAX_TOKENS = 6;
 const isBlank = (c) => c === " " || c === "\t";
+// Partie chemin telle que `reduceRest` l'écrit : premier mot connu, `/*` et extension, `?*`.
+const REDUCED_REST = /(?:\/[a-z0-9_.]{1,32})?(?:\/\*(?:\.[a-z0-9]{2,5})?)?(?:\?\*)?/y;
 
 /** Jeton (après une espace) qui peut prolonger une adresse coupée par une espace dans un identifiant. */
 function isContinuation(tok) {
@@ -235,8 +237,7 @@ function extendOverSpaces(s, j) {
     let p = pos;
     while (p < s.length && isBlank(s[p])) p++;
     if (p === pos || p >= s.length) break;
-    let q = p;
-    while (q < s.length && !isUrlStop(s[q]) && q - p <= 256) q++;
+    const q = scanUrl(s, p, isUrlStop, 256);
     const tok = s.slice(p, q);
     if (!isContinuation(tok)) break;
     if (tok.includes("/") || tok.includes("&")) best = q;
@@ -271,7 +272,8 @@ const CRED_NAMES = new Set(["username", "user", "login", "password", "passwd", "
  * L'adresse finit-elle sur un identifiant (dernier paramètre `password=…`, ou forme longue Xtream à laquelle il manque
  * des segments) ? Sa fin peut alors être coupée par une espace : `?username=QQU&password=QQP QQPB`.
  */
-function endsWithCredential(body) {
+function endsWithCredential(full) {
+  const body = full.slice(markLen(full, 0)); // hôte déjà remplacé par `<host#…>` : son `#` n'est pas un fragment
   const qi = body.indexOf("?");
   if (qi >= 0) {
     const last = body.slice(Math.max(body.lastIndexOf("?"), body.lastIndexOf("&"), body.lastIndexOf(";")) + 1);
@@ -286,24 +288,57 @@ function endsWithCredential(body) {
 }
 
 /**
- * Suite d'une valeur d'identifiant coupée par une espace : jusqu'à 3 jetons (espaces ou tabulations, jamais un saut de
- * ligne) tant qu'ils ne contiennent ni `=` ni `:` et ne commencent pas par une ouverture. Le surmasquage d'un mot du
- * journal qui suivrait est accepté (`vidéo=-`, `code=401` arrêtent l'absorption). [isStop] : fin de jeton en plus du blanc.
+ * Marque déjà posée par un nettoyage précédent (`<redacted>` de l'ancien Worker et de `LogSanitizer`, `<host#…>`,
+ * `<lan>`… de celui-ci) commençant en [j] : sa longueur, ou 0. Elle compte comme une valeur déjà masquée, jamais comme
+ * une fin de texte : sinon `password=<redacted> FIN` (forme écrite pour tout mot de passe à espace) garderait `FIN`.
  */
-function absorbTail(s, j, isStop = null) {
+const MARK_AT = /<(?:redacted|host|lan|ip|email|mac|jwt|user)(?:#[0-9a-f]{4,16})?>/y;
+function markLen(s, j) {
+  if (s[j] !== "<") return 0;
+  MARK_AT.lastIndex = j;
+  const m = MARK_AT.exec(s);
+  return m ? m[0].length : 0;
+}
+
+/** Jeton d'un en-tête d'autorisation (Basic, Bearer…) : base 64 ou URL-safe, `=` de remplissage en fin seulement. */
+const AUTH_TOKEN = /^[A-Za-z0-9._~+/-]+=*$/;
+
+/**
+ * Suite d'une valeur d'identifiant coupée par une espace : TOUS les jetons qui suivent sur la ligne (espaces ou
+ * tabulations, jamais un saut de ligne), tant qu'ils ne contiennent ni `=` ni `:` et ne commencent pas par une
+ * ouverture. Pas de plafond de nombre de mots : avec un plafond, `password=A B C D E` deviendrait
+ * `password=<redacted> E`, qu'une seconde passe changerait encore (le nettoyage ne serait plus idempotent, et la
+ * réécriture des anciennes lignes laisserait la fin). Le surmasquage des mots du journal qui suivent est accepté
+ * (`vidéo=-`, `code=401` et toute ponctuation d'arrêt l'interrompent). [isStop] : fin de jeton en plus du blanc.
+ * [accept] : test d'un jeton à la place de la règle par défaut.
+ */
+function absorbTail(s, j, isStop = null, accept = null) {
   let pos = j;
-  for (let k = 0; k < 3; k++) {
+  for (;;) {
     let p = pos;
     while (p < s.length && isBlank(s[p])) p++;
     if (p === pos || p >= s.length) break;
     let q = p;
     while (q < s.length && s[q] > " " && !(isStop && isStop(s[q])) && q - p <= 256) q++;
     const tok = s.slice(p, q);
-    if (!tok || /[=:]/.test(tok) || "([{\"'<".includes(tok[0])) break;
+    if (!tok || (accept ? !accept(tok) : /[=:]/.test(tok) || "([{\"'<".includes(tok[0]))) break;
     pos = q;
     if (q < s.length && !isBlank(s[q])) break;
   }
   return pos;
+}
+
+/**
+ * Fin de l'adresse commençant en [j] : jusqu'au premier caractère d'arrêt, en traversant les marques déjà posées
+ * (`/live/<redacted>/<redacted>/1.ts`, `?username=<redacted>&password=<redacted>`, `http://<redacted>@hôte`).
+ */
+function scanUrl(s, j, stop, limit = Infinity) {
+  const start = j;
+  while (j < s.length && j - start <= limit) {
+    if (stop(s[j])) { const n = markLen(s, j); if (!n) break; j += n; continue; }
+    j++;
+  }
+  return j;
 }
 
 function maskUrls(s) {
@@ -315,16 +350,33 @@ function maskUrls(s) {
     const encoded = sep.length > 3;
     const scheme = (m[1] || m[3] || m[5]).toLowerCase();
     const i = SCHEME_RE.lastIndex;
+    // Hôte déjà remplacé par une passe précédente ou par l'appli (`http://<host#…>/…`) : la marque est gardée telle
+    // quelle (jamais ré-hachée), seul le chemin est réduit (sans effet sur un chemin déjà réduit).
+    const hm = !encoded && (s.startsWith("<host", i) || s.startsWith("<lan", i)) ? markLen(s, i) : 0;
+    if (hm) {
+      // Adresse déjà réduite (`/live/*.ts`, `/get.php?*`…) suivie de ce qui peut suivre une adresse réduite : inchangée.
+      REDUCED_REST.lastIndex = i + hm;
+      const k = i + hm + REDUCED_REST.exec(s)[0].length;
+      const c = s[k];
+      if (k >= s.length || isUrlStop(c) || "&;,'".includes(c) || (TRAILING.includes(c) && (k + 1 >= s.length || isUrlStop(s[k + 1])))) {
+        out += s.slice(last, k);
+        last = k;
+        SCHEME_RE.lastIndex = Math.max(k, start + 1);
+        continue;
+      }
+    }
     const stop = encoded ? isEncStop : isUrlStop;
-    let j = i;
-    while (j < s.length && !stop(s[j])) j++;
+    let j = scanUrl(s, i, stop);
     if (!encoded) {
       for (let k = 0; k < 4; k++) { const n = extendOverSpaces(s, absorbStops(s, i, j)); if (n === j) break; j = n; }
-      if (endsWithCredential(s.slice(i, j))) j = absorbTail(s, j);
+      // Fin d'un identifiant coupé par une espace ; `"` et `\` ferment une chaîne JSON et ne sont jamais absorbés.
+      if (endsWithCredential(s.slice(i, j))) j = absorbTail(s, j, (c) => c === '"' || c === "\\");
     }
     let end = j;
     while (end > i && TRAILING.includes(s[end - 1])) end--;
-    out += s.slice(last, start) + reduceUrlIn(scheme, s.slice(i, end), encoded, !m[5]);
+    out += s.slice(last, start) + (hm
+      ? `${scheme}:${m[5] ? "" : "//"}${s.slice(i, i + hm)}${reduceRest(s.slice(i + hm, end))}`
+      : reduceUrlIn(scheme, s.slice(i, end), encoded, !m[5]));
     last = end;
     SCHEME_RE.lastIndex = Math.max(end, start + 1);
   }
@@ -425,9 +477,22 @@ function valueSpan(s, p, kind, rawName) {
     if (ch === "%" && /^%(26|3B|22)/i.test(s.slice(q, q + 3))) break;
     q++;
   }
-  if (q <= v) return null;
+  const cred = kind === "secret" && CRED_NAMES.has(rawName.toLowerCase());
+  // Autorisation sans mot de schéma : la valeur peut être suivie du jeton (`authorization=<redacted> QmFzZTY0=`, forme
+  // écrite par l'ancien Worker qui masquait le mot `Basic` et gardait le jeton).
+  const bareAuth = kind === "secret" && !cred && v === p && /auth/i.test(rawName);
+  const authTok = (t) => AUTH_TOKEN.test(t);
+  if (q <= v) {
+    // Valeur déjà masquée par un nettoyage précédent (`password=<redacted> FIN`) : la fin qui suit est absorbée selon la
+    // même règle que derrière une valeur brute. Sans suite à absorber, rien à faire.
+    const n = kind === "secret" ? markLen(s, v) : 0;
+    if (!n || !isBlank(s[v + n]) || !(cred || bareAuth)) return null;
+    const e = cred ? absorbTail(s, v + n, isValueStop) : absorbTail(s, v + n, isValueStop, authTok);
+    return e > v + n ? [v, e] : null;
+  }
   // Identifiant saisi coupé par une espace (`password=QQP QQPB`) : sa fin suit.
-  if (kind === "secret" && CRED_NAMES.has(rawName.toLowerCase()) && isBlank(s[q])) q = absorbTail(s, q, isValueStop);
+  if (cred && isBlank(s[q])) q = absorbTail(s, q, isValueStop);
+  else if (bareAuth && isBlank(s[q])) q = absorbTail(s, q, isValueStop, authTok);
   return [v, q];
 }
 
