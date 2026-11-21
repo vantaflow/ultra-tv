@@ -732,7 +732,7 @@ private val DeviceSdk = android.os.Build.VERSION.SDK_INT
 /** « À la une » peut défiler ici : niveau d'animation, mémoire de l'appareil et API réunis (voir [heroMayRotate]). */
 @Composable
 private fun rememberHeroMayRotate(): Boolean =
-    heroMayRotate(com.ultratv.tv.nativeapp.ui.design.LocalAnimations.current.rotateHero, com.ultratv.tv.nativeapp.ui.common.LocalLowRam.current, DeviceSdk)
+    heroRotatesOn(com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current, com.ultratv.tv.nativeapp.ui.design.LocalAnimations.current.rotateHero, com.ultratv.tv.nativeapp.ui.common.LocalLowRam.current, DeviceSdk)
 
 @Composable
 private fun HeroBody(

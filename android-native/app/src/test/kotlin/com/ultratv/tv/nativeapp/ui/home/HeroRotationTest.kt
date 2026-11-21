@@ -74,3 +74,21 @@ class HeroMayRotateTest {
         assertEquals(HERO_POOL, heroPoolSize(heroMayRotate(true, lowRam = false, sdk = 34)))
     }
 }
+
+class HeroRotatesOnTest {
+    @Test fun `au tactile le comportement de la 1_3_72 est conserve - seul le niveau d'animation decide`() {
+        // Android 12 ou moins, faible mémoire : le bandeau tourne toujours sur téléphone, et cinq titres sont préparés.
+        assertTrue(heroRotatesOn(touch = true, rotateHero = true, lowRam = false, sdk = 30))
+        assertTrue(heroRotatesOn(touch = true, rotateHero = true, lowRam = true, sdk = 34))
+        assertTrue(heroRotatesOn(touch = true, rotateHero = true, lowRam = true, sdk = 24))
+        assertFalse(heroRotatesOn(touch = true, rotateHero = false, lowRam = false, sdk = 34))
+        assertEquals(HERO_POOL, heroPoolSize(heroRotatesOn(touch = true, rotateHero = true, lowRam = true, sdk = 30)))
+    }
+
+    @Test fun `sur TV la regle des appareils modestes s'applique`() {
+        assertTrue(heroRotatesOn(touch = false, rotateHero = true, lowRam = false, sdk = 34))
+        assertFalse(heroRotatesOn(touch = false, rotateHero = true, lowRam = true, sdk = 34))
+        assertFalse(heroRotatesOn(touch = false, rotateHero = true, lowRam = false, sdk = 30))
+        assertFalse(heroRotatesOn(touch = false, rotateHero = false, lowRam = false, sdk = 34))
+    }
+}

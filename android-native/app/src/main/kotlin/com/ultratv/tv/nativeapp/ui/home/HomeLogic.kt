@@ -390,6 +390,13 @@ fun heroPoolSize(rotating: Boolean): Int = if (rotating) HERO_POOL else 1
  */
 internal fun heroMayRotate(rotateHero: Boolean, lowRam: Boolean, sdk: Int): Boolean = rotateHero && !lowRam && sdk >= 31
 
+/**
+ * Le bandeau « À la une » défile-t-il sur cet écran ? Téléphone ([touch]) : comme en 1.3.72, c'est le seul niveau d'animation
+ * ([rotateHero]) qui décide. TV : la règle des appareils modestes ([heroMayRotate]) s'y ajoute.
+ */
+internal fun heroRotatesOn(touch: Boolean, rotateHero: Boolean, lowRam: Boolean, sdk: Int): Boolean =
+    if (touch) rotateHero else heroMayRotate(rotateHero, lowRam, sdk)
+
 /** Silence de la télécommande exigé avant de lancer un chargement réseau de confort (notes, logos, calendrier TVmaze). */
 const val BACKGROUND_QUIET_MS = 1_200L
 /** Attente maximale de ce silence : un utilisateur qui navigue sans arrêt ne bloque pas indéfiniment les compléments. */
