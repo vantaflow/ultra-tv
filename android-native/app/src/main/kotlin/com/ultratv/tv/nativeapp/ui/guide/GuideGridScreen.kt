@@ -194,7 +194,7 @@ class GuideGridViewModel @Inject constructor(
     recDao: com.ultratv.tv.nativeapp.data.db.RecordingDao,
     private val replay: com.ultratv.tv.nativeapp.data.replay.ReplayService,
     private val limits: com.ultratv.tv.nativeapp.data.prefs.ProviderLimitsStore,
-    lockedStore: com.ultratv.tv.nativeapp.data.prefs.LockedChannelsStore,
+    private val lockedStore: com.ultratv.tv.nativeapp.data.prefs.LockedChannelsStore,
     private val catalog: com.ultratv.tv.nativeapp.data.repo.CatalogRepository,
     private val hiddenStore: com.ultratv.tv.nativeapp.data.prefs.HiddenCategoriesStore,
     private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
@@ -226,8 +226,11 @@ class GuideGridViewModel @Inject constructor(
         }
     }
 
-    /** Chaînes verrouillées (code parental) : jamais d'aperçu vidéo pour elles. */
-    val lockedChannels: StateFlow<Set<String>> = lockedStore.locked.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+    /**
+     * Chaînes verrouillées (code parental) : jamais d'aperçu vidéo pour elles. Lecture à chaque décision, qui attend la liste réelle
+     * du magasin : un StateFlow encore à sa valeur vide (premier accès, processus froid) laisserait démarrer une chaîne verrouillée.
+     */
+    suspend fun lockedKeys(): Set<String> = lockedStore.locked.first()
 
     /** Adresse lisible du flux pour l'aperçu (portail Stalker : lien demandé au portail). */
     suspend fun previewUrl(c: ChannelEntity): String = c.streamUrl   // stalker:// : résolu par la session à chaque ouverture
@@ -532,14 +535,19 @@ private fun GuidePreviewPane(
     val shared = com.ultratv.tv.nativeapp.ui.player.engine.LocalSharedLive.current
     val pv by pvm.previewPrefs.state.collectAsState()
     val userPrefs by pvm.userPrefs.collectAsState()
-    val locked by vm.lockedChannels.collectAsState()
     val touchUi = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val textureView = com.ultratv.tv.nativeapp.ui.player.engine.useTextureView(userPrefs?.videoSurface ?: "auto", touchUi)
-    val lockedNow by androidx.compose.runtime.rememberUpdatedState(locked)
     val mutedNow by androidx.compose.runtime.rememberUpdatedState(!pv.sound)
     val firstNow by androidx.compose.runtime.rememberUpdatedState(firstChannel)
     val channel = sel.value?.first ?: firstChannel
+    // Retour du lecteur plein écran : la liste restaurée désignera la chaîne regardée, la première ne doit pas démarrer avant elle.
+    val returning = remember(shared) { booleanArrayOf(shared != null && com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.returningFromPlayer(shared.owner)) }
+    val target = {
+        val selected = sel.value?.first
+        if (selected != null) returning[0] = false
+        com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.guideTarget(selected, firstNow, returning[0])
+    }
     // Son seulement tant que l'encadré montre la vidéo de la chaîne sélectionnée : jamais l'audio d'une chaîne sous son logo
     // (avant la première image, flux sans image décodée, ancien flux pendant le délai après un changement de programme).
     if (shared != null) DisposableEffect(shared) {
@@ -552,14 +560,14 @@ private fun GuidePreviewPane(
         LaunchedEffect(shared, pv.delayMs) {
             // Chaîne du programme focalisé, lue après le délai du réglage ; collectLatest : jamais deux flux.
             // Première chaîne (ouverture de l'écran, aperçu réactivé) : lancée tout de suite ; les suivantes après la pause.
-            with(com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy) { snapshotFlow { sel.value?.first ?: firstNow }.immediateThenDebounced(guideDelayMs(pv.delayMs)) }.collectLatest { c ->
+            with(com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy) { snapshotFlow { target() }.immediateThenDebounced(guideDelayMs(pv.delayMs)) }.collectLatest { c ->
                 val row = com.ultratv.tv.nativeapp.ui.live.channelKey(c)
-                when (com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.decide(shared.owner, shared.rowKey, row, row in lockedNow, false)) {
+                when (com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.decideChecked(shared.owner, shared.rowKey, row) { vm.lockedKeys() }) {
                     com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.Action.KEEP -> Unit
                     com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.Action.STOP -> shared.stopPreview()
                     com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.Action.START -> {
                         val url = vm.previewUrl(c)
-                        if ((sel.value?.first ?: firstNow)?.id != c.id) return@collectLatest
+                        if (target()?.id != c.id) return@collectLatest
                         shared.preview(row, row, url, mutedNow) { pvm.createSession(ctx, shared.scope, shared, textureView, userPrefs?.videoSurface ?: "auto") }
                     }
                 }
