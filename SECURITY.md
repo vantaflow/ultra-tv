@@ -6,7 +6,8 @@ Ultra TV is a self-hosted IPTV client. The deployment is single-user (your
 TV box + your Cloudflare Worker), so the primary threats are:
 
 1. **Credential leakage** — IPTV provider credentials shouldn't escape the
-   device or the worker's storage (D1; KV only as a fallback).
+   device or the worker's storage (Turso; the former D1 database and KV
+   namespace are kept, unbound, as fallback copies).
 2. **Brute force** — neither the local PIN nor the worker's account password
    should be cheaply guessable.
 3. **Supply chain** — a malicious update shouldn't be installable over a
@@ -54,19 +55,26 @@ TV box + your Cloudflare Worker), so the primary threats are:
   example an exhausted database quota). After a failed write, log lines skip
   the database for 60 s (circuit breaker, per Worker isolate). Responses
   report how many lines were stored and why the others were dropped
-  (duplicate, sampling, invalid, over the batch cap, test device, storage),
-  never their content.
+  (`filtered` — duplicate or sampling, counted together —, `invalid`,
+  `overflow` over the batch cap, `test` device, `storage`), never their
+  content.
 - **What is stored** — per line: kind (log or crash), timestamp, level, tag,
   message or stack trace, app version, device model, Android SDK (crashes
   only), country (from Cloudflare, never the IP address), a short
   non-reversible fingerprint of the device (and, for paired devices, of the
   account: HMAC with a server secret). New lines never contain the IP address,
   the account login, the install ID or the MAC label (the `mac` column is no
-  longer filled). Lines written before the current sanitiser was deployed may
-  still contain such data until they are rewritten
-  (`cloudflare-config/scripts/resanitize-events.mjs`) or expire, and so may the
-  old D1 database kept as a fallback (`cloudflare-config/wrangler.toml`). Logs are kept 7
-  days, crashes 30 days.
+  longer filled). Lines written before the current sanitiser was deployed were
+  only partly masked (`password=<redacted> END` for a password containing a
+  space, `http://<redacted>@host`, the MAC label): they may still contain such
+  data until they are rewritten with
+  `cloudflare-config/scripts/resanitize-events.mjs` (which also removes the
+  end of those passwords, see below, and counts the remaining
+  `<redacted> word` forms with a check independent of the sanitiser) or
+  expire. The old D1 database kept as a fallback
+  (`cloudflare-config/wrangler.toml`) is not rewritten by that script, and
+  point-in-time restore copies (Turso, D1 Time Travel) keep old lines for their
+  retention period. Logs are kept 7 days, crashes 30 days.
 - **Telemetry sanitiser** — the Worker is the last barrier, including for old
   app versions that cannot be updated: every text field (message, stack, tag,
   device model, version) is sanitised on all ingestion routes before anything
@@ -82,9 +90,21 @@ TV box + your Cloudflare Worker), so the primary threats are:
     there was a query. Path segments, query values, fragments and
     `user:pass@` are dropped. Credentials that contain a space, a tab, a quote,
     `<`, `>`, a backslash or a backtick are followed: the words after a cut are
-    absorbed while they look like the rest of the URL, and up to three words
-    after a trailing `password=` / `username=` value (which may also hide a
-    word of the log line that follows);
+    absorbed while they look like the rest of the URL, and every word on the
+    same line after a trailing `password=` / `username=` value, until a
+    `key=value` field, a `key:` word, an opening bracket or quote, or
+    punctuation that ends a value (this may also hide words of the log line
+    that follow). There is no word limit, so that sanitising twice gives the
+    same result;
+  - **already masked text** is treated like a raw value: a `<redacted>` left
+    by the previous Worker or by the app's `LogSanitizer` (and the
+    `<host#…>`, `<lan>` marks of this one) is never taken as the end of a
+    value or of a URL. `password=<redacted> END`,
+    `?username=<redacted>&password=<redacted> END`,
+    `/live/<redacted>/<redacted> END/1.ts`, `authorization=<redacted> TOKEN`
+    and `http://<redacted>@host` are therefore cleaned like their raw form;
+    an already reduced URL is kept as is and its host mark is never hashed
+    again;
   - request lines (`GET /…/1.ts HTTP/1.1`), `host:port/path` and
     `user:pass@host` without a scheme, stray `user/pass/123.ts` tails and local
     paths with an account name (`C:\Users\…`, `/Users/…`, `/home/…`) are
@@ -113,8 +133,11 @@ TV box + your Cloudflare Worker), so the primary threats are:
   at all, and the Worker logs a warning. HTTP codes, exception classes,
   messages, stack line numbers, durations and codec names are kept. Every
   rule has its own test vector
-  (`cloudflare-config/test/fixtures/sanitize-vectors.json`, 154 vectors;
-  removing any single rule makes at least one vector fail). The app's own
+  (`cloudflare-config/test/fixtures/sanitize-vectors.json`, 167 vectors;
+  removing any single rule makes at least one vector fail). Each vector is
+  also replayed on the partly masked form the previous Worker wrote, and the
+  sanitiser is checked to be idempotent on both forms, with and without the
+  host secret. The app's own
   sanitiser (`LogSanitizer.kt`) has far fewer rules today; it is planned to
   apply the same ones and to read the same vectors in a JVM test, which does
   not exist yet. It cannot compute the keyed fingerprint and will write
@@ -127,7 +150,9 @@ TV box + your Cloudflare Worker), so the primary threats are:
   `code=`, `session=`), a URL split across lines in a way the tail rule does
   not catch, a malformed scheme (`http:/…`, `http:…`), a bare MAC without
   separators, a short `Basic`/JWT token. A few characters at the very end of a
-  password made of punctuation can also remain. The app must not send such
+  password made of punctuation can also remain, and so can the part of a
+  password after a space when that part contains `=` or `:` (it cannot be told
+  apart from the next field of the log line). The app must not send such
   text.
 - **Web proxy (`web/cloudflare`)** — default-deny host allow-list, http(s) only,
   private/loopback/metadata IPs refused even if allow-listed, redirects
