@@ -753,6 +753,7 @@
   "DesignStrings/DirectGuideStringsKt.getGuideWindowEmpty()": "لا توجد برامج لهذه الفترة.",
   "DesignStrings/DirectGuideStringsKt.getGuideBackToNow()": "العودة إلى الآن",
   "DesignStrings/DirectGuideStringsKt.getGuideAllChannels()": "كل القنوات",
+  "DesignStrings/DirectGuideStringsKt.getGuideNoProgrammeDay()": "لا توجد برامج في هذا اليوم",
   "DesignStrings/DirectGuideStringsKt.getGuideGroupTitle()": "مجموعة القنوات",
   "DesignStrings/DirectGuideStringsKt.getGuideLoadingHint()": "تظهر البرامج هنا تدريجيًا فور وصولها.",
   "DesignStrings/DirectGuideStringsKt.getGuideLoadingTitle()": "جارٍ تحميل الدليل\u2026",

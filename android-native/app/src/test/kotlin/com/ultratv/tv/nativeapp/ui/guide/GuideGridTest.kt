@@ -43,19 +43,24 @@ class GuideGridTest {
     // ── Bord de fenêtre borné aux données (I3) ──
     private val m = 60_000L
     @Test fun edgeShift_avecVoisin_decale_de_90_minutes() {
-        assertEquals(10 * h + 90 * m, guideEdgeShift(10 * h, true, e(11 * h, 13 * h), hasNeighbour = true))
-        assertEquals(10 * h - 90 * m, guideEdgeShift(10 * h, false, e(9 * h, 11 * h), hasNeighbour = true))
+        assertEquals(10 * h + 90 * m, guideEdgeShift(10 * h, true, e(11 * h, 13 * h), neighbour = e(13 * h, 14 * h)))
+        assertEquals(10 * h - 90 * m, guideEdgeShift(10 * h, false, e(9 * h, 11 * h), neighbour = e(8 * h, 9 * h)))
+    }
+    @Test fun edgeShift_trou_de_cinq_heures_la_fenetre_saute_jusqu_au_voisin() {
+        // Fin à 01:00, reprise à 06:00 (fenêtre 00:30) : la nouvelle fenêtre (05:30) montre 06:00 ; en arrière, symétrique.
+        assertEquals(5 * h + 30 * m, guideEdgeShift(30 * m, true, e(0, h), neighbour = e(6 * h, 7 * h)))
+        assertEquals(h - 3 * h + 30 * m, guideEdgeShift(6 * h, false, e(6 * h, 7 * h), neighbour = e(0, h)))
     }
     @Test fun edgeShift_sansVoisin_programme_dans_la_fenetre_butee() {
-        assertEquals(10 * h, guideEdgeShift(10 * h, true, e(12 * h, 13 * h), hasNeighbour = false))
-        assertEquals(10 * h, guideEdgeShift(10 * h, false, e(10 * h, 11 * h), hasNeighbour = false))
+        assertEquals(10 * h, guideEdgeShift(10 * h, true, e(12 * h, 13 * h), neighbour = null))
+        assertEquals(10 * h, guideEdgeShift(10 * h, false, e(10 * h, 11 * h), neighbour = null))
     }
     @Test fun edgeShift_sansVoisin_long_programme_va_jusqu_a_sa_fin_arrondie_a_la_demi_heure() {
         // Dernier programme 12:00 – 14:10, fenêtre 10:00 – 13:00 : 90 min puis 14:30 − 3 h = 11:30 au plus.
-        assertEquals(11 * h + 30 * m, guideEdgeShift(10 * h, true, e(12 * h, 14 * h + 10 * m), hasNeighbour = false))
+        assertEquals(11 * h + 30 * m, guideEdgeShift(10 * h, true, e(12 * h, 14 * h + 10 * m), neighbour = null))
         // Premier programme 08:20 – 11:00, fenêtre 10:00 : jusqu'à 08:00 au plus (la demi-heure qui le contient).
-        assertEquals(8 * h + 30 * m, guideEdgeShift(10 * h, false, e(8 * h + 20 * m, 11 * h), hasNeighbour = false))
-        assertEquals(8 * h, guideEdgeShift(9 * h, false, e(8 * h + 20 * m, 11 * h), hasNeighbour = false))
+        assertEquals(8 * h + 30 * m, guideEdgeShift(10 * h, false, e(8 * h + 20 * m, 11 * h), neighbour = null))
+        assertEquals(8 * h, guideEdgeShift(9 * h, false, e(8 * h + 20 * m, 11 * h), neighbour = null))
     }
 }
 

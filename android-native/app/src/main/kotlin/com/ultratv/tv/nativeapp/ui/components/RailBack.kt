@@ -32,6 +32,12 @@ class RailMenuState {
     }
 }
 
+/**
+ * Menu latéral de la TV, pour les écrans qui l'ouvrent eux-mêmes par le même chemin que Retour ([RailMenuState.open]) : Guide,
+ * ◀ à la butée du temps. Null hors de la TV (téléphone, tests).
+ */
+val LocalRailMenu = androidx.compose.runtime.staticCompositionLocalOf<RailMenuState?> { null }
+
 internal enum class RailBackAction {
     /** Laisse Retour aux autres gestionnaires (retours locaux, retour arrière, règle de sortie). */
     PASS,

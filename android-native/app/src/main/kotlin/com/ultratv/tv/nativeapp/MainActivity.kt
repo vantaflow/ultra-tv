@@ -152,6 +152,8 @@ class MainActivity : ComponentActivity() {
         // l'écran noir pendant l'init Hilt/Room.
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        // Réglage caché de mesure du Guide (extra d'intent au lancement, voir GuideDebug) : faux pour un lancement normal.
+        com.ultratv.tv.nativeapp.ui.guide.GuideDebug.readFrom(intent)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         if (!com.ultratv.tv.nativeapp.ui.common.isTelevision(this)) {
             // Téléphone / tablette : barres système transparentes (le contenu passe dessous, les marges viennent des insets).
@@ -642,7 +644,7 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition, simpleHome: Boolean
                             // du bandeau), pas sur l'élément le plus proche géométriquement de l'entrée du menu (tuile « Films »).
                             .focusProperties { enter = { contentFocus.target() } }.focusGroup(),
                     ) {
-                        androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.common.LocalContentFocusMemory provides contentFocus) { ScaledForSimple(simpleHome, simpleScale) { NavGraph(nav, simpleHome) } }
+                        androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.common.LocalContentFocusMemory provides contentFocus, com.ultratv.tv.nativeapp.ui.components.LocalRailMenu provides railMenu) { ScaledForSimple(simpleHome, simpleScale) { NavGraph(nav, simpleHome) } }
                     }
                     if (!fullscreen) SidebarNav(navController = nav, menu = railMenu)
                 }

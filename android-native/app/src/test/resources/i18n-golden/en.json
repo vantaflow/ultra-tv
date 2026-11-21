@@ -753,6 +753,7 @@
   "DesignStrings/DirectGuideStringsKt.getGuideWindowEmpty()": "No programmes for this time period.",
   "DesignStrings/DirectGuideStringsKt.getGuideBackToNow()": "Back to now",
   "DesignStrings/DirectGuideStringsKt.getGuideAllChannels()": "All channels",
+  "DesignStrings/DirectGuideStringsKt.getGuideNoProgrammeDay()": "No programme that day",
   "DesignStrings/DirectGuideStringsKt.getGuideGroupTitle()": "Channel group",
   "DesignStrings/DirectGuideStringsKt.getGuideLoadingHint()": "Programmes appear here as they arrive.",
   "DesignStrings/DirectGuideStringsKt.getGuideLoadingTitle()": "Loading the guide\u2026",
