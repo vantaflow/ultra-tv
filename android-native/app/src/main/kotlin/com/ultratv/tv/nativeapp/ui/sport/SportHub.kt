@@ -497,7 +497,8 @@ internal fun SportTvContent(
                             !st.hasGuide -> StateCard(D.sportNoGuideTitle, D.sportNoGuideBody, SportIcons.Trophy, D.sportOpenSync, onGoSettings, Modifier.fillMaxWidth())
                             lists.upcoming.isEmpty() -> Text(D.sportEmptyUpcoming, color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx)
                             else -> LazyColumn(Modifier.weight(1f, fill = false).focusRestorer().focusGroup(), verticalArrangement = Arrangement.spacedBy(12.design), contentPadding = PaddingValues(bottom = 24.design)) {
-                                items(lists.upcoming, key = { "u${entryKey(it.entry)}" }, contentType = { "upcoming" }) { u ->
+                                val upKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(lists.upcoming) { "u${entryKey(it.entry)}" }
+                                items(lists.upcoming.size, key = { upKeys[it] }, contentType = { "upcoming" }) { ui -> val u = lists.upcoming[ui]
                                     HubUpcomingRow(u, D, locale, clock.value, entryKey(u.entry) in reminded, st, stacked = false, onRemind = { onRemind(u.entry) }, onRecord = { onRecord(u.entry) })
                                 }
                             }
@@ -556,9 +557,9 @@ internal fun SportTouchContent(
                 when {
                     !st.hasGuide -> item(key = "noguide") { StateCard(D.sportNoGuideTitle, D.sportNoGuideBody, SportIcons.Trophy, D.sportOpenSync, onGoSettings, Modifier.fillMaxWidth()) }
                     lists.upcoming.isEmpty() -> item(key = "up-empty") { Text(D.sportEmptyUpcoming, color = Ux.Text2, fontFamily = Manrope, fontSize = 26.spx) }
-                    else -> items(lists.upcoming, key = { "u${entryKey(it.entry)}" }, contentType = { "upcoming" }) { u ->
+                    else -> { val upKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(lists.upcoming) { "u${entryKey(it.entry)}" }; items(lists.upcoming.size, key = { upKeys[it] }, contentType = { "upcoming" }) { ui -> val u = lists.upcoming[ui]
                         HubUpcomingRow(u, D, locale, clock.value, entryKey(u.entry) in reminded, st, stacked = true, onRemind = { onRemind(u.entry) }, onRecord = { onRecord(u.entry) })
-                    }
+                    } }
                 }
                 item(key = "table") { MiniTable(D, hub, Modifier.fillMaxWidth()) }
             }

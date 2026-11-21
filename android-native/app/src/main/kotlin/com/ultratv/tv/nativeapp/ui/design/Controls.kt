@@ -186,18 +186,11 @@ fun ChoiceRow(
 
 /**
  * Clés de liste de la boîte de choix, une par option. Le libellé quand il est unique ; un libellé répété (deux variantes
- * « HD · HBO » d'une même chaîne, deux profils homonymes) est départagé par sa position, sinon la liste plante
- * (« Key … was already used »).
+ * « HD · HBO » d'une même chaîne, deux profils homonymes) est départagé selon la règle commune
+ * [com.ultratv.tv.nativeapp.ui.common.uniqueKeys], sinon la liste plante (« Key … was already used »).
  */
-internal fun choiceKeys(labels: List<String>): List<String> {
-    val used = HashSet<String>(labels.size * 2)
-    return labels.mapIndexed { i, label ->
-        var key = label
-        var n = 0
-        while (!used.add(key)) key = "$label\u0000$i" + (if (n++ == 0) "" else "\u0000$n")
-        key
-    }
-}
+internal fun choiceKeys(labels: List<String>): List<String> =
+    com.ultratv.tv.nativeapp.ui.common.uniqueKeys(labels) { it }.map { it as String }
 
 /** Boîte de choix modale (liste de valeurs, la courante cochée) — remplace les anciennes puces. */
 @Composable

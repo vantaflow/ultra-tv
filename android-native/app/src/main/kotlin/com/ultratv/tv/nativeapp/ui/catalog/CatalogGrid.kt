@@ -461,7 +461,8 @@ internal fun CatalogChipRows(chips: List<CategoryChip>, selected: String?, filte
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 14.design), contentPadding = PaddingValues(start = RowBleed)) {
         item(key = "all") { Chip(D.allChip, selected == null) { onSelect(null) } }
-        items(chips, key = { it.remoteId }, contentType = { "chip" }) { c -> Chip(categoryLabel(c), selected == c.remoteId) { onSelect(c.remoteId) } }
+        val chipKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(chips) { "c:" + it.remoteId }
+        items(chips.size, key = { chipKeys[it] }, contentType = { "chip" }) { i -> val c = chips[i]; Chip(categoryLabel(c), selected == c.remoteId) { onSelect(c.remoteId) } }
     }
     // Tri et filtres : Tri · Note minimale · Période. Un filtre actif sur « Tous » affiche la grille filtrée.
     LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 14.design), contentPadding = PaddingValues(start = RowBleed)) {
@@ -541,7 +542,8 @@ internal fun TouchFilterRow(chips: List<CategoryChip>, selected: String?, filter
         item(key = "rating") { Chip("${if (filter.minRating == 0) D.anyRating else "★ ${filter.minRating}+"} ▾", filter.minRating != 0) { open = "rating" } }
         item(key = "period") { Chip("${D.periodName(filter.period)} ▾", filter.period != CatalogFilter.Period.entries.first()) { open = "period" } }
         item(key = "all") { Chip(D.allChip, selected == null) { onSelect(null) } }
-        items(chips, key = { it.remoteId }, contentType = { "chip" }) { c -> Chip(categoryLabel(c), selected == c.remoteId) { onSelect(c.remoteId) } }
+        val chipKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(chips) { "c:" + it.remoteId }
+        items(chips.size, key = { chipKeys[it] }, contentType = { "chip" }) { i -> val c = chips[i]; Chip(categoryLabel(c), selected == c.remoteId) { onSelect(c.remoteId) } }
     }
     }
     when (open) {
@@ -610,7 +612,10 @@ private fun SplitBody(
             verticalArrangement = Arrangement.spacedBy(10.design),
             contentPadding = PaddingValues(start = 6.design, end = 6.design, top = 6.design, bottom = 54.design),
         ) {
-            items(chips, key = { it.remoteId }, contentType = { "category" }) { c ->
+            // Identifiant de catégorie répété par le fournisseur (ou égal à une clé fixe de la liste) : clés départagées.
+            val catKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(chips) { "c:" + it.remoteId }
+            items(chips.size, key = { catKeys[it] }, contentType = { "category" }) { ci ->
+                val c = chips[ci]
                 val isSel = c.remoteId == selected
                 CategoryRow(
                     label = categoryLabel(c), count = c.count, selected = isSel,
@@ -683,17 +688,19 @@ private fun CategoryRows(vm: CatalogGridViewModel, chips: List<CategoryChip>, to
         contentPadding = PaddingValues(bottom = if (touch) 16.dp else 54.design),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        items(chips.size, key = { chips[it].remoteId }, contentType = { "row" }) { idx ->
+        val rowKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(chips) { "c:" + it.remoteId }
+        items(chips.size, key = { rowKeys[it] }, contentType = { "row" }) { idx ->
             val c = chips[idx]
             val loaded by remember(c.remoteId) { vm.rowItems(c.remoteId) }.collectAsState()
             val list = loaded.orEmpty()
+            val listKeys = remember(list) { com.ultratv.tv.nativeapp.ui.common.uniqueKeys(list) { it.id } }
             Column(verticalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 16.design)) {
                 Text(categoryLabel(c), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (touch) 18.sp else 30.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (loaded == null) { SkeletonRow(touch); return@Column }
                 LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(if (touch) 10.dp else 24.design), contentPadding = if (touch) PaddingValues(start = RowBleed, end = 16.dp)
                     // Affiche ciblée agrandie (x1,15 + contour) : ~34 px au-dessus, qui recouvraient le titre de la rangée.
                     else PaddingValues(start = RowBleed, end = 96.design, top = 34.design, bottom = 8.design)) {
-                    items(list.size, key = { list[it].id }, contentType = { "poster" }) { i ->
+                    items(list.size, key = { listKeys[it] }, contentType = { "poster" }) { i ->
                         val it = list[i]
                         val w = if (touch) 120.dp else 200.design
                         val m = Modifier.width(w)

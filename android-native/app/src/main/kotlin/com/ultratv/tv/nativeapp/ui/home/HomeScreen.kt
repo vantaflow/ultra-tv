@@ -541,7 +541,8 @@ private fun HomeSection(
 }
 
 @Composable
-private fun ResumeRow(cards: List<ResumeCardUi>, onPlay: (WatchHistoryEntity) -> Unit) {
+private fun ResumeRow(rawCards: List<ResumeCardUi>, onPlay: (WatchHistoryEntity) -> Unit) {
+    val cards = remember(rawCards) { rawCards.withUniqueKeys() }
     val memory = rememberRowFocusMemory()
     val listState = rememberRowListState()
     RegisterRowKeys(memory, cards, listState) { cards.map { it.key } }
@@ -568,7 +569,8 @@ private fun NewEpisodesRow(cards: List<NewEpisodeCardUi>, onOpen: (PosterCardUi)
 
 /** Rangée d'affiches (catalogue ou Trakt, films et séries mêlés) ; sélectionner ouvre la fiche existante. */
 @Composable
-private fun PosterRow(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
+private fun PosterRow(rawCards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
+    val cards = remember(rawCards) { rawCards.withUniqueKeys() }
     val memory = rememberRowFocusMemory()
     val listState = rememberRowListState()
     RegisterRowKeys(memory, cards, listState) { cards.map { it.key } }
@@ -633,7 +635,8 @@ internal const val HomePosterScale = 1.10f
  * lecture (gauche en LTR, droite en RTL). Le chiffre est décoratif : jamais focalisable, ignoré des lecteurs d'écran.
  */
 @Composable
-private fun Top10Row(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
+private fun Top10Row(rawCards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
+    val cards = remember(rawCards) { rawCards.withUniqueKeys() }
     val memory = rememberRowFocusMemory()
     val listState = rememberRowListState()
     RegisterRowKeys(memory, cards, listState) { cards.map { it.key } }

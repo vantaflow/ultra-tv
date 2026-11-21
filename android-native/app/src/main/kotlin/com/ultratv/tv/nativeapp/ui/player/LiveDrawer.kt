@@ -210,6 +210,8 @@ internal fun DrawerSheet(
     modifier: Modifier = Modifier,
     showCats: Boolean = true, catState: LazyListState = rememberLazyListState(),
 ) {
+    // Même chaîne reçue deux fois (doublon du fournisseur) : clés départagées, jamais de plantage.
+    val rowKeys = com.ultratv.tv.nativeapp.ui.common.rememberUniqueKeys(rows) { it.key }
     // Feuille flottante à gauche (côté début), marge de 32 px ; angles 32. Fond translucide : la chaîne regardée reste
     // visible derrière ; sans la colonne des catégories (repliée pendant le parcours des chaînes), la feuille est étroite.
     Box(modifier.fillMaxSize().padding(32.design), contentAlignment = Alignment.CenterStart) {
@@ -233,7 +235,7 @@ internal fun DrawerSheet(
                 if (rows.isEmpty() && emptyText != null) {
                     Text(emptyText, color = P.text3, fontFamily = Manrope, fontSize = 22.spx, modifier = Modifier.weight(1f).padding(top = 12.design))
                 } else LazyColumn(Modifier.weight(1f).fillMaxHeight(), state = listState, verticalArrangement = Arrangement.spacedBy(8.design)) {
-                    itemsIndexed(rows, key = { _, r -> r.key }) { k, r ->
+                    itemsIndexed(rows, key = { k, _ -> rowKeys[k] }) { k, r ->
                         ChannelRow(r, onAirLabel, onFocus = { onRowFocus(k) }, onClick = { onRowClick(k) }, modifier = rowModifier(k))
                     }
                 }
@@ -268,8 +270,9 @@ internal fun DrawerCategoryColumn(
     cats: List<DrawerCategory>, highlightId: String?, rtl: Boolean, selectedFocus: FocusRequester,
     onFocused: (String) -> Unit, onEnter: () -> Unit, modifier: Modifier = Modifier, state: LazyListState = rememberLazyListState(),
 ) {
+    val catKeys = com.ultratv.tv.nativeapp.ui.common.rememberUniqueKeys(cats) { it.id }
     LazyColumn(modifier, state = state, verticalArrangement = Arrangement.spacedBy(6.design)) {
-        items(cats, key = { it.id }) { c ->
+        itemsIndexed(cats, key = { i, _ -> catKeys[i] }) { _, c ->
             val sel = c.id == highlightId
             val enterKey = if (rtl) Key.DirectionLeft else Key.DirectionRight
             val base = Modifier.fillMaxWidth()

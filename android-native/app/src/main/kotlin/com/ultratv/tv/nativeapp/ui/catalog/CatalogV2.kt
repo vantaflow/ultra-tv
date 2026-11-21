@@ -119,9 +119,12 @@ internal fun CatalogRowsTv(
         if (hero != null) item(key = "hero", contentType = "hero") {
             CatalogHeroTv(hero, featuredLabel, watchLabel, { onWatch(hero.id) }, heroExtra)
         }
-        items(chips.size, key = { chips[it].remoteId }, contentType = { "row" }) { idx ->
+        // Identifiant de catégorie ou d'affiche répété par le fournisseur : clés départagées (règle commune).
+        val rowKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(chips) { "c:" + it.remoteId }
+        items(chips.size, key = { rowKeys[it] }, contentType = { "row" }) { idx ->
             val c = chips[idx]
             val list = rowItems(c.remoteId)
+            val listKeys = androidx.compose.runtime.remember(list) { list?.let { l -> com.ultratv.tv.nativeapp.ui.common.uniqueKeys(l) { it.id } }.orEmpty() }
             Column(verticalArrangement = Arrangement.spacedBy(18.design)) {
                 Text(
                     labelOf(c), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.spx, maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -130,7 +133,7 @@ internal fun CatalogRowsTv(
                 if (list == null) { SkeletonRow(false); return@Column }
                 // Marge verticale : l'affiche focalisée (x1,15 + contour) déborde de ~34 px en haut et en bas ; la LazyRow rogne à ses bords.
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(24.design), contentPadding = PaddingValues(start = 72.design, end = 96.design, top = 40.design, bottom = 24.design)) {
-                    items(list.size, key = { list[it].id }, contentType = { "poster" }) { i ->
+                    items(list.size, key = { listKeys[it] }, contentType = { "poster" }) { i ->
                         val it = list[i]
                         val m = Modifier.width(200.design)
                         PosterCellTv(

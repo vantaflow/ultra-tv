@@ -245,17 +245,21 @@ fun FavoritesScreen(
                 }
                 if (channels.isNotEmpty()) {
                     header(D.channelsWord, channels.size)
-                    items(channels, key = { "c${it.id}" }, span = { androidx.compose.foundation.lazy.grid.GridItemSpan(vc) }) { c ->
+                    // Favori résolu deux fois (même chaîne rattachée deux fois) : clés départagées, jamais de plantage.
+                    val ck = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(channels) { "c${it.id}" }
+                    items(channels.size, key = { ck[it] }, span = { androidx.compose.foundation.lazy.grid.GridItemSpan(vc) }) { ci -> val c = channels[ci]
                         ChannelTile(c, now[c.id], srcNames?.get(c.providerId), onClick = { play(c) }, onLong = { vm.remove("LIVE", c.providerId, c.remoteId) })
                     }
                 }
                 if (movies.isNotEmpty()) {
                     header(S.moviesTitle, movies.size)
-                    items(movies, key = { "m${it.id}" }, span = { androidx.compose.foundation.lazy.grid.GridItemSpan(cc) }) { m -> VodCard(m.title, m.poster, Modifier, badge = srcNames?.get(m.providerId), onClick = { onOpenMovie(m.id) }) }
+                    val mk = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(movies) { "m${it.id}" }
+                    items(movies.size, key = { mk[it] }, span = { androidx.compose.foundation.lazy.grid.GridItemSpan(cc) }) { mi -> val m = movies[mi]; VodCard(m.title, m.poster, Modifier, badge = srcNames?.get(m.providerId), onClick = { onOpenMovie(m.id) }) }
                 }
                 if (series.isNotEmpty()) {
                     header(S.seriesTitle, series.size)
-                    items(series, key = { "s${it.id}" }, span = { androidx.compose.foundation.lazy.grid.GridItemSpan(cc) }) { x -> VodCard(x.title, x.poster, Modifier, badge = srcNames?.get(x.providerId), onClick = { onOpenSeries(x.id) }) }
+                    val sk = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(series) { "s${it.id}" }
+                    items(series.size, key = { sk[it] }, span = { androidx.compose.foundation.lazy.grid.GridItemSpan(cc) }) { si -> val x = series[si]; VodCard(x.title, x.poster, Modifier, badge = srcNames?.get(x.providerId), onClick = { onOpenSeries(x.id) }) }
                 }
             }
         } else if (tab == 1) {

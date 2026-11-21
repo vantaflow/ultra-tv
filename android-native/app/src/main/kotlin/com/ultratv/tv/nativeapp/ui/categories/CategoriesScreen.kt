@@ -310,7 +310,9 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
         var firstFocused by remember { mutableStateOf(false) }
         com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus(firstRow, hasFocus = { firstFocused }, key = shown.isNotEmpty())
         LazyColumn(Modifier.weight(1f), state = state, verticalArrangement = Arrangement.spacedBy(10.design), contentPadding = PaddingValues(vertical = 6.design)) {
-            items(shown, key = { it.remoteId }, contentType = { "cat" }) { r ->
+            val catKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(shown) { it.remoteId }
+            items(shown.size, key = { catKeys[it] }, contentType = { "cat" }) { ri ->
+                val r = shown[ri]
                 CategoryLine(
                     r, kind, rowModifier = if (r.remoteId == shown.firstOrNull()?.remoteId) Modifier.focusRequester(firstRow).onFocusChanged { firstFocused = it.isFocused } else Modifier,
                     isMoving0 = null, isMoving = moving == r.remoteId, D = D,
@@ -553,7 +555,9 @@ private fun TouchCategories(
         }
         Text("${D.categoryCol} · ${shown.size}", color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 1.sp, maxLines = 1)
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dpT)) {
-            items(shown, key = { it.remoteId }, contentType = { "cat" }) { r ->
+            val catKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(shown) { it.remoteId }
+            items(shown.size, key = { catKeys[it] }, contentType = { "cat" }) { ri ->
+                val r = shown[ri]
                 val isMoving = moving == r.remoteId
                 val count = if (r.enabled && r.count == 0) D.categoryLoading
                     else r.count?.let { when (kind) { "LIVE" -> D.channelsOf(it); "MOVIE" -> D.moviesOf(it); else -> D.seriesOf(it) } }.orEmpty()

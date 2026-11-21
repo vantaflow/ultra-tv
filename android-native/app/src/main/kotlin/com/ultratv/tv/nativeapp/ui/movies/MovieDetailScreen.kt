@@ -297,7 +297,9 @@ fun MovieDetailScreen(
         Column(verticalArrangement = Arrangement.spacedBy(16.design)) {
             SectionTitle(D.similarTitles, 28)
             androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(20.design)) {
-                items(similar, key = { it.id }, contentType = { "similar" }) { sm ->
+                val simKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(similar) { it.id }
+                items(similar.size, key = { simKeys[it] }, contentType = { "similar" }) { si ->
+                    val sm = similar[si]
                     com.ultratv.tv.nativeapp.ui.design.VodCard(T.tidy(sm.title), sm.poster, Modifier.width(170.design), year = sm.year) { onOpenMovie(sm.id) }
                 }
             }

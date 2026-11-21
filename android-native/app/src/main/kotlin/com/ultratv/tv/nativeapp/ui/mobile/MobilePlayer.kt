@@ -397,7 +397,8 @@ fun PortraitInfo(
                 Modifier.weight(1f, fill = true), state = listState, verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 20.dp, end = 20.dp, bottom = 16.dp),
             ) {
-                items(entries.size, key = { entries[it].channel.id }) { i ->
+                val entryKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(entries) { it.channel.id }
+                items(entries.size, key = { entryKeys[it] }) { i ->
                     val e = entries[i]
                     com.ultratv.tv.nativeapp.ui.design.FocusSurface(
                         onClick = { onPick(e.channel) }, shape = RoundedCornerShape(14.dp),

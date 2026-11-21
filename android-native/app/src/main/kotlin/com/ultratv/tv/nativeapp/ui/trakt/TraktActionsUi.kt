@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -256,7 +257,9 @@ private fun TraktSeriesDialog(
                 ActionRow(if (seasonSeen) D.traktSeasonUnwatched(season) else D.traktSeasonWatched(season), Icons.Check, seasonSeen) { vm.setEpisodes(D, refs, !seasonSeen) }
                 Text(D.traktEpisodesHint, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.design))
                 LazyColumn(Modifier.heightIn(max = 520.design), verticalArrangement = Arrangement.spacedBy(10.design)) {
-                    items(eps.sortedBy { it.episode }, key = { "${it.season}:${it.episode}:${it.remoteId}" }) { ep ->
+                    val sortedEps = eps.sortedBy { it.episode }
+                    val epKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(sortedEps) { "${it.season}:${it.episode}:${it.remoteId}" }
+                    itemsIndexed(sortedEps, key = { i, _ -> epKeys[i] }) { _, ep ->
                         val ref = EpisodeRef(ep.season, ep.episode)
                         val seen = ref.key in st.episodes
                         val label = "S${"%02d".format(ep.season)}E${"%02d".format(ep.episode)}" + ep.title.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()
