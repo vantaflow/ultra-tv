@@ -164,9 +164,9 @@ HPLcom/ultratv/tv/nativeapp/data/sport/SportRepository$load$2$2;->invokeSuspend(
 HPLcom/ultratv/tv/nativeapp/data/trakt/TraktMatch;->matchKey(Ljava/lang/String;)Ljava/lang/String;+]Lkotlin/text/Regex;Lkotlin/text/Regex;
 HPLcom/ultratv/tv/nativeapp/ui/catalog/CatalogGridKt;->CategoryRow$lambda$0(ZLjava/lang/String;ILandroidx/compose/foundation/layout/BoxScope;ZLandroidx/compose/runtime/Composer;I)Lkotlin/Unit;
 HPLcom/ultratv/tv/nativeapp/ui/catalog/CatalogGridKt;->Chip$lambda$0(ZZLjava/lang/String;Landroidx/compose/foundation/layout/BoxScope;ZLandroidx/compose/runtime/Composer;I)Lkotlin/Unit;
-HPLcom/ultratv/tv/nativeapp/ui/catalog/CatalogGridKt;->PosterCell-oilTxCY(Lcom/ultratv/tv/nativeapp/ui/catalog/PosterItem;Landroidx/compose/ui/Modifier;Lcom/ultratv/tv/nativeapp/data/tmdb/TmdbKind;Landroidx/compose/ui/unit/Dp;Lkotlin/jvm/functions/Function0;Landroidx/compose/runtime/Composer;II)V
-HPLcom/ultratv/tv/nativeapp/ui/catalog/CatalogV2Kt;->PosterCellTv-IColEu4(Lcom/ultratv/tv/nativeapp/ui/catalog/PosterItem;Landroidx/compose/ui/Modifier;Lcom/ultratv/tv/nativeapp/data/tmdb/TmdbKind;Landroidx/compose/ui/unit/Dp;Lkotlin/jvm/functions/Function0;Landroidx/compose/runtime/Composer;I)V
-HPLcom/ultratv/tv/nativeapp/ui/catalog/CatalogV2Kt;->PosterCellTv_IColEu4$lambda$4$2$0(Lcom/ultratv/tv/nativeapp/ui/catalog/PosterItem;Lcom/ultratv/tv/nativeapp/data/tmdb/TmdbKind;Landroidx/compose/ui/unit/Dp;Landroidx/compose/foundation/layout/BoxScope;ZLandroidx/compose/runtime/Composer;I)Lkotlin/Unit;
+# Rangées PosterCell* : règles à jeu de caractères générique (le suffixe de nom et les paramètres changent à chaque évolution de signature).
+HSPLcom/ultratv/tv/nativeapp/ui/catalog/CatalogGridKt;->PosterCell**(**)**
+HSPLcom/ultratv/tv/nativeapp/ui/catalog/CatalogV2Kt;->PosterCellTv**(**)**
 HPLcom/ultratv/tv/nativeapp/ui/catalog/PosterItem;->equals(Ljava/lang/Object;)Z
 HPLcom/ultratv/tv/nativeapp/ui/design/DesignKt;->ProgressLine-ww6aTOc(FLandroidx/compose/ui/Modifier;IJLandroidx/compose/runtime/Composer;II)V
 HPLcom/ultratv/tv/nativeapp/ui/design/ImagesKt;->PosterImage-nWqOM5s(Ljava/lang/String;Ljava/lang/String;Landroidx/compose/ui/Modifier;ILcom/ultratv/tv/nativeapp/data/tmdb/TmdbKind;Ljava/lang/Integer;Landroidx/compose/ui/unit/DpSize;Landroidx/compose/runtime/Composer;II)V
@@ -33146,12 +33146,6 @@ PLcom/ultratv/tv/nativeapp/ui/catalog/CatalogV2Kt;->$r8$lambda$HL8cXqcblsOYCnI4j
 PLcom/ultratv/tv/nativeapp/ui/catalog/CatalogV2Kt;->$r8$lambda$a0N0VIL6v_GwNznVbxD-NOkCsL4(Landroidx/compose/runtime/MutableState;Landroidx/compose/ui/focus/FocusState;)Lkotlin/Unit;
 PLcom/ultratv/tv/nativeapp/ui/catalog/CatalogV2Kt;->$r8$lambda$fuZwRWuFv0gli8nW5zzjNTG1dOE(JLandroidx/compose/runtime/MutableState;Landroidx/compose/ui/graphics/drawscope/DrawScope;)Lkotlin/Unit;
 PLcom/ultratv/tv/nativeapp/ui/catalog/CatalogV2Kt;->$r8$lambda$wqC0-9UbdS-nejf-R50-GreN2nE(Lcom/ultratv/tv/nativeapp/ui/catalog/PosterItem;Lcom/ultratv/tv/nativeapp/data/tmdb/TmdbKind;Landroidx/compose/ui/unit/Dp;Landroidx/compose/foundation/layout/BoxScope;ZLandroidx/compose/runtime/Composer;I)Lkotlin/Unit;
-PLcom/ultratv/tv/nativeapp/ui/catalog/CatalogV2Kt;->PosterCellTv_IColEu4$lambda$1(Landroidx/compose/runtime/MutableState;)Z
-PLcom/ultratv/tv/nativeapp/ui/catalog/CatalogV2Kt;->PosterCellTv_IColEu4$lambda$2(Landroidx/compose/runtime/MutableState;Z)V
-PLcom/ultratv/tv/nativeapp/ui/catalog/CatalogV2Kt;->PosterCellTv_IColEu4$lambda$3$0(Landroidx/compose/runtime/MutableState;Landroidx/compose/ui/focus/FocusState;)Lkotlin/Unit;
-PLcom/ultratv/tv/nativeapp/ui/catalog/CatalogV2Kt;->PosterCellTv_IColEu4$lambda$4$0$0(Lcom/ultratv/tv/nativeapp/ui/design/Animations;Landroidx/compose/runtime/MutableState;Landroidx/compose/ui/graphics/GraphicsLayerScope;)Lkotlin/Unit;
-PLcom/ultratv/tv/nativeapp/ui/catalog/CatalogV2Kt;->PosterCellTv_IColEu4$lambda$4$1$0(JLandroidx/compose/runtime/MutableState;Landroidx/compose/ui/graphics/drawscope/DrawScope;)Lkotlin/Unit;
-PLcom/ultratv/tv/nativeapp/ui/catalog/CatalogV2Kt;->PosterCellTv_IColEu4$lambda$5(Lcom/ultratv/tv/nativeapp/ui/catalog/PosterItem;Landroidx/compose/ui/Modifier;Lcom/ultratv/tv/nativeapp/data/tmdb/TmdbKind;Landroidx/compose/ui/unit/Dp;Lkotlin/jvm/functions/Function0;ILandroidx/compose/runtime/Composer;I)Lkotlin/Unit;
 PLcom/ultratv/tv/nativeapp/ui/catalog/CategoryChip;-><clinit>()V
 PLcom/ultratv/tv/nativeapp/ui/catalog/CategoryChip;-><init>(Ljava/lang/String;Ljava/lang/String;IZ)V
 PLcom/ultratv/tv/nativeapp/ui/catalog/CategoryChip;-><init>(Ljava/lang/String;Ljava/lang/String;IZILkotlin/jvm/internal/DefaultConstructorMarker;)V
@@ -34566,7 +34560,6 @@ PLcom/ultratv/tv/nativeapp/ui/home/HomeScreenKt;->ResumeRow$lambda$0$0$1(Lcom/ul
 PLcom/ultratv/tv/nativeapp/ui/home/HomeScreenKt;->ResumeRow$lambda$0$0(Ljava/util/List;Lkotlin/jvm/functions/Function1;Landroidx/compose/foundation/lazy/LazyListScope;)Lkotlin/Unit;
 PLcom/ultratv/tv/nativeapp/ui/home/HomeScreenKt;->ResumeRow(Ljava/util/List;Lkotlin/jvm/functions/Function1;Landroidx/compose/runtime/Composer;I)V
 PLcom/ultratv/tv/nativeapp/ui/home/HomeScreenKt;->Section(Ljava/lang/String;Lkotlin/jvm/functions/Function2;Landroidx/compose/runtime/Composer;I)V
-PLcom/ultratv/tv/nativeapp/ui/home/HomeScreenKt;->ShortcutGrid(Ljava/util/List;Lcom/ultratv/tv/nativeapp/ui/home/SportTile;Lkotlin/jvm/functions/Function1;Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;I)V
 PLcom/ultratv/tv/nativeapp/ui/home/HomeScreenKt;->ShortcutTile(Lcom/ultratv/tv/nativeapp/ui/home/ShortcutUi;Lcom/ultratv/tv/nativeapp/ui/home/SportTile;Landroidx/compose/ui/Modifier;Lkotlin/jvm/functions/Function1;Landroidx/compose/runtime/Composer;I)V
 PLcom/ultratv/tv/nativeapp/ui/home/HomeScreenKt;->ShortcutsRow(Ljava/util/List;Lcom/ultratv/tv/nativeapp/ui/home/SportTile;Lkotlin/jvm/functions/Function1;Landroidx/compose/runtime/Composer;I)V
 PLcom/ultratv/tv/nativeapp/ui/home/HomeScreenKt;->Top10Row$lambda$0$0$0(ILcom/ultratv/tv/nativeapp/ui/home/PosterCardUi;)Ljava/lang/Object;
