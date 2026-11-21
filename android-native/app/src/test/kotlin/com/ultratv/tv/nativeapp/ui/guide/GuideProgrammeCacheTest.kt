@@ -112,17 +112,10 @@ class GuideProgrammeCacheTest {
         set(2026, Calendar.NOVEMBER, day, hour, min, 0); set(Calendar.MILLISECOND, 0)
     }.timeInMillis
 
-    @Test fun plage_des_chaines_stable_toute_la_journee_donc_aucune_reconstruction_au_decalage() {
-        val first = guideChannelRange(ms(21, 0, 30))
-        for (hh in 0..23) for (mm in listOf(0, 30)) assertEquals("$hh:$mm", first, guideChannelRange(ms(21, hh, mm)))
-        assertNotSame(first, guideChannelRange(ms(22, 0, 0)))
-        assertTrue(first != guideChannelRange(ms(22, 0, 0)))
-    }
-
-    @Test fun plage_des_chaines_contient_toute_fenetre_qui_commence_ce_jour_la_meme_apres_minuit() {
+    @Test fun plage_des_chaines_independante_de_la_fenetre_et_couvrant_tout_programme() {
+        val (from, to) = GUIDE_CHANNEL_RANGE
         for (hh in 0..23) for (mm in listOf(0, 30)) {
             val w = ms(21, hh, mm)
-            val (from, to) = guideChannelRange(w)
             assertTrue(from <= w); assertTrue(w + GUIDE_WINDOW_MS <= to)
         }
     }
