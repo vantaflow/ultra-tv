@@ -67,7 +67,13 @@ class GuideRecompositionTest {
     private var hole: Set<Long> = emptySet()
 
     /** Programmes de 40 à 90 minutes, sur 3 jours à partir de 00:00, titres « Pc-i » uniques. */
-    private val all: Map<Long, List<EpgEntity>> by lazy { buildAll().mapValues { (id, l) -> if (id in hole) l.filter { it.endMs <= at(0, 0) || it.startMs >= at(6, 0) } else l } }
+    private val all: Map<Long, List<EpgEntity>> by lazy {
+        buildAll().mapValues { (id, l) ->
+            (if (id in hole) l.filter { it.endMs <= at(0, 0) || it.startMs >= at(6, 0) } else l).let { r -> if (id in shortGuide) r.filter { it.startMs < at(5, 0) } else r }
+        }
+    }
+    /** Chaînes dont le guide s'arrête au premier programme commençant après 05:00 (fin des données). */
+    private var shortGuide: Set<Long> = emptySet()
 
     private fun buildAll(): Map<Long, List<EpgEntity>> = chans.associate { c ->
         val out = ArrayList<EpgEntity>()
@@ -489,5 +495,56 @@ class GuideRecompositionTest {
         press(Key.DirectionRight)
         assertFocusOn(next.title)
         assertEquals(at(2, 30), windowStart)
+    }
+
+    // ── I3 : ◀ ▶ au-delà des données : la fenêtre est bornée, le focus reste. ──
+
+    @Test fun i3_gauche_au_premier_programme_disponible_ne_decale_plus_la_fenetre() {
+        mount()
+        val firstIn = windowOf(4).first()
+        focusOn(firstIn.title)
+        press(Key.DirectionLeft)   // le programme précédent existe (P4-1, 00:00) : la fenêtre recule une fois
+        val first = all.getValue(4).first()
+        assertFocusOn(first.title)
+        val w = windowStart
+        repeat(4) { press(Key.DirectionLeft) }
+        assertFocusOn(first.title)
+        assertEquals("plus rien avant : la fenêtre ne recule plus", w, windowStart)
+        assertTrue("le premier programme reste dans la fenêtre", first.startMs >= windowStart)
+    }
+
+    @Test fun i3_droite_au_dernier_programme_du_guide_ne_decale_plus_la_fenetre() {
+        shortGuide = setOf(4L)
+        mount()
+        val last = all.getValue(4).last()
+        focusOn(windowOf(4).first().title)
+        repeat(12) { press(Key.DirectionRight) }
+        assertFocusOn(last.title)
+        assertTrue("la fenêtre montre encore la fin du dernier programme (${windowStart})", windowStart + GUIDE_WINDOW_MS >= last.endMs && windowStart < last.endMs)
+        val w = windowStart
+        repeat(3) { press(Key.DirectionRight) }
+        assertEquals("au bout du guide : plus de décalage", w, windowStart)
+        assertFocusOn(last.title)
+    }
+
+    @Test fun droite_sans_voisin_sur_la_ligne_ne_saute_jamais_en_biais_vers_une_autre_chaine() {
+        shortGuide = setOf(4L)
+        // Fenêtre 03:00 – 06:00 : le dernier programme de la chaîne 4 (04:25 – 05:55) n'atteint pas le bord ; les lignes voisines, si.
+        windowStart = at(3, 0)
+        mount()
+        val last = all.getValue(4).last()
+        focusOn(last.title)
+        press(Key.DirectionRight)
+        assertFocusOn(last.title)
+    }
+
+    @Test fun i3_droite_en_arabe_au_premier_programme_ne_decale_plus_la_fenetre() {
+        rtl = true
+        mount()
+        focusOn(windowOf(5).first().title)
+        repeat(5) { press(Key.DirectionRight) }   // en arabe, DROITE recule dans le temps
+        val first = all.getValue(5).first()
+        assertFocusOn(first.title)
+        assertTrue(first.startMs >= windowStart)
     }
 }

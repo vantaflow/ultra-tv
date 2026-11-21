@@ -178,6 +178,25 @@ fun normalizeRow(items: List<EpgEntity>): List<EpgEntity> {
     return out
 }
 
+/**
+ * Nouveau début de fenêtre quand ◀ / ▶ bute sur le bord ([forward] : vers l'avenir) avec [focused] sélectionné.
+ * - un programme voisin existe dans les données : décalage de 90 min (il entre dans la fenêtre et prend le focus) ;
+ * - sinon (programmes passés purgés, fin du guide) : la fenêtre ne va que jusqu'au bout du programme focalisé (arrondi à la
+ *   demi-heure), jamais au-delà des données : la case focalisée reste visible, jamais de fenêtre vide. Rendre [windowStart]
+ *   veut dire « butée » (la touche est consommée, rien ne bouge).
+ */
+internal fun guideEdgeShift(windowStart: Long, forward: Boolean, focused: EpgEntity?, hasNeighbour: Boolean): Long {
+    val step = 3 * SLOT_MS
+    if (hasNeighbour || focused == null) return windowStart + if (forward) step else -step
+    return if (forward) {
+        val end = (focused.endMs + SLOT_MS - 1) / SLOT_MS * SLOT_MS   // demi-heure qui suit la fin
+        maxOf(windowStart, minOf(windowStart + step, end - GUIDE_WINDOW_MS))
+    } else {
+        val start = Math.floorDiv(focused.startMs, SLOT_MS) * SLOT_MS
+        minOf(windowStart, maxOf(windowStart - step, start))
+    }
+}
+
 /** Placement d'un programme dans la grille : fractions [0..1] de la fenêtre, tronquées aux bords. */
 data class Slot(val startFrac: Float, val widthFrac: Float)
 
@@ -910,16 +929,24 @@ internal fun GuideTvContent(
                 // Hors de la grille (jours, catégories) : navigation normale — avant, la touche était
                 // avalée et GAUCHE ne menait plus au menu depuis « Hier ».
                 if (!inGrid) return@onPreviewKeyEvent false
-                if (!focus.moveFocus(dir)) {
-                    // Le temps va vers la droite en gauche-à-droite, vers la gauche en arabe (positions en Dp miroitées).
-                    val forward = (dir == FocusDirection.Right) == (layoutDirection == androidx.compose.ui.unit.LayoutDirection.Ltr)
-                    focusedProg.value?.let { (ch, p) ->
-                        val list = progsFor(ch.id)
-                        // Par l'heure de début : l'identifiant change à chaque réimport du guide.
-                        val at = list.indexOfFirst { it.startMs == p.startMs }
-                        if (at >= 0) list.getOrNull(at + if (forward) 1 else -1)?.let { plan.channelId = ch.id; plan.progStart = it.startMs }
+                // Le temps va vers la droite en gauche-à-droite, vers la gauche en arabe (positions miroitées).
+                val forward = (dir == FocusDirection.Right) == (layoutDirection == androidx.compose.ui.unit.LayoutDirection.Ltr)
+                val sel = focusedProg.value
+                val next = sel?.let { (ch, p) ->
+                    val list = progsFor(ch.id)
+                    // Par l'heure de début : l'identifiant change à chaque réimport du guide.
+                    val at = list.indexOfFirst { it.startMs == p.startMs }
+                    if (at >= 0) list.getOrNull(at + if (forward) 1 else -1) else null
+                }
+                // Programme voisin affiché dans la fenêtre : déplacement normal. Sinon, jamais de saut en biais vers une autre chaîne
+                // (la case d'une autre ligne qui dépasse à droite) : on reste sur la ligne, et la fenêtre défile ou bute.
+                val neighbourShown = next != null && slotFor(next.startMs, next.endMs, windowStart) != null
+                if (sel != null && !neighbourShown || !focus.moveFocus(dir)) {
+                    val shifted = guideEdgeShift(windowStart, forward, sel?.second, next != null)
+                    if (shifted != windowStart) {
+                        if (next != null && sel != null) { plan.channelId = sel.first.id; plan.progStart = next.startMs }
+                        onWindowStart(shifted)
                     }
-                    onWindowStart(windowStart + if (forward) 3 * SLOT_MS else -3 * SLOT_MS)
                 }
                 true
             },
@@ -1031,7 +1058,9 @@ internal fun GuideTvContent(
                         // Cible de focus en cours de prise (voir [GuideFocusPlan.take]), ou aucune ligne visible avec une case :
                         // entrée par défaut de Compose (case la plus proche dans la direction, ou action du message).
                         enter = { if (plan.entering) FocusRequester.Default else entryTarget() ?: FocusRequester.Default }
-                        exit = { dir -> if (dir == FocusDirection.Right) FocusRequester.Cancel else FocusRequester.Default }
+                        // ◀ / ▶ ne sortent jamais de la grille : au bord, ils font défiler le temps (ou butent au bout des données).
+                        // ◀ en gauche-à-droite sautait sinon sur les pastilles des jours (au-dessus à gauche) au lieu de reculer.
+                        exit = { dir -> if (dir == FocusDirection.Right || dir == FocusDirection.Left) FocusRequester.Cancel else FocusRequester.Default }
                     }
                     .focusGroup(),
             ) {
