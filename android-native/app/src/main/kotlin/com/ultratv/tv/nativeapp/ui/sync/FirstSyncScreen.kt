@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.sync
 
+import com.ultratv.tv.nativeapp.i18n.locale
 import com.ultratv.tv.nativeapp.ui.common.responsiveWidth
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.layout.offset
@@ -145,8 +146,9 @@ private fun countText(D: DesignStrings, part: SyncPart, n: String) = when (part)
     SyncPart.LIVE -> D.countChannels; SyncPart.VOD -> D.countMovies; SyncPart.SERIES -> D.countSeries; SyncPart.EPG -> D.countProgrammes
 }.format(n)
 
-private fun etaText(D: DesignStrings, seconds: Int): String =
-    if (seconds < 60) D.etaLessThanMinute else D.etaMinutes.format((seconds + 59) / 60)
+/** « environ 5 min » : langue de l'appli, chiffres latins. */
+internal fun etaText(D: DesignStrings, seconds: Int): String =
+    if (seconds < 60) D.etaLessThanMinute else D.etaMinutes.format(D.locale, (seconds + 59) / 60)
 
 /** CTA « Regarder le direct » : focalisé par défaut ; grisé (mais focalisable) tant que les chaînes ne sont pas prêtes. */
 @Composable
@@ -173,7 +175,7 @@ private fun WatchLiveCta(enabled: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun StepCard(step: StepUi, D: DesignStrings) {
-    val nf = remember { NumberFormat.getIntegerInstance(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current()) }
+    val nf = remember(D.lang) { NumberFormat.getIntegerInstance(D.locale) }
     val done = step.state == StepState.DONE
     val active = step.state == StepState.ACTIVE
     val error = step.state == StepState.ERROR

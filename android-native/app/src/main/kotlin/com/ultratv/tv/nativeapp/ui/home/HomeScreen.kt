@@ -648,7 +648,7 @@ private fun HeroBody(
 @Composable
 private fun HeroInfoRow(h: HeroItem, extras: State<Map<String, HeroExtras>>) {
     val D = LocalDs.current
-    val line = remember(h.key, D) { heroInfoLine(h.year, h.genre, h.runtimeMin?.let { runtimeLabel(it, D.hourShort, D.minShort) }) }
+    val line = remember(h.key, D) { heroInfoLine(h.year, h.genre, h.runtimeMin?.let { runtimeLabel(it, D.hourShort, D.minShort, D.locale) }) }
     val badges = heroRatingBadges(extras.value[h.key]?.ratings, h.rating)
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
         if (line.isNotEmpty()) Text(line, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 17.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
@@ -722,11 +722,7 @@ private fun ResumeCard(c: ResumeCardUi, onClick: () -> Unit) {
     // Titre nettoyé et progression calculés dans le ViewModel (hors fil principal) ; seul le libellé localisé est formaté ici, une fois.
     val meta = remember(c.minutesLeft, D) {
         val mins = c.minutesLeft
-        when {
-            mins == null -> null
-            mins >= 60 -> D.hourMinLeft.format(mins / 60, mins % 60)
-            else -> D.minLeft.format(mins)
-        }
+        mins?.let { minutesLeftLabel(D, it) }
     }
     FocusSurface(onClick = onClick, shape = RoundedCornerShape(20.design), bg = Ux.Card, focusedBg = Ux.Card, focusedScale = 1.04f, ringWidth = 5.design, modifier = Modifier.width(320.design).height(180.design)) { _ ->
         Box(Modifier.fillMaxSize()) {
@@ -765,3 +761,7 @@ private fun ChannelCard(card: ChannelCardUi, onClick: () -> Unit) {
         }
     }
 }
+
+/** « 45 min restantes » / « 2 h 05 restantes » des cartes Reprendre (TV et téléphone), langue de l'appli, chiffres latins. */
+internal fun minutesLeftLabel(D: com.ultratv.tv.nativeapp.i18n.DesignStrings, mins: Int): String =
+    if (mins >= 60) D.hourMinLeft.format(D.locale, mins / 60, mins % 60) else D.minLeft.format(D.locale, mins)

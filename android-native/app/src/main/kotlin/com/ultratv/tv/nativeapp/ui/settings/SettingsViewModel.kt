@@ -158,7 +158,7 @@ class SettingsViewModel @Inject constructor(
             try {
                 val r = backupRepo.import(text, password)
                 com.ultratv.tv.nativeapp.ui.common.Toaster.ok(
-                    restoredTemplate.format(r.providers, r.favorites, r.historyEntries)
+                    restoredTemplate.format(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current(), r.providers, r.favorites, r.historyEntries)
                 )
             } catch (t: Throwable) {
                 com.ultratv.tv.nativeapp.ui.common.Toaster.err(failedPrefix + (t.message ?: ""))

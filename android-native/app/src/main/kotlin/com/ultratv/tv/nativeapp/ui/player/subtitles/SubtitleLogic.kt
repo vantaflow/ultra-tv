@@ -13,7 +13,7 @@ object SubtitleLogic {
     /** Décalage : pas de 100 ms, borné à ±10 s. */
     fun stepDelay(delayMs: Int, step: Int): Int = (delayMs + step * 100).coerceIn(-10_000, 10_000)
 
-    fun delayLabel(ms: Int): String = (if (ms >= 0) "+" else "−") + "%d,%d s".format(kotlin.math.abs(ms) / 1000, kotlin.math.abs(ms) % 1000 / 100)
+    fun delayLabel(ms: Int): String = (if (ms >= 0) "+" else "−") + String.format(java.util.Locale.ROOT, "%d,%d s", kotlin.math.abs(ms) / 1000, kotlin.math.abs(ms) % 1000 / 100)
 
     val LANGUAGES = listOf("fr", "en", "ar", "es", "de", "it", "pt", "nl", "tr")
 }

@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.player
 
+import com.ultratv.tv.nativeapp.i18n.locale
 import com.ultratv.tv.nativeapp.data.db.countLive
 import androidx.compose.ui.draw.alpha
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -1465,7 +1466,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 val st = prog?.startMs; val en = prog?.endMs
                 fraction = if (st != null && en != null && en > st) ((progressNow - st).toFloat() / (en - st)).coerceIn(0f, 1f) else 0f
                 startLabel = st?.let { EpgClock.hm(it) }.orEmpty(); endLabel = en?.let { EpgClock.hm(it) }.orEmpty()
-            } else { fraction = if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else 0f; startLabel = fmt(pos); endLabel = if (dur > 0) fmt(dur) else "" }
+            } else { fraction = if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else 0f; startLabel = playerTime(pos); endLabel = if (dur > 0) playerTime(dur) else "" }
             // Direct : mêmes boutons que la barre de l'OSD (ordre et libellés de OsdActions), en pilules tactiles ; VOD inchangée.
             val pillList = buildList {
                 if (isLive) {
@@ -1702,7 +1703,11 @@ private const val NEXT_CARD_SECONDS = 15
 
 // ───────────────────────── Surcouche ─────────────────────────
 
-private fun fmt(ms: Long): String { val s = ms / 1000; val h = s / 3600; val m = s % 3600 / 60; val sec = s % 60; return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec) }
+/** Position / durée du lecteur, « 1:05:22 » ou « 4:07 », chiffres latins quelle que soit la locale par défaut. */
+internal fun playerTime(ms: Long): String { val s = ms / 1000; val h = s / 3600; val m = s % 3600 / 60; val sec = s % 60; return if (h > 0) String.format(java.util.Locale.ROOT, "%d:%02d:%02d", h, m, sec) else String.format(java.util.Locale.ROOT, "%d:%02d", m, sec) }
+
+/** Valeur décimale des statistiques et du diagnostic (« 4,3 Mb/s » en français), dans la langue de l'appli, chiffres latins. */
+internal fun statDecimal(locale: java.util.Locale, format: String, value: Double): String = String.format(locale, format, value)
 
 /**
  * Chargement : l'image du programme (ou le logo) en plein écran, floutée et assombrie, le visuel net au centre,
@@ -1784,7 +1789,7 @@ private fun StatsCard(session: PlaybackSession, D: DesignStrings, modifier: Modi
         listOf(
             D.engine to (if (st.combo.engine == EngineKind.EXO) D.engineExo else D.engineVlc),
             D.decoding to (if (x?.hardwareDecoding == true) D.hardware else D.software),
-            "↔" to (x?.resolution ?: "—"), "▶" to (x?.videoCodec ?: "—") + (x?.frameRate?.let { " · %.0f fps".format(it) } ?: ""),
+            "↔" to (x?.resolution ?: "—"), "▶" to (x?.videoCodec ?: "—") + (x?.frameRate?.let { statDecimal(LocalDs.current.locale, " · %.0f fps", it.toDouble()) } ?: ""),
             "♪" to (x?.audioCodec ?: "—") + (x?.audioChannels?.let { " · ${it}ch" } ?: ""),
             D.bufferMemory to (x?.bufferedSeconds?.let { "$it s" } ?: "—"),
             "kbps" to (x?.videoBitrateKbps?.toString() ?: "—"), "⚠" to (x?.droppedFrames?.toString() ?: "—"),
@@ -1932,11 +1937,11 @@ private fun StatsRows(session: PlaybackSession, D: DesignStrings) {
         listOf(
             D.engine to (if (st.combo.engine == EngineKind.EXO) D.engineExo else D.engineVlc),
             D.decoding to (if (x?.hardwareDecoding == true) D.hardware else D.software),
-            D.statResolution to (x?.resolution ?: "—") + (x?.frameRate?.let { " · %.0f".format(it) } ?: ""),
+            D.statResolution to (x?.resolution ?: "—") + (x?.frameRate?.let { statDecimal(D.locale, " · %.0f", it.toDouble()) } ?: ""),
             D.statCodec to (x?.videoCodec ?: "—"),
             D.statAudio to (x?.audioCodec ?: "—") + (x?.audioChannels?.let { " · ${it}ch" } ?: ""),
             D.bufferMemory to (x?.bufferedSeconds?.let { "$it s" } ?: "—"),
-            D.statBitrate to (x?.videoBitrateKbps?.let { "%.1f Mb/s".format(it / 1000.0) } ?: "—"),
+            D.statBitrate to (x?.videoBitrateKbps?.let { statDecimal(D.locale, "%.1f Mb/s", it / 1000.0) } ?: "—"),
             D.statDropped to (x?.droppedFrames?.toString() ?: "—"),
         ).forEach { (k, v) ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -1972,10 +1977,10 @@ private fun StreamDiagnosticBlock(session: PlaybackSession, D: DesignStrings) {
         Text(X.diagGrade(g), color = color, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 30.spx, maxLines = 1)
         Text(X.diagCause(StreamDiagnostic.cause(d)), color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx)
         listOf(
-            X.diagFirstFrame to (d.firstFrameMs?.let { "%.1f s".format(it / 1000.0) } ?: "—"),
+            X.diagFirstFrame to (d.firstFrameMs?.let { statDecimal(D.locale, "%.1f s", it / 1000.0) } ?: "—"),
             X.diagThroughput to (StreamInfoFormat.bitrate(d.bandwidthKbps) ?: "—"),
             X.diagVariant to (if (top != null && low != null) "${playedH ?: "?"}p · ${low.height}p–${top.height}p" else (playedH?.let { "${it}p" } ?: "—")),
-            X.diagRebuffers to "${d.rebufferCount} · %.1f s".format(d.rebufferTotalMs / 1000.0),
+            X.diagRebuffers to "${d.rebufferCount} · " + statDecimal(D.locale, "%.1f s", d.rebufferTotalMs / 1000.0),
             X.diagErrors to (if (d.errors.isEmpty()) X.diagNone else d.errors.joinToString(", ") { it.kind.name + (it.http?.let { h -> " $h" } ?: "") }),
             D.engine to (d.engine + if (d.fellBack) " · " + X.diagFallback else ""),
         ).forEach { (k, v) ->

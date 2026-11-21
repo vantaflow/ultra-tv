@@ -203,7 +203,7 @@ fun SimpleMovieDetailScreen(movieId: Long, onPlay: (url: String, title: String) 
             if (movie == null) { Text(S.loading, color = Ux.Text2, fontFamily = Manrope, fontSize = 32.spx); return@Column }
             Text(movie.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.ExtraBold, fontSize = 72.spx, lineHeight = 78.spx, maxLines = 3, overflow = TextOverflow.Ellipsis)
             val meta = listOfNotNull(movie.year?.toString(), SimpleText.duration(info?.duration ?: movie.duration), (info?.genre ?: movie.genre)?.substringBefore(',')?.trim()?.takeIf { it.isNotBlank() },
-                movie.rating?.takeIf { it > 0 }?.let { "${"%.1f".format(it)}/10" })
+                movie.rating?.takeIf { it > 0 }?.let { "${String.format(com.ultratv.tv.nativeapp.i18n.DisplayLocale.of(LocalDs.current.lang), "%.1f", it)}/10" })
             if (meta.isNotEmpty()) Text(meta.joinToString(" · "), color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 34.spx, maxLines = 1)
             (info?.plot ?: movie.plot)?.takeIf { it.isNotBlank() }?.let { Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 32.spx, lineHeight = 46.spx, maxLines = 4, overflow = TextOverflow.Ellipsis) }
             val first = remember { FocusRequester() }
@@ -459,7 +459,8 @@ private val MINUTES = Regex("""^(\d{1,5})\s*min""")
 object SimpleText {
     /** « 01:33:00 », « 93 min », « 5580 » (s) → « 1 h 33 » ; texte inconnu laissé tel quel ; vide → null. */
     fun duration(raw: String?): String? {
-        val t = raw?.trim().orEmpty()
+        // Durée persistée en chiffres arabo-indiens par une ancienne version : relue en 0-9.
+        val t = com.ultratv.tv.nativeapp.i18n.LatinDigits.normalize(raw?.trim().orEmpty())
         if (t.isEmpty()) return null
         val parts = t.split(':')
         val minutes: Int? = when {
@@ -471,6 +472,6 @@ object SimpleText {
         }
         if (minutes == null) return t
         if (minutes <= 0) return null
-        return if (minutes < 60) "$minutes min" else "${minutes / 60} h ${"%02d".format(minutes % 60)}"
+        return if (minutes < 60) "$minutes min" else "${minutes / 60} h ${String.format(java.util.Locale.ROOT, "%02d", minutes % 60)}"
     }
 }

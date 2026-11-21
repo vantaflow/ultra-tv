@@ -317,7 +317,7 @@ internal fun fitTitleSizePx(text: String, basePx: Int = 84, maxWidthPx: Int = 11
 private fun WelcomeStep(W: WizardStrings, onStart: () -> Unit, onSkip: () -> Unit) {
     if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
         TouchStepColumn {
-            Eyebrow(W.stepLabel.format(1))
+            Eyebrow(W.stepLabel.format(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current(), 1))
             Text(W.welcomeTitle, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 34.sp, color = Ux.Text)
             Text(W.welcomeTagline, fontFamily = Manrope, fontSize = 16.sp, lineHeight = 24.sp, color = Ux.Text2)
             // Xtream Codes, lien M3U, fichier M3U : les trois seuls types de source.
@@ -331,7 +331,7 @@ private fun WelcomeStep(W: WizardStrings, onStart: () -> Unit, onSkip: () -> Uni
     Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.responsiveWidth(900), verticalArrangement = Arrangement.spacedBy(40.design)) {
             Column(verticalArrangement = Arrangement.spacedBy(20.design)) {
-                Eyebrow(W.stepLabel.format(1))
+                Eyebrow(W.stepLabel.format(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current(), 1))
                 Text(
                     W.welcomeTitle,
                     fontFamily = Sora, fontWeight = FontWeight.Bold,
@@ -477,7 +477,7 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Lo
 
     if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
         TouchStepColumn {
-            Eyebrow(W.stepLabel.format(2))
+            Eyebrow(W.stepLabel.format(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current(), 2))
             Text(W.sourceTitle, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 32.sp, color = Ux.Text)
             Text(W.sourceSubtitle, fontFamily = Manrope, fontSize = 15.sp, lineHeight = 22.sp, color = Ux.Text2)
             for (o in sourceOptions(touch = true)) when (o) {
@@ -492,7 +492,7 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Lo
         }
     } else Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.Center) {
         Column(verticalArrangement = Arrangement.spacedBy(16.design)) {
-            Eyebrow(W.stepLabel.format(2))
+            Eyebrow(W.stepLabel.format(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current(), 2))
             Text(W.sourceTitle, fontFamily = Sora, fontWeight = FontWeight.Bold,
                 fontSize = fitTitleSizePx(W.sourceTitle, basePx = 72).spx, color = Ux.Text, maxLines = 1, softWrap = false,
                 modifier = Modifier.wrapContentWidth(align = Alignment.Start, unbounded = true))
@@ -587,7 +587,7 @@ private fun ReadyStep(W: WizardStrings, vm: OnboardingViewModel, onWatch: () -> 
     if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
         TouchStepColumn {
             Box(Modifier.size(56.dp).clip(CircleShape).background(Ux.Accent), contentAlignment = Alignment.Center) { DIcon(Icons.Check, 28.dp, Ux.OnAccent, strokeWidth = 2.5f) }
-            Eyebrow(W.stepLabel.format(3))
+            Eyebrow(W.stepLabel.format(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current(), 3))
             Text(W.readyTitle, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 30.sp, color = Ux.Text)
             val f = failure
             Text(if (f != null) LocalStrings.current.sync.messageFor(f.kind) else W.readyBody, fontFamily = Manrope, fontSize = 16.sp, lineHeight = 24.sp, color = if (f != null) Ux.Err else Ux.Text2)
@@ -603,7 +603,7 @@ private fun ReadyStep(W: WizardStrings, vm: OnboardingViewModel, onWatch: () -> 
                 DIcon(Icons.Check, 56.design, Ux.OnAccent, strokeWidth = 2.5f)
             }
             Column(verticalArrangement = Arrangement.spacedBy(20.design)) {
-                Eyebrow(W.stepLabel.format(3))
+                Eyebrow(W.stepLabel.format(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current(), 3))
                 Text(W.readyTitle, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 84.spx, color = Ux.Text, maxLines = 1, softWrap = false)
                 val f = failure
                 if (f != null) {
@@ -671,7 +671,7 @@ private fun kindLabel(W: WizardStrings, kind: String?) = when (kind) {
 @Composable
 private fun Stat(modifier: Modifier, value: Int?, label: String) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.design)) {
-        Text(value?.let { "%,d".format(it) } ?: "—", fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, color = Ux.Text, maxLines = 1)
+        Text(value?.let { String.format(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current(), "%,d", it) } ?: "—", fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, color = Ux.Text, maxLines = 1)
         Text(label, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3)
     }
 }

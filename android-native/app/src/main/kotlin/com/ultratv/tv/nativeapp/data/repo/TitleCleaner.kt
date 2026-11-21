@@ -79,7 +79,9 @@ object TitleCleaner {
      * « <série> · S01E02 · <titre> » : chaque partie nettoyée (« 4K-NF - Daily Dose of Sunshine (2023) (KR) · S01E01 ·
      * Daily Dose - S01E01 - The Darkest… » → « Daily Dose of Sunshine · S01E01 · The Darkest… »). Sinon : [clean].
      */
-    fun historyTitle(raw: String): String {
+    fun historyTitle(stored: String): String {
+        // « S٠٢E٠٥ » écrit dans l'historique par une ancienne version (locale par défaut remise en arabe) : relu en 0-9.
+        val raw = com.ultratv.tv.nativeapp.i18n.LatinDigits.normalize(stored)
         val parts = raw.split(" · ")
         if (parts.size < 3 || !EPISODE_TAG.matches(parts[1].trim())) return clean(raw).title
         val series = clean(parts[0]).title

@@ -370,7 +370,8 @@ fun BlurredFill(url: String?, modifier: Modifier) {
 
 /** « 01:52:00 » ou « 112 » (minutes) → « 1 h 52 » ; une valeur illisible est masquée. */
 fun movieDuration(raw: String?, hUnit: String = "h", minUnit: String = "min"): String? {
-    val t = raw?.trim().orEmpty()
+    // Durée écrite en chiffres arabo-indiens par une ancienne version (synchro après une remise à zéro de la locale) : relue en 0-9.
+    val t = com.ultratv.tv.nativeapp.i18n.LatinDigits.normalize(raw?.trim().orEmpty())
     if (t.isEmpty()) return null
     val mins = when {
         t.all { it.isDigit() } -> t.toIntOrNull()
@@ -378,7 +379,7 @@ fun movieDuration(raw: String?, hUnit: String = "h", minUnit: String = "min"): S
         else -> return t.takeIf { it.length <= 12 }
     } ?: return null
     if (mins <= 0) return null
-    return if (mins >= 60) "${mins / 60} $hUnit ${"%02d".format(mins % 60)}" else "$mins $minUnit"
+    return if (mins >= 60) "${mins / 60} $hUnit ${String.format(java.util.Locale.ROOT, "%02d", mins % 60)}" else "$mins $minUnit"
 }
 
 /** h:mm:ss (ou m:ss sous l'heure) pour « Reprendre à … ». */

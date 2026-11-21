@@ -139,6 +139,16 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
             .build()
     }
 
+    /**
+     * Le framework vient de remettre la locale par défaut sur la langue du système, sans chiffres latins (rotation, mode nuit,
+     * manette ou clavier branchés, HDMI, langue du système) : la langue de l'appli et les chiffres latins sont réappliqués
+     * (les rappels arrivent après cette remise à zéro).
+     */
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        com.ultratv.tv.nativeapp.i18n.I18n.onConfigurationChanged(if (newConfig.locales.isEmpty) null else newConfig.locales[0])
+    }
+
     /** Pression mémoire : on rend d'abord les caches d'images (le plus facile à reconstruire depuis le disque). */
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)

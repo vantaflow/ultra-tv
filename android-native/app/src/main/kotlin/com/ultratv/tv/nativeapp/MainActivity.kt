@@ -290,6 +290,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Activité gardée pendant le changement (configChanges) : même réapplication que l'Application, au cas où elle passe après. */
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        com.ultratv.tv.nativeapp.i18n.I18n.onConfigurationChanged(if (newConfig.locales.isEmpty) null else newConfig.locales[0])
+    }
+
     override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: android.content.res.Configuration) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
         com.ultratv.tv.nativeapp.ui.mobile.PipState.active = isInPictureInPictureMode

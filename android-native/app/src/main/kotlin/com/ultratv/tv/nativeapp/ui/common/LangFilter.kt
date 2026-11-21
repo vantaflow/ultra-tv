@@ -58,7 +58,7 @@ fun LangViewPanel(counts: List<LangCount>, view: LangView, onToggle: (String) ->
             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.design)) {
                 item(key = "all") { CheckRow(D.langAll, "", view.useLang == 0) { onClear() } }
                 items(rows, key = { it.lang }) { r ->
-                    CheckRow(langLabel(r.lang, D), java.text.NumberFormat.getIntegerInstance(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current()).format(r.n), view.selected?.contains(r.lang) == true) { onToggle(r.lang) }
+                    CheckRow(langLabel(r.lang, D), java.text.NumberFormat.getIntegerInstance(D.locale).format(r.n), view.selected?.contains(r.lang) == true) { onToggle(r.lang) }
                 }
             }
             PillButton(D.close, onDismiss, heightPx = 64, hPadPx = 36, fontPx = 22, weight = FontWeight.Bold, modifier = Modifier.fillMaxWidth())

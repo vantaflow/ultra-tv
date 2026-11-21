@@ -281,7 +281,7 @@ fun heroInfoLine(year: Int?, genre: String?, runtime: String?): String =
 
 /** Durée source (« 01:41:00 », « 101 », « 6060 » en secondes) → minutes ; null si inconnue ou illisible. */
 fun durationMinutes(raw: String?): Int? {
-    val t = raw?.trim().orEmpty()
+    val t = com.ultratv.tv.nativeapp.i18n.LatinDigits.normalize(raw?.trim().orEmpty()) // durée persistée en chiffres arabo-indiens par une ancienne version
     if (t.isEmpty()) return null
     val m = when {
         t.all { it.isDigit() } -> t.toIntOrNull()?.let { if (it > 600) it / 60 else it }
@@ -292,8 +292,8 @@ fun durationMinutes(raw: String?): Int? {
 }
 
 /** « 1 h 41 min » / « 45 min » à partir des modèles localisés (« %d h », « %d min »). */
-fun runtimeLabel(minutes: Int, hourFmt: String, minFmt: String): String =
-    if (minutes >= 60) hourFmt.format(minutes / 60) + (if (minutes % 60 > 0) " " + minFmt.format(minutes % 60) else "") else minFmt.format(minutes)
+fun runtimeLabel(minutes: Int, hourFmt: String, minFmt: String, locale: java.util.Locale = com.ultratv.tv.nativeapp.i18n.DisplayLocale.current()): String =
+    if (minutes >= 60) hourFmt.format(locale, minutes / 60) + (if (minutes % 60 > 0) " " + minFmt.format(locale, minutes % 60) else "") else minFmt.format(locale, minutes)
 
 /** Pastilles de notes du hero : IMDb (sinon la note habituelle en repli) et Rotten Tomatoes. Absent = null. */
 data class HeroRatingBadges(val imdb: String?, val fallback: String?, val rt: String?) {
@@ -325,7 +325,7 @@ fun traktPosterOf(c: TraktCard): PosterCardUi =
 /** Carte « À suivre » : affiche de la série, titre suivi de l'épisode à regarder (« Lost · S02E05 »). */
 fun traktUpNextPosterOf(u: com.ultratv.tv.nativeapp.data.trakt.TraktUpNextCard): PosterCardUi {
     val c = u.card
-    val tag = "S${"%02d".format(u.season)}E${"%02d".format(u.episode)}"
+    val tag = com.ultratv.tv.nativeapp.i18n.LatinDigits.episodeTag(u.season, u.episode)
     return PosterCardUi("u-${c.id}", PosterItem(c.id, "${c.title} · $tag", c.poster, c.year, c.rating), true, TmdbKind.TV)
 }
 

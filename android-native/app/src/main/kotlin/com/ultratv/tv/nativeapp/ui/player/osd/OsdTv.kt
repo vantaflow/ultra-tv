@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.player.osd
 
+import com.ultratv.tv.nativeapp.i18n.locale
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -198,12 +199,8 @@ private fun CompactCard(state: LiveOsdState) {
         }
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.design)) {
             Text(state.clock, color = P.text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 44.spx, maxLines = 1, softWrap = false)
-            val date = androidx.compose.runtime.remember(state.clock) {
-                runCatching {
-                    val loc = java.util.Locale.getDefault()
-                    java.text.SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(loc, "EEEdMMM"), loc).format(java.util.Date())
-                }.getOrDefault("")
-            }
+            val dateLocale = com.ultratv.tv.nativeapp.i18n.LocalDs.current.locale
+            val date = androidx.compose.runtime.remember(state.clock, dateLocale) { osdDate(dateLocale, System.currentTimeMillis()) }
             if (date.isNotBlank()) Text(date, color = P.text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1, softWrap = false)
             val tech = listOfNotNull(ch.quality, OsdText.hdrLabel(ch.hdr))
             if (tech.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(8.design)) { tech.forEach { OutlinePill(it) } }
@@ -455,3 +452,16 @@ private fun DockButton(a: OsdAction, modifier: Modifier, onClick: () -> Unit) {
         }
     }
 }
+
+/**
+ * Date de l'OSD du direct (« ven. 21 nov. ») dans la langue de l'APPLI, chiffres latins : jamais la locale par défaut, que le
+ * framework remet sur la langue du système (sans chiffres latins) à chaque changement de configuration. Vide si le format
+ * échoue (jamais de plantage de l'OSD).
+ */
+internal fun osdDate(locale: java.util.Locale, nowMs: Long): String =
+    try {
+        java.text.SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEdMMM"), locale).format(java.util.Date(nowMs))
+    } catch (e: RuntimeException) {
+        com.ultratv.tv.nativeapp.RemoteLog.warn("osd", "date : ${e.javaClass.simpleName}")
+        ""
+    }

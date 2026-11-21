@@ -41,7 +41,12 @@ val DesignStrings.tmdbAttribution get() = tx(R.string.dsb1_tmdb_attribution)
 val DesignStrings.dataSources get() = tx(R.string.dsb1_data_sources)
 
 /** Locale de FORMATAGE (noms de jours, de langues, dates) alignée sur la langue de l'application, pas sur celle de l'appareil. Chiffres latins en arabe. */
-val DesignStrings.locale: java.util.Locale get() = DisplayLocale.latin(when (lang) {
+val DesignStrings.locale: java.util.Locale get() = designLocaleCache.getOrPut(lang) { designLocaleOf(lang) }
+
+/** Une locale par langue, construite une fois (le getter était relu à chaque formatage). */
+private val designLocaleCache = java.util.concurrent.ConcurrentHashMap<AppLang, java.util.Locale>()
+
+private fun designLocaleOf(lang: AppLang): java.util.Locale = DisplayLocale.latin(when (lang) {
     AppLang.French -> java.util.Locale.FRENCH
     AppLang.Spanish -> java.util.Locale("es")
     AppLang.Arabic -> java.util.Locale.forLanguageTag("ar")

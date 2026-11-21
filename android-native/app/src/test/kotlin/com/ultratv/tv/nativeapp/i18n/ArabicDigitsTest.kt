@@ -28,8 +28,9 @@ class ArabicDigitsTest {
 
     @Before fun setUp() {
         saved = Locale.getDefault()
-        // Défaut = arabe SANS nu-latn : le pire cas (les formatages ne doivent pas en dépendre).
-        Locale.setDefault(Locale.forLanguageTag("ar"))
+        // Défaut = arabe d'Égypte SANS nu-latn : le pire cas (chiffres arabo-indiens sur JDK 17, sur les JDK récents et sur
+        // ICU ; l'arabe nu donne des chiffres latins sous un JDK récent et rendait le test aveugle).
+        Locale.setDefault(Locale.forLanguageTag("ar-EG"))
         I18n.init(ApplicationProvider.getApplicationContext())
     }
     @After fun restore() { Locale.setDefault(saved) }
