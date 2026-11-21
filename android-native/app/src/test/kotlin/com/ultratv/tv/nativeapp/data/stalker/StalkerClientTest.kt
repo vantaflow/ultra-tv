@@ -160,6 +160,40 @@ class StalkerClientTest {
         assertEquals(StalkerDevice(mac).deviceId2, profiles.first().requestUrl!!.queryParameter("device_id2"))
     }
 
+    /** Profil JSON « bloqué » (status > 0, message, sans id) avec l'identité calculée : la MAC seule est essayée ensuite. */
+    @Test fun profilBloqueEnJson_reessaiAvecLaMacSeule() = runBlocking {
+        routes["stb/get_profile"] = { r ->
+            if (r.requestUrl!!.queryParameter("sn") != null) json("""{"js":{"status":1,"msg":"Device conflict - serial mismatch"}}""")
+            else json("""{"js":{"id":"7","status":0}}""")
+        }
+        client().probe(StalkerClient.Account(portal(), mac))
+        val last = seen.last { it.requestUrl!!.queryParameter("action") == "get_profile" }.requestUrl!!
+        assertNull(last.queryParameter("sn"))
+    }
+
+    /** Device ID attendus en minuscules : refus avec l'identité habituelle et sans identité, accepté en minuscules. */
+    @Test fun deviceIdEnMinuscules_essayeEnDernier() = runBlocking {
+        val lower = StalkerDevice(mac).deviceId.lowercase()
+        routes["stb/get_profile"] = { r -> if (r.requestUrl!!.queryParameter("device_id") == lower) json("""{"js":{"id":"1"}}""") else json("Authorization failed.") }
+        client().probe(StalkerClient.Account(portal(), mac))
+        assertEquals(lower, seen.last { it.requestUrl!!.queryParameter("action") == "get_profile" }.requestUrl!!.queryParameter("device_id"))
+    }
+
+    /** Avec identifiant de portail, un profil « en attente d'authentification » n'est pas un refus : do_auth suit, un seul profil. */
+    @Test fun profilEnAttenteAvecIdentifiant_pasDeReessai() = runBlocking {
+        routes["stb/get_profile"] = { json("""{"js":{"status":2,"msg":"Authentication request"}}""") }
+        routes["stb/do_auth"] = { json("""{"js":true}""") }
+        client().probe(StalkerClient.Account(portal(), mac, "user", "pass"))
+        assertEquals(1, seen.count { it.requestUrl!!.queryParameter("action") == "get_profile" })
+        assertTrue(seen.any { it.requestUrl!!.queryParameter("action") == "do_auth" })
+    }
+
+    /** MAC liée à un autre boîtier, quel que soit le mode d'identité : l'ajout échoue avec l'erreur dédiée. */
+    @Test fun conflitDeBoitierPartout_ajoutRefuse() = runBlocking {
+        routes["stb/get_profile"] = { json("""{"js":{"status":1,"msg":"Device conflict","block_msg":"Your STB is damaged"}}""") }
+        try { client().probe(StalkerClient.Account(portal(), mac)); fail("doit échouer") } catch (_: StalkerDeviceConflictException) {}
+    }
+
     @Test fun pointDEntreeMemorise_plusDeSondeEnsuite() = runBlocking {
         val store = StalkerEndpointStore.inMemory()
         client(store).probe(StalkerClient.Account(portal(), mac))

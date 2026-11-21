@@ -11,6 +11,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Corrigé
 - Stalker : si le portail refuse l'identité de boîtier calculée depuis la MAC, l'appli réessaie avec la MAC seule (portails enregistrés sans identité). Les portails qui fonctionnent déjà ne changent pas.
+- Stalker : un profil renvoyé « bloqué » par le portail (conflit de boîtier, compte bloqué) est reconnu comme un refus ; l'appli essaie alors les autres formes d'identité (MAC seule, Device ID en minuscules). Si la MAC est liée à un autre boîtier, le portail n'est pas ajouté : il faut saisir l'identité de ce boîtier.
 
 ### Ajouté
 - Stalker : champs facultatifs « Identité du boîtier » (numéro de série, Device ID 1/2, signature) dans le formulaire d'ajout, à recopier depuis un autre lecteur quand le fournisseur lie l'abonnement à ces valeurs.
