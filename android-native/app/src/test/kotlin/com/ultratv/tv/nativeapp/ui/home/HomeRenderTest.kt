@@ -29,6 +29,7 @@ import com.ultratv.tv.nativeapp.ui.catalog.PosterItem
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.isFocusable
+import com.ultratv.tv.nativeapp.data.prefs.AppTheme
 import com.ultratv.tv.nativeapp.i18n.AppLang
 import com.ultratv.tv.nativeapp.i18n.I18n
 import com.ultratv.tv.nativeapp.i18n.LocalDs
@@ -39,6 +40,8 @@ import com.ultratv.tv.nativeapp.ui.common.design
 import com.ultratv.tv.nativeapp.ui.components.RAIL_COLLAPSED_PX
 import com.ultratv.tv.nativeapp.ui.design.Ux
 import com.ultratv.tv.nativeapp.ui.mobile.LocalTouch
+import com.ultratv.tv.nativeapp.ui.theme.isLightTheme
+import com.ultratv.tv.nativeapp.ui.theme.isOledTheme
 import org.junit.After
 import org.junit.Before
 import org.junit.Assert.assertEquals
@@ -69,7 +72,7 @@ class HomeRenderTest {
     /** Le thème est un état global : toujours remis au sombre, même si un rendu échoue. */
     @Before fun fakeImages() { installFakeImageLoader() }
 
-    @After fun resetTheme() { Ux.themeLight = false; resetImageLoader() }
+    @After fun resetTheme() { Ux.themeLight = false; Ux.themeOled = false; Ux.themeKind = AppTheme.DARK; resetImageLoader() }
 
     private fun channel(id: Long, num: Int, name: String) =
         ChannelEntity(id = id, providerId = 1, remoteId = "$id", name = name, logo = null, categoryId = null, streamUrl = "u", num = num)
@@ -108,8 +111,14 @@ class HomeRenderTest {
     }
 
     private fun render(light: Boolean, file: String, sport: Boolean, layout: HomeLayout = HomeLayout.defaultFor(true), focusTag: String = "hero-watch") {
-        I18n.init(ApplicationProvider.getApplicationContext())
         Ux.themeLight = light
+        mountHome(sport, layout)
+        focusAndCapture(focusTag, file)
+    }
+
+    /** Monte l'accueil TV une fois (un test ne peut appeler `setContent` qu'une fois) ; le thème se change ensuite par les jetons [Ux]. */
+    private fun mountHome(sport: Boolean, layout: HomeLayout = HomeLayout.defaultFor(true)) {
+        I18n.init(ApplicationProvider.getApplicationContext())
         val data = rows().copy(layout = layout)
         // 20:36 : l'heure de la maquette (salutation du soir, horloge).
         val evening = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 20); set(Calendar.MINUTE, 36); set(Calendar.SECOND, 0) }.timeInMillis
@@ -147,6 +156,9 @@ class HomeRenderTest {
         rule.waitForIdle()
         rule.onRoot().performKeyInput { pressKey(Key.ShiftLeft) }
         rule.waitForIdle()
+    }
+
+    private fun focusAndCapture(focusTag: String, file: String) {
         // Le bouton visé porte le focus dans la capture (le focus initial se fait après la première image).
         // Passage par l'autre bouton : le focus initial pris avant le mode clavier n'affiche pas l'anneau.
         rule.onNodeWithTag("hero-info").requestFocus()
@@ -190,4 +202,30 @@ class HomeRenderTest {
     @Test fun capture_tv_fr_top10_focus_sombre() { render(light = false, file = "home-tv-fr-top10-focus.png", sport = false, focusTag = "home-poster-t3") }
     @Test fun capture_tv_fr_top10_focus_clair() { render(light = true, file = "home-tv-fr-light-top10-focus.png", sport = false, focusTag = "home-poster-t3") }
     @Test fun capture_tv_ar_top10_focus() { lang = AppLang.Arabic; render(light = false, file = "home-tv-ar-top10-focus.png", sport = false, focusTag = "home-poster-t3") }
+
+    /**
+     * Les dix thèmes (tout thème ajouté plus tard est couvert par `AppTheme.entries`) : l'accueil doit se composer sans erreur
+     * dans chacun, avec le focus sur « Regarder », sur une vignette du Direct et sur une affiche. Les captures
+     * `home-tv-theme-<thème>-<état>.png` servent à la relecture visuelle. Les thèmes sont appliqués comme le fait l'appli
+     * (`ApplyUxTheme` : clair ? OLED ? palette), sur une box (pas de thème système sombre).
+     */
+    @Test fun capture_tv_tous_les_themes() {
+        mountHome(sport = false)
+        val etats = listOf("regarder" to "hero-watch", "direct" to "home-channel-4", "affiche" to "home-poster-t3")
+        for (theme in AppTheme.entries) {
+            rule.runOnUiThread {
+                Ux.themeLight = isLightTheme(theme, systemDark = true, isTv = true)
+                Ux.themeOled = isOledTheme(theme)
+                Ux.themeKind = theme
+            }
+            rule.waitForIdle()
+            // Retour en haut (la capture précédente a fait défiler la liste jusqu'aux affiches) : ▲ jusqu'à revoir « Regarder ».
+            var haut = 0
+            while (rule.onAllNodes(hasTestTag("hero-info")).fetchSemanticsNodes().isEmpty() && haut++ < 12) {
+                rule.onRoot().performKeyInput { pressKey(Key.DirectionUp) }
+                rule.waitForIdle()
+            }
+            for ((etat, tag) in etats) focusAndCapture(tag, "home-tv-theme-${theme.name.lowercase()}-$etat.png")
+        }
+    }
 }
