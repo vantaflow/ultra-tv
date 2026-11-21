@@ -135,6 +135,9 @@ class StalkerClientTest {
         assertTrue(profiles.any { it.requestUrl!!.queryParameter("sn") != null })      // d'abord le comportement historique
         val last = profiles.last().requestUrl!!
         assertNull(last.queryParameter("sn")); assertNull(last.queryParameter("device_id")); assertNull(last.queryParameter("signature"))
+        // Forme standard : première étape, valeur `random` de la poignée de main reprise dans `metrics`.
+        assertEquals("0", last.queryParameter("auth_second_step"))
+        assertTrue(last.queryParameter("metrics")!!.contains("\"random\":\"x\""))
         // Session suivante : directement la MAC seule.
         seen.clear()
         c.probe(StalkerClient.Account(portal(), mac))
@@ -184,8 +187,9 @@ class StalkerClientTest {
         routes["stb/get_profile"] = { json("""{"js":{"status":2,"msg":"Authentication request"}}""") }
         routes["stb/do_auth"] = { json("""{"js":true}""") }
         client().probe(StalkerClient.Account(portal(), mac, "user", "pass"))
-        assertEquals(1, seen.count { it.requestUrl!!.queryParameter("action") == "get_profile" })
-        assertTrue(seen.any { it.requestUrl!!.queryParameter("action") == "do_auth" })
+        // Un profil avant do_auth, un après (seconde étape) : aucun autre essai d'identité.
+        val actions = seen.mapNotNull { it.requestUrl!!.queryParameter("action") }.filter { it == "get_profile" || it == "do_auth" }
+        assertEquals(listOf("get_profile", "do_auth", "get_profile"), actions)
     }
 
     /** MAC liée à un autre boîtier, quel que soit le mode d'identité : l'ajout échoue avec l'erreur dédiée. */

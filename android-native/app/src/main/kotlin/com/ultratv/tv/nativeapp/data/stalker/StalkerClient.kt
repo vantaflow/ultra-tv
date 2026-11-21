@@ -167,11 +167,11 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
             else StalkerProfile.modeOrder(preferredMode[a.key])
         for (mode in modes) {
             for (api in candidates) {
-                val token = try { handshake(a, api) } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (t: Throwable) { last = t; null }
+                val hello = try { handshake(a, api) } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (t: Throwable) { last = t; null }
                     ?: continue
-                val s = Session(api, token, mode)
+                val s = Session(api, hello.token, mode)
                 // Profil : indispensable sur la plupart des portails pour « activer » le jeton.
-                val profile = try { raw(a, s, profileParams(a, mode)) } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (_: Throwable) { null }
+                val profile = try { raw(a, s, profileParams(a, mode, hello)) } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (_: Throwable) { null }
                 if (profile != null && (refused(profile) || (a.login.isEmpty() && StalkerProfile.blocked(profile)))) {
                     if (StalkerProfile.conflict(profile)) conflict = true
                     if (refusedFirst == null) refusedFirst = s
@@ -207,20 +207,38 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
                 IdMode.DERIVED -> listOf("device_id" to a.device.deviceId, "device_id2" to a.device.deviceId2)
             })))
             if (ok == false || ok == "false") throw denied()
+            // Le protocole prévoit de redemander le profil une fois authentifié ; son résultat ne bloque jamais.
+            try { raw(a, s, profileParams(a, s.mode, secondStep = true)) } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (_: Throwable) { }
         }
         return s
     }
 
-    /** `stb/handshake` → jeton ; null si la réponse n'en contient pas (mauvais point d'entrée). */
-    private suspend fun handshake(a: Account, api: String): String? {
+    /** Réponse utile de la poignée de main : jeton, valeur `random` et indicateur « jeton non valide » du portail. */
+    private data class Hello(val token: String, val random: String, val notValid: Boolean)
+
+    /** `stb/handshake` → [Hello] ; null si la réponse ne contient pas de jeton (mauvais point d'entrée). */
+    private suspend fun handshake(a: Account, api: String): Hello? {
         val body = get(a, api, null, listOf("type" to "stb", "action" to "handshake", "token" to "", "prehash" to "0"))
         val js = jsOf(StalkerJson.parse(body)) as? JMap ?: return null
-        return js.s("token")
+        val token = js.s("token") ?: return null
+        return Hello(token, js.s("random").orEmpty(), js["not_valid"]?.toString()?.toDoubleOrNull() == 1.0)
     }
 
     /** Paramètres de `get_profile` selon [mode] (voir [IdMode]). */
-    private fun profileParams(a: Account, mode: IdMode = IdMode.DERIVED): List<Pair<String, String>> {
+    private fun profileParams(a: Account, mode: IdMode = IdMode.DERIVED, hello: Hello? = null, secondStep: Boolean = false): List<Pair<String, String>> {
         val bare = mode == IdMode.BARE
+        // Essai « MAC seule » : forme standard du protocole (première étape, bloc `metrics` avec la valeur `random` de la
+        // poignée de main, indicateur de jeton repris). Les autres modes gardent la forme historique, inchangée.
+        if (bare) return listOf(
+            "type" to "stb", "action" to "get_profile", "hd" to "1",
+            "ver" to "ImageDescription: 0.2.18-r23-250; ImageDate: Thu Sep 13 11:31:16 EEST 2018; PORTAL version: 5.6.1; API Version: JS API version: 343; STB API version: 146; Player Engine version: 0x58c",
+            "num_banks" to "2", "stb_type" to a.device.model, "client_type" to "STB", "image_version" to "218", "video_out" to "hdmi",
+            "auth_second_step" to (if (secondStep) "1" else "0"), "hw_version" to "1.7-BD-00",
+            "not_valid_token" to (if (hello?.notValid == true) "1" else "0"),
+            "metrics" to StalkerProfile.metrics(a.mac, a.device.model, hello?.random.orEmpty()),
+            "api_signature" to "262", "prehash" to "0",
+            "timestamp" to (System.currentTimeMillis() / 1000).toString(),
+        )
         val d = if (mode == IdMode.LOWER) a.device.copy(deviceId = a.device.deviceId.lowercase(), deviceId2 = a.device.deviceId2.lowercase()) else a.device
         return listOf(
         "type" to "stb", "action" to "get_profile", "hd" to "1",
@@ -603,6 +621,10 @@ internal object StalkerProfile {
         val base = listOf(StalkerClient.IdMode.DERIVED, StalkerClient.IdMode.BARE, StalkerClient.IdMode.LOWER)
         return if (preferred == null) base else listOf(preferred) + (base - preferred)
     }
+
+    /** Bloc `metrics` du profil : JSON compact (MAC, modèle, type, valeur `random` de la poignée de main). */
+    fun metrics(mac: String, model: String, random: String): String =
+        org.json.JSONObject().put("mac", mac).put("model", model).put("type", "STB").put("random", random).toString()
 
     /**
      * Profil « bloqué » : JSON lisible mais sans `id`, avec `status` > 0 et un message (« device conflict », « serial
