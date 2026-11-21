@@ -121,7 +121,7 @@ class GuideRenderTest {
                     Box(Modifier.padding(start = RAIL_COLLAPSED_PX.design)) {
                         GuideTvContent(
                             channelCount = chans.size, channelAt = { chans[it] }, peekAt = { chans[it] }, itemKey = { chans[it].id },
-                            programmes = programmes, windowStart = windowStart, day = 0, D = D, clock = clock,
+                            progsFor = { programmes[it].orEmpty() }, windowStart = windowStart, day = 0, D = D, clock = clock,
                             groups = groups, group = "c3", guideLoad = GuideLoad.Idle, nameColPx = 260,
                             groupName = { g ->
                                 when (g.id) { CATEGORY_FAVORITES -> D.catFavorites; CATEGORY_ALL -> D.catAll; else -> g.name.orEmpty() }
