@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -341,11 +342,12 @@ fun MobileBackButton(onBack: () -> Unit, modifier: Modifier = Modifier) {
 
 /** Tuile d'action d'une fiche (Ma liste, Enregistrer, Bande-annonce) : 64 dp de haut, icône + libellé 12 sp. */
 @Composable
-fun MobileActionTile(icon: String, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, active: Boolean = false, fill: Boolean = false) {
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(16.dp), bg = Ux.SurfaceDeep, modifier = modifier.height(64.dp).semantics { contentDescription = label }) { _ ->
-        Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically)) {
+fun MobileActionTile(icon: String, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, active: Boolean = false, fill: Boolean = false, wrap: Boolean = false) {
+    // [wrap] : la tuile grandit avec son libellé (5 lignes au plus, centré) au lieu de le couper ; sinon 64 dp et une ligne (inchangé).
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(16.dp), bg = Ux.SurfaceDeep, modifier = (if (wrap) modifier.heightIn(min = 64.dp) else modifier.height(64.dp)).semantics { contentDescription = label }) { _ ->
+        Column(if (wrap) Modifier.fillMaxSize().padding(horizontal = 6.dp, vertical = 8.dp) else Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically)) {
             DIcon(icon, 20.dp, if (active) Ux.Accent else Ux.Text, fill = fill)
-            Text(label, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(label, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, maxLines = if (wrap) 5 else 1, overflow = TextOverflow.Ellipsis, textAlign = if (wrap) androidx.compose.ui.text.style.TextAlign.Center else null)
         }
     }
 }
