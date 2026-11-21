@@ -1859,6 +1859,27 @@ async function deviceRotate(req, env) {
 const LEVELS = ["debug", "info", "warn", "error"];
 const int = (v) => (Number.isFinite(v) ? Math.trunc(v) : null);
 
+/**
+ * Lignes envoyées par des tests unitaires (Robolectric) vers la production : acceptées (2xx, pour que le client ne
+ * réessaie pas) mais jamais écrites.
+ */
+const isTestDevice = (b) => typeof b?.device === "string" && /robolectric/i.test(b.device);
+
+/** Réponse d'ingestion : 503 si la base a refusé l'écriture (l'appareil garde ses lignes), sinon le bilan sans contenu. */
+function ingestReply(route, res, extra = {}) {
+  const dropped = { filtered: res?.filtered || 0, ...extra.dropped };
+  if (!res?.ok) {
+    console.error(JSON.stringify({ telemetry: route, error: "storage", ...extra, dropped }));
+    return json({ error: "storage" }, 503, { "retry-after": "60" });
+  }
+  if (Object.entries(extra.dropped || {}).some(([, n]) => n > 0)) console.log(JSON.stringify({ telemetry: route, stored: res.stored, dropped }));
+  return json({ ok: true, ...(extra.accepted !== undefined ? { accepted: extra.accepted } : {}), stored: res.stored, dropped });
+}
+const testReply = (route, n) => {
+  console.log(JSON.stringify({ telemetry: route, stored: 0, dropped: { test: n } }));
+  return json({ ok: true, accepted: 0, stored: 0, dropped: { test: n } });
+};
+
 /** Empreinte courte et non réversible d'un compte pour les journaux et plantages (corrélation seulement). */
 export async function opsAccountId(env, login) {
   return (await hmac(env.SESSION_SECRET, `ops-acct:${login}`)).slice(0, 12);
@@ -1874,6 +1895,7 @@ async function ingest(req, env, kind) {
   const body = await readJson(req, isCrash ? CRASH_MAX_BODY : EVENT_MAX_BODY);
   if (body.error) return body.error;
   const b = body.value;
+  if (isTestDevice(b)) return testReply(`/api/${kind}`, 1);
   const base = {
     // Plus d'étiquette MAC dans les journaux (identifiant de l'appareil chez un portail Stalker) : `deviceId` suffit.
     v: 2, ts: Date.now(), deviceId: auth.device.id, mac: null,
@@ -1892,8 +1914,7 @@ async function ingest(req, env, kind) {
     ? { ...base, androidSdk: int(b.androidSdk), stack: sanitizeLog(b.stack, 32 * 1024) }
     : cleanEvent(base, b);
   // D1 (pas KV : une écriture par événement épuisait le quota gratuit) ; conservation 7 jours, 30 jours pour les crashs.
-  await recordEvent(env, kind, entry);
-  return json({ ok: true });
+  return ingestReply(`/api/${kind}`, await recordEvent(env, kind, entry));
 }
 
 /** Journal nettoyé (mêmes bornes que `/api/event`) à partir d'un objet reçu. */
@@ -1917,6 +1938,7 @@ async function ingestBatch(req, env) {
   const b = body.value;
   if (!b || !Array.isArray(b.events)) return json({ error: "invalid" }, 400);
   if (b.events.length > EVENTS_BATCH_MAX) return json({ error: "too_many" }, 413);
+  if (isTestDevice(b)) return testReply("/api/events", b.events.length);
   const now = Date.now();
   const base = {
     v: 2, ts: now, deviceId: auth.device.id, mac: null,
@@ -1928,13 +1950,14 @@ async function ingestBatch(req, env) {
   if (ver && auth.device.version !== ver) {
     await withAccountLock(env, auth.acct.login, (acct) => setDeviceInfo(env, acct, auth.device.id, { version: ver })).catch(() => {});
   }
-  const entries = b.events.filter((e) => e && typeof e === "object").map((e) => {
+  const valid = b.events.filter((e) => e && typeof e === "object");
+  const entries = valid.map((e) => {
     // Horodatage de la ligne côté appareil accepté s'il est plausible (ni futur, ni plus vieux d'une heure).
     const ts = Number.isFinite(e.ts) && e.ts <= now && e.ts > now - 3600_000 ? Math.trunc(e.ts) : now;
     return { ...cleanEvent({ ...base, ts }, e), sampled: e.sampled === true };
   });
-  await recordEvents(env, "event", entries);
-  return json({ ok: true, accepted: entries.length });
+  return ingestReply("/api/events", await recordEvents(env, "event", entries),
+    { accepted: entries.length, dropped: { invalid: b.events.length - valid.length } });
 }
 
 /**
@@ -1962,6 +1985,7 @@ async function anonIngest(req, env, kind) {
   if (!install) return json({ error: "install" }, 400);
   if (!isCrash && !Array.isArray(b.events)) return json({ error: "invalid" }, 400);
   if (!isCrash && b.events.length > EVENTS_BATCH_MAX) return json({ error: "too_many" }, 413);
+  if (isTestDevice(b)) return testReply(`/api/anon/${kind}`, isCrash ? 1 : b.events.length);
   const fingerprint = (await anonKey(install)).slice("anon:".length, "anon:".length + 12);
   const perInstall = await limited(env, `aning:${kind}:${fingerprint}`, isCrash ? ANON_CRASH_PER_HOUR : ANON_EVENTS_PER_HOUR, 3600, true);
   if (perInstall) return perInstall;
@@ -1972,15 +1996,16 @@ async function anonIngest(req, env, kind) {
     device: sanitizeLog(b.device, 128) || null, acct: null, country: countryOf(req),
   };
   if (isCrash) {
-    await recordEvent(env, "crash", { ...base, androidSdk: int(b.androidSdk), stack: sanitizeLog(b.stack, ANON_STACK_MAX) });
-    return json({ ok: true });
+    return ingestReply("/api/anon/crash", await recordEvent(env, "crash", { ...base, androidSdk: int(b.androidSdk), stack: sanitizeLog(b.stack, ANON_STACK_MAX) }));
   }
-  const entries = b.events.filter((e) => e && typeof e === "object").slice(0, ANON_EVENTS_KEPT).map((e) => {
+  const valid = b.events.filter((e) => e && typeof e === "object");
+  const entries = valid.slice(0, ANON_EVENTS_KEPT).map((e) => {
     const ts = Number.isFinite(e.ts) && e.ts <= now && e.ts > now - 3600_000 ? Math.trunc(e.ts) : now;
     return { ...cleanEvent({ ...base, ts }, e), sampled: e.sampled === true };
   });
-  await recordEvents(env, "event", entries);
-  return json({ ok: true, accepted: entries.length });
+  return ingestReply("/api/anon/events", await recordEvents(env, "event", entries), {
+    accepted: entries.length, dropped: { invalid: b.events.length - valid.length, overflow: valid.length - entries.length },
+  });
 }
 
 // ---- tableaux de bord crashs / journaux (secret serveur) -----------------------
