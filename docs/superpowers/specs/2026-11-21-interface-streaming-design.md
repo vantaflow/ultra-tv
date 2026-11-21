@@ -33,12 +33,25 @@ Les équipes, ligues, le QR code et le code d'envoi y sont des emplacements.
 
 ## Hors périmètre
 
-- L'application de bureau (Windows, Mac, Linux) et les paquets TV Samsung / LG.
+- L'application de bureau (Windows, Mac, Linux) et les paquets TV Samsung / LG (autres bases de code, chantier à part).
 - Tout changement du modèle de données, de la synchronisation, des moteurs de lecture ou du Worker.
 - Lecture automatique d'une bande-annonce dans l'image à la une.
-- Les écrans non maquettés : bibliothèques (Jellyfin, Plex, NAS), fiche d'une personne, mode simple, temps d'écran,
-  compte et appareils, écrans téléphone autres que l'accueil. Ils gardent leur aspect actuel et héritent seulement des
-  composants communs là où ils les utilisent déjà.
+
+### Périmètre élargi le 2026-11-21 (demande du propriétaire après essai des pré-versions)
+
+« Je veux cette fois tous les écrans, toute l'application, sans la moindre erreur, pour tous les appareils. »
+
+- Les écrans non maquettés entrent dans le chantier : bibliothèques (Jellyfin, Plex, NAS), fiche d'une personne, mode
+  simple, temps d'écran, compte et appareils, et TOUS les écrans téléphone et tablette (pas seulement l'accueil). Ils
+  sont refaits dans le même langage que les écrans maquettés (composants du lot 0, mêmes règles de focus, 10 thèmes),
+  sans maquette préalable ; chaque lot livre ses captures pour validation sur pré-version.
+- « Tous les appareils » de l'appli Android : box et téléviseurs Android TV / Google TV / Fire TV (télécommande),
+  téléphones et tablettes (toucher, portrait et paysage, clavier ou manette), du plus modeste (2 Go, 32 bits,
+  Android 7.1) au plus récent.
+- Chaque lot corrige aussi les défauts rencontrés sur les écrans qu'il touche (navigation, Retour, focus, textes
+  tronqués, fluidité), qu'ils viennent de la refonte ou qu'ils soient plus anciens.
+- Restent hors de CE chantier, parce que ce sont d'autres bases de code : l'application de bureau et les paquets TV
+  Samsung / LG. Ils feront l'objet d'un chantier à part, après l'appli Android.
 
 ## Ce qui ferait de ce chantier un échec
 
