@@ -128,9 +128,8 @@ internal fun MatchSheetScreen(
 ) {
     val touch = LocalTouch.current
     val show = !noSpoiler || revealed
-    val locale = remember(D.lang) { D.lang.code.takeIf { it.length in 2..3 }?.let { Locale.forLanguageTag(it) } ?: Locale.getDefault() }
-    val fmt = remember(locale) { SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEdMMMHHmm"), locale) }
-    ModalFocusScope(onBack = onClose, modifier = Modifier.background(Ux.Bg)) {
+    val locale = remember(D.lang) { com.ultratv.tv.nativeapp.i18n.DisplayFormats.sportLocale(D.lang) }
+        ModalFocusScope(onBack = onClose, modifier = Modifier.background(Ux.Bg)) {
         val pad = if (touch) 16.dp else 72.design
         val body: @Composable ColumnScope.() -> Unit = {
             // ── Bandeau haut : retour, compétition · journée · lieu, état ──
@@ -138,7 +137,7 @@ internal fun MatchSheetScreen(
                 Text(D.sportBack, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 20.spx, maxLines = 1,
                     modifier = Modifier.border(1.dp, Ux.Line, RoundedCornerShape(10.design)).padding(horizontal = 12.design, vertical = 4.design))
                 Text(
-                    listOfNotNull(league, m.round?.let { D.sportMatchRound(it) }, sheet?.venue, m.startMs?.takeIf { m.state != MatchState.LIVE }?.let { fmt.format(Date(it)) }).joinToString(" · "),
+                    listOfNotNull(league, m.round?.let { D.sportMatchRound(it) }, sheet?.venue, m.startMs?.takeIf { m.state != MatchState.LIVE }?.let { com.ultratv.tv.nativeapp.i18n.DisplayFormats.sportStart(locale, it) }).joinToString(" · "),
                     color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
                 )
                 if (m.state == MatchState.LIVE) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {

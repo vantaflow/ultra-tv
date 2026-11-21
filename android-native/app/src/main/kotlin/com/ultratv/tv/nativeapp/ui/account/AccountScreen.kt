@@ -138,7 +138,7 @@ fun AccountCard(title: String, content: @Composable () -> Unit) {
 /** Contenu de la carte « Abonnement IPTV » (réutilisée par l'édition Pro). */
 @Composable
 fun IptvAccountCard(st: AccountState, s: AccountStrings) {
-    val date = DateFormat.getDateInstance(DateFormat.LONG)
+    val date = DateFormat.getDateInstance(DateFormat.LONG, com.ultratv.tv.nativeapp.i18n.DisplayLocale.current())
     fun fmt(ms: Long) = date.format(Date(ms))
     AccountCard(s.iptv) {
         val a = st.account

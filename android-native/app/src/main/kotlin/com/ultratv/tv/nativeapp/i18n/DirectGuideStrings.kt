@@ -43,7 +43,7 @@ private fun mo(b: Long) = "%.1f".format(java.util.Locale.US, b / 1_048_576.0)
 fun epgProgressText(D: DesignStrings, bytes: Long, total: Long, programmes: Int): String {
     val unit = D.tx(R.string.dg_epg_progress_text)
     val size = if (total > 0) "${mo(bytes)} / ${mo(total)} $unit" else "${mo(bytes)} $unit"
-    val n = java.text.NumberFormat.getIntegerInstance().format(programmes)
+    val n = java.text.NumberFormat.getIntegerInstance(D.locale).format(programmes)
     return if (programmes > 0) "$size · ${D.countProgrammes.replace("%s", n)}" else size
 }
 // Sélecteur de groupe de chaînes du Guide TV.

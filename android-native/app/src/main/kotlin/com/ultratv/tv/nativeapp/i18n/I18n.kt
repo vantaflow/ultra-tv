@@ -74,15 +74,24 @@ object I18n {
         return if (sdkInt >= android.os.Build.VERSION_CODES.P) Locale.Builder().setLocale(base).setUnicodeLocaleKeyword("nu", "latn").build() else base
     }
 
-    fun string(lang: AppLang, id: Int, vararg args: Any): String {
-        val r = resources(lang)
-        return if (args.isEmpty()) r.getString(id) else r.getString(id, *args)
+    /**
+     * Texte formaté PAR NOUS avec la locale d'affichage (chiffres latins), jamais par `Resources.getString(id, args)` : celui-ci
+     * formate avec la locale des ressources, qui n'a `nu-latn` qu'à partir d'Android 9 (voir [resourceLocale]) — sous Android 7
+     * et 8 les « %1$d » sortaient en chiffres arabo-indiens.
+     */
+    fun string(lang: AppLang, id: Int, vararg args: Any): String = stringIn(resources(lang), DisplayLocale.of(resolve(lang)), id, args)
+
+    internal fun stringIn(r: Resources, display: Locale, id: Int, args: Array<out Any>): String {
+        val raw = r.getString(id)
+        return if (args.isEmpty()) raw else String.format(display, raw, *args)
     }
 
     /** Pluriel : `qty` choisit la forme (one/few/many/other selon la langue), `args` remplit les %1$s. */
-    fun plural(lang: AppLang, id: Int, qty: Int, vararg args: Any): String {
-        val r = resources(lang)
-        return if (args.isEmpty()) r.getQuantityString(id, qty) else r.getQuantityString(id, qty, *args)
+    fun plural(lang: AppLang, id: Int, qty: Int, vararg args: Any): String = pluralIn(resources(lang), DisplayLocale.of(resolve(lang)), id, qty, args)
+
+    internal fun pluralIn(r: Resources, display: Locale, id: Int, qty: Int, args: Array<out Any>): String {
+        val raw = r.getQuantityString(id, qty)
+        return if (args.isEmpty()) raw else String.format(display, raw, *args)
     }
 
     fun stringArray(lang: AppLang, id: Int): List<String> = resources(lang).getStringArray(id).toList()
@@ -91,6 +100,28 @@ object I18n {
     @Suppress("UNCHECKED_CAST")
     fun <T : Any> cached(kind: String, lang: AppLang, build: () -> T): T =
         objectCache.getOrPut("$kind/${lang.code}") { build() } as T
+}
+
+/**
+ * Locale d'AFFICHAGE : point de passage unique de tout formatage (dates, nombres, pourcentages, textes à « %d ») — la langue
+ * de l'appli avec les chiffres LATINS (0-9) même pour l'arabe (ou le persan, l'hindi…) dont les chiffres propres sont refusés
+ * par le propriétaire. À ne PAS poser sur la `Configuration` des ressources avant Android 9 (voir [I18n.resourceLocale]).
+ */
+object DisplayLocale {
+    /** Langues dont les chiffres PAR DÉFAUT ne sont pas 0-9 (liste fixe : le résultat ne dépend ni du JDK ni d'ICU). */
+    private val ownDigits = setOf("ar", "fa", "ur", "ps", "ckb", "sd", "bn", "mr", "ne", "my", "dz", "ks")
+
+    /** [base] avec `nu-latn` si sa langue a des chiffres propres (arabe…) ; les autres langues sont rendues telles quelles. */
+    fun latin(base: Locale): Locale =
+        if (base.language in ownDigits && base.getUnicodeLocaleType("nu") == null) Locale.Builder().setLocale(base).setUnicodeLocaleKeyword("nu", "latn").build() else base
+
+    fun of(code: String): Locale = latin(Locale.forLanguageTag(code))
+
+    /** [AppLang.System] suit la langue par défaut de Java (déjà alignée sur l'appareil ou l'appli). */
+    fun of(lang: AppLang): Locale = if (lang == AppLang.System) current() else of(lang.code)
+
+    /** Langue par défaut de Java avec chiffres latins : pour les formatages sans langue connue. */
+    fun current(): Locale = latin(Locale.getDefault())
 }
 
 /** Raccourcis des fichiers de libellés de [DesignStrings] (même paquet) : `tx(R.string.cle, args…)`. */

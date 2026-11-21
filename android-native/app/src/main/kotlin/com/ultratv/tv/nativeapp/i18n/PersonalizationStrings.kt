@@ -12,7 +12,7 @@ import com.ultratv.tv.nativeapp.data.trakt.forTracker
  * de la liste Direct. Fichier à part pour ne pas toucher à [DesignStrings] (évite les conflits entre branches).
  */
 
-private fun count(n: Int): String = java.text.NumberFormat.getIntegerInstance().format(n)
+private fun DesignStrings.count(n: Int): String = java.text.NumberFormat.getIntegerInstance(locale).format(n)
 
 // ── En-tête de la liste Direct ──
 

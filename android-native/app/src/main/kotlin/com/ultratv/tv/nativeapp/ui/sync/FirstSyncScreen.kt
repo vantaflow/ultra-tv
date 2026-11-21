@@ -173,7 +173,7 @@ private fun WatchLiveCta(enabled: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun StepCard(step: StepUi, D: DesignStrings) {
-    val nf = remember { NumberFormat.getIntegerInstance() }
+    val nf = remember { NumberFormat.getIntegerInstance(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current()) }
     val done = step.state == StepState.DONE
     val active = step.state == StepState.ACTIVE
     val error = step.state == StepState.ERROR

@@ -107,8 +107,7 @@ fun SimpleHomeScreen(
     val hour = java.util.Calendar.getInstance().apply { timeInMillis = now }.get(java.util.Calendar.HOUR_OF_DAY)
     val greet = when { hour < 12 -> D.greetMorning; hour < 18 -> D.greetAfternoon; else -> D.greetEvening }
     val dateText = remember(now / 60_000, D.lang) {
-        val loc = java.util.Locale.forLanguageTag(D.lang.code)
-        java.text.SimpleDateFormat("EEEE d MMMM", loc).format(java.util.Date(now)).replaceFirstChar { it.titlecase(loc) }
+        com.ultratv.tv.nativeapp.i18n.DisplayFormats.simpleHomeDate(D.lang, now)
     }
 
     Column(

@@ -41,15 +41,15 @@ val DesignStrings.tmdbAttribution get() = tx(R.string.dsb1_tmdb_attribution)
 val DesignStrings.dataSources get() = tx(R.string.dsb1_data_sources)
 
 /** Locale de FORMATAGE (noms de jours, de langues, dates) alignée sur la langue de l'application, pas sur celle de l'appareil. Chiffres latins en arabe. */
-val DesignStrings.locale: java.util.Locale get() = when (lang) {
+val DesignStrings.locale: java.util.Locale get() = DisplayLocale.latin(when (lang) {
     AppLang.French -> java.util.Locale.FRENCH
     AppLang.Spanish -> java.util.Locale("es")
-    AppLang.Arabic -> java.util.Locale.forLanguageTag("ar-u-nu-latn")
+    AppLang.Arabic -> java.util.Locale.forLanguageTag("ar")
     AppLang.Polish -> java.util.Locale("pl")
     AppLang.PortugueseBr -> java.util.Locale("pt", "BR")
     AppLang.Romanian, AppLang.NorwegianBokmal, AppLang.Czech, AppLang.Finnish, AppLang.Danish, AppLang.Greek, AppLang.Thai, AppLang.Vietnamese, AppLang.Turkish -> java.util.Locale.forLanguageTag(lang.code)
     else -> java.util.Locale.ENGLISH
-}
+})
 
 // Trakt : rangées de l'accueil (seulement ce qui est disponible dans la playlist) et marque « vu »
 val DesignStrings.traktWatchlist get() = tx(R.string.dsb1_trakt_watchlist).forTracker()
