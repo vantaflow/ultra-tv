@@ -3,6 +3,11 @@ package com.ultratv.tv.nativeapp.ui.design
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
@@ -58,5 +63,49 @@ class StreamingTest {
         assertEquals(0, fa)
         assertEquals(b, fb)
         assertTrue(a > 0)
+    }
+
+    @Test fun `bouton sur image - primaire et secondaire ont des fonds differents au repos`() {
+        assertTrue(onImageButtonColors(true, false).bg != onImageButtonColors(false, false).bg)
+    }
+
+    @Test fun `bouton sur image - couleurs identiques dans les deux themes`() {
+        val sombre = listOf(true, false).flatMap { p -> listOf(true, false).map { f -> onImageButtonColors(p, f) } }
+        Ux.themeLight = true
+        try {
+            val clair = listOf(true, false).flatMap { p -> listOf(true, false).map { f -> onImageButtonColors(p, f) } }
+            assertEquals(sombre, clair)
+        } finally { Ux.themeLight = false }
+        // Au focus : blanc / texte sombre pour les deux boutons.
+        assertEquals(androidx.compose.ui.graphics.Color.White, onImageButtonColors(false, true).bg)
+        assertEquals(onImageButtonColors(true, true), onImageButtonColors(false, true))
+    }
+
+    @Test fun `voile bas - la part couverte est reglable`() {
+        // 0,40 par defaut (maquette), 0,08 en theme clair : constante exposee pour l'appelant.
+        assertEquals(0.40f, BOTTOM_SPAN, 0f)
+    }
+
+    @Test fun `bouton sur image - le focus passe de l'un a l'autre avec droite et gauche`() {
+        rule.setContent {
+            androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.i18n.LocalDs provides com.ultratv.tv.nativeapp.i18n.designStringsFor(com.ultratv.tv.nativeapp.i18n.AppLang.French)) {
+                val inputMode = androidx.compose.ui.platform.LocalInputModeManager.current
+                androidx.compose.runtime.SideEffect { inputMode.requestInputMode(androidx.compose.ui.input.InputMode.Keyboard) }
+                androidx.compose.foundation.layout.Row {
+                    val r = androidx.compose.runtime.remember { androidx.compose.ui.focus.FocusRequester() }
+                    OnImageButton("A", {}, Modifier.testTag("a").focusRequester(r), primary = true)
+                    OnImageButton("B", {}, Modifier.testTag("b"))
+                    androidx.compose.runtime.LaunchedEffect(Unit) { r.requestFocus() }
+                }
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithTag("a").assertIsFocused()
+        rule.onRoot().performKeyInput { keyDown(Key.DirectionRight); keyUp(Key.DirectionRight) }
+        rule.waitForIdle()
+        rule.onNodeWithTag("b").assertIsFocused()
+        rule.onRoot().performKeyInput { keyDown(Key.DirectionLeft); keyUp(Key.DirectionLeft) }
+        rule.waitForIdle()
+        rule.onNodeWithTag("a").assertIsFocused()
     }
 }

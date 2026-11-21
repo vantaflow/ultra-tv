@@ -67,6 +67,7 @@ fun SlotImage(
     initialsSize: Int = 22,
     onFail: (() -> Unit)? = null,
     decodeSize: DpSize? = null,
+    initialsColor: Color = Ux.Text3,
 ) {
     val lowRam = LocalLowRam.current
     // Fondu seulement au toucher : à la télécommande, chaque vignette chargée en défilement lançait une animation d'alpha.
@@ -78,7 +79,7 @@ fun SlotImage(
         // entrant à l'écran au défilement composait et mesurait aussi ce texte (coût mesurable sur une box 2 Go).
         if (!loaded && (url.isNullOrBlank() || failed) && name.isNotBlank()) {
             Text(
-                initialsOf(name), color = Ux.Text3, fontFamily = Sora, fontWeight = FontWeight.Bold,
+                initialsOf(name), color = initialsColor, fontFamily = Sora, fontWeight = FontWeight.Bold,
                 fontSize = initialsSize.spx, maxLines = 1, overflow = TextOverflow.Clip,
             )
         }
@@ -118,7 +119,7 @@ val LocalPosterKind = androidx.compose.runtime.compositionLocalOf<TmdbKind?> { n
  * cherchée sur TMDB (cache persistant, hors fil principal, appareil appairé seulement).
  */
 @Composable
-fun PosterImage(url: String?, name: String, modifier: Modifier, radius: Int = 18, kind: TmdbKind? = LocalPosterKind.current, year: Int? = null, decodeSize: DpSize? = null) {
+fun PosterImage(url: String?, name: String, modifier: Modifier, radius: Int = 18, kind: TmdbKind? = LocalPosterKind.current, year: Int? = null, decodeSize: DpSize? = null, background: Color = Ux.Surface, initialsColor: Color = Ux.Text3) {
     var fallback by remember(url, name) { mutableStateOf<String?>(null) }
     var failed by remember(url) { mutableStateOf(false) }
     val ctx = LocalContext.current
@@ -128,7 +129,7 @@ fun PosterImage(url: String?, name: String, modifier: Modifier, radius: Int = 18
         }
     }
     SlotImage(
-        fallback ?: url, name, modifier, RoundedCornerShape(radius.design), SlotFit.Crop, Ux.Surface, initialsSize = 36,
+        fallback ?: url, name, modifier, RoundedCornerShape(radius.design), SlotFit.Crop, background, initialsSize = 36, initialsColor = initialsColor,
         onFail = if (kind != null && fallback == null) ({ failed = true }) else null,
         decodeSize = decodeSize,
     )

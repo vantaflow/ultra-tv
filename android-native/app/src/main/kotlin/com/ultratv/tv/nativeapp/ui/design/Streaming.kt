@@ -1,7 +1,13 @@
 package com.ultratv.tv.nativeapp.ui.design
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,6 +23,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.ui.common.design
 
@@ -33,15 +40,15 @@ fun imageScrimStops() = ScrimStops(
 fun scrimSideIsLeft(rtl: Boolean): Boolean = !rtl
 
 private const val START_SPAN = 0.62f
-private const val BOTTOM_SPAN = 0.40f
+const val BOTTOM_SPAN = 0.40f
 /** Sur une image, le voile reste sombre dans les deux thèmes. */
 private val ScrimDark = Color(0xFF0A0C10)
 
 /**
  * Voiles de lisibilité sur une image : dessinés une fois, pinceaux recréés seulement si la taille change.
- * Le voile bas fond vers [pageColor] (appelant : `Ux.Bg`).
+ * Le voile bas fond vers [pageColor] sur la part [bottomSpan] de la hauteur (par défaut 40 %).
  */
-fun Modifier.imageScrims(start: Boolean = true, bottom: Boolean = true, rtl: Boolean, pageColor: Color): Modifier =
+fun Modifier.imageScrims(start: Boolean = true, bottom: Boolean = true, rtl: Boolean, pageColor: Color, bottomSpan: Float = BOTTOM_SPAN): Modifier =
     drawWithCache {
         val stops = imageScrimStops()
         val w = size.width
@@ -57,11 +64,11 @@ fun Modifier.imageScrims(start: Boolean = true, bottom: Boolean = true, rtl: Boo
         } else null
         val bottomBrush = if (bottom) Brush.verticalGradient(
             colorStops = stops.bottomAlpha.map { (p, al) -> p to pageColor.copy(alpha = al) }.toTypedArray(),
-            startY = h * (1f - BOTTOM_SPAN), endY = h,
+            startY = h * (1f - bottomSpan), endY = h,
         ) else null
         onDrawBehind {
             startBrush?.let { drawRect(it) }
-            bottomBrush?.let { drawRect(it, topLeft = Offset(0f, h * (1f - BOTTOM_SPAN)), size = Size(w, h * BOTTOM_SPAN)) }
+            bottomBrush?.let { drawRect(it, topLeft = Offset(0f, h * (1f - bottomSpan)), size = Size(w, h * bottomSpan)) }
         }
     }
 
@@ -85,5 +92,55 @@ fun ProgressLine(fraction: Float, modifier: Modifier = Modifier) {
     val f = progressFraction(fraction)
     Box(modifier.height(6.design).clip(RoundedCornerShape(3.design)).background(Color.White.copy(alpha = 0.22f))) {
         Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(Ux.Accent).testTag(PROGRESS_FILL_TAG))
+    }
+}
+
+/** Couleurs d'un bouton posé sur une image : identiques dans les deux thèmes (l'image est toujours voilée de sombre). */
+data class OnImageColors(val bg: Color, val ink: Color)
+
+private val OnImageInk = Color(0xFF0A0C10)
+
+/** Repos : primaire blanc / texte sombre, secondaire blanc à 16 % / texte blanc. Focus (les deux) : blanc / texte sombre. */
+fun onImageButtonColors(primary: Boolean, focused: Boolean): OnImageColors = when {
+    focused || primary -> OnImageColors(Color.White, OnImageInk)
+    else -> OnImageColors(Color.White.copy(alpha = 0.16f), Color.White)
+}
+
+/**
+ * Bouton pilule posé sur une image (bandeau, fiche, lecteur). Construit sur [FocusSurface] comme [PillButton] (même
+ * échelle au focus, même gestion tactile et cible minimale). Au focus : anneau blanc de 5, séparé du bouton par un
+ * liseré sombre de 5 ; seul le bouton focalisé le porte, donc le focus se lit dans les deux thèmes.
+ */
+@Composable
+fun OnImageButton(
+    text: String, onClick: () -> Unit, modifier: Modifier = Modifier, primary: Boolean = false,
+    iconPath: String? = null, iconFill: Boolean = false, heightPx: Int = 76,
+) {
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    val rest = onImageButtonColors(primary, focused = false)
+    val on = onImageButtonColors(primary, focused = true)
+    val fontPx = if (primary) 28 else 26
+    val hPadPx = if (primary) 40 else 36
+    FocusSurface(
+        onClick = onClick, shape = RoundedCornerShape((heightPx / 2).design), bg = rest.bg, focusedBg = on.bg, ringWidth = 0.dp,
+        modifier = if (touch) modifier.heightIn(min = heightPx.designT) else modifier.height(heightPx.designT),
+    ) { f ->
+        val ink = if (f) on.ink else rest.ink
+        // Anneau blanc puis liseré sombre dessinés DANS le bouton (déjà rogné à sa forme) : aucun calque en plus.
+        val ring = if (f && !touch) Modifier
+            .border(5.design, Color.White, RoundedCornerShape((heightPx / 2).design))
+            .padding(5.design)
+            .border(5.design, OnImageInk, RoundedCornerShape((heightPx / 2 - 5).design))
+        else Modifier
+        Row(
+            Modifier.then(ring).then(if (touch) Modifier.padding(horizontal = hPadPx.design, vertical = 8.design).heightIn(min = heightPx.designT) else Modifier.padding(horizontal = hPadPx.design).fillMaxHeight()),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (iconPath != null) {
+                DIcon(iconPath, (fontPx - 4).design, ink, fill = iconFill, strokeWidth = 2.2f)
+                Spacer(Modifier.width(14.design))
+            }
+            Text(text, color = ink, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = fontPx.spx, maxLines = if (touch) 2 else 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+        }
     }
 }
