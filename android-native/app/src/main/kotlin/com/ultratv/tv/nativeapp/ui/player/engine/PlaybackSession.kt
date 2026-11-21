@@ -38,6 +38,8 @@ data class SessionState(
     val hdr: String? = null,
     /** Remise en mémoire tampon en cours (après la première image) : sert à proposer « Recharger ». */
     val buffering: Boolean = false,
+    /** Dernier code HTTP reçu avant l'erreur (null si le serveur n'a pas répondu) : précise le message affiché. */
+    val errorHttp: Int? = null,
 )
 
 /**
@@ -452,7 +454,7 @@ class PlaybackSession(
                     delay(10_000)
                     if (engine === e && hdrKind == null) com.ultratv.tv.nativeapp.RemoteLog.warn("play", "hdr named but not signalled engine=${combo.engine.name} surface=${if (textureNow) "texture" else "surface"} ${e.colorDebug() ?: "-"}")
                 }
-                _state.value = _state.value.copy(phase = Phase.PLAYING, error = null, hasPicture = true, buffering = false)
+                _state.value = _state.value.copy(phase = Phase.PLAYING, error = null, errorHttp = null, hasPicture = true, buffering = false)
                 armBlackPictureCheck(e)
                 // La combinaison est retenue pour la chaîne si elle a demandé un repli ou un choix manuel et tient 5 s.
                 rememberJob?.cancel()
@@ -641,7 +643,7 @@ class PlaybackSession(
             releaseEngine()
             // Portail Stalker qui refuse la lecture : message dédié (MAC peut-être utilisée sur un autre appareil).
             presenceJob?.cancel()
-            _state.value = _state.value.copy(phase = Phase.ERROR, error = if (isStalkerUrl && kind == PlayErrorKind.REFUSED) PlayErrorKind.PORTAL_REFUSED else kind)
+            _state.value = _state.value.copy(phase = Phase.ERROR, error = if (isStalkerUrl && kind == PlayErrorKind.REFUSED) PlayErrorKind.PORTAL_REFUSED else kind, errorHttp = lastHttp)
         }
     }
 
@@ -654,7 +656,7 @@ class PlaybackSession(
         if (!com.ultratv.tv.nativeapp.ui.common.AppForeground.visible) return
         val wait = PlaybackPlanner.liveReconnectDelayMs(reconnects) ?: run {
             releaseEngine()
-            _state.value = _state.value.copy(phase = Phase.ERROR, error = PlayErrorKind.NETWORK)
+            _state.value = _state.value.copy(phase = Phase.ERROR, error = PlayErrorKind.NETWORK, errorHttp = lastHttp)
             return
         }
         reconnects++

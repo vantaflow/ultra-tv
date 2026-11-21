@@ -577,7 +577,7 @@ class ProviderRepository @Inject constructor(
                     throw c
                 } catch (t: Throwable) {
                     com.ultratv.tv.nativeapp.UtvLog.e(com.ultratv.tv.nativeapp.UtvLog.SYNC, "échec $kind0 '$name' après ${com.ultratv.tv.nativeapp.UtvLog.ms(t0)} ms: ${com.ultratv.tv.nativeapp.UtvLog.why(t)}")
-                    syncStatus.fail(SyncStatusBus.Failure(providerId, name, com.ultratv.tv.nativeapp.data.net.NetErrors.classify(t)))
+                    syncStatus.fail(SyncStatusBus.Failure(providerId, name, com.ultratv.tv.nativeapp.data.net.NetErrors.classifyFor(t, runCatching { providerDao.byId(providerId)?.baseUrl }.getOrNull())))
                     throw t
                 }
             }

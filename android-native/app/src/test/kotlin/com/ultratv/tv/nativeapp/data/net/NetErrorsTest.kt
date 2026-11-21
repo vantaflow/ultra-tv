@@ -40,5 +40,31 @@ class NetErrorsTest {
     @Test fun causeImbriquee_estTrouvee() =
         assertEquals(SyncErrorKind.HOST_NOT_FOUND, NetErrors.classify(RuntimeException("x", IOException("y", UnknownHostException()))))
 
+    @Test fun tropDeDemandes_429_nEstPlusConfonduAvecUnRefusDuTypeDAcces() =
+        assertEquals(SyncErrorKind.RATE_LIMITED, NetErrors.classify(HttpStatusException(429)))
+
+    /** Télémétrie : « Unexpected JSON token… had '<' » (page HTML à la place de la liste) tombait dans « a échoué ». */
+    @Test fun reponseIllisible_pageWebALaPlaceDeLaListe() {
+        assertEquals(SyncErrorKind.INVALID_RESPONSE, NetErrors.classify(kotlinx.serialization.SerializationException("Unexpected JSON token at offset 0")))
+        assertEquals(SyncErrorKind.INVALID_RESPONSE, NetErrors.classify(RuntimeException("x", org.xmlpull.v1.XmlPullParserException("bad"))))
+    }
+
+    /** Télémétrie : « failed to connect to /192.168.1.123 (port 80) from /10.2.0.2 » = serveur local, appareil derrière un VPN. */
+    @Test fun adresseDuReseauLocalInjoignable_signaleeAPart() {
+        assertEquals(SyncErrorKind.LOCAL_NETWORK, NetErrors.classifyFor(SocketTimeoutException("failed to connect"), "http://192.168.1.123/get.php?x=1"))
+        assertEquals(SyncErrorKind.LOCAL_NETWORK, NetErrors.classifyFor(ConnectException("refused"), "http://10.0.0.5:8080"))
+        assertEquals(SyncErrorKind.LOCAL_NETWORK, NetErrors.classifyFor(SocketTimeoutException(), "172.20.1.9:80"))
+    }
+
+    @Test fun adressePublique_ouAutreErreur_inchangees() {
+        assertEquals(SyncErrorKind.TIMEOUT, NetErrors.classifyFor(SocketTimeoutException(), "http://serveur.invalid:8080"))
+        assertEquals(SyncErrorKind.TIMEOUT, NetErrors.classifyFor(SocketTimeoutException(), "http://8.8.8.8"))
+        assertEquals(SyncErrorKind.TIMEOUT, NetErrors.classifyFor(SocketTimeoutException(), "http://172.32.0.1"))
+        assertEquals(SyncErrorKind.TIMEOUT, NetErrors.classifyFor(SocketTimeoutException(), null))
+        // Le serveur local a répondu : le réseau n'est pas en cause.
+        assertEquals(SyncErrorKind.UNAUTHORIZED, NetErrors.classifyFor(HttpStatusException(401), "http://192.168.1.123"))
+        assertEquals(SyncErrorKind.NOT_FOUND, NetErrors.classifyFor(HttpStatusException(404), "http://192.168.1.123"))
+    }
+
     @Test fun inconnu() = assertEquals(SyncErrorKind.OTHER, NetErrors.classify(IllegalStateException()))
 }

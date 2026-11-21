@@ -400,6 +400,9 @@ data class SyncErrorStrings(
     val serverError: String,
     val tls: String,
     val other: String,
+    val rateLimited: String,
+    val invalidResponse: String,
+    val localNetwork: String,
     val fixSource: String,
     val retry: String,
     val title: String,
@@ -413,6 +416,9 @@ data class SyncErrorStrings(
         com.ultratv.tv.nativeapp.data.net.SyncErrorKind.PROVIDER_BLOCKED -> providerBlocked
         com.ultratv.tv.nativeapp.data.net.SyncErrorKind.SERVER_ERROR -> serverError
         com.ultratv.tv.nativeapp.data.net.SyncErrorKind.TLS -> tls
+        com.ultratv.tv.nativeapp.data.net.SyncErrorKind.RATE_LIMITED -> rateLimited
+        com.ultratv.tv.nativeapp.data.net.SyncErrorKind.INVALID_RESPONSE -> invalidResponse
+        com.ultratv.tv.nativeapp.data.net.SyncErrorKind.LOCAL_NETWORK -> localNetwork
         com.ultratv.tv.nativeapp.data.net.SyncErrorKind.OTHER -> other
     }
 }
@@ -683,6 +689,9 @@ private fun buildStrings(lang: AppLang): Strings {
             serverError = tx(R.string.syncerr_server_error),
             tls = tx(R.string.syncerr_tls),
             other = tx(R.string.syncerr_other),
+            rateLimited = tx(R.string.syncerr_rate_limited),
+            invalidResponse = tx(R.string.syncerr_invalid_response),
+            localNetwork = tx(R.string.syncerr_local_network),
             fixSource = tx(R.string.syncerr_fix_source),
             retry = tx(R.string.syncerr_retry),
             title = tx(R.string.syncerr_title),

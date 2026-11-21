@@ -21,6 +21,9 @@ enum class SyncErrorKind {
     PROVIDER_BLOCKED,   // code HTTP non standard (ex. 884) : le fournisseur refuse ce type d'accès
     SERVER_ERROR,       // 5xx
     TLS,                // certificat / handshake
+    RATE_LIMITED,       // 429 : trop de demandes, le fournisseur limite l'accès
+    INVALID_RESPONSE,   // réponse illisible : page web ou texte à la place de la liste attendue
+    LOCAL_NETWORK,      // adresse du réseau local (192.168.x, 10.x, 172.16-31.x) injoignable : autre réseau ou VPN actif
     OTHER,
 }
 
@@ -37,13 +40,37 @@ object NetErrors {
                 is ConnectException, is NoRouteToHostException -> return SyncErrorKind.UNREACHABLE
                 is SSLException -> return SyncErrorKind.TLS
                 is InterruptedIOException -> if (cur.message?.contains("timeout", ignoreCase = true) == true) return SyncErrorKind.TIMEOUT
+                // Le serveur a répondu, mais pas la liste attendue (page d'accueil, page d'erreur en HTML, JSON tronqué).
+                is kotlinx.serialization.SerializationException, is org.xmlpull.v1.XmlPullParserException -> return SyncErrorKind.INVALID_RESPONSE
             }
             cur = cur.cause
         }
         return SyncErrorKind.OTHER
     }
 
+    /**
+     * Catégorie pour une source d'adresse [url] : une adresse du réseau local qui ne répond pas est signalée à part.
+     * « Le serveur ne répond pas » ne dit pas quoi faire, alors que la cause est presque toujours la même : l'appareil
+     * n'est pas sur ce réseau (autre Wi-Fi, données mobiles) ou un VPN détourne le trafic.
+     */
+    fun classifyFor(t: Throwable, url: String?): SyncErrorKind {
+        val kind = classify(t)
+        if (kind != SyncErrorKind.TIMEOUT && kind != SyncErrorKind.UNREACHABLE) return kind
+        return if (isPrivateHost(url)) SyncErrorKind.LOCAL_NETWORK else kind
+    }
+
+    /** L'adresse pointe-t-elle une machine du réseau local (IPv4 privée) ? Faux pour un nom de domaine. */
+    fun isPrivateHost(url: String?): Boolean {
+        val raw = url?.trim().orEmpty()
+        if (raw.isEmpty()) return false
+        val host = runCatching { java.net.URI(if ("://" in raw) raw else "http://$raw").host }.getOrNull() ?: return false
+        val p = host.split('.').mapNotNull { it.toIntOrNull() }
+        if (p.size != 4 || host.count { it == '.' } != 3 || p.any { it !in 0..255 }) return false
+        return p[0] == 10 || (p[0] == 192 && p[1] == 168) || (p[0] == 172 && p[1] in 16..31)
+    }
+
     fun fromHttp(code: Int): SyncErrorKind = when {
+        code == 429 -> SyncErrorKind.RATE_LIMITED
         code == 401 || code == 403 -> SyncErrorKind.UNAUTHORIZED
         code == 404 || code == 410 -> SyncErrorKind.NOT_FOUND
         code in 500..599 -> SyncErrorKind.SERVER_ERROR

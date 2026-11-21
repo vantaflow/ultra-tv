@@ -1906,4 +1906,19 @@
     <string name="stalker_identity_hint">Solo si tu proveedor lo exige: copia estos valores de tu otro reproductor (sus ajustes STB). Si no, déjalo vacío.</string>
     <string name="stalker_field_serial">Número de serie</string>
     <string name="stalker_field_signature">Firma</string>
+    <string name="ds_err_network_hint">Comprueba tu conexión a Internet. Si los demás canales funcionan, es el servidor de este canal el que no responde.</string>
+    <string name="ds_err_server_down">El servidor del proveedor tiene un problema</string>
+    <string name="ds_err_server_down_hint">El problema es del proveedor, no de tu conexión. Vuelve a intentarlo en unos minutos o elige otro canal.</string>
+    <string name="ds_err_too_many">Demasiadas conexiones a la vez</string>
+    <string name="ds_err_too_many_hint">Tu proveedor limita cuántas reproducciones puedes tener a la vez. Detén la reproducción en tus otros dispositivos, espera un momento y vuelve a intentarlo.</string>
+    <string name="ds_err_rejected">El proveedor rechazó la solicitud</string>
+    <string name="ds_err_generic_hint">Vuelve a intentarlo o elige otro canal. Si sigue ocurriendo, revisa la fuente en Ajustes.</string>
+    <string name="ds_err_not_found_hint">El proveedor lo ha retirado o movido. Sincroniza la fuente en Ajustes para actualizar la lista.</string>
+    <string name="ds_err_format_hint">La app probó sus dos reproductores sin éxito. Puede que la emisión esté fuera de línea o en un formato no compatible.</string>
+    <string name="ds_err_decoder">Este dispositivo no puede decodificar este vídeo</string>
+    <string name="ds_err_decoder_hint">La resolución o el códec superan lo que este dispositivo puede reproducir. Prueba una versión de menor calidad del canal (HD en lugar de 4K).</string>
+    <string name="ds_err_no_picture">Hay sonido pero no imagen</string>
+    <string name="syncerr_rate_limited">Demasiadas solicitudes — el proveedor limita el acceso, vuelve a intentarlo en unos minutos</string>
+    <string name="syncerr_invalid_response">El servidor respondió con algo que no es una lista — comprueba la dirección</string>
+    <string name="syncerr_local_network">Esta dirección está en una red local — conecta el dispositivo a la misma red y desactiva la VPN</string>
 </resources>

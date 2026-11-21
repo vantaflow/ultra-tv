@@ -1914,4 +1914,19 @@
     <string name="stalker_identity_toggle">Identité du boîtier (facultatif)</string>
     <string name="stalker_identity_hint">Seulement si votre fournisseur l’exige : recopiez ces valeurs depuis votre autre lecteur (ses réglages STB). Sinon, laissez vide.</string>
     <string name="stalker_field_serial">Numéro de série</string>
+    <string name="ds_err_network_hint">Vérifiez votre connexion Internet. Si les autres chaînes fonctionnent, c\'est le serveur de celle-ci qui ne répond pas.</string>
+    <string name="ds_err_server_down">Le serveur du fournisseur a un problème</string>
+    <string name="ds_err_server_down_hint">Le problème vient du fournisseur, pas de votre connexion. Réessayez dans quelques minutes ou choisissez une autre chaîne.</string>
+    <string name="ds_err_too_many">Trop de connexions en même temps</string>
+    <string name="ds_err_too_many_hint">Votre fournisseur limite le nombre de lectures simultanées. Arrêtez la lecture sur vos autres appareils, patientez un instant, puis réessayez.</string>
+    <string name="ds_err_rejected">Le fournisseur a rejeté la demande</string>
+    <string name="ds_err_generic_hint">Réessayez ou choisissez une autre chaîne. Si le problème persiste, vérifiez la source dans les Réglages.</string>
+    <string name="ds_err_not_found_hint">Le fournisseur l\'a retirée ou déplacée. Synchronisez la source dans les Réglages pour mettre la liste à jour.</string>
+    <string name="ds_err_format_hint">L\'appli a essayé ses deux lecteurs sans succès. Le flux est peut-être hors ligne ou dans un format non pris en charge.</string>
+    <string name="ds_err_decoder">Cet appareil n\'arrive pas à décoder cette vidéo</string>
+    <string name="ds_err_decoder_hint">La résolution ou le codec dépasse ce que l\'appareil sait lire. Essayez une version de moindre qualité de la chaîne (HD au lieu de 4K).</string>
+    <string name="ds_err_no_picture">Le son passe, mais pas l\'image</string>
+    <string name="syncerr_rate_limited">Trop de demandes — le fournisseur limite l\'accès, réessayez dans quelques minutes</string>
+    <string name="syncerr_invalid_response">Le serveur a répondu autre chose qu\'une liste — vérifiez l\'adresse</string>
+    <string name="syncerr_local_network">Cette adresse est sur un réseau local — connectez l\'appareil au même réseau et désactivez le VPN</string>
 </resources>

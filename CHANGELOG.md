@@ -5,6 +5,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ## [Non publié]
 
 ### Modifié
+- Lecteur : l'écran d'erreur dit la cause et quoi faire, au lieu de « Problème de réseau » pour tout. Panne du serveur du fournisseur (5xx), trop de lectures simultanées (429), demande rejetée, serveur injoignable, chaîne retirée, format illisible, décodage impossible sur l'appareil et « du son mais pas d'image » ont chacun leur message et leur conseil ; le code HTTP est rappelé en petit quand il aide le support.
+- Synchronisation : trois causes ont maintenant leur propre message. Adresse du réseau local injoignable (« connectez l'appareil au même réseau et désactivez le VPN »), trop de demandes (429, auparavant présenté à tort comme un refus du type d'accès) et réponse illisible (page web à la place de la liste, auparavant « La synchronisation a échoué »).
 - Télémétrie : un appareil sans compte envoie désormais ses rapports de plantage et ses lignes d'erreur ou d'avertissement (jamais les lignes d'information), avec le modèle de l'appareil, la version et un identifiant aléatoire d'installation. Avant, rien ne partait sans appairage : une panne chez quelqu'un qui venait d'installer l'appli restait invisible. Worker : routes `/api/anon/crash` et `/api/anon/events`, débit borné par adresse IP et par installation.
 
 ### Corrigé

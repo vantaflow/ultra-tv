@@ -71,7 +71,7 @@ class SyncWorker @AssistedInject constructor(
                 // « Corriger la source » est déjà affichée.
                 NetErrors.classify(f).let {
                     it == SyncErrorKind.UNAUTHORIZED || it == SyncErrorKind.HOST_NOT_FOUND || it == SyncErrorKind.NOT_FOUND ||
-                        it == SyncErrorKind.PROVIDER_BLOCKED || it == SyncErrorKind.TLS
+                        it == SyncErrorKind.PROVIDER_BLOCKED || it == SyncErrorKind.RATE_LIMITED || it == SyncErrorKind.TLS
                 } -> Result.failure()
                 runAttemptCount < 3 -> Result.retry()
                 else -> Result.failure()

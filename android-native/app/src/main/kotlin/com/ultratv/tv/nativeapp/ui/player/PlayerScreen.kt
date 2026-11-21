@@ -81,6 +81,18 @@ import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.replayTag
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.i18n.recConnectionBusy
+import com.ultratv.tv.nativeapp.i18n.errNetworkHint
+import com.ultratv.tv.nativeapp.i18n.errServerDown
+import com.ultratv.tv.nativeapp.i18n.errServerDownHint
+import com.ultratv.tv.nativeapp.i18n.errTooMany
+import com.ultratv.tv.nativeapp.i18n.errTooManyHint
+import com.ultratv.tv.nativeapp.i18n.errRejected
+import com.ultratv.tv.nativeapp.i18n.errGenericHint
+import com.ultratv.tv.nativeapp.i18n.errNotFoundHint
+import com.ultratv.tv.nativeapp.i18n.errFormatHint
+import com.ultratv.tv.nativeapp.i18n.errDecoder
+import com.ultratv.tv.nativeapp.i18n.errDecoderHint
+import com.ultratv.tv.nativeapp.i18n.errNoPicture
 import com.ultratv.tv.nativeapp.i18n.handoffFailed
 import com.ultratv.tv.nativeapp.i18n.handoffNoSource
 import com.ultratv.tv.nativeapp.i18n.handoffSend
@@ -1503,7 +1515,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                         if (state.phase == Phase.LOADING) LoadingVisual(item?.poster, item?.title ?: title)
                         BufferingReload(session, D, rootFocus)
                         if (state.phase == Phase.ERROR) ErrorPanel(
-                            kind = state.error ?: PlayErrorKind.UNKNOWN, canNext = isLive, D = D,
+                            kind = state.error ?: PlayErrorKind.UNKNOWN, http = state.errorHttp, canNext = isLive, D = D,
                             onRetry = { session.retry() }, onNext = { scope.launch { vm.zap(true)?.let { currentUrl = it } } }, onClose = leave,
                         )
                         if (overlayVisible && state.phase != Phase.ERROR && !drawerOpen && panel == Panel.None) run {
@@ -1547,7 +1559,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         if (state.phase == Phase.LOADING) LoadingVisual(item?.poster, item?.title ?: title)
         BufferingReload(session, D, rootFocus)
         if (state.phase == Phase.ERROR) ErrorPanel(
-            kind = state.error ?: PlayErrorKind.UNKNOWN, canNext = isLive, D = D,
+            kind = state.error ?: PlayErrorKind.UNKNOWN, http = state.errorHttp, canNext = isLive, D = D,
             onRetry = { session.retry() },
             onNext = { scope.launch { vm.zap(true)?.let { currentUrl = it } } },
             onClose = leave,
@@ -1722,26 +1734,35 @@ private fun LoadingVisual(logo: String?, name: String) {
 }
 
 @Composable
-internal fun ErrorPanel(kind: PlayErrorKind, canNext: Boolean, D: DesignStrings, onRetry: () -> Unit, onNext: () -> Unit, onClose: () -> Unit) {
-    val (title, hint) = when (kind) {
-        PlayErrorKind.REFUSED -> D.errRefused to D.errRefusedHint
-        PlayErrorKind.NO_LINK -> D.errNoLink to D.errNoLinkHint
-        PlayErrorKind.PORTAL_REFUSED -> D.errPortalRefused to D.errPortalRefusedHint
-        PlayErrorKind.NETWORK -> D.errNetwork to null
-        PlayErrorKind.FORMAT, PlayErrorKind.DECODER, PlayErrorKind.NO_PICTURE -> D.errFormat to null
-        PlayErrorKind.NOT_FOUND -> D.errNotFound to null
-        PlayErrorKind.START_TIMEOUT -> D.errStartTimeout to D.errStartTimeoutHint
-        PlayErrorKind.DRM_UNSUPPORTED -> D.errDrmUnsupported to D.errDrmUnsupportedHint
-        PlayErrorKind.DRM_LICENSE -> D.errDrmLicense to D.errDrmLicenseHint
-        PlayErrorKind.DRM_INVALID -> D.errDrmInvalid to D.errDrmInvalidHint
-        else -> D.errNoResponse to null
+internal fun ErrorPanel(kind: PlayErrorKind, canNext: Boolean, D: DesignStrings, http: Int? = null, onRetry: () -> Unit, onNext: () -> Unit, onClose: () -> Unit) {
+    // Chaque cas a un titre (la cause) et une aide (quoi faire) : jamais d'écran d'erreur sans explication.
+    val case = PlayErrorText.case(kind, http)
+    val code = PlayErrorText.code(case, http)
+    val (title, hint) = when (case) {
+        PlayErrorCase.UNREACHABLE -> D.errNetwork to D.errNetworkHint
+        PlayErrorCase.SERVER_DOWN -> D.errServerDown to D.errServerDownHint
+        PlayErrorCase.TOO_MANY -> D.errTooMany to D.errTooManyHint
+        PlayErrorCase.REJECTED -> D.errRejected to D.errGenericHint
+        PlayErrorCase.REFUSED -> D.errRefused to D.errRefusedHint
+        PlayErrorCase.NO_LINK -> D.errNoLink to D.errNoLinkHint
+        PlayErrorCase.PORTAL_REFUSED -> D.errPortalRefused to D.errPortalRefusedHint
+        PlayErrorCase.NOT_FOUND -> D.errNotFound to D.errNotFoundHint
+        PlayErrorCase.FORMAT -> D.errFormat to D.errFormatHint
+        PlayErrorCase.DECODER -> D.errDecoder to D.errDecoderHint
+        PlayErrorCase.NO_PICTURE -> D.errNoPicture to D.errDecoderHint
+        PlayErrorCase.START_TIMEOUT -> D.errStartTimeout to D.errStartTimeoutHint
+        PlayErrorCase.DRM_UNSUPPORTED -> D.errDrmUnsupported to D.errDrmUnsupportedHint
+        PlayErrorCase.DRM_LICENSE -> D.errDrmLicense to D.errDrmLicenseHint
+        PlayErrorCase.DRM_INVALID -> D.errDrmInvalid to D.errDrmInvalidHint
+        PlayErrorCase.NO_RESPONSE -> D.errNoResponse to D.errGenericHint
     }
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
     Box(Modifier.fillMaxSize().background(Color(0xE60A0A0C)), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(28.design), modifier = Modifier.widthIn(max = 1000.design)) {
             Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 52.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            hint?.let { Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 26.spx, maxLines = 2) }
+            Text(hint, color = Ux.Text2, fontFamily = Manrope, fontSize = 26.spx, maxLines = 3, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            code?.let { Text(it, color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1) }
             Row(horizontalArrangement = Arrangement.spacedBy(24.design)) {
                 PillButton(LocalDs.current.retry, onRetry, bg = Ux.Cta, weight = FontWeight.Bold, modifier = Modifier.focusRequester(first))
                 if (canNext) PillButton(D.nextChannel, onNext)
