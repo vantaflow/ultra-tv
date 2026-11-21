@@ -4,6 +4,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Modifié
+- Télémétrie : toujours active sur Android, le réglage est retiré.
+- Amélioration de télémétrie.
+- Amélioration de télémétrie.
+
 ## [1.3.70] — 2026-11-21 (Android)
 
 ### Corrigé

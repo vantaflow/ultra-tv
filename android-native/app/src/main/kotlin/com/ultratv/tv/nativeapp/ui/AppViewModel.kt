@@ -53,7 +53,6 @@ class AppViewModel @Inject constructor(
     fun setTimeZone(id: String) = viewModelScope.launch { store.setTimeZone(id) }
     fun setTimeFormat(key: String) = viewModelScope.launch { store.setTimeFormat(key) }
     fun setBottomTabs(routes: List<String>) = viewModelScope.launch { store.setBottomTabs(routes) }
-    fun setTelemetry(on: Boolean) = viewModelScope.launch { store.setTelemetry(on) }
     fun setBufferSeconds(v: Int) = viewModelScope.launch { store.setBufferSeconds(v) }
     fun setAutoFrameRate(v: Boolean) = viewModelScope.launch { store.setAutoFrameRate(v) }
     fun setZapVertical(v: Boolean) = viewModelScope.launch { store.setZapVertical(v) }

@@ -45,8 +45,8 @@ TV box + your Cloudflare Worker), so the primary threats are:
 - **Web proxy (`web/cloudflare`)** — default-deny host allow-list, http(s) only,
   private/loopback/metadata IPs refused even if allow-listed, redirects
   re-validated hop by hop, GET/HEAD only, CORS limited to `ALLOWED_ORIGINS`.
-- **Telemetry opt-out** — Settings → Diagnostics distants toggle. Default
-  ON for debug; flip OFF stops every event + crash POST silently.
+- **Telemetry** — always on in the Android app (no opt-out); payloads are
+  sanitised as described above (no credentials, MAC or full URLs).
 - **Provider credentials at rest** — Room DB lives in app-private storage
   (`/data/data/<pkg>/files/`) which is unreadable by other apps on
   non-rooted devices.

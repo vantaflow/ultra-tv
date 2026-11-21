@@ -305,9 +305,11 @@ No crash report, remote log or alerts. **Anonymous count** (same rule as Android
 - **Send from phone**: 15 min at most. **Pairing code**: 10 min.
 - **IP address**: not written to any stored data; used only to count requests (rate limiting) in counters that hold no address and expire on their own.
 
-### Turning telemetry off
+### Telemetry setting
 
-**Settings › About › *Telemetry and crash reports*** (on by default; on Windows and macOS the setting is called *Anonymous telemetry* and only covers the anonymous count). Off: no more diagnostic logs, crash reports, anonymous count or alert statistics, and no install ID in send-from-phone. It does **not** turn off the update check, reading alerts, cloud sync, Trakt, TMDB, subtitles, "Skip intro", the extra guide or DNS. Without pairing, no log or crash report is sent anyway.
+**Android:** telemetry (diagnostic logs, crash reports, anonymous count, alert statistics) is always on and can no longer be turned off. What is sent stays limited to what is described above. Without pairing, no log or crash report is sent.
+
+**Windows and macOS:** Settings › About › *Anonymous telemetry* (on by default) only covers the anonymous count; off, nothing is sent any more and the ID is erased.
 
 ### Check it in the code
 
@@ -323,7 +325,6 @@ Every point above can be checked in the source code (links pinned to a specific 
 | Account passwords: only a PBKDF2 hash is kept | [`crypto.js` — `hashPassword`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/crypto.js#L115-L119) |
 | Anonymous count (Android): a random install ID, version, app (TV or mobile) and model, nothing else | [`AnonPing.kt` — request body](https://github.com/vantaflow/ultra-tv/blob/main/android-native/app/src/main/kotlin/com/ultratv/tv/nativeapp/data/config/AnonPing.kt) |
 | Anonymous count (desktop): random ID, version and system, at most once per 20 h, never when paired, setting respected | [`anon.ts` — `reportAnonPing`](https://github.com/vantaflow/ultra-tv/blob/main/web/src/cloud/anon.ts) |
-| … nothing is sent when telemetry is off | [`AnonPing.kt` — `telemetryEnabled`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/android-native/app/src/main/kotlin/com/ultratv/tv/nativeapp/data/config/AnonPing.kt#L53) |
 | The Worker only keeps the country code provided by Cloudflare, never the IP address | [`index.js` — `countryOf`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/index.js#L421-L424) |
 
 Questions or doubts about this code? Open an [issue](https://github.com/vantaflow/ultra-tv/issues) and it will be answered publicly.
