@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
@@ -60,7 +61,7 @@ fun Modifier.imageScrims(start: Boolean = true, bottom: Boolean = true, rtl: Boo
         ) else null
         onDrawBehind {
             startBrush?.let { drawRect(it) }
-            bottomBrush?.let { drawRect(it, topLeft = Offset(0f, h * (1f - BOTTOM_SPAN))) }
+            bottomBrush?.let { drawRect(it, topLeft = Offset(0f, h * (1f - BOTTOM_SPAN)), size = Size(w, h * BOTTOM_SPAN)) }
         }
     }
 
