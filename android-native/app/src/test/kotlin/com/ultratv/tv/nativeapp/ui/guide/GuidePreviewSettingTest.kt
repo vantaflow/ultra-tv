@@ -51,7 +51,7 @@ class GuidePreviewSettingTest {
                 Box(Modifier.fillMaxSize()) {
                     GuideTvContent(
                         channelCount = 1, channelAt = { chan }, peekAt = { chan }, itemKey = { chan.id },
-                        programmes = emptyMap(), windowStart = 0L, day = 0, D = LocalDs.current, clock = clock,
+                        progsFor = { emptyList() }, windowStart = 0L, day = 0, D = LocalDs.current, clock = clock,
                         groups = listOf(DirectCategory(CATEGORY_ALL, null, 1)), group = CATEGORY_ALL, guideLoad = GuideLoad.Idle, nameColPx = 260,
                         groupName = { "Toutes" }, onDay = {}, onWindowStart = {}, onGroup = {}, onVisible = {}, onRetry = {},
                         onSelect = { _, _ -> }, onWatch = {}, onRemind = { _, _ -> }, onRecord = { _, _ -> },

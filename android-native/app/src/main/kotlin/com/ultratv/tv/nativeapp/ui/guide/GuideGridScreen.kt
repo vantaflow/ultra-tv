@@ -294,42 +294,56 @@ class GuideGridViewModel @Inject constructor(
     }
 
     /**
-     * Chaînes du groupe ayant un guide dans la fenêtre (pas 55 000 lignes vides) : le groupe est filtré par Room
-     * (requêtes paginées), jamais en mémoire.
+     * Chaînes du groupe ayant un guide dans la JOURNÉE de la fenêtre (pas 55 000 lignes vides) : le groupe est filtré par Room
+     * (requêtes paginées), jamais en mémoire. La plage ne dépend que du jour ([guideChannelRange]) : décaler la fenêtre de 90 min
+     * ne reconstruit pas la liste (et ne la vide pas) ; une chaîne sans programme dans la fenêtre courante reste, ligne vide.
      */
     val channels: kotlinx.coroutines.flow.Flow<PagingData<ChannelEntity>> =
-        combine(pid, _windowStart, selectedGroup, hiddenStore.hidden, profiles.currentId) { id, w, g, hidden, prof -> arrayOf(id, w, g, hidden, prof) }
+        combine(pid, _windowStart.map { guideChannelRange(it) }.distinctUntilChanged(), selectedGroup, hiddenStore.hidden, profiles.currentId) { id, range, g, hidden, prof -> arrayOf(id, range, g, hidden, prof) }
             .distinctUntilChanged { a, b -> a.contentEquals(b) }
             .flatMapLatest { a ->
-                @Suppress("UNCHECKED_CAST") val id = a[0] as Long?; val w = a[1] as Long; val g = a[2] as String; val hidden = a[3] as Set<String>; val prof = a[4] as Long
+                @Suppress("UNCHECKED_CAST") val id = a[0] as Long?; val range = a[1] as Pair<Long, Long>; val g = a[2] as String; val hidden = a[3] as Set<String>; val prof = a[4] as Long
+                val from = range.first; val to = range.second
                 if (id == null) flowOf(PagingData.empty())
                 else Pager(com.ultratv.tv.nativeapp.data.repo.PagingMemory.config(20, 10, 30)) {
                     when (g) {
-                        com.ultratv.tv.nativeapp.ui.live.CATEGORY_FAVORITES -> channelDao.pagedWithEpgFavorites(id, w, w + GUIDE_WINDOW_MS, prof)
+                        com.ultratv.tv.nativeapp.ui.live.CATEGORY_FAVORITES -> channelDao.pagedWithEpgFavorites(id, from, to, prof)
                         com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL -> {
                             val hiddenIds = hidden.filter { it.startsWith("LIVE:$id:") }.map { it.substringAfterLast(':') }
-                            channelDao.pagedWithEpgAll(id, w, w + GUIDE_WINDOW_MS, if (hiddenIds.isEmpty()) 0 else 1, hiddenIds)
+                            channelDao.pagedWithEpgAll(id, from, to, if (hiddenIds.isEmpty()) 0 else 1, hiddenIds)
                         }
-                        else -> channelDao.pagedWithEpgForCategory(id, g, w, w + GUIDE_WINDOW_MS)
+                        else -> channelDao.pagedWithEpgForCategory(id, g, from, to)
                     }
                 }.flow
             }.cachedIn(viewModelScope)
 
+    /** Programmes des lignes visibles, par chaîne (cache par plage : voir [GuideProgrammeCache]). */
+    private val cache = GuideProgrammeCache()
     private val _programmes = MutableStateFlow<Map<Long, List<EpgEntity>>>(emptyMap())
     val programmes: StateFlow<Map<Long, List<EpgEntity>>> = _programmes.asStateFlow()
     private val visible = MutableStateFlow<List<Long>>(emptyList())
     fun setVisible(ids: List<Long>) { visible.value = ids }
+    /** Incrémenté à la fin d'une synchro du guide : les programmes déjà lus sont relus (sans être effacés d'abord). */
+    private val reload = MutableStateFlow(0)
 
     init {
         viewModelScope.launch {
-            combine(visible.debounce(150), _windowStart) { v, w -> v to w }.collect { (ids, w) ->
+            combine(visible.debounce(150), _windowStart, reload) { v, w, _ -> v to w }.collect { (ids, w) ->
                 if (ids.isEmpty()) return@collect
-                val rows = ids.chunked(500).flatMap { epgDao.rangeForChannels(it, w, w + GUIDE_WINDOW_MS) }
-                _programmes.value = _programmes.value + rows.groupBy { it.channelId }.let { m -> ids.associateWith { normalizeRow(m[it].orEmpty()) } }
+                val (from, to) = guideNeededRange(w)
+                val missing = cache.missing(ids, from, to)
+                if (missing.isEmpty()) return@collect   // décalage dans la plage déjà chargée : rien à lire, rien à republier
+                val (fetchFrom, fetchTo) = guideFetchRange(w)
+                val rows = missing.chunked(500).flatMap { epgDao.rangeForChannels(it, fetchFrom, fetchTo) }
+                if (cache.put(missing, fetchFrom, fetchTo, rows)) _programmes.value = cache.snapshot()
             }
         }
-        // Nouvelle fenêtre : on repart d'un cache vide (les lignes visibles sont rechargées).
-        viewModelScope.launch { _windowStart.collect { _programmes.value = emptyMap() } }
+        // Fin d'une synchro du guide : les programmes nouveaux apparaissent sans quitter l'écran.
+        viewModelScope.launch {
+            syncBus.epg.map { it is com.ultratv.tv.nativeapp.data.xmltv.EpgState.Loading }.distinctUntilChanged().collect { loading ->
+                if (!loading) { cache.invalidate(); reload.value++ }
+            }
+        }
     }
 
     fun addReminder(channel: ChannelEntity, prog: EpgEntity) {
@@ -358,7 +372,8 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
     }
     val D = LocalDs.current
     val channels = vm.channels.collectAsLazyPagingItems()
-    val programmes by vm.programmes.collectAsState()
+    // État non délégué : lu SEULEMENT là où il sert (ligne par ligne sur la TV, grille entière sur le tactile), jamais ici.
+    val programmesState = vm.programmes.collectAsState()
     val windowStart by vm.windowStart.collectAsState()
     var day by remember { mutableStateOf(0) }
     // Horloge UNIQUE (30 s) : lue seulement au dessin (barres, ligne de l'heure) ou dans de petits textes dédiés.
@@ -404,7 +419,7 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
     }
 
     if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) GuideTouch(
-        channels = channels, programmes = programmes, windowStart = windowStart, day = day, D = D, vm = vm, guideLoad = guideLoad,
+        channels = channels, programmes = programmesState.value, windowStart = windowStart, day = day, D = D, vm = vm, guideLoad = guideLoad,
         onDay = { d -> day = d; vm.setWindowStart(guideWindowStart(System.currentTimeMillis(), d)) },
         onShift = { dir -> vm.setWindowStart(windowStart + dir * 3 * SLOT_MS) },
         onSelect = { c, p -> actionTarget = c to p },
@@ -413,7 +428,7 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
     ) else GuideTvContent(
         channelCount = channels.itemCount, channelAt = { channels.getOrNull(it) }, peekAt = { channels.peekOrNull(it) },
         itemKey = com.ultratv.tv.nativeapp.ui.common.rememberSafeItemKey(channels) { it.id },
-        programmes = programmes, windowStart = windowStart, day = day, D = D, clock = clock,
+        progsFor = { id -> programmesState.value[id].orEmpty() }, windowStart = windowStart, day = day, D = D, clock = clock,
         groups = groups, group = group, guideLoad = guideLoad, nameColPx = nameColPx, groupName = groupName,
         onDay = { d -> day = d; vm.setWindowStart(guideWindowStart(System.currentTimeMillis(), d)) },
         onWindowStart = { ms -> vm.setWindowStart(ms) },
@@ -641,11 +656,36 @@ private fun CategoryChip(label: String, selected: Boolean, onClick: () -> Unit) 
     }
 }
 
+/**
+ * Cible de focus d'une grille qui change sous le doigt : ◀ / ▶ au bord de la fenêtre (le programme voisin dans le temps) ou
+ * ⏪ ⏩ (premier programme du jour pour la chaîne focalisée). Posée AVANT le changement, prise par la case qui se compose
+ * ensuite (même image), effacée à la première prise ou à la touche suivante : jamais de focus déplacé à retardement.
+ */
+internal class GuideFocusPlan {
+    var progId = -1L
+    var channelId = -1L
+    var firstOfRow = false
+    /** Vrai pendant [take] : l'entrée de la grille (première case) ne détourne pas la demande de focus. */
+    var entering = false
+        private set
+
+    /** Donne le focus à [target], y compris quand il était perdu hors de la grille (sinon l'entrée de la grille le détournait sur la première case). */
+    fun take(target: androidx.compose.ui.focus.FocusRequester) {
+        entering = true
+        try { runCatching { target.requestFocus() } } finally { entering = false }
+    }
+
+    fun clear() { progId = -1L; channelId = -1L; firstOfRow = false }
+
+    fun wants(channelId: Long, progId: Long, firstShown: Boolean): Boolean =
+        (this.progId == progId) || (firstOfRow && firstShown && this.channelId == channelId)
+}
+
 /** Ligne de 84 px : colonne chaîne (logo fixe + nom) puis programmes positionnés par l'heure, 8 px d'écart. */
 @Composable
 private fun GuideRow(
     c: ChannelEntity, progs: List<EpgEntity>, windowStart: Long, gridW: Dp, nameColPx: Int, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, clock: androidx.compose.runtime.State<Long>,
-    firstModifier: Modifier, onSelect: (EpgEntity) -> Unit, onRemind: (EpgEntity) -> Unit, onFocusProg: (EpgEntity) -> Unit,
+    plan: GuideFocusPlan, firstModifier: Modifier, onSelect: (EpgEntity) -> Unit, onRemind: (EpgEntity) -> Unit, onFocusProg: (EpgEntity) -> Unit,
     nowProvider: () -> Long = { System.currentTimeMillis() },
 ) {
     ProbeRow(c.id)
@@ -672,6 +712,8 @@ private fun GuideRow(
         }
         // Cases calculées une fois par (programmes, fenêtre), pas à chaque recomposition de la ligne.
         val slots = remember(progs, windowStart) { progs.map { slotFor(it.startMs, it.endMs, windowStart) } }
+        // La liste peut dépasser la fenêtre (cache par plage) : la « première » case est la première AFFICHÉE.
+        val firstShown = remember(slots) { slots.indexOfFirst { it != null } }
         Box(Modifier.width(gridW).fillMaxHeight()) {
             progs.forEachIndexed { idx, p ->
                 val slot = slots[idx] ?: return@forEachIndexed
@@ -679,6 +721,13 @@ private fun GuideRow(
                 val w = (gridW * slot.widthFrac - 8.design).coerceAtLeast(24.design)
                 // Une case par programme (clé = identifiant) : une liste qui change garde le nœud, donc le focus, des programmes qui restent.
                 key(p.id) {
+                // Cible de focus posée avant un changement de la grille : prise par la case qui la compose, dans la même image.
+                val taker = if (plan.wants(c.id, p.id, idx == firstShown)) remember { androidx.compose.ui.focus.FocusRequester() } else null
+                // Après l'image qui a posé la case : le focus perdu par les cases retirées est déjà rendu ailleurs, la prise vient APRÈS.
+                if (taker != null) LaunchedEffect(taker) {
+                    androidx.compose.runtime.withFrameNanos { }
+                    if (plan.wants(c.id, p.id, idx == firstShown)) { plan.clear(); plan.take(taker) }
+                }
                 FocusSurface(
                     onClick = { onSelect(p) },
                     // Lu au moment de l'appui long : la lambda ne capture pas l'heure (elle changerait à chaque minute).
@@ -689,7 +738,8 @@ private fun GuideRow(
                     // Sélection écrite PENDANT le passage du focus (même image que les cases) : un LaunchedEffect la décalait d'une image.
                     modifier = Modifier.onFocusChanged { if (it.isFocused) onFocusProg(p) }
                         .offset(x = gridW * slot.startFrac).width(w).fillMaxHeight()
-                        .then(if (idx == 0 || isNow) firstModifier.takeIf { idx == 0 } ?: Modifier else Modifier),
+                        .then(if (taker != null) Modifier.focusRequester(taker) else Modifier)
+                        .then(if (idx == firstShown) firstModifier else Modifier),
                 ) { f ->
                     ProbeCell(p.id)
                     val wPx = (w.value * 2).toInt()      // largeur en px de maquette
@@ -721,7 +771,8 @@ private fun GuideRow(
 @Composable
 internal fun GuideTvContent(
     channelCount: Int, channelAt: (Int) -> ChannelEntity?, peekAt: (Int) -> ChannelEntity?, itemKey: (Int) -> Any,
-    programmes: Map<Long, List<EpgEntity>>, windowStart: Long, day: Int,
+    /** Programmes d'une chaîne : lu DANS l'élément de la liste (lecture d'état suivie ligne par ligne) : l'arrivée des programmes d'une chaîne ne recompose que sa ligne. */
+    progsFor: (Long) -> List<EpgEntity>, windowStart: Long, day: Int,
     D: com.ultratv.tv.nativeapp.i18n.DesignStrings, clock: androidx.compose.runtime.State<Long>,
     groups: List<com.ultratv.tv.nativeapp.ui.live.DirectCategory>, group: String, guideLoad: GuideLoad, nameColPx: Int,
     groupName: (com.ultratv.tv.nativeapp.ui.live.DirectCategory) -> String,
@@ -742,14 +793,23 @@ internal fun GuideTvContent(
     // Programme focalisé : lu SEULEMENT par le panneau du haut et l'aperçu — lu ici, chaque déplacement recomposait
     // tout l'écran et ses lignes.
     val focusedProg = remember { mutableStateOf<Pair<ChannelEntity, EpgEntity>?>(null) }
+    // Cible de focus d'une grille qui change sous le doigt (bord de fenêtre, changement de jour) : voir [GuideFocusPlan].
+    val plan = remember { GuideFocusPlan() }
+    val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
     Column(
         modifier.fillMaxSize().padding(start = 48.design, end = 56.design, top = 40.design, bottom = 12.design)
-            // Au bord de la fenêtre, DROITE / GAUCHE font défiler le temps de 90 min au lieu de buter.
+            // Au bord de la fenêtre, DROITE / GAUCHE font défiler le temps de 90 min au lieu de buter : le focus reste sur la
+            // même chaîne, sur le programme qui suit (ou précède) dans le temps.
             .onPreviewKeyEvent { e ->
+                if (e.type == KeyEventType.KeyDown) plan.clear()   // une cible de focus périmée ne doit jamais reprendre le focus plus tard
                 // ⏪ ⏩ : un jour en arrière / en avant (Hier … après-demain), sans quitter la grille.
                 if (e.type == KeyEventType.KeyDown && (e.key == Key.MediaRewind || e.key == Key.MediaFastForward)) {
                     val d = (day + if (e.key == Key.MediaFastForward) 1 else -1).coerceIn(-1, 2)
-                    if (d != day) onDay(d)
+                    if (d != day) {
+                        // Les programmes changent tous : le focus revient sur la même chaîne, au premier programme du jour choisi.
+                        if (inGrid) focusedProg.value?.let { plan.channelId = it.first.id; plan.firstOfRow = true }
+                        onDay(d)
+                    }
                     return@onPreviewKeyEvent true
                 }
                 if (e.type != KeyEventType.KeyDown || (e.key != Key.DirectionRight && e.key != Key.DirectionLeft)) return@onPreviewKeyEvent false
@@ -757,7 +817,16 @@ internal fun GuideTvContent(
                 // Hors de la grille (jours, catégories) : navigation normale — avant, la touche était
                 // avalée et GAUCHE ne menait plus au menu depuis « Hier ».
                 if (!inGrid) return@onPreviewKeyEvent false
-                if (!focus.moveFocus(dir)) onWindowStart(windowStart + if (dir == FocusDirection.Right) 3 * SLOT_MS else -3 * SLOT_MS)
+                if (!focus.moveFocus(dir)) {
+                    // Le temps va vers la droite en gauche-à-droite, vers la gauche en arabe (positions en Dp miroitées).
+                    val forward = (dir == FocusDirection.Right) == (layoutDirection == androidx.compose.ui.unit.LayoutDirection.Ltr)
+                    focusedProg.value?.let { (ch, p) ->
+                        val list = progsFor(ch.id)
+                        val at = list.indexOfFirst { it.id == p.id }
+                        if (at >= 0) list.getOrNull(at + if (forward) 1 else -1)?.let { plan.progId = it.id }
+                    }
+                    onWindowStart(windowStart + if (forward) 3 * SLOT_MS else -3 * SLOT_MS)
+                }
                 true
             },
         verticalArrangement = Arrangement.spacedBy(28.design),
@@ -816,20 +885,37 @@ internal fun GuideTvContent(
 
             val state = rememberLazyListState()
             LaunchedEffect(state, channelCount) {
-                // Identifiants visibles (peek en O(1), pas de copie de toute la liste ; suit aussi l'arrivée des données).
-                snapshotFlow { state.layoutInfo.visibleItemsInfo.mapNotNull { if (it.index < channelCount) peekAt(it.index)?.id else null } }
-                    .distinctUntilChanged().collect { onVisible(it) }
+                // Identifiants visibles (peek en O(1), pas de copie de toute la liste ; suit aussi l'arrivée des données), plus
+                // 2 lignes avant et 3 après : la ligne qui entre à l'écran a déjà ses programmes (sinon le focus ne pouvait pas
+                // y aller avant leur arrivée) et son arrivée ne recompose rien.
+                snapshotFlow {
+                    val v = state.layoutInfo.visibleItemsInfo
+                    if (v.isEmpty()) emptyList() else {
+                        val hi = minOf(v.last().index + 3, channelCount - 1)
+                        (maxOf(v.first().index - 2, 0)..hi).mapNotNull { peekAt(it)?.id }
+                    }
+                }.distinctUntilChanged().collect { onVisible(it) }
             }
             val first = remember { FocusRequester() }
             var firstFocused by remember { mutableStateOf(false) }
-            RequestInitialFocus(first, hasFocus = { firstFocused }, key = programmes.isNotEmpty())
+            // Focus initial : une seule fois, quand la première ligne a ses cases ; ensuite il ne reprend plus le focus à
+            // un autre endroit (jours, catégories, autre case de la grille) quand les programmes changent.
+            val windowNow = androidx.compose.runtime.rememberUpdatedState(windowStart)
+            val firstReady by remember {
+                androidx.compose.runtime.derivedStateOf {
+                    peekAt(0)?.let { c0 -> progsFor(c0.id).any { slotFor(it.startMs, it.endMs, windowNow.value) != null } } == true
+                }
+            }
+            val initialDone = remember { BooleanArray(1) }
+            RequestInitialFocus(first, hasFocus = { if (firstFocused || inGrid) initialDone[0] = true; initialDone[0] }, key = firstReady)
             BoxWithConstraints(
                 Modifier.fillMaxWidth().weight(1f).onFocusChanged { inGrid = it.hasFocus }
                     // Entrée (↓ depuis les jours) : sur la première ligne, au programme en cours, et non sur la case qui se trouve
                     // sous l'onglet (TimeShift 01, à droite). Sortie par → interdite : au bord droit, la fenêtre défile de
                     // 90 min (onPreviewKeyEvent) au lieu de sauter sur l'onglet « Samedi ».
                     .focusProperties {
-                        enter = { first }
+                        // Entrée dans la grille : sur la première case, sauf quand une cible de focus est prise (voir [GuideFocusPlan.take]).
+                        enter = { if (plan.entering) FocusRequester.Default else first }
                         exit = { dir -> if (dir == FocusDirection.Right) FocusRequester.Cancel else FocusRequester.Default }
                     }
                     .focusGroup(),
@@ -848,8 +934,10 @@ internal fun GuideTvContent(
                     items(count = channelCount, key = itemKey, contentType = { "row" }) { i ->
                         val c = channelAt(i)
                         if (c != null) {
+                            // Liste de CETTE chaîne seulement : l'élément ne se recompose que si elle change.
+                            val progs by remember(c.id, progsFor) { androidx.compose.runtime.derivedStateOf { progsFor(c.id) } }
                             GuideRow(
-                                c, programmes[c.id].orEmpty(), windowStart, gridW, nameColPx, D, clock,
+                                c, progs, windowStart, gridW, nameColPx, D, clock, plan,
                                 firstModifier = if (i == 0) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier,
                                 onSelect = { p -> onSelect(c, p) }, onRemind = { p -> onRemind(c, p) }, onFocusProg = { p -> focusedProg.value = c to p },
                                 nowProvider = nowProvider,
