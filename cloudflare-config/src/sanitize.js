@@ -9,6 +9,10 @@
 // - `sanitizeText` : textes courts saisis (nom d'appareil, libellé d'appairage, nom de source). Règles historiques,
 //   plus légères : un libellé d'appairage est une étiquette MAC que l'on garde lisible.
 //
+// Empreinte d'hôte : HMAC-SHA-256 de l'hôte (jamais du chemin) avec un secret du Worker (`LOG_HOST_SALT`, passé en
+// `hostKey`), 12 chiffres hexadécimaux. Sans secret : `<host>` / `<lan>` sans empreinte (jamais d'empreinte non salée,
+// qui se renverse par force brute pour une IPv4 publique). Calcul synchrone en JS pur : `sanitizeLog` reste synchrone.
+//
 // Coût : chaque passe est linéaire (classes de caractères disjointes, débuts de jeton ancrés par des regards en arrière,
 // répétitions et balayages bornés) ; aucune n'a de retour arrière catastrophique (test de durée dédié).
 
@@ -39,17 +43,80 @@ export function sanitizeText(input, max = 4000) {
   return out.slice(0, max);
 }
 
-// ---- sanitizeLog (journaux et plantages) -------------------------------------------------------------------------
+// ---- empreinte d'hôte : HMAC-SHA-256 synchrone ---------------------------------------------------------------------
 
-/** Empreinte stable et courte d'un hôte : FNV-1a 32 bits sur l'UTF-8 du nom en minuscules, 8 chiffres hexadécimaux. */
-export function hostFingerprint(host) {
-  let h = 0x811c9dc5;
-  for (const b of new TextEncoder().encode(String(host).toLowerCase())) {
-    h ^= b;
-    h = Math.imul(h, 0x01000193) >>> 0;
-  }
-  return h.toString(16).padStart(8, "0");
+let K256 = null, H256 = null;
+function initSha256() {
+  K256 = new Uint32Array(64); H256 = new Uint32Array(8);
+  const primes = [];
+  for (let n = 2; primes.length < 64; n++) if (primes.every((p) => n % p)) primes.push(n);
+  const frac = (x) => ((x - Math.floor(x)) * 0x100000000) >>> 0;
+  primes.forEach((p, i) => { K256[i] = frac(Math.cbrt(p)); if (i < 8) H256[i] = frac(Math.sqrt(p)); });
 }
+const ror = (x, n) => (x >>> n) | (x << (32 - n));
+
+/** SHA-256 (FIPS 180-4) d'octets ; vérifié contre Web Crypto dans les tests. */
+export function sha256(msg) {
+  if (!K256) initSha256();
+  const len = msg.length;
+  const buf = new Uint8Array(((len + 9 + 63) >> 6) << 6);
+  buf.set(msg); buf[len] = 0x80;
+  const dv = new DataView(buf.buffer);
+  dv.setUint32(buf.length - 8, Math.floor(len / 0x20000000));
+  dv.setUint32(buf.length - 4, (len * 8) >>> 0);
+  const h = H256.slice(), w = new Uint32Array(64);
+  for (let off = 0; off < buf.length; off += 64) {
+    for (let t = 0; t < 16; t++) w[t] = dv.getUint32(off + t * 4);
+    for (let t = 16; t < 64; t++) {
+      const a = w[t - 15], b = w[t - 2];
+      w[t] = w[t - 16] + (ror(a, 7) ^ ror(a, 18) ^ (a >>> 3)) + w[t - 7] + (ror(b, 17) ^ ror(b, 19) ^ (b >>> 10));
+    }
+    let a = h[0], b = h[1], c = h[2], d = h[3], e = h[4], f = h[5], g = h[6], k = h[7];
+    for (let t = 0; t < 64; t++) {
+      const t1 = (k + (ror(e, 6) ^ ror(e, 11) ^ ror(e, 25)) + ((e & f) ^ (~e & g)) + K256[t] + w[t]) | 0;
+      const t2 = ((ror(a, 2) ^ ror(a, 13) ^ ror(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+      k = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+    }
+    h[0] += a; h[1] += b; h[2] += c; h[3] += d; h[4] += e; h[5] += f; h[6] += g; h[7] += k;
+  }
+  const out = new Uint8Array(32);
+  new DataView(out.buffer).setUint32(0, h[0]);
+  for (let i = 1; i < 8; i++) new DataView(out.buffer).setUint32(i * 4, h[i]);
+  return out;
+}
+
+/** HMAC-SHA-256 (RFC 2104) ; clé et message en octets. */
+export function hmacSha256(key, msg) {
+  let k = key.length > 64 ? sha256(key) : key;
+  const pad = new Uint8Array(64); pad.set(k);
+  const inner = new Uint8Array(64 + msg.length), outer = new Uint8Array(64 + 32);
+  for (let i = 0; i < 64; i++) { inner[i] = pad[i] ^ 0x36; outer[i] = pad[i] ^ 0x5c; }
+  inner.set(msg, 64);
+  outer.set(sha256(inner), 64);
+  return sha256(outer);
+}
+
+const utf8 = (s) => new TextEncoder().encode(s);
+const fpCache = new Map();
+
+/**
+ * Empreinte d'un hôte : 12 premiers chiffres hexadécimaux de HMAC-SHA-256(clé, hôte en minuscules), ou null sans clé.
+ * L'appli ne connaît pas la clé : elle ne peut pas produire la même empreinte (elle écrit `<host>`).
+ */
+export function hostFingerprint(host, key) {
+  if (!key) return null;
+  const h = String(host).toLowerCase();
+  const ck = `${key}\u0000${h}`;
+  let fp = fpCache.get(ck);
+  if (!fp) {
+    fp = Array.from(hmacSha256(utf8(String(key)), utf8(h)).subarray(0, 6), (b) => b.toString(16).padStart(2, "0")).join("");
+    if (fpCache.size > 1000) fpCache.clear();
+    fpCache.set(ck, fp);
+  }
+  return fp;
+}
+
+// ---- sanitizeLog (journaux et plantages) -------------------------------------------------------------------------
 
 /** Adresse privée, de lien local ou de boucle (IPv4, IPv6, noms locaux). */
 export function isPrivateHost(host) {
@@ -63,11 +130,23 @@ export function isPrivateHost(host) {
   return h === "localhost" || /\.(local|lan|home|internal)$/.test(h);
 }
 
-/** `<host#empreinte>` (ou `<lan#…>` pour une adresse locale) ; le port éventuel n'entre pas dans l'empreinte. */
+// Clé de l'appel en cours de `sanitizeLog` (le nettoyage est synchrone : aucun autre appel ne peut s'intercaler) et
+// nombre d'empreintes nouvelles encore permises dans cet appel : au-delà, `<host>` sans empreinte (une charge faite de
+// milliers d'hôtes différents ne doit pas dépasser la limite de temps CPU du Worker).
+let curKey = null, fpBudget = 0;
+const FP_PER_CALL = 64;
+
+/** `<host#empreinte>` (`<lan#…>` pour une adresse locale), ou `<host>` / `<lan>` sans clé ; le port n'entre pas dans l'empreinte. */
 const hostTag = (raw) => {
   const str = String(raw);
   const host = (str.match(/:/g) || []).length === 1 ? str.replace(/:\d{0,5}$/, "") : str;
-  return `<${isPrivateHost(host) ? "lan" : "host"}#${hostFingerprint(host)}>`;
+  const kind = isPrivateHost(host) ? "lan" : "host";
+  let fp = null;
+  if (curKey) {
+    fp = fpCache.get(`${curKey}\u0000${host.toLowerCase()}`) || null;
+    if (!fp && fpBudget > 0) { fpBudget--; fp = hostFingerprint(host, curKey); }
+  }
+  return fp ? `<${kind}#${fp}>` : `<${kind}>`;
 };
 
 /** Seuls mots de chemin gardés (type de ressource utile au diagnostic, jamais un identifiant). */
@@ -120,8 +199,10 @@ function reduceUrlIn(scheme, body, encoded, slashes) {
  * + extension connue du dernier segment + `?*` s'il y avait une requête. Identifiants de l'autorité, segments,
  * valeurs de paramètres et fragment ne survivent jamais. `scheme` null : pas de schéma (valeur d'une clé d'hôte).
  */
-export function reduceUrl(scheme, body, { encoded = false, slashes = true } = {}) {
-  return reduceUrlIn(scheme, body, encoded, slashes);
+export function reduceUrl(scheme, body, { encoded = false, slashes = true, hostKey = null } = {}) {
+  const prev = [curKey, fpBudget];
+  curKey = hostKey || null; fpBudget = FP_PER_CALL;
+  try { return reduceUrlIn(scheme, body, encoded, slashes); } finally { [curKey, fpBudget] = prev; }
 }
 
 // Début d'adresse :
@@ -362,7 +443,7 @@ function maskKeyValues(s) {
     const value = s.slice(vs, ve);
     // Adresse déjà réduite (`url=http://<host#…>/…`, `url=<host>/*`) : rien à refaire.
     if (kind === "host" && (value.includes("://") || /^[A-Za-z][\w+.-]{0,19}:$/.test(value) || value.includes("<host") || value.includes("<lan"))) { KEY_RE.lastIndex = Math.max(ve, after); continue; }
-    // Valeur d'une clé d'hôte : seul l'hôte entre dans l'empreinte, le chemin est réduit.
+    // Valeur d'une clé d'hôte : seul l'hôte entre dans l'empreinte, le chemin est réduit (jamais haché avec ses identifiants).
     out += s.slice(last, vs) + (kind === "host" ? reduceUrlIn(null, value, false, true) : "<redacted>");
     last = ve;
     KEY_RE.lastIndex = Math.max(ve, after);
@@ -405,29 +486,38 @@ const XTREAM_TAIL = /(?<![^\s"'<>])(?:[^\s\/"'<>]{1,64}\/){1,2}\d{1,10}\.(ts|m3u
 // Échappements JSON de Gson et d'autres bibliothèques : \u002F (/), \u003A (:), \u003D (=), \u0026 (&), \u0040 (@), \u003F (?).
 const UNICODE_ESC = /\\u00(2[fF]|3[aAdDfF]|26|40)/g;
 
-/** Journal ou plantage nettoyé, au plus [max] caractères. */
-export function sanitizeLog(input, max = 4000) {
+/**
+ * Journal ou plantage nettoyé, au plus [max] caractères. [hostKey] : secret du Worker (`LOG_HOST_SALT`) pour
+ * l'empreinte d'hôte ; absent, les hôtes deviennent `<host>` / `<lan>` sans empreinte.
+ */
+export function sanitizeLog(input, max = 4000, { hostKey = null } = {}) {
   if (typeof input !== "string") return "";
-  let out = input.slice(0, max * 2).replace(CONTROL, "").replace(/\\\//g, "/")
-    .replace(UNICODE_ESC, (_, h) => String.fromCharCode(parseInt(h, 16)));
-  // Double encodage (`%253A%252F%252F`, `%2520`) : un niveau retiré, la suite le traite comme un encodage simple.
-  if (out.includes("%25")) out = out.replace(/%25([0-9A-Fa-f]{2})/g, "%$1");
-  out = maskUrls(out);
-  out = maskRequestLines(out);
-  out = out.replace(AUTH_NOSCHEME, (_, h, path) => `<redacted>@${hostTag(h)}${path ? reduceRest(path) : ""}`);
-  out = out.replace(HOSTPORT_PATH, (_, h, path) => `${hostTag(h)}${reduceRest(path)}`);
-  for (const [re, rep] of LOG_RULES) out = out.replace(re, rep);
-  out = maskKeyValues(out);
-  for (const [re, rep] of SHAPE_RULES) out = out.replace(re, rep);
-  out = out.replace(LOGIN_FAILED, "$1<redacted>");
-  out = out.replace(HOST_PHRASE, (_, a, b, h) => `${a}${b}${hostTag(h)}`);
-  out = out.replace(IPV4, (m0, ...o) => (o.slice(0, 4).every((x) => +x <= 255) ? (isPrivateHost(m0) ? "<lan>" : "<ip>") : m0));
-  out = out.replace(IPV6, (m0) => {
-    if (!/\d/.test(m0) || (!m0.includes("::") && (m0.match(/:/g) || []).length < 5)) return m0;
-    return isPrivateHost(m0) ? "<lan>" : "<ip>";
-  });
-  out = out.replace(XTREAM_PATH, "/$1/<redacted>/<redacted>/");
-  out = out.replace(XTREAM_TAIL, "<redacted>/*.$1");
-  out = out.replace(USER_PATH, "$1<user>");
-  return out.slice(0, max);
+  const prev = [curKey, fpBudget];
+  curKey = hostKey || null; fpBudget = FP_PER_CALL;
+  try {
+    let out = input.slice(0, max * 2).replace(CONTROL, "").replace(/\\\//g, "/")
+      .replace(UNICODE_ESC, (_, h) => String.fromCharCode(parseInt(h, 16)));
+    // Double encodage (`%253A%252F%252F`, `%2520`) : un niveau retiré, la suite le traite comme un encodage simple.
+    if (out.includes("%25")) out = out.replace(/%25([0-9A-Fa-f]{2})/g, "%$1");
+    out = maskUrls(out);
+    out = maskRequestLines(out);
+    out = out.replace(AUTH_NOSCHEME, (_, h, path) => `<redacted>@${hostTag(h)}${path ? reduceRest(path) : ""}`);
+    out = out.replace(HOSTPORT_PATH, (_, h, path) => `${hostTag(h)}${reduceRest(path)}`);
+    for (const [re, rep] of LOG_RULES) out = out.replace(re, rep);
+    out = maskKeyValues(out);
+    for (const [re, rep] of SHAPE_RULES) out = out.replace(re, rep);
+    out = out.replace(LOGIN_FAILED, "$1<redacted>");
+    out = out.replace(HOST_PHRASE, (_, a, b, h) => `${a}${b}${hostTag(h)}`);
+    out = out.replace(IPV4, (m0, ...o) => (o.slice(0, 4).every((x) => +x <= 255) ? (isPrivateHost(m0) ? "<lan>" : "<ip>") : m0));
+    out = out.replace(IPV6, (m0) => {
+      if (!/\d/.test(m0) || (!m0.includes("::") && (m0.match(/:/g) || []).length < 5)) return m0;
+      return isPrivateHost(m0) ? "<lan>" : "<ip>";
+    });
+    out = out.replace(XTREAM_PATH, "/$1/<redacted>/<redacted>/");
+    out = out.replace(XTREAM_TAIL, "<redacted>/*.$1");
+    out = out.replace(USER_PATH, "$1<user>");
+    return out.slice(0, max);
+  } finally {
+    [curKey, fpBudget] = prev;
+  }
 }

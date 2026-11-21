@@ -31,6 +31,7 @@ export default defineConfig({
           SIMKL_CLIENT_ID: "test-simkl-id-not-real",
           SIMKL_CLIENT_SECRET: "test-simkl-secret-not-real",
           ADMIN_TOKEN: "test-admin-token-0123456789abcdef0123456789",
+          LOG_HOST_SALT: "test-log-host-salt-not-real-0123456789abcdef",
         },
       },
     }),

@@ -4,7 +4,8 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { env } from "cloudflare:workers";
 import vectors from "./fixtures/sanitize-vectors.json";
-import { call, freshIp, newAccount, pairDevice, bearer } from "./helpers.js";
+import worker from "../src/index.js";
+import { call, freshIp, newAccount, pairDevice, bearer, ORIGIN } from "./helpers.js";
 
 const leaky = vectors.filter((v) => !v.name.startsWith("intact"));
 const secrets = [...new Set(leaky.flatMap((v) => v.mustNotContain))];
@@ -143,5 +144,37 @@ describe("ingestion : pertes signalées, jamais silencieuses", () => {
     const r = await anon("/api/anon/events", { version: "8.8.1", events });
     expect(r.status).toBe(200);
     expect(await r.json()).toEqual({ ok: true, accepted: 20, stored: 20, dropped: { filtered: 0, invalid: 2, overflow: 28 } });
+  });
+});
+
+describe("ingestion : empreinte d'hôte salée par LOG_HOST_SALT", () => {
+  const msg = (v) => `échec http://fournisseur.invalid:8080/ZZUSERZZ/ZZPASSZZ/1.ts version ${v}`;
+  it("avec le secret : <host#12 hexadécimaux>, identique d'une ligne à l'autre, jamais l'hôte", async () => {
+    for (const v of ["9.1.1", "9.1.1"]) {
+      const r = await anon("/api/anon/events", { version: v, events: [{ level: "error", message: msg(Math.random()) }] });
+      expect(r.status).toBe(200);
+    }
+    const rows = await rowsOf("9.1.1");
+    expect(rows.length).toBe(2);
+    const tags = rows.map((r) => r.message.match(/<host#([0-9a-f]{12})>\/\*\.ts/)[1]);
+    expect(tags[0]).toBe(tags[1]);
+    expectClean(rows);
+  });
+
+  it("sans le secret : <host> sans empreinte, signalé une seule fois dans le journal du Worker", async () => {
+    const { LOG_HOST_SALT: _salt, ...noSalt } = env;
+    const warn = vi.spyOn(console, "warn");
+    for (let i = 0; i < 2; i++) {
+      const r = await worker.fetch(new Request(`${ORIGIN}/api/anon/events`, {
+        method: "POST", headers: { "cf-connecting-ip": freshIp(), origin: ORIGIN, "content-type": "application/json" },
+        body: JSON.stringify({ install: crypto.randomUUID(), version: "9.2.1", events: [{ level: "error", message: msg(i) }] }),
+      }), noSalt);
+      expect(r.status).toBe(200);
+    }
+    const rows = await rowsOf("9.2.1");
+    expect(rows.length).toBe(2);
+    for (const r of rows) { expect(r.message).toContain("http://<host>/*.ts"); expect(r.message).not.toContain("#"); }
+    expectClean(rows);
+    expect(warn.mock.calls.filter((c) => String(c[0]).includes("LOG_HOST_SALT")).length).toBeLessThanOrEqual(1);
   });
 });
