@@ -1862,6 +1862,12 @@
     <string name="mlib_hub_title">مكتباتي</string>
     <string name="mlib_hub_row_hint">الخوادم والحالة وما تشاهده</string>
     <string name="mlib_hub_empty">لا توجد مكتبة بعد. أضف خادم Jellyfin أو Emby أو Plex أو مشاركة NAS من الإعدادات › المصادر.</string>
+    <string name="mlib_filter_all_sources">كل المصادر</string>
+    <string name="mlib_filter_empty_movies">لا توجد أفلام في مكتباتك</string>
+    <string name="mlib_filter_empty_series">لا توجد مسلسلات في مكتباتك</string>
+    <string name="mlib_filter_empty_movies_source">لا توجد أفلام في هذه المكتبة</string>
+    <string name="mlib_filter_empty_series_source">لا توجد مسلسلات في هذه المكتبة</string>
+    <string name="mlib_filter_empty_source">لا يوجد شيء في هذه المكتبة بعد</string>
     <string name="mlib_status_online">متصل</string>
     <string name="mlib_status_relay">مرحّل</string>
     <string name="mlib_status_offline">غير متصل · آخر نسخة %1$s</string>

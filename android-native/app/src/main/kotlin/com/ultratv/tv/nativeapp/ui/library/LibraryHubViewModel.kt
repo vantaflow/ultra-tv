@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -78,6 +80,27 @@ class LibraryHubViewModel @Inject constructor(
         if (list.isEmpty()) flowOf(emptyList())
         else combine(list.map { rowFlow(it, names) }) { it.toList() }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Filtres choisis (type, source) : repris du dernier choix de la session ([LibraryFilterMemory]) à l'ouverture de l'écran. */
+    private val filter = MutableStateFlow(LibraryFilterMemory.last)
+
+    fun setType(type: LibraryType) = update { it.copy(type = type) }
+    fun setSource(sourceId: Long?) = update { it.copy(sourceId = sourceId) }
+    private fun update(change: (LibraryFilter) -> LibraryFilter) {
+        val next = change(filter.value)
+        LibraryFilterMemory.last = next
+        filter.value = next
+    }
+
+    /**
+     * Ce que l'écran affiche : sections filtrées, pastilles disponibles, message de filtre vide. Le filtrage se fait ICI, hors
+     * composition et hors thread principal, seulement quand les sections ou le filtre changent (pas à chaque recomposition).
+     */
+    val view: StateFlow<LibraryView?> = combine(rows, filter) { r, f -> r to f }
+        .distinctUntilChanged()
+        .map { (r, f) -> r?.let { LibraryFilterLogic.apply(it, f) } }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private fun rowFlow(p: ProviderEntity, names: List<String>?) = combine(
         movieDao.observeCount(p.id), seriesDao.observeCount(p.id), history.continueWatching(p.id, 12),
