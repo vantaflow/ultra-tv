@@ -74,13 +74,15 @@ fun RequestInitialFocus(
     hasFocus: () -> Boolean,
     key: Any? = Unit,
     attempts: Int = INITIAL_FOCUS_ATTEMPTS,
+    /** Cible relue à chaque essai (par défaut [requester]) : une cible déclarée après la première composition est prise. */
+    target: (() -> FocusRequester)? = null,
 ) {
     // Tactile : aucun focus programmatique (il afficherait un anneau sur un élément que personne n'a visé).
     if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) return
     LaunchedEffect(key) {
         repeat(attempts) {
             if (hasFocus()) return@LaunchedEffect
-            val ok = runCatching { requester.requestFocus() }.getOrDefault(false)
+            val ok = runCatching { (target?.invoke() ?: requester).requestFocus() }.getOrDefault(false)
             if (ok && hasFocus()) return@LaunchedEffect
             delay(INITIAL_FOCUS_RETRY_MS)
         }
@@ -98,11 +100,12 @@ fun ScreenFocusHost(
     content: @Composable () -> Unit,
 ) {
     val requester = remember { FocusRequester() }
+    val entry = remember { ScreenEntry() }
     var hasFocus by remember { mutableStateOf(false) }
     // Navigation déclenchée depuis la barre de navigation : le focus reste dans
     // la barre (l'utilisateur appuie sur droite pour entrer dans l'écran).
     val keepNavFocus = remember { NavFocusHint.consume() }
-    if (!keepNavFocus) RequestInitialFocus(requester, hasFocus = { hasFocus })
+    if (!keepNavFocus) RequestInitialFocus(requester, hasFocus = { hasFocus }, target = { if (entry.attached) entry.requester else requester })
     Box(
         modifier
             .fillMaxSize()
@@ -110,10 +113,12 @@ fun ScreenFocusHost(
             // vide ou en squelette) ne laisse plus voir l'ancien à travers lui (superposition visible en changeant de page).
             .background(com.ultratv.tv.nativeapp.ui.design.Ux.Bg)
             .onFocusChanged { hasFocus = it.hasFocus }
-            .focusRestorer()
+            // Rien à restaurer (ouverture de l'écran) : la cible d'entrée déclarée par l'écran ([screenEntryTarget]), sinon
+            // la recherche par défaut de Compose (coin haut gauche — en arabe, ce n'est pas le début de lecture).
+            .focusRestorer(if (entry.attached) entry.requester else FocusRequester.Default)
             .focusRequester(requester)
             .focusGroup(),
-    ) { androidx.compose.runtime.CompositionLocalProvider(LocalScreenFocus provides requester) { content() } }
+    ) { androidx.compose.runtime.CompositionLocalProvider(LocalScreenFocus provides requester, LocalScreenEntry provides entry) { content() } }
     // Écran courant connu hors de son sous-arbre (menu latéral) : un focus perdu y revient, sur l'élément mémorisé.
     androidx.compose.runtime.DisposableEffect(requester) {
         CurrentScreenFocus.requester = requester
@@ -374,3 +379,33 @@ class ContentFocusMemory {
 }
 
 val LocalContentFocusMemory = androidx.compose.runtime.staticCompositionLocalOf<ContentFocusMemory?> { null }
+
+/**
+ * Sens « liste → contenu » des écrans à deux colonnes (catégories | chaînes, catégories | grille, rubriques | volet) :
+ * vers la droite en lecture de gauche à droite, vers la GAUCHE en arabe (colonnes en miroir).
+ */
+fun towardContent(dir: androidx.compose.ui.unit.LayoutDirection): FocusDirection =
+    if (dir == androidx.compose.ui.unit.LayoutDirection.Rtl) FocusDirection.Left else FocusDirection.Right
+
+/** Touche correspondante à [towardContent] : ▶ en LTR, ◀ en RTL. */
+fun towardContentKey(dir: androidx.compose.ui.unit.LayoutDirection): Key =
+    if (dir == androidx.compose.ui.unit.LayoutDirection.Rtl) Key.DirectionLeft else Key.DirectionRight
+
+/** Cible d'entrée d'un écran (voir [screenEntryTarget]), une par [ScreenFocusHost]. */
+class ScreenEntry {
+    internal val requester = FocusRequester()
+    internal var attached by mutableStateOf(false)
+}
+
+val LocalScreenEntry = androidx.compose.runtime.compositionLocalOf<ScreenEntry?> { null }
+
+/**
+ * Désigne le groupe de focus qui reçoit le focus à l'OUVERTURE de l'écran, quand il n'y a rien à restaurer (à placer juste
+ * avant son `focusGroup`). Sans effet hors d'un [ScreenFocusHost]. Les retours sur l'écran gardent le dernier élément.
+ */
+@Composable
+fun screenEntryTarget(): Modifier {
+    val entry = LocalScreenEntry.current ?: return Modifier
+    androidx.compose.runtime.DisposableEffect(entry) { entry.attached = true; onDispose { entry.attached = false } }
+    return Modifier.focusRequester(entry.requester)
+}
