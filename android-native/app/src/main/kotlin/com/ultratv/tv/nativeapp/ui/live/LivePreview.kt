@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -110,6 +111,17 @@ object LivePreviewPolicy {
     }
 
     /**
+     * Guide : exécute [act] pour chaque chaîne de [targets] SEULEMENT tant que l'écran est au premier plan ([foreground]) :
+     * passer en arrière-plan annule la collecte en cours, donc toute minuterie d'aperçu en attente (▼ puis Accueil dans le délai
+     * n'ouvre plus de flux muet en arrière-plan, qui gardait la connexion unique du fournisseur). Au retour, une collecte neuve
+     * relance tout de suite la chaîne sélectionnée (première valeur sans délai).
+     */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    suspend fun <T : Any> runInForeground(foreground: Flow<Boolean>, targets: () -> Flow<T>, act: suspend (T) -> Unit) {
+        foreground.distinctUntilChanged().collectLatest { fg -> if (fg) targets().collectLatest { act(it) } }
+    }
+
+    /**
      * Guide : déclencheurs de l'aperçu à partir de la sélection. La PREMIÈRE chaîne non nulle (ouverture de l'écran,
      * réactivation de l'aperçu) part tout de suite ; les suivantes attendent [delayMs] sans nouveau déplacement, la dernière
      * seule est retenue (jamais deux flux).
@@ -138,8 +150,8 @@ object LivePreviewPolicy {
      * [decide] après lecture des verrous parentaux ([locked], lecture suspendue du magasin) : aucune décision, donc aucun
      * flux, tant que la liste des verrous n'est pas connue (un StateFlow encore à sa valeur vide laisserait démarrer une chaîne verrouillée).
      */
-    suspend fun decideChecked(owner: LiveOwner, playingRow: String?, focusedRow: String, locked: suspend () -> Set<String>): Action =
-        decide(owner, playingRow, focusedRow, focusedRow in locked(), false)
+    suspend fun decideChecked(owner: LiveOwner, playingRow: String?, focusedRow: String, playingFailed: Boolean = false, locked: suspend () -> Set<String>): Action =
+        decide(owner, playingRow, focusedRow, focusedRow in locked(), false, playingFailed)
 
     /** Aperçu masqué (réglage) alors qu'un aperçu joue : il s'arrête tout de suite (jamais le plein écran). */
     fun stopWhenDisabled(enabled: Boolean, owner: LiveOwner): Boolean = !enabled && owner == LiveOwner.PREVIEW
@@ -150,15 +162,15 @@ object LivePreviewPolicy {
      * Que faire quand le focus se pose (après le délai) sur la ligne [focusedRow] ?
      * - chaîne verrouillée : jamais d'aperçu (le code parental serait contourné) → arrêt ;
      * - plein écran en cours : rien (l'aperçu n'est pas affiché) ;
-     * - la ligne joue déjà : rien (aucun rechargement) ;
+     * - la ligne joue déjà : rien (aucun rechargement), sauf si son flux est en erreur ([playingFailed]) : il est relancé ;
      * - retour du plein écran ([holdAfterReturn]) : la chaîne du dernier zap reste tant que l'utilisateur n'a pas
      *   bougé dans la liste (la restauration du focus sur l'ancienne ligne ne doit pas relancer un flux) ;
      * - sinon : lancement.
      */
-    fun decide(owner: LiveOwner, playingRow: String?, focusedRow: String, locked: Boolean, holdAfterReturn: Boolean): Action = when {
+    fun decide(owner: LiveOwner, playingRow: String?, focusedRow: String, locked: Boolean, holdAfterReturn: Boolean, playingFailed: Boolean = false): Action = when {
         locked -> if (owner == LiveOwner.PREVIEW) Action.STOP else Action.KEEP
         owner == LiveOwner.FULLSCREEN -> Action.KEEP
-        owner == LiveOwner.PREVIEW && playingRow == focusedRow -> Action.KEEP
+        owner == LiveOwner.PREVIEW && playingRow == focusedRow && !playingFailed -> Action.KEEP
         owner == LiveOwner.PREVIEW && holdAfterReturn -> Action.KEEP
         else -> Action.START
     }

@@ -6,6 +6,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
 import org.junit.Test
 
@@ -174,5 +175,36 @@ class LivePreviewPolicyTest {
     @Test
     fun guide_chaineLibre_demarreUneFoisLesVerrousConnus() = kotlinx.coroutines.test.runTest {
         assertEquals(Action.START, LivePreviewPolicy.decideChecked(LiveOwner.NONE, null, "1:8") { setOf("1:7") })
+    }
+
+    // ── I5 : aucune minuterie d'aperçu ne survit au passage en arrière-plan ; au retour, l'aperçu repart (M11). ──
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test fun guide_arrierePlan_annuleLaMinuterie_etAuRetourLApercuRepart() = kotlinx.coroutines.test.runTest {
+        val fg = kotlinx.coroutines.flow.MutableStateFlow(true)
+        val target = kotlinx.coroutines.flow.MutableStateFlow<String?>("A")
+        val started = mutableListOf<Pair<Long, String>>()
+        val job = launch {
+            with(LivePreviewPolicy) {
+                runInForeground(fg, { target.immediateThenSettled(700, 1_500, now = { testScheduler.currentTime }) }) { c -> started += testScheduler.currentTime to c }
+            }
+        }
+        testScheduler.runCurrent()
+        assertEquals("ouverture : tout de suite", listOf(0L to "A"), started)
+        testScheduler.advanceTimeBy(5_000); target.value = "B"; testScheduler.runCurrent()
+        testScheduler.advanceTimeBy(300); fg.value = false; testScheduler.runCurrent()   // ▼ puis Accueil dans les 0,7 s
+        testScheduler.advanceTimeBy(10_000); testScheduler.runCurrent()
+        assertEquals("aucun flux ne démarre en arrière-plan", listOf(0L to "A"), started)
+        fg.value = true; testScheduler.runCurrent()
+        assertEquals("au retour : la chaîne sélectionnée repart tout de suite", listOf(0L to "A", 15_300L to "B"), started)
+        job.cancel()
+    }
+
+    @Test fun decision_chaineDejaDemandeeMaisEnErreur_repart() {
+        // Aperçu de cette chaîne tombé en erreur (fournisseur occupé, flux coupé) : revenir dessus le relance au lieu de rester sur le logo.
+        assertEquals(Action.START, LivePreviewPolicy.decide(LiveOwner.PREVIEW, "1:a", "1:a", locked = false, holdAfterReturn = false, playingFailed = true))
+        assertEquals(Action.KEEP, LivePreviewPolicy.decide(LiveOwner.PREVIEW, "1:a", "1:a", locked = false, holdAfterReturn = false, playingFailed = false))
+        // Verrou parental : toujours prioritaire.
+        assertEquals(Action.STOP, LivePreviewPolicy.decide(LiveOwner.PREVIEW, "1:a", "1:a", locked = true, holdAfterReturn = false, playingFailed = true))
     }
 }
