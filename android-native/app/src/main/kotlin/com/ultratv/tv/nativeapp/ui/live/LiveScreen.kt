@@ -231,7 +231,10 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
             val markMoved = Modifier.onPreviewKeyEvent { e -> if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && (e.key == androidx.compose.ui.input.key.Key.DirectionUp || e.key == androidx.compose.ui.input.key.Key.DirectionDown)) userMoved = true; false }
             val focus = LocalFocusManager.current
             LazyColumn(modifier = markMoved, verticalArrangement = Arrangement.spacedBy(10.design), contentPadding = PaddingValues(bottom = 54.design)) {
-                items(cats, key = { it.id }, contentType = { "cat" }) { c ->
+                // Catégorie répétée par le fournisseur : clés départagées (règle commune), jamais de plantage.
+                val catKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(cats) { it.id }
+                items(cats.size, key = { catKeys[it] }, contentType = { "cat" }) { ci ->
+                    val c = cats[ci]
                     CategoryRow(
                         label = when (c.id) { CATEGORY_FAVORITES -> D.catFavorites; CATEGORY_ALL -> D.catAll; else -> prettyCategoryName(c.name.orEmpty()) },
                         count = c.count, selected = c.id == selected, locked = c.locked,
@@ -333,7 +336,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
         var variants by remember(ch.id) { mutableStateOf<List<ChannelEntity>>(emptyList()) }
         var variantPicker by remember(ch.id) { mutableStateOf(false) }
         LaunchedEffect(ch.id) { variants = vm.variantsOf(ch) }
-        if (variantPicker) com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(D.otherQualities, variants.map { it.id to (qualityName(it.quality) + " · " + it.title) }, ch.id, { id -> variants.firstOrNull { it.id == id }?.let { play(it, exact = true) }; variantPicker = false; actionsFor = null }, { variantPicker = false })
+        if (variantPicker) com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(D.otherQualities, variants.map { it.id }.zip(variantLabels(variants.map { it.quality to it.title })), ch.id, { id -> variants.firstOrNull { it.id == id }?.let { play(it, exact = true) }; variantPicker = false; actionsFor = null }, { variantPicker = false })
         else ModalFocusScope(onBack = { actionsFor = null }, modifier = Modifier.background(Ux.Scrim)) {
             Column(Modifier.clip(RoundedCornerShape(28.design)).background(Ux.SurfaceDeep).padding(48.design), verticalArrangement = Arrangement.spacedBy(16.design)) {
                 Text(ch.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 36.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(560.design))
@@ -763,6 +766,9 @@ internal fun durationText(D: DesignStrings, ms: Long): String {
 }
 
 private fun qualityName(q: Int) = when (q) { 4 -> "4K"; 3 -> "FHD"; 2 -> "HD"; 1 -> "SD"; else -> "—" }
+
+/** Libellés de « Autres qualités » (« HD · M6 », « — · M6 » si la qualité est inconnue) : peuvent se répéter, jamais une clé de liste brute. */
+internal fun variantLabels(v: List<Pair<Int, String>>): List<String> = v.map { (q, title) -> qualityName(q) + " · " + title }
 
 
 // ───────────────────────── Tactile (téléphone / tablette) ─────────────────────────

@@ -575,13 +575,15 @@ private fun <T> ResultRow(title: String, items: List<T>, key: (T) -> Any, onSeeA
     val state = rememberLazyListState()
     val bounds by remember(state) { derivedStateOf { visibleBounds(state.layoutInfo) } }
     val range = bounds?.let { SearchRank.visibleRange(it.first, it.second, items.size) }
+    // Résultat présent deux fois (programme repris par deux guides, fiche fusionnée) : clés départagées.
+    val keys = com.ultratv.tv.nativeapp.ui.common.rememberUniqueKeys(items, key)
     Column(verticalArrangement = Arrangement.spacedBy(14.design)) {
         SectionHeader(title, range, items.size, onSeeAll)
         LazyRow(
             state = state, horizontalArrangement = Arrangement.spacedBy(spacing.design),
             contentPadding = PaddingValues(start = 6.design, end = 72.design, top = 8.design, bottom = 8.design),
         ) {
-            items(items.size, key = { key(items[it]) }, contentType = { "card" }) { i -> card(items[i]) }
+            items(items.size, key = { keys[it] }, contentType = { "card" }) { i -> card(items[i]) }
         }
     }
 }
@@ -706,14 +708,14 @@ private fun TypePane(
                 verticalArrangement = Arrangement.spacedBy(if (cols == 8) 28.design else 16.design),
             ) {
                 when (tab) {
-                    SearchTab.MOVIES -> items(view.movies.size, key = { view.movies[it].id }, contentType = { "poster" }) { MoviePoster(view.movies[it], null, openMovie) }
-                    SearchTab.SERIES -> items(view.series.size, key = { view.series[it].id }, contentType = { "poster" }) { SeriesPoster(view.series[it], null, openSeries) }
-                    SearchTab.CHANNELS -> items(view.channels.size, key = { view.channels[it].id }, contentType = { "channel" }) { i ->
+                    SearchTab.MOVIES -> { val k = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(view.movies) { it.id }; items(view.movies.size, key = { k[it] }, contentType = { "poster" }) { MoviePoster(view.movies[it], null, openMovie) } }
+                    SearchTab.SERIES -> { val k = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(view.series) { it.id }; items(view.series.size, key = { k[it] }, contentType = { "poster" }) { SeriesPoster(view.series[it], null, openSeries) } }
+                    SearchTab.CHANNELS -> { val k = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(view.channels) { it.id }; items(view.channels.size, key = { k[it] }, contentType = { "channel" }) { i ->
                         val c = view.channels[i]; ChannelCard(c, Modifier.fillMaxWidth()) { playChannel(c) }
-                    }
-                    else -> items(view.programs.size, key = { "${view.programs[it].channel.id}-${view.programs[it].startMs}" }, contentType = { "program" }) { i ->
+                    } }
+                    else -> { val k = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(view.programs) { "${it.channel.id}-${it.startMs}" }; items(view.programs.size, key = { k[it] }, contentType = { "program" }) { i ->
                         val h = view.programs[i]; ProgramCard(h, D, Modifier.fillMaxWidth()) { playChannel(h.channel) }
-                    }
+                    } }
                 }
             }
             if (letters.isNotEmpty()) LetterRail(letters, current) { idx -> scope.launch { grid.scrollToItem(idx) } }
@@ -771,7 +773,8 @@ private fun StartPane(recent: List<String>, latest: List<Any>, vm: SearchViewMod
             Column(verticalArrangement = Arrangement.spacedBy(16.design)) {
                 Text(D.searchRecentlyAdded, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 22.spx, letterSpacing = 2.sp)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(20.design), contentPadding = PaddingValues(start = 6.design, end = 72.design, top = 8.design, bottom = 8.design)) {
-                    items(latest.size, key = { i -> latest[i].let { if (it is MovieEntity) "m${it.id}" else "s${(it as SeriesEntity).id}" } }, contentType = { "poster" }) { i ->
+                    val latestKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(latest) { if (it is MovieEntity) "m${it.id}" else "s${(it as SeriesEntity).id}" }
+                    items(latest.size, key = { latestKeys[it] }, contentType = { "poster" }) { i ->
                         when (val v = latest[i]) {
                             is MovieEntity -> MoviePoster(v, 180, openMovie)
                             is SeriesEntity -> SeriesPoster(v, 180, openSeries)
@@ -926,20 +929,24 @@ private fun SearchTouch(
                         if (tab == SearchTab.ALL && n > shown) item(key = "more-${t.name}") { TouchChip(D.searchSeeAll + " (" + n + ")", false) { vm.setTab(t) } }
                     }
                     section(SearchTab.MOVIES, D.searchMovies(view.movies.size), view.movies.size) { shown ->
-                        items(shown, key = { "m${view.movies[it].id}" }, contentType = { "vod" }) { i ->
+                        val k = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(view.movies.take(shown)) { "m${it.id}" }
+                        items(shown, key = { k[it] }, contentType = { "vod" }) { i ->
                             val m = view.movies[i]; TouchVodRow(m.title, m.poster, TmdbKind.MOVIE, m.year, listOfNotNull(m.year?.toString(), ratingLabel(m.rating, D), LocalSearchSources.current?.get(m.providerId)).joinToString(" · ")) { openMovie(m) }
                         }
                     }
                     section(SearchTab.SERIES, D.searchSeries(view.series.size), view.series.size) { shown ->
-                        items(shown, key = { "s${view.series[it].id}" }, contentType = { "vod" }) { i ->
+                        val k = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(view.series.take(shown)) { "s${it.id}" }
+                        items(shown, key = { k[it] }, contentType = { "vod" }) { i ->
                             val s = view.series[i]; TouchVodRow(s.title, s.poster, TmdbKind.TV, s.year, listOfNotNull(s.year?.toString(), ratingLabel(s.rating, D), LocalSearchSources.current?.get(s.providerId)).joinToString(" · ")) { openSeries(s) }
                         }
                     }
                     section(SearchTab.CHANNELS, D.searchChannels(view.channels.size), view.channels.size) { shown ->
-                        items(shown, key = { "c${view.channels[it].id}" }, contentType = { "channel" }) { i -> val c = view.channels[i]; TouchChannelHit(c) { playChannel(c) } }
+                        val k = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(view.channels.take(shown)) { "c${it.id}" }
+                        items(shown, key = { k[it] }, contentType = { "channel" }) { i -> val c = view.channels[i]; TouchChannelHit(c) { playChannel(c) } }
                     }
                     section(SearchTab.PROGRAMS, D.searchPrograms(view.programs.size), view.programs.size) { shown ->
-                        items(shown, key = { "p${view.programs[it].channel.id}-${view.programs[it].startMs}" }, contentType = { "program" }) { i -> val h = view.programs[i]; TouchProgramHit(h, D) { playChannel(h.channel) } }
+                        val k = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(view.programs.take(shown)) { "p${it.channel.id}-${it.startMs}" }
+                        items(shown, key = { k[it] }, contentType = { "program" }) { i -> val h = view.programs[i]; TouchProgramHit(h, D) { playChannel(h.channel) } }
                     }
                 }
             }

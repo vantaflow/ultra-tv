@@ -298,7 +298,9 @@ fun SeriesDetailTvContent(
                         .focusGroup(),
                     state = listState, verticalArrangement = Arrangement.spacedBy(12.design),
                 ) {
-                    itemsIndexed(shown, key = { _, e -> "${e.season}:${e.episode}:${e.remoteId}" }, contentType = { _, _ -> "episode" }) { i, ep ->
+                    // Épisode envoyé deux fois par le fournisseur (même saison, numéro et identifiant) : clés départagées.
+                    val epKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(shown) { e -> "${e.season}:${e.episode}:${e.remoteId}" }
+                    itemsIndexed(shown, key = { i, _ -> epKeys[i] }, contentType = { _, _ -> "episode" }) { i, ep ->
                         EpisodeCard(
                             ep, cleanEpisodeTitle(ep.title, series.name, series.title), series.backdrop ?: series.poster, data.progress[ep.remoteId], D,
                             seen = com.ultratv.tv.nativeapp.data.trakt.TraktLibrary.episodeKey(ep.season, ep.episode) in data.traktSeen,

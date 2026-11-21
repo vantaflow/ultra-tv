@@ -96,7 +96,9 @@ fun SimpleChannelsScreen(
                     contentPadding = PaddingValues(top = 8.design, bottom = 40.design),
                     verticalArrangement = Arrangement.spacedBy(16.design),
                 ) {
-                    items(list, key = { it.channel.id }) { r ->
+                    val keys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(list) { it.channel.id }
+                    items(list.size, key = { keys[it] }) { ri ->
+                        val r = list[ri]
                         ChannelBigRow(
                             r, nowNext[r.channel.id]?.first?.title,
                             onFocus = { focusedId = r.channel.id },

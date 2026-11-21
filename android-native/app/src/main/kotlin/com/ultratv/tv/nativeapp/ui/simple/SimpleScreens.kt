@@ -298,7 +298,10 @@ fun SimpleFavoritesScreen(onPlayChannel: (String, String) -> Unit, onOpenMovie: 
         LazyColumn(Modifier.weight(1f).onFocusChanged { hasFocus = it.hasFocus }.focusRestorer().focusGroup(), verticalArrangement = Arrangement.spacedBy(32.design)) {
             if (channels.isNotEmpty()) {
                 item { Text(S.myChannels, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 34.spx) }
-                items(channels.chunked(if (touch) 1 else 3), key = { row -> "c" + row.first().id }) { row ->
+                val chRows = channels.chunked(if (touch) 1 else 3)
+                val chKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(chRows) { row -> "c" + row.first().id }
+                items(chRows.size, key = { chKeys[it] }) { ri ->
+                    val row = chRows[ri]
                     Row(horizontalArrangement = Arrangement.spacedBy(28.design)) {
                         row.forEach { c ->
                             val isFirst = c.id == channels.first().id
@@ -428,7 +431,9 @@ fun SimpleSearchScreen(onOpenChannel: (String, String) -> Unit, onOpenMovie: (Lo
                     else -> {
                         Text(S.found, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 34.spx)
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(16.design)) {
-                            items(hits, key = { it.key }) { h ->
+                            val hitKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(hits) { it.key }
+                            items(hits.size, key = { hitKeys[it] }) { hi ->
+                                val h = hits[hi]
                                 FocusSurface(onClick = h.open, shape = RoundedCornerShape(28.design), bg = Ux.Surface2, ringWidth = 8.design, focusedScale = 1f, modifier = Modifier.fillMaxWidth().height(150.designT)) { f ->
                                     Row(Modifier.fillMaxSize().padding(horizontal = 24.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(28.design)) {
                                         PosterImage(h.image, h.title, Modifier.width(84.design).height(116.design), radius = 14)

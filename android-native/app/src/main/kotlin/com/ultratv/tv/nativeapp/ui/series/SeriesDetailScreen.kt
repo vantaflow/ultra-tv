@@ -151,7 +151,8 @@ fun SeriesDetailScreen(
             else item(key = "dl-season") {
                 com.ultratv.tv.nativeapp.ui.mobile.MobileSecondaryButton(dlStrings.downloadSeason, onClick = { dlVm.downloadSeason(series, shown, dlStrings) })
             }
-            items(shown, key = { "${it.season}:${it.episode}:${it.remoteId}" }) { ep ->
+            val epKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(shown) { "${it.season}:${it.episode}:${it.remoteId}" }
+            itemsIndexed(shown, key = { i, _ -> epKeys[i] }) { _, ep ->
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     EpisodeRow(ep, cleanEpisodeTitle(ep.title, series.name, series.title), series.backdrop ?: series.poster, progress[ep.remoteId], D, traktSeen = com.ultratv.tv.nativeapp.data.trakt.TraktLibrary.episodeKey(ep.season, ep.episode) in traktSeen, modifier = Modifier.weight(1f)) { vm.playEpisode(series.name, series.remoteId, series.providerId, ep, onPlayEpisode) }
                     com.ultratv.tv.nativeapp.ui.downloads.EpisodeDownloadButton(series, ep, downloads[ep.remoteId], dlVm)

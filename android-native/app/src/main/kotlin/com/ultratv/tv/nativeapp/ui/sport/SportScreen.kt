@@ -377,12 +377,21 @@ fun SportHomeSection(rowModifier: Modifier, contentPadding: PaddingValues, onPla
     val st by vm.state.collectAsStateWithLifecycle()
     val badges by vm.badges.collectAsStateWithLifecycle()
     if (st.live.isEmpty()) return
-    val D = LocalDs.current
     val clock = rememberEpgClock()
-    androidx.compose.runtime.CompositionLocalProvider(LocalTeamBadges provides badges) { Column(verticalArrangement = Arrangement.spacedBy(14.design)) {
+    androidx.compose.runtime.CompositionLocalProvider(LocalTeamBadges provides badges) { SportHomeRow(st.live, clock, rowModifier, contentPadding, onPlayChannel, onSeeAll) }
+}
+
+/** Rangée « Sport en direct » (sans ViewModel : testable). */
+@Composable
+internal fun SportHomeRow(live: List<SportEntry>, clock: State<Long>, rowModifier: Modifier, contentPadding: PaddingValues, onPlayChannel: (ChannelEntity) -> Unit, onSeeAll: () -> Unit) {
+    val D = LocalDs.current
+    // Deux matchs sur la même chaîne (programmes qui se chevauchent) : clés départagées, jamais de plantage.
+    val shown = androidx.compose.runtime.remember(live) { live.take(HOME_MAX) }
+    val keys = com.ultratv.tv.nativeapp.ui.common.rememberUniqueKeys(shown) { "h${it.channel.id}" }
+    Column(verticalArrangement = Arrangement.spacedBy(14.design)) {
         Text(D.sportHomeRow, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 26.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
         LazyRow(rowModifier, horizontalArrangement = Arrangement.spacedBy(18.design), contentPadding = contentPadding) {
-            items(st.live.take(HOME_MAX), key = { "h${it.channel.id}" }, contentType = { "sport" }) { e -> SportLiveCard(e, clock, 408.design) { onPlayChannel(e.channel) } }
+            items(shown.size, key = { keys[it] }, contentType = { "sport" }) { i -> val e = shown[i]; SportLiveCard(e, clock, 408.design) { onPlayChannel(e.channel) } }
             item(key = "see-all", contentType = "see-all") {
                 FocusSurface(onClick = onSeeAll, shape = RoundedCornerShape(24.design), bg = Ux.Card, focusedBg = Ux.Cta, focusedScale = 1.03f, ringWidth = 0.dp, modifier = Modifier.width(220.design).height(250.designT)) { f ->
                     Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
@@ -393,7 +402,7 @@ fun SportHomeSection(rowModifier: Modifier, contentPadding: PaddingValues, onPla
                 }
             }
         }
-    } }
+    }
 }
 
 private const val HOME_MAX = 12

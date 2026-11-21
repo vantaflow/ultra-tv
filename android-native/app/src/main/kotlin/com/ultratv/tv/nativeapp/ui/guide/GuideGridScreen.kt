@@ -930,7 +930,9 @@ internal fun GuideTvContent(
                 if (i > 0) chipsState.scrollToItem(i)
             }
             androidx.compose.foundation.lazy.LazyRow(Modifier.weight(1f), state = chipsState, horizontalArrangement = Arrangement.spacedBy(10.design), contentPadding = PaddingValues(end = 24.design)) {
-                items(groups, key = { it.id }, contentType = { "category" }) { g ->
+                val groupKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(groups) { it.id }
+                items(groups.size, key = { groupKeys[it] }, contentType = { "category" }) { gi ->
+                    val g = groups[gi]
                     val name = groupName(g)
                     val label = if (g.id == com.ultratv.tv.nativeapp.ui.live.CATEGORY_FAVORITES) name else "$name · ${com.ultratv.tv.nativeapp.ui.home.formatCount(g.count, D.locale)}"
                     CategoryChip(label, selected = g.id == group) { if (g.id != group) onGroup(g.id) }

@@ -109,6 +109,8 @@ fun PersonScreen(name: String, onOpenMovie: (Long) -> Unit, onOpenSeries: (Long)
     val list = remember(works) {
         works?.let { w -> (w.movies.map { Work(false, it.id, it.title, it.poster, it.year, it.rating) } + w.series.map { Work(true, it.id, it.title, it.poster, it.year, it.rating) }).sortedByDescending { it.year ?: 0 } }
     }
+    // Même œuvre listée deux fois (deux rôles, deux fiches de même identifiant) : clés départagées, jamais de plantage.
+    val workKeys = remember(list) { list?.let { l -> com.ultratv.tv.nativeapp.ui.common.uniqueKeys(l) { "${if (it.tv) "s" else "m"}-${it.id}" } }.orEmpty() }
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
             .then(if (touch) Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 16.dp) else Modifier.padding(start = 72.design, end = 96.design, top = 54.design, bottom = 40.design)),
@@ -126,7 +128,8 @@ fun PersonScreen(name: String, onOpenMovie: (Long) -> Unit, onOpenSeries: (Long)
                     // Marge autour des cellules : l'anneau de focus et son léger agrandissement ne sont pas rognés.
                     contentPadding = PaddingValues(horizontal = if (touch) 2.dp else 8.design, vertical = if (touch) 2.dp else 10.design),
                 ) {
-                    items(list, key = { "${if (it.tv) "s" else "m"}-${it.id}" }) { w ->
+                    items(list.size, key = { workKeys[it] }) { i ->
+                        val w = list[i]
                         WorkCell(w, cell, touch) { if (w.tv) onOpenSeries(w.id) else onOpenMovie(w.id) }
                     }
                 }

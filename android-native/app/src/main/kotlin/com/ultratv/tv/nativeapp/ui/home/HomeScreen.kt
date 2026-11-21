@@ -417,7 +417,8 @@ private fun HomeSection(
 }
 
 @Composable
-private fun ResumeRow(cards: List<ResumeCardUi>, onPlay: (WatchHistoryEntity) -> Unit) {
+private fun ResumeRow(rawCards: List<ResumeCardUi>, onPlay: (WatchHistoryEntity) -> Unit) {
+    val cards = remember(rawCards) { rawCards.withUniqueKeys() }
     LazyRow(Modifier.homeRow(), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PaddingValues(start = RowBleed, end = 96.design)) {
         items(cards, key = { it.key }, contentType = { "resume" }) { c -> ResumeCard(c) { onPlay(c.entry) } }
     }
@@ -439,7 +440,8 @@ private fun NewEpisodesRow(cards: List<NewEpisodeCardUi>, onOpen: (PosterCardUi)
 
 /** Rangée d'affiches (catalogue ou Trakt, films et séries mêlés) ; sélectionner ouvre la fiche existante. */
 @Composable
-private fun PosterRow(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
+private fun PosterRow(rawCards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
+    val cards = remember(rawCards) { rawCards.withUniqueKeys() }
     LazyRow(Modifier.homeRow(), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
         items(cards, key = { it.key }, contentType = { "poster" }) { p ->
             com.ultratv.tv.nativeapp.ui.catalog.PosterCell(p.item, Modifier.width(PosterWidth), kind = p.kind, imageWidth = PosterWidth) { onOpen(p) }
@@ -470,7 +472,8 @@ private fun SeeAllCard(label: String, onClick: () -> Unit) {
 
 /** « Top 10 aujourd'hui » : affiches avec leur rang (1 à 10) en pastille sur l'affiche. */
 @Composable
-private fun Top10Row(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
+private fun Top10Row(rawCards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
+    val cards = remember(rawCards) { rawCards.withUniqueKeys() }
     LazyRow(Modifier.homeRow(), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
         itemsIndexed(cards, key = { _, p -> p.key }, contentType = { _, _ -> "top10" }) { i, p ->
             Box(Modifier.width(PosterWidth)) {

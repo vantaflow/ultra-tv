@@ -122,6 +122,23 @@ data class ResumeCardUi(
 @Immutable
 data class PosterCardUi(val key: String, val item: PosterItem, val isShow: Boolean, val kind: TmdbKind)
 
+/**
+ * Cartes de rangée aux clés uniques (règle commune [com.ultratv.tv.nativeapp.ui.common.uniqueKeys]) : un même film vu
+ * depuis deux sources, deux nouveaux épisodes d'une série (« n-<série> » deux fois)… donnaient deux clés identiques et
+ * l'accueil plantait. La première carte garde sa clé (focus et mémoire de rangée conservés).
+ */
+@JvmName("uniqueResumeKeys")
+fun List<ResumeCardUi>.withUniqueKeys(): List<ResumeCardUi> {
+    val keys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(this) { it.key }
+    return if (keys.indices.all { keys[it] == this[it].key }) this else mapIndexed { i, c -> if (keys[i] == c.key) c else c.copy(key = keys[i] as String) }
+}
+
+@JvmName("uniquePosterKeys")
+fun List<PosterCardUi>.withUniqueKeys(): List<PosterCardUi> {
+    val keys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(this) { it.key }
+    return if (keys.indices.all { keys[it] == this[it].key }) this else mapIndexed { i, c -> if (keys[i] == c.key) c else c.copy(key = keys[i] as String) }
+}
+
 /** Carte chaîne : programme en cours déjà résolu (titre, horaire et part écoulée, rafraîchis toutes les minutes). */
 @Immutable
 data class ChannelCardUi(val channel: ChannelEntity, val nowTitle: String?, val timeRange: String? = null, val progress: Float? = null)

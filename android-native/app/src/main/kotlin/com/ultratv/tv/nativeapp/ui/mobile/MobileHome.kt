@@ -16,6 +16,7 @@ import com.ultratv.tv.nativeapp.i18n.locale
 import com.ultratv.tv.nativeapp.ui.home.ShortcutId
 import com.ultratv.tv.nativeapp.ui.home.ShortcutUi
 import com.ultratv.tv.nativeapp.ui.home.formatCount
+import com.ultratv.tv.nativeapp.ui.home.withUniqueKeys
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -183,8 +184,9 @@ fun MobileHomeScreen(
                     HomeSectionId.SHORTCUTS -> MobileShortcuts(rows.shortcuts, onShortcut)
                     HomeSectionId.RESUME -> Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
                         SectionHeader(D.continueWatching, null, {})
+                        val resume = androidx.compose.runtime.remember(rows.resume) { rows.resume.withUniqueKeys() }
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
-                            items(rows.resume, key = { it.key }, contentType = { "resume" }) { c -> ResumeCard(c, D) { onPlayHistory(c.entry) } }
+                            items(resume, key = { it.key }, contentType = { "resume" }) { c -> ResumeCard(c, D) { onPlayHistory(c.entry) } }
                         }
                     }
                     HomeSectionId.TRAKT_AVAILABLE -> TraktPosterRow(D.traktAvailable, rows.availableNow, wide, openPoster)
@@ -202,8 +204,9 @@ fun MobileHomeScreen(
                         rows.libraries.getOrNull(id.libraryIndex)?.let { l -> TraktPosterRow(D.catalogSortName(com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Sort.RECENT) + " · " + l.name, l.cards, wide, openPoster) }
                     HomeSectionId.RECENT_CHANNELS -> Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
                         SectionHeader(D.recentlyWatched, null, {})
+                        val recent = androidx.compose.runtime.remember(rows.recentChannels) { rows.recentChannels.withUniqueKeys() }
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
-                            items(rows.recentChannels, key = { it.key }, contentType = { "resume" }) { c -> ResumeCard(c, D) { onPlayHistory(c.entry) } }
+                            items(recent, key = { it.key }, contentType = { "resume" }) { c -> ResumeCard(c, D) { onPlayHistory(c.entry) } }
                         }
                     }
                     HomeSectionId.TOP_SERIES -> TraktPosterRow(D.topRatedSeries, rows.topSeries, wide, openPoster)
@@ -227,10 +230,11 @@ fun MobileHomeScreen(
 @Composable
 private fun TraktPosterRow(title: String, cards: List<PosterCardUi>, wide: Boolean, onOpen: (PosterCardUi) -> Unit) {
     val w = if (wide) 150.dp else 110.dp
+    val unique = androidx.compose.runtime.remember(cards) { cards.withUniqueKeys() }
     Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
         SectionHeader(title, null, {})
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
-            items(cards, key = { it.key }, contentType = { "poster" }) { p ->
+            items(unique, key = { it.key }, contentType = { "poster" }) { p ->
                 com.ultratv.tv.nativeapp.ui.catalog.PosterCell(p.item, Modifier.width(w), kind = p.kind, imageWidth = w) { onOpen(p) }
             }
         }

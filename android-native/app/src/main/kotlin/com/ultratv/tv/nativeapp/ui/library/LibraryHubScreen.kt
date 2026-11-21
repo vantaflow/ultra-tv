@@ -179,7 +179,8 @@ private fun LibrarySection(r: LibraryRow, touch: Boolean, onOpenMovie: (Long) ->
             }
             Text(label, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = if (touch) 14.sp else 24.spx, color = Ux.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(if (touch) 10.dp else 18.design)) {
-                items(sh.tiles, key = { "${sh.kind}:${sh.title}:${it.isSeries}:${it.id}" }) { t -> PosterTile(t, touch) { if (t.isSeries) onOpenSeries(t.id) else onOpenMovie(t.id) } }
+                val tileKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(sh.tiles) { "${sh.kind}:${sh.title}:${it.isSeries}:${it.id}" }
+                items(sh.tiles.size, key = { tileKeys[it] }) { ti -> val t = sh.tiles[ti]; PosterTile(t, touch) { if (t.isSeries) onOpenSeries(t.id) else onOpenMovie(t.id) } }
                 // « Tout voir » : grille paginée de Films / Séries filtrée sur ce serveur (catégories = bibliothèques, genre, année, tri).
                 sh.seeAllSeries?.let { ser -> item(key = "all:${sh.kind}:${sh.title}") { SeeAllTile(touch) { onSeeAll(r.provider.id, ser, sh.libraryId) } } }
             }

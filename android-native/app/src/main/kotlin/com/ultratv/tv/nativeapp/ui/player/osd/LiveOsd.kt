@@ -335,6 +335,8 @@ private fun ProgressLine(range: String?, p: OsdProgress, sz: Sz) {
 
 @Composable
 private fun RecentsRow(state: LiveOsdState, focus: LiveOsdFocus, sz: Sz, onRecent: (String) -> Unit, onStage: (OsdStage) -> Unit) {
+    // Chaîne récente présente deux fois : clés départagées, jamais de plantage de l'OSD.
+    val recentKeys = com.ultratv.tv.nativeapp.ui.common.rememberUniqueKeys(state.recents) { it.key }
     Column(
         Modifier.fillMaxWidth().onFocusChanged { if (it.hasFocus) onStage(OsdStage.RECENTS) },
         verticalArrangement = Arrangement.spacedBy(sz.d(14, 4)),
@@ -347,7 +349,7 @@ private fun RecentsRow(state: LiveOsdState, focus: LiveOsdFocus, sz: Sz, onRecen
             horizontalArrangement = Arrangement.spacedBy(sz.d(20, 8)),
             contentPadding = PaddingValues(horizontal = sz.d(96, 12), vertical = sz.d(10, 2)),
         ) {
-            items(state.recents.size, key = { state.recents[it].key }) { i ->
+            items(state.recents.size, key = { recentKeys[it] }) { i ->
                 val r = state.recents[i]
                 RecentCard(r, sz, if (i == 0) Modifier.focusRequester(focus.recents) else Modifier, onClick = { onRecent(r.key) })
             }
