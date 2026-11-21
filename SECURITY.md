@@ -45,58 +45,97 @@ TV box + your Cloudflare Worker), so the primary threats are:
   - devices without an account (`/api/anon/events`, `/api/anon/crash`, since
     1.3.72) need no token: the routes are open, capped per IP, per install and
     globally, keep at most 20 lines per batch and 16 KB per crash.
-  Lines whose device model is `robolectric` (unit tests) are acknowledged but
-  never stored. If the database rejects a write the Worker answers `503` (the
-  app keeps the line and retries) instead of a silent `ok`; responses report
-  how many lines were stored and why the others were dropped (duplicate,
-  sampling, invalid, over the batch cap, test device), never their content.
+  Lines and anonymous pings whose device model is `robolectric` (unit tests)
+  are acknowledged but never stored. If the database rejects a write, a crash
+  gets `503` with `Retry-After` (the app keeps the file and sends it again at
+  the next launch only); log lines get `200` with `dropped.storage` and are
+  lost, because the app retries every `5xx` without reading `Retry-After` and a
+  `503` would make the whole fleet retry in a loop during a long outage (for
+  example an exhausted database quota). After a failed write, log lines skip
+  the database for 60 s (circuit breaker, per Worker isolate). Responses
+  report how many lines were stored and why the others were dropped
+  (duplicate, sampling, invalid, over the batch cap, test device, storage),
+  never their content.
 - **What is stored** — per line: kind (log or crash), timestamp, level, tag,
-  message or stack trace, app version, Android SDK, device model, country
-  (from Cloudflare, never the IP address), a short non-reversible fingerprint
-  of the device (and, for paired devices, of the account: HMAC with a server
-  secret). Never the IP address, the account login, the install ID, or the MAC
-  label (the `mac` column is no longer filled). Logs are kept 7 days, crashes
-  30 days.
+  message or stack trace, app version, device model, Android SDK (crashes
+  only), country (from Cloudflare, never the IP address), a short
+  non-reversible fingerprint of the device (and, for paired devices, of the
+  account: HMAC with a server secret). New lines never contain the IP address,
+  the account login, the install ID or the MAC label (the `mac` column is no
+  longer filled). Lines written before the current sanitiser was deployed may
+  still contain such data until they are rewritten
+  (`cloudflare-config/scripts/resanitize-events.mjs`) or expire, and so may the
+  old D1 database kept as a fallback (`cloudflare-config/wrangler.toml`). Logs are kept 7
+  days, crashes 30 days.
 - **Telemetry sanitiser** — the Worker is the last barrier, including for old
   app versions that cannot be updated: every text field (message, stack, tag,
   device model, version) is sanitised on all ingestion routes before anything
   is written to the database or to the Worker's own logs
   (`cloudflare-config/src/sanitize.js`, `sanitizeLog`). Rules, as an allow-list:
   - **every URL** (`http`, `https`, `rtmp`, `rtsp`, `udp`, `mms`, `stalker:`, any
-    `scheme://`, also percent-encoded and JSON-escaped) is reduced to its
-    scheme, a stable 8-hex fingerprint of the host (`<host#…>`, `<lan#…>` for a
-    private address) and only the resource type: one known path word (`live`,
-    `movie`, `series`, `timeshift`, `hls`, `get.php`, `player_api.php`,
-    `portal.php`, `xmltv.php`…), the file extension (`.ts`, `.m3u8`, `.mkv`…)
-    and `?*` if there was a query. No other path segment, query value,
-    fragment or `user:pass@` survives, whatever characters the credentials
-    contain (spaces included: a URL cut by a space is followed over the next
-    words);
+    `scheme://` at the start of a word, known schemes even when glued to a
+    digit or a `%xx` sequence, percent-encoded once or twice, JSON-escaped with
+    `\/` or `\u002F`) is reduced to its scheme, a host fingerprint (see below)
+    and only the resource type: one known path word (`live`, `movie`,
+    `series`, `timeshift`, `hls`, `get.php`, `player_api.php`, `portal.php`,
+    `xmltv.php`…), the file extension (`.ts`, `.m3u8`, `.mkv`…) and `?*` if
+    there was a query. Path segments, query values, fragments and
+    `user:pass@` are dropped. Credentials that contain a space, a tab, a quote,
+    `<`, `>`, a backslash or a backtick are followed: the words after a cut are
+    absorbed while they look like the rest of the URL, and up to three words
+    after a trailing `password=` / `username=` value (which may also hide a
+    word of the log line that follows);
+  - request lines (`GET /…/1.ts HTTP/1.1`), `host:port/path` and
+    `user:pass@host` without a scheme, stray `user/pass/123.ts` tails and local
+    paths with an account name (`C:\Users\…`, `/Users/…`, `/home/…`) are
+    reduced too;
   - outside URLs, values of sensitive keys are replaced by `<redacted>` in JSON
     (`"password":"…"`, escaped or single-quoted too), query strings (also
     `%3D`/`%26`-encoded, `;`-separated, any case) and headers: user name,
     login, password, any `*token`, `*secret`, `*_key`, `api_key`, `auth`,
     `authorization` (Bearer, Basic, MediaBrowser), `X-Plex-Token`,
-    `X-Emby-Token`, `mac`, `sn`, `device_id`, `signature`, session ids, e-mail;
-    whole `Cookie` / `Set-Cookie` / `Authorization` header lines;
-  - by shape: MAC addresses (`:`/`-`/`%3A`) → `<mac>`, e-mail → `<email>`, IPv4
-    and IPv6 → `<lan>` / `<ip>`, host names in network errors (`Unable to
-    resolve host`, `failed to connect to`, `Hostname … not verified`) →
-    `<host#…>`, JWTs, `Bearer …` and `utv_…` device tokens.
-  The fingerprint is an unkeyed FNV-1a hash: it groups errors of one provider
-  without naming it, but someone who already guesses a host name can confirm
-  it. HTTP codes, exception classes, messages, stack line numbers, durations
-  and codec names are kept. The app applies the same rules before sending
-  (`LogSanitizer.kt`); both sides are tested against the same vectors
-  (`cloudflare-config/test/fixtures/sanitize-vectors.json`). Free text that has
-  no recognisable shape (for example a provider name typed by the user) cannot
-  be detected by the Worker: the app must not send it.
+    `X-Emby-Token`, `mac`, `sn`, `device_id`, `signature`, `pin`, session ids,
+    e-mail (also in XML tags and as the first item of a JSON array); whole
+    `Cookie` / `Set-Cookie` / `Authorization` header lines;
+  - by shape: MAC addresses (`:`/`-`/`%3A`/dotted) → `<mac>`, e-mail (also
+    `%40` and non-ASCII letters) → `<email>`, IPv4 and IPv6 → `<lan>` /
+    `<ip>`, host names in network errors (`Unable to resolve host`, `failed to
+    connect to`, `Hostname … not verified`, `failed for`, `talking to`, `SNI`)
+    → `<host#…>`, JWTs, `Bearer …`, `Basic …`, `utv_…` device tokens and
+    `login failed for X / Y`.
+  **Host fingerprint**: HMAC-SHA-256 of the lower-cased host name only (never
+  the path or the credentials), keyed with the Worker secret `LOG_HOST_SALT`,
+  truncated to 12 hex digits (`<host#…>`, `<lan#…>` for a private address). It
+  groups errors of one provider without naming it; without the secret it can
+  neither be reversed by brute force (even for an IPv4 address) nor matched
+  against a list of known hosts. Anyone who holds the secret can. If the
+  secret is missing, hosts are written `<host>` / `<lan>` with no fingerprint
+  at all, and the Worker logs a warning. HTTP codes, exception classes,
+  messages, stack line numbers, durations and codec names are kept. Every
+  rule has its own test vector
+  (`cloudflare-config/test/fixtures/sanitize-vectors.json`, 154 vectors;
+  removing any single rule makes at least one vector fail). The app's own
+  sanitiser (`LogSanitizer.kt`) has far fewer rules today; it is planned to
+  apply the same ones and to read the same vectors in a JVM test, which does
+  not exist yet. It cannot compute the keyed fingerprint and will write
+  `<host>`.
+  **What remains possible**: the rules are designed so that no credential,
+  token, MAC, e-mail, IP address or full URL is stored, but they work on
+  recognisable shapes. Free text without one cannot be detected by the
+  Worker: a provider or server name typed by the user, « user X with password
+  Y », a value behind an unknown or very short key (`u=`, `p=`, `client_id=`,
+  `code=`, `session=`), a URL split across lines in a way the tail rule does
+  not catch, a malformed scheme (`http:/…`, `http:…`), a bare MAC without
+  separators, a short `Basic`/JWT token. A few characters at the very end of a
+  password made of punctuation can also remain. The app must not send such
+  text.
 - **Web proxy (`web/cloudflare`)** — default-deny host allow-list, http(s) only,
   private/loopback/metadata IPs refused even if allow-listed, redirects
   re-validated hop by hop, GET/HEAD only, CORS limited to `ALLOWED_ORIGINS`.
 - **Telemetry** — always on in the Android app (no opt-out); payloads are
-  sanitised as described above (no credentials, MAC, e-mail, IP address or
-  full URL is stored). A device without an account sends crash reports and
+  sanitised as described above (designed so that no credentials, MAC, e-mail,
+  IP address or full URL is stored; free text without a recognisable shape
+  cannot be detected). A device without an account sends crash reports and
   error/warning lines only, through the open, rate-limited `/api/anon/*`
   routes (device model, version and a random install ID of which the Worker
   keeps a short fingerprint).
