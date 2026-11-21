@@ -29,6 +29,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Guide : dans la fenêtre d'actions d'un programme, un libellé de bouton long ne rogne plus l'indication dessous ; dans le guide du téléphone, un titre long ne cache plus l'horaire de la case.
 - Guide TV : l'aperçu de la chaîne ne s'entend plus sans son image. Le son reste coupé jusqu'à ce que la vidéo s'affiche dans l'encadré, et se coupe de nouveau dès que la sélection change.
 - Guide TV, télécommande : quand la première chaîne de la liste n'a aucun programme dans la plage affichée (chaîne « événement », « Demain » le soir), le focus se pose à l'ouverture sur la première chaîne qui en a un, et ▼ depuis les jours ou les catégories entre bien dans la grille. Une chaîne sans programme à cette heure se traverse avec ▼ / ▲. Si aucune chaîne visible n'a de programme, le Guide affiche « Aucun programme pour cette période » avec « Revenir à maintenant » (et « Toutes les chaînes » dans une catégorie) au lieu d'une grille vide.
+- Guide TV, télécommande : à la fin d'une mise à jour du guide, le focus reste sur le programme sélectionné au lieu de partir sur « Regarder » ou de disparaître.
 
 ## [1.3.72] — 2026-11-21 (Android)
 
