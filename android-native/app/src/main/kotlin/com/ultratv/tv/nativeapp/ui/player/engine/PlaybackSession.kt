@@ -52,6 +52,12 @@ data class SessionState(
  * précède toujours l'ouverture suivante). Gère le repli automatique moteur/décodage, la mémorisation par
  * chaîne, la nouvelle tentative après un 403 et l'adaptation du débit pendant la lecture.
  */
+/**
+ * « Audio seul » (radio) n'est confirmé que si, ce délai après « prêt », le flux n'a toujours ni piste vidéo ni image : avec VLC,
+ * « prêt » (Playing) peut précéder l'ajout de la piste vidéo (HLS, TS) ; conclure tout de suite ferait entendre le son avant l'image.
+ */
+internal const val AUDIO_ONLY_CONFIRM_MS = 1_500L
+
 /** Direct bloqué en chargement après avoir joué : délai avant reconnexion. */
 private const val STALL_MS = 12_000L
 
@@ -124,6 +130,8 @@ class PlaybackSession(
     private var rememberJob: Job? = null
     private val adapter = PlaybackAdapter()
     private var firstFrame = false
+    /** Confirmation différée de « audio seul » ([AUDIO_ONLY_CONFIRM_MS]) : annulée à chaque nouveau flux, à l'image, à l'arrêt. */
+    private var audioOnlyJob: Job? = null
     private var adaptJob: Job? = null
     private var manualSwitch = false
     private var launchedAtNs = 0L
@@ -248,6 +256,7 @@ class PlaybackSession(
             if (st.phase == Phase.PLAYING || st.phase == Phase.ENDED || st.audioOnly) {
                 _state.value = st.copy(phase = Phase.LOADING, error = null, errorHttp = null, hasPicture = false, buffering = false, audioOnly = false)
             }
+            audioOnlyJob?.cancel()
             startJob = scope.launch { begin(url, channelKey, resumeMs, runCatching { lookup(channelKey) }.getOrNull()) }
         } else begin(url, channelKey, resumeMs, props)
     }
@@ -261,7 +270,7 @@ class PlaybackSession(
         val wantTexture = if (hintSurface) false else textureView
         syncPresence(); lastHttp = null; playedSinceMs = 0L
         diagStartMs = System.currentTimeMillis(); diagFirstFrameMs = null; diagRebuffers = 0; diagRebufferTotalMs = 0L; diagBufferingSinceMs = 0L; diagErrors.clear()
-        reconnects = 0; everPlayed = false; reconnectJob?.cancel(); stallJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel()
+        reconnects = 0; everPlayed = false; reconnectJob?.cancel(); stallJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel(); audioOnlyJob?.cancel()
         val s = settings()
         presetOverride = channelKey?.let { memory.bufferPreset(it) }
         val protectedNow = isProtected
@@ -380,7 +389,7 @@ class PlaybackSession(
         val c = PlaybackPlanner.manualCombo(c0, isProtected)
         eventsJob?.cancel(); watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel()
         // Nouveau moteur : une reconnexion ou une nouvelle tentative encore en attente rechargerait un flux qui joue.
-        reconnectJob?.cancel(); stallJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel()
+        reconnectJob?.cancel(); stallJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel(); audioOnlyJob?.cancel()
         releaseEngine()
         combo = c; tried += c; firstFrame = false; launchedAtNs = System.nanoTime()
         val s = settings()
@@ -437,6 +446,23 @@ class PlaybackSession(
         engine?.limitQuality(s.maxVideoHeight, if (s.maxQuality) null else PlaybackAdapter.scaleBitrate(s.maxVideoBitrateBps, level))
     }
 
+    /**
+     * Au « prêt » : une piste vidéo connue ou une image annule toute marque audio seul ; sans l'une ni l'autre, le flux n'est
+     * déclaré audio seul qu'après [AUDIO_ONLY_CONFIRM_MS] (et seulement s'il est toujours sans vidéo, sur le même moteur).
+     */
+    private fun confirmAudioOnly(e: PlayerEngine) {
+        if (e.hasVideo || firstFrame) {
+            audioOnlyJob?.cancel()
+            if (_state.value.audioOnly) _state.value = _state.value.copy(audioOnly = false)
+            return
+        }
+        if (_state.value.audioOnly || audioOnlyJob?.isActive == true) return
+        audioOnlyJob = scope.launch {
+            delay(AUDIO_ONLY_CONFIRM_MS)
+            if (engine === e && !firstFrame && !e.hasVideo && _state.value.phase != Phase.ERROR) _state.value = _state.value.copy(audioOnly = true)
+        }
+    }
+
     private fun onEvent(ev: EngineEvent, e: PlayerEngine) {
         when (ev) {
             EngineEvent.Buffering -> if (firstFrame) {
@@ -445,14 +471,14 @@ class PlaybackSession(
                 // Direct figé en chargement (serveur qui ne renvoie plus rien sans fermer) : reconnexion au bout de 12 s.
                 if (reconnectAllowed && stallJob?.isActive != true) stallJob = scope.launch { delay(STALL_MS); reconnectLive() }
             } else if (e.hasVideo && startupJob?.isActive != true) armStartup(e)   // rechargement avant toute image (après Ready) : même garde-fou
-            EngineEvent.Ready -> { diagEndBuffering(); if (_state.value.buffering) _state.value = _state.value.copy(buffering = false); if (!e.hasVideo && !firstFrame && !_state.value.audioOnly) _state.value = _state.value.copy(audioOnly = true); stallJob?.cancel(); startupJob?.cancel(); if (!firstFrame && watchdog?.isActive != true) armPictureWatchdog(e) }
+            EngineEvent.Ready -> { diagEndBuffering(); if (_state.value.buffering) _state.value = _state.value.copy(buffering = false); confirmAudioOnly(e); stallJob?.cancel(); startupJob?.cancel(); if (!firstFrame && watchdog?.isActive != true) armPictureWatchdog(e) }
             EngineEvent.FirstFrame -> {
                 // Déjà vue pour ce lancement : le moteur la resignale quand sa surface change (aperçu → plein écran) ;
                 // la durée depuis le lancement n'aurait plus de sens (41 s affichées pour 1,7 s réelles).
                 val again = firstFrame
                 diagEndBuffering()
                 if (diagFirstFrameMs == null) diagFirstFrameMs = System.currentTimeMillis() - diagStartMs
-                firstFrame = true; watchdog?.cancel(); blackJob?.cancel(); stallJob?.cancel(); startupJob?.cancel()
+                firstFrame = true; audioOnlyJob?.cancel(); watchdog?.cancel(); blackJob?.cancel(); stallJob?.cancel(); startupJob?.cancel()
                 everPlayed = true
                 if (playedSinceMs == 0L) playedSinceMs = System.currentTimeMillis()
                 // 30 s de lecture stable : le compteur de reconnexions repart de zéro.
@@ -698,6 +724,7 @@ class PlaybackSession(
     }
 
     private fun releaseEngine() {
+        audioOnlyJob?.cancel()
         engine?.let { runCatching { it.release() } }
         engine = null
         launchedBuffer = null
