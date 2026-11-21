@@ -27,6 +27,8 @@ import com.ultratv.tv.nativeapp.data.replay.ReplayUrls
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.text
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.ui.unit.sp
@@ -502,24 +504,71 @@ internal fun ProgramInfo(
                 Text(D.minutesRemaining(com.ultratv.tv.nativeapp.ui.common.EpgProgress.remainingMinutes(p.endMs, nowMs)), color = Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1, softWrap = false)
             }
             // La description prend la place qui reste : deux lignes si elles tiennent, une sinon, et rien plutôt que coupée.
-            p.description?.takeIf { it.isNotBlank() }?.let { desc ->
-                androidx.compose.foundation.layout.BoxWithConstraints(Modifier.weight(1f, fill = false)) {
-                    val lineH = with(androidx.compose.ui.platform.LocalDensity.current) { 32.spx.toPx() }
-                    val lines = (constraints.maxHeight / lineH).toInt().coerceIn(0, 2)
-                    if (lines > 0) Text(desc, color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 32.spx, maxLines = lines, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 900.design))
-                }
-            }
+            p.description?.takeIf { it.isNotBlank() }?.let { desc -> FittingDescription(desc, Modifier.weight(1f, fill = false)) }
         }
+        // Possibilités du programme (rappel, enregistrement) calculées ici : les boutons ne se recomposent que si elles changent.
         val acts = programActionState(p, null, nowMs)
-        Row(Modifier.padding(top = 6.design), horizontalArrangement = Arrangement.spacedBy(12.design)) {
-            com.ultratv.tv.nativeapp.ui.design.PillButton(D.watch, onClick = { onWatch(ch) }, heightPx = 56, hPadPx = 26, fontPx = 19, weight = FontWeight.Bold, bg = Ux.Accent)
-            if (acts.remindEnabled) com.ultratv.tv.nativeapp.ui.design.PillButton(D.sportRemind, onClick = { onRemind(ch, p) }, heightPx = 56, hPadPx = 26, fontPx = 19)
-            if (acts.recordEnabled) com.ultratv.tv.nativeapp.ui.design.PillButton(D.pRecord, onClick = { onRecord(ch, p) }, heightPx = 56, hPadPx = 26, fontPx = 19)
-        }
+        ProgramButtons(sel, acts.remindEnabled, acts.recordEnabled, D, onWatch, onRemind, onRecord)
         // Des programmes sont déjà là mais le guide continue d'arriver : progression visible, jamais muette.
         if (progressLine != null) Text(progressLine, color = Ux.AccentInk, fontFamily = Manrope, fontSize = 16.spx, maxLines = 1)
     }
     }
+}
+
+/**
+ * Description du programme, dans la place qui reste : DEUX lignes si elles tiennent, UNE sinon, RIEN plutôt qu'une ligne coupée.
+ * Mise en page simple (les deux variantes sont composées, une seule est mesurée de bout en bout puis posée) : l'ancien
+ * `BoxWithConstraints` sous-composait la description à chaque nouveau programme, pendant la mesure.
+ */
+@Composable
+private fun FittingDescription(desc: String, modifier: Modifier = Modifier) {
+    val width = Modifier.widthIn(max = 900.design)
+    androidx.compose.ui.layout.Layout(
+        content = {
+            Text(desc, color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 32.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = width)
+            Text(desc, color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 32.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = width)
+        },
+        // Un seul nœud d'accessibilité (le texte complet) quelle que soit la variante posée.
+        modifier = modifier.descriptionSemantics(desc),
+    ) { measurables, constraints ->
+        val room = constraints.maxHeight
+        val loose = constraints.copy(minHeight = 0, maxHeight = androidx.compose.ui.unit.Constraints.Infinity)
+        val two = measurables[0].measure(loose)
+        val fitted = if (two.height <= room) two else measurables[1].measure(loose).takeIf { it.height <= room }
+        layout(fitted?.width ?: 0, fitted?.height ?: 0) { fitted?.placeRelative(0, 0) }
+    }
+}
+
+private fun Modifier.descriptionSemantics(text: String): Modifier =
+    this.then(Modifier.clearAndSetSemantics { this.text = androidx.compose.ui.text.AnnotatedString(text) })
+
+/**
+ * « Regarder » / « Me rappeler » / « Enregistrer » : lisent le programme focalisé AU CLIC (les lambdas ne capturent rien qui
+ * change) et ne dépendent que de ce que le programme permet : changer de programme sans changer ces possibilités ne
+ * recompose pas les boutons.
+ */
+@Composable
+private fun ProgramButtons(
+    sel: androidx.compose.runtime.State<Pair<ChannelEntity, EpgEntity>?>, remind: Boolean, record: Boolean,
+    D: com.ultratv.tv.nativeapp.i18n.DesignStrings,
+    onWatch: (ChannelEntity) -> Unit, onRemind: (ChannelEntity, EpgEntity) -> Unit, onRecord: (ChannelEntity, EpgEntity) -> Unit,
+) {
+    ProbeButtons()
+    Row(Modifier.padding(top = 6.design), horizontalArrangement = Arrangement.spacedBy(12.design)) {
+        com.ultratv.tv.nativeapp.ui.design.PillButton(D.watch, onClick = { sel.value?.let { (ch, _) -> onWatch(ch) } }, heightPx = 56, hPadPx = 26, fontPx = 19, weight = FontWeight.Bold, bg = Ux.Accent)
+        if (remind) com.ultratv.tv.nativeapp.ui.design.PillButton(D.sportRemind, onClick = { sel.value?.let { (ch, p) -> onRemind(ch, p) } }, heightPx = 56, hPadPx = 26, fontPx = 19)
+        if (record) com.ultratv.tv.nativeapp.ui.design.PillButton(D.pRecord, onClick = { sel.value?.let { (ch, p) -> onRecord(ch, p) } }, heightPx = 56, hPadPx = 26, fontPx = 19)
+    }
+}
+
+/**
+ * Chaîne du programme focalisé, ou [fallback] sans sélection : ne change que quand la CHAÎNE change. ◀ / ▶ dans une ligne
+ * (même chaîne) ne recompose donc pas l'aperçu.
+ */
+@Composable
+internal fun rememberFocusedChannel(sel: androidx.compose.runtime.State<Pair<ChannelEntity, EpgEntity>?>, fallback: ChannelEntity?): androidx.compose.runtime.State<ChannelEntity?> {
+    val fb = androidx.compose.runtime.rememberUpdatedState(fallback)
+    return remember(sel) { androidx.compose.runtime.derivedStateOf { sel.value?.first ?: fb.value } }
 }
 
 /** Pastille « maintenant » au-dessus de la ligne d'accent : l'heure courante, seulement si elle est dans la fenêtre. */
@@ -558,7 +607,7 @@ private fun GuidePreviewPane(
     val textureView = com.ultratv.tv.nativeapp.ui.player.engine.useTextureView(userPrefs?.videoSurface ?: "auto", touchUi)
     val mutedNow by androidx.compose.runtime.rememberUpdatedState(!pv.sound)
     val firstNow by androidx.compose.runtime.rememberUpdatedState(firstChannel)
-    val channel = sel.value?.first ?: firstChannel
+    val channel = rememberFocusedChannel(sel, firstChannel).value
     // Retour du lecteur plein écran : la liste restaurée désignera la chaîne regardée, la première ne doit pas démarrer avant elle.
     val returning = remember(shared) { booleanArrayOf(shared != null && com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.returningFromPlayer(shared.owner)) }
     val target = {
