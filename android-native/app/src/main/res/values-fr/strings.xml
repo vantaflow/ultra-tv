@@ -1911,4 +1911,7 @@
     <string name="mlib_err_notfound">Rien n’a été trouvé à l’adresse de « %1$s » (%2$s). Vérifiez-la sur le site.</string>
     <string name="mlib_err_tls">« %1$s » (%2$s) : la connexion sécurisée a échoué (certificat). Essayez l’adresse en http.</string>
     <string name="mlib_err_retry">Nouvel essai dans %1$d min.</string>
+    <string name="stalker_identity_toggle">Identité du boîtier (facultatif)</string>
+    <string name="stalker_identity_hint">Seulement si votre fournisseur l’exige : recopiez ces valeurs depuis votre autre lecteur (ses réglages STB). Sinon, laissez vide.</string>
+    <string name="stalker_field_serial">Numéro de série</string>
 </resources>

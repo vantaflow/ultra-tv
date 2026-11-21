@@ -542,9 +542,9 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Lo
                 onDismiss = { form = Form.None },
                 busy = checking,
                 onBack = { form = Form.None },
-            ) { n, u, mac, login, pw ->
+            ) { n, u, mac, login, pw, identity ->
                 checking = true
-                settingsVm.addStalkerAndSync(n, u, mac, login, pw, stalkerFailed) { ok -> checking = false; if (ok) { form = Form.None; onAdded() } }
+                settingsVm.addStalkerAndSync(n, u, mac, login, pw, stalkerFailed, identity) { ok -> checking = false; if (ok) { form = Form.None; onAdded() } }
             }
         }
         Form.None -> Unit

@@ -486,12 +486,12 @@ class ProviderRepository @Inject constructor(
      * mot de passe facultatifs empaquetés dans `password` (chiffré au repos, voir [com.ultratv.tv.nativeapp.data.stalker.StalkerCreds]).
      * [probe] : vérifie d'abord la connexion (point d'entrée sondé et mémorisé) ; une erreur remonte à l'appelant.
      */
-    suspend fun addStalker(name: String, portal: String, mac: String, login: String = "", password: String = "", probe: Boolean = false): Long {
+    suspend fun addStalker(name: String, portal: String, mac: String, login: String = "", password: String = "", probe: Boolean = false, identity: com.ultratv.tv.nativeapp.data.stalker.StalkerIdentity = com.ultratv.tv.nativeapp.data.stalker.StalkerIdentity()): Long {
         val m = com.ultratv.tv.nativeapp.data.stalker.StalkerMac.normalize(mac) ?: throw IllegalArgumentException("mac")
         val url = portal.trim().trimEnd('/')
         providerDao.findByIdentity("STALKER", url, m)?.let { return it.id }
-        val packed = com.ultratv.tv.nativeapp.data.stalker.StalkerCreds.pack(login, password)
-        if (probe) stalker.probe(com.ultratv.tv.nativeapp.data.stalker.StalkerClient.Account(url, m, login, password))
+        val packed = com.ultratv.tv.nativeapp.data.stalker.StalkerCreds.pack(login, password, identity)
+        if (probe) stalker.probe(com.ultratv.tv.nativeapp.data.stalker.StalkerClient.Account(url, m, login, password, identity))
         return providerDao.upsert(
             ProviderEntity(
                 name = name.ifBlank { hostOf(url) ?: "Stalker" },
@@ -525,7 +525,9 @@ class ProviderRepository @Inject constructor(
 
     suspend fun updateFromCloud(id: Long, name: String?, url: String, username: String, password: String) {
         val p = providerDao.byId(id) ?: return
-        providerDao.upsert(p.copy(name = name ?: p.name, baseUrl = url.trim().trimEnd('/'), username = username, password = password))
+        // Stalker : l'identité de boîtier saisie sur cet appareil ne part pas au cloud ; on la garde.
+        val pw = if (p.kind == "STALKER") com.ultratv.tv.nativeapp.data.stalker.StalkerCreds.keepIdentity(password, p.password) else password
+        providerDao.upsert(p.copy(name = name ?: p.name, baseUrl = url.trim().trimEnd('/'), username = username, password = pw))
         providerDao.resetSyncAt(id)
     }
 

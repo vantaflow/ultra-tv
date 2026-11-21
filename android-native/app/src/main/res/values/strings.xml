@@ -1923,4 +1923,10 @@
     <string name="mlib_err_notfound">Nothing was found at the address of “%1$s” (%2$s). Check it on the website.</string>
     <string name="mlib_err_tls">“%1$s” (%2$s): the secure connection failed (certificate). Try the http address.</string>
     <string name="mlib_err_retry">Next attempt in %1$d min.</string>
+    <string name="stalker_identity_toggle">Box identity (optional)</string>
+    <string name="stalker_identity_hint">Only if your provider asks for it: copy these values from your other player (its STB settings). Leave empty otherwise.</string>
+    <string name="stalker_field_serial">Serial number</string>
+    <string name="stalker_field_device_id">Device ID 1</string>
+    <string name="stalker_field_device_id2">Device ID 2</string>
+    <string name="stalker_field_signature">Signature</string>
 </resources>

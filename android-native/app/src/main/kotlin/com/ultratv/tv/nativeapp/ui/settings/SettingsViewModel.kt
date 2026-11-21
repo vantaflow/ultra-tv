@@ -405,13 +405,13 @@ class SettingsViewModel @Inject constructor(
      * Portail Stalker : la connexion est vérifiée AVANT l'enregistrement (point d'entrée sondé puis mémorisé) ; un portail
      * qui refuse la MAC n'est pas ajouté et [failedText] est affiché.
      */
-    fun addStalkerAndSync(name: String, portal: String, mac: String, login: String, password: String, failedText: String, onDone: (Boolean) -> Unit = {}) {
+    fun addStalkerAndSync(name: String, portal: String, mac: String, login: String, password: String, failedText: String, identity: com.ultratv.tv.nativeapp.data.stalker.StalkerIdentity = com.ultratv.tv.nativeapp.data.stalker.StalkerIdentity(), onDone: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
             _syncing.value = true
             StalkerTelemetry.addAttempt()
             try {
                 // addStalker sonde le portail (point d'entrée + poignée de main) avant d'enregistrer la source.
-                val id = repo.addStalker(name, portal, mac, login, password, probe = true)
+                val id = repo.addStalker(name, portal, mac, login, password, probe = true, identity = identity)
                 StalkerTelemetry.probeOk()
                 makeDefaultIfNone(id)
                 offerIfPaired(id)
