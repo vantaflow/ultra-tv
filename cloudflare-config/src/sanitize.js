@@ -364,8 +364,9 @@ function maskRequestLines(s) {
 }
 
 const HOST_RE_SRC = "(\\[[0-9A-Fa-f:.]{2,45}\\]|(?:[A-Za-z0-9-]{1,63}\\.){1,8}[A-Za-z]{2,63}|\\d{1,3}(?:\\.\\d{1,3}){3})";
-// `QQU:QQP@hôte[:port][/chemin]` sans schéma.
-const AUTH_NOSCHEME = new RegExp(`(?<![\\w.%+/:@-])[^\\s:/@"'<>()]{1,64}:[^\\s/@"'<>]{1,128}@${HOST_RE_SRC}(?::\\d{1,5})?(/[^\\s"'<>]*)?`, "g");
+// `QQU:QQP@hôte[:port][/chemin]` sans schéma. Début de suite seulement (précédé d'un caractère hors de la classe) :
+// chaque suite n'est parcourue qu'une fois (`====…` ne coûte pas 64 essais par position).
+const AUTH_NOSCHEME = new RegExp(`(?<![^\\s:/@"'<>()])[^\\s:/@"'<>()]{1,64}:[^\\s/@"'<>]{1,128}@${HOST_RE_SRC}(?::\\d{1,5})?(/[^\\s"'<>]*)?`, "g");
 // `hôte:port/chemin` sans schéma (`connect qqhost.invalid:8080/QQU/QQP/1.ts`, `//qqhost.invalid:8080/…`).
 const HOSTPORT_PATH = new RegExp(`(?<![\\w.@/-])(?://)?${HOST_RE_SRC}:\\d{1,5}(/[^\\s"'<>]*)`, "g");
 // Chemin local avec un nom de compte (Windows, macOS, Linux).
