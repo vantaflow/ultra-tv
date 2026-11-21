@@ -1073,6 +1073,7 @@
   "LivePreviewStrings.getAutoLowRam()": "Auto (desactivado en equipos con poca memoria)",
   "LivePreviewStrings.getDelay()": "Retraso antes de la vista previa",
   "LivePreviewStrings.getDelayHint()": "Más corto: más rápido, pero se abren más flujos al desplazarse",
+  "LivePreviewStrings.getGuideChip()": "Vista previa:",
   "LivePreviewStrings.getHint()": "El canal seleccionado se reproduce junto a la lista; OK pasa a pantalla completa al instante",
   "LivePreviewStrings.getOff()": "Desactivado",
   "LivePreviewStrings.getOn()": "Activado",

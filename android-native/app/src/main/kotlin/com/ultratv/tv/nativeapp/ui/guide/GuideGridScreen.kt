@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.guide
 
+import androidx.compose.ui.platform.testTag
 import com.ultratv.tv.nativeapp.data.db.observeCategoryCounts
 import com.ultratv.tv.nativeapp.ui.design.designT
 import androidx.compose.foundation.background
@@ -369,6 +370,15 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
         when (g.id) { com.ultratv.tv.nativeapp.ui.live.CATEGORY_FAVORITES -> D.catFavorites; com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL -> D.catAll; else -> com.ultratv.tv.nativeapp.ui.common.prettyCategoryName(g.name.orEmpty()) }
     }
     val groupLabel = guideGroupName(groups, group, groupName)
+    // Réglage d'aperçu : LA MÊME préférence que Réglages › Lecture › « Aperçu vidéo dans le Direct » (mode Auto / Activé / Désactivé).
+    val touchUi = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    // Téléphone / tablette tactile : pas d'aperçu vidéo, donc ni modèle de vue ni réglage (écran inchangé).
+    val pvm: com.ultratv.tv.nativeapp.ui.live.LivePreviewViewModel? = if (touchUi) null else hiltViewModel()
+    val pv by (pvm?.previewPrefs?.state ?: NO_PREVIEW_PREFS).collectAsState()
+    val videoPreview = shared != null && pvm != null && com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.enabled(pv.mode, pvm.lowRam, touchUi)
+    val lp = com.ultratv.tv.nativeapp.ui.live.livePreviewStrings()
+    var previewChoice by remember { mutableStateOf(false) }
+    val firstChannel = channels.peekOrNull(0)?.takeIf { !it.isSeparator }
     val nameColPx = LocalChannelDisplay.current.guideNameWidth.tvPx
 
     // Lecture et enregistrement hissés : partagés par le dialogue du programme et par les boutons du panneau du haut.
@@ -410,7 +420,13 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
         onWatch = { ch -> watchLive(ch) },
         onRemind = { c, p -> vm.addReminder(c, p); askNotifications(); Toaster.ok(D.remindSet) },
         onRecord = { c, p -> recordProgramme(c, p, false) },
-        preview = { sel, m -> GuidePreviewPane(sel, vm, m) },
+        preview = { sel, m -> if (pvm != null) GuidePreviewPane(sel, vm, m, pvm, videoPreview, firstChannel) },
+        previewLabel = if (shared != null && pvm != null) lp.guideChip + " " + (if (videoPreview) lp.on else lp.off) else null,
+        onPreviewSetting = { previewChoice = true },
+    )
+    if (previewChoice && pvm != null) com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(
+        lp.row, listOf("auto" to lp.autoLowRam, "on" to lp.on, "off" to lp.off), pv.mode,
+        { pvm.previewPrefs.setMode(it); previewChoice = false }, { previewChoice = false },
     )
     if (groupOpen) com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(
         D.guideGroupTitle, guideGroupOptions(groups, groupName), group,
@@ -505,19 +521,25 @@ private fun NowPill(clock: androidx.compose.runtime.State<Long>, windowStart: Lo
 @OptIn(FlowPreview::class)
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
-private fun GuidePreviewPane(sel: androidx.compose.runtime.State<Pair<ChannelEntity, EpgEntity>?>, vm: GuideGridViewModel, modifier: Modifier) {
+private fun GuidePreviewPane(
+    sel: androidx.compose.runtime.State<Pair<ChannelEntity, EpgEntity>?>, vm: GuideGridViewModel, modifier: Modifier,
+    pvm: com.ultratv.tv.nativeapp.ui.live.LivePreviewViewModel,
+    /** Aperçu vidéo actif : réglage partagé (Auto / Activé / Désactivé), appareil, session disponible. */
+    videoPreview: Boolean,
+    /** Première chaîne de la liste : montrée (et lue si l'aperçu est actif) tant qu'aucun programme n'est encore sélectionné. */
+    firstChannel: ChannelEntity?,
+) {
     val shared = com.ultratv.tv.nativeapp.ui.player.engine.LocalSharedLive.current
-    val pvm: com.ultratv.tv.nativeapp.ui.live.LivePreviewViewModel = hiltViewModel()
     val pv by pvm.previewPrefs.state.collectAsState()
     val userPrefs by pvm.userPrefs.collectAsState()
     val locked by vm.lockedChannels.collectAsState()
     val touchUi = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
-    val videoPreview = shared != null && com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.enabled(pv.mode, pvm.lowRam, touchUi)
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val textureView = com.ultratv.tv.nativeapp.ui.player.engine.useTextureView(userPrefs?.videoSurface ?: "auto", touchUi)
     val lockedNow by androidx.compose.runtime.rememberUpdatedState(locked)
     val mutedNow by androidx.compose.runtime.rememberUpdatedState(!pv.sound)
-    val channel = sel.value?.first
+    val firstNow by androidx.compose.runtime.rememberUpdatedState(firstChannel)
+    val channel = sel.value?.first ?: firstChannel
     // Son seulement tant que l'encadré montre la vidéo de la chaîne sélectionnée : jamais l'audio d'une chaîne sous son logo
     // (avant la première image, flux sans image décodée, ancien flux pendant le délai après un changement de programme).
     if (shared != null) DisposableEffect(shared) {
@@ -529,20 +551,24 @@ private fun GuidePreviewPane(sel: androidx.compose.runtime.State<Pair<ChannelEnt
         LaunchedEffect(pv.sound) { shared.applyPreviewMuted(!pv.sound) }
         LaunchedEffect(shared, pv.delayMs) {
             // Chaîne du programme focalisé, lue après le délai du réglage ; collectLatest : jamais deux flux.
-            snapshotFlow { sel.value?.first }.distinctUntilChanged().debounce(com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.guideDelayMs(pv.delayMs)).collectLatest { c ->
-                if (c == null) return@collectLatest
+            // Première chaîne (ouverture de l'écran, aperçu réactivé) : lancée tout de suite ; les suivantes après la pause.
+            with(com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy) { snapshotFlow { sel.value?.first ?: firstNow }.immediateThenDebounced(guideDelayMs(pv.delayMs)) }.collectLatest { c ->
                 val row = com.ultratv.tv.nativeapp.ui.live.channelKey(c)
                 when (com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.decide(shared.owner, shared.rowKey, row, row in lockedNow, false)) {
                     com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.Action.KEEP -> Unit
                     com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.Action.STOP -> shared.stopPreview()
                     com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.Action.START -> {
                         val url = vm.previewUrl(c)
-                        if (sel.value?.first?.id != c.id) return@collectLatest
+                        if ((sel.value?.first ?: firstNow)?.id != c.id) return@collectLatest
                         shared.preview(row, row, url, mutedNow) { pvm.createSession(ctx, shared.scope, shared, textureView, userPrefs?.videoSurface ?: "auto") }
                     }
                 }
             }
         }
+    }
+    // Aperçu masqué : aucun flux ne démarre, celui qui joue s'arrête tout de suite (jamais le plein écran).
+    if (shared != null) LaunchedEffect(shared, videoPreview) {
+        if (com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.stopWhenDisabled(videoPreview, shared.owner)) shared.stopPreview()
     }
     // Écran quitté ou appli en arrière-plan : l'aperçu ferme son flux.
     DisposableEffect(shared) { onDispose { shared?.stopPreview() } }
@@ -561,7 +587,8 @@ private fun GuidePreviewPane(sel: androidx.compose.runtime.State<Pair<ChannelEnt
             channel != null && shared.rowKey == com.ultratv.tv.nativeapp.ui.live.channelKey(channel)
     }
     val pic by (session?.state ?: NO_SESSION_STATE).collectAsState()
-    val shown = session != null && pic.phase == com.ultratv.tv.nativeapp.ui.player.engine.Phase.PLAYING && pic.hasPicture
+    // Image affichée, ou flux audio seul (radio) prêt : le son part, l'encadré garde le logo.
+    val shown = session != null && pic.showsMedia
     if (shared != null) LaunchedEffect(shared, shown) { shared.setPictureShown(shown) }
     Box(modifier.clip(RoundedCornerShape(24.design)).background(Ux.Tone), contentAlignment = Alignment.Center) {
         if (channel != null) {
@@ -570,6 +597,8 @@ private fun GuidePreviewPane(sel: androidx.compose.runtime.State<Pair<ChannelEnt
         }
     }
 }
+
+private val NO_PREVIEW_PREFS = MutableStateFlow(com.ultratv.tv.nativeapp.ui.live.LivePreviewPrefs.Values())
 
 private val NO_SESSION_STATE = MutableStateFlow(com.ultratv.tv.nativeapp.ui.player.engine.SessionState())
 
@@ -583,8 +612,8 @@ private fun dayName(D: com.ultratv.tv.nativeapp.i18n.DesignStrings, offset: Int)
 }
 
 @Composable
-private fun DayChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(50), bg = if (selected) Ux.Cta else Ux.Card, focusedScale = 1f, ringWidth = 0.dp, modifier = Modifier.height(48.designT)) { f ->
+private fun DayChip(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(50), bg = if (selected) Ux.Cta else Ux.Card, focusedScale = 1f, ringWidth = 0.dp, modifier = modifier.height(48.designT)) { f ->
         Box(Modifier.padding(horizontal = 22.design).height(48.designT), contentAlignment = Alignment.Center) {
             Text(label, color = if (f || selected) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, maxLines = 1)
         }
@@ -680,6 +709,9 @@ internal fun GuideTvContent(
     onRemind: (ChannelEntity, EpgEntity) -> Unit, onRecord: (ChannelEntity, EpgEntity) -> Unit,
     preview: @Composable (androidx.compose.runtime.State<Pair<ChannelEntity, EpgEntity>?>, Modifier) -> Unit,
     modifier: Modifier = Modifier,
+    /** Réglage d'aperçu (« Aperçu : Activé ») dans la rangée des jours ; null : pas de réglage (aucun aperçu vidéo possible). */
+    previewLabel: String? = null,
+    onPreviewSetting: () -> Unit = {},
     /** Instant « maintenant » des cases de la grille (injectable pour un rendu de test figé). */
     nowProvider: () -> Long = { System.currentTimeMillis() },
 ) {
@@ -723,6 +755,7 @@ internal fun GuideTvContent(
             for (d in -1..2) DayChip(dayName(D, d), selected = d == day) { onDay(d) }
             // « Maintenant » : retour à aujourd'hui, fenêtre calée sur la demi-heure courante.
             DayChip(D.nowButton, selected = false) { onDay(0) }
+            if (previewLabel != null) DayChip(previewLabel, selected = false, onClick = onPreviewSetting, modifier = Modifier.testTag("guide-preview-setting"))
             Box(Modifier.padding(horizontal = 8.design).width(2.design).height(32.design).background(Ux.Line))
             Text(D.categoryLabel.uppercase(), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 16.spx, letterSpacing = 0.75.sp, maxLines = 1, softWrap = false)
             val chipsState = rememberLazyListState()

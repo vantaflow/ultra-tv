@@ -1073,6 +1073,7 @@
   "LivePreviewStrings.getAutoLowRam()": "Auto (off on low-memory devices)",
   "LivePreviewStrings.getDelay()": "Delay before preview",
   "LivePreviewStrings.getDelayHint()": "Shorter: faster, but more streams opened while scrolling",
+  "LivePreviewStrings.getGuideChip()": "Preview:",
   "LivePreviewStrings.getHint()": "The focused channel plays next to the list; OK goes full screen instantly",
   "LivePreviewStrings.getOff()": "Off",
   "LivePreviewStrings.getOn()": "On",

@@ -1073,6 +1073,7 @@
   "LivePreviewStrings.getAutoLowRam()": "تلقائي (معطّل على الأجهزة محدودة الذاكرة)",
   "LivePreviewStrings.getDelay()": "المهلة قبل المعاينة",
   "LivePreviewStrings.getDelayHint()": "أقصر: أسرع، لكن تُفتح بثوث أكثر أثناء التصفح",
+  "LivePreviewStrings.getGuideChip()": "المعاينة:",
   "LivePreviewStrings.getHint()": "تُعرض القناة المحددة بجانب القائمة؛ زر OK للانتقال الفوري إلى ملء الشاشة",
   "LivePreviewStrings.getOff()": "معطّل",
   "LivePreviewStrings.getOn()": "مفعّل",

@@ -32,7 +32,13 @@ import com.ultratv.tv.nativeapp.ui.player.engine.SharedLiveSession
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.transformLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -74,6 +80,24 @@ object LivePreviewPolicy {
      *  chaîne survolée se met à jouer, comme un zapping (retour utilisateur). */
     const val GUIDE_MIN_DELAY_MS = 1_500L
     fun guideDelayMs(ms: Int): Long = maxOf(delayMs(ms), GUIDE_MIN_DELAY_MS)
+
+    /**
+     * Guide : déclencheurs de l'aperçu à partir de la sélection. La PREMIÈRE chaîne non nulle (ouverture de l'écran,
+     * réactivation de l'aperçu) part tout de suite ; les suivantes attendent [delayMs] sans nouveau déplacement, la dernière
+     * seule est retenue (jamais deux flux).
+     */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    fun <T : Any> Flow<T?>.immediateThenDebounced(delayMs: Long): Flow<T> = flow {
+        var first = true   // par collecte : un aperçu réactivé repart tout de suite
+        emitAll(this@immediateThenDebounced.distinctUntilChanged().transformLatest { v ->
+            if (v == null) return@transformLatest
+            if (first) first = false else delay(delayMs)
+            emit(v)
+        })
+    }
+
+    /** Aperçu masqué (réglage) alors qu'un aperçu joue : il s'arrête tout de suite (jamais le plein écran). */
+    fun stopWhenDisabled(enabled: Boolean, owner: LiveOwner): Boolean = !enabled && owner == LiveOwner.PREVIEW
 
     enum class Action { KEEP, START, STOP }
 
@@ -184,6 +208,8 @@ class LivePreviewStrings(val lang: AppLang) {
         return tx(R.string.lp_seconds, if (lang == AppLang.French) s.replace('.', ',') else s)
     }
     val autoLowRam get() = tx(R.string.lp_auto_low_ram)
+    /** Début du réglage d'aperçu du Guide (« Aperçu : » + Activé / Désactivé). */
+    val guideChip get() = tx(R.string.dg_preview_chip)
     val on get() = tx(R.string.lp_on)
     val off get() = tx(R.string.lp_off)
 }

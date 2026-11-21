@@ -14,11 +14,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Catalogue (téléphone et tablette avec clavier ou manette) : la pastille de filtre focalisée n'est plus collée au bord de l'écran. Ce changement concerne le catalogue, pas l'accueil.
 - Télécommande (TV) : sur l'Accueil, le Guide, le Direct, Films, Séries et les autres écrans du menu, Retour ouvre le menu latéral avec le focus sur l'écran courant, au lieu d'afficher seulement « Maintenez Retour pour quitter ». Menu ouvert, Retour garde la règle d'avant (retour à l'accueil, puis le message de sortie). Fenêtres et sous-niveaux gardent la priorité.
 - Accueil TV : en revenant à l'accueil par le menu latéral, il s'ouvre comme à neuf (liste en haut, bandeau « À la une » entier, focus sur « Regarder », rangées au début). La carte quittée n'est retrouvée qu'au retour d'une fiche ou du lecteur.
+- Guide TV : un réglage « Aperçu : Activé / Désactivé » dans la rangée des jours (même réglage que Réglages › Lecture › Aperçu vidéo dans le Direct). Activé, l'aperçu démarre dès l'ouverture du Guide sur la première chaîne, sans délai, avec le son en même temps que l'image ; désactivé, aucun flux ne démarre et l'encadré montre le logo.
 
 ### Corrigé
 - Arabe : les rangées de l'accueil et du catalogue ne sont plus rognées au bord de départ.
 - Arabe : les nombres s'affichent partout en chiffres latins. Cinq textes (temps d'écran, enregistrements en cours, onglets) sortaient en chiffres arabo-indiens sur certains appareils, à côté de chiffres latins ailleurs.
 - Guide TV : dans l'en-tête, « Regarder » et « Enregistrer » ne sont plus rognés quand le programme est en cours avec un titre long. Le titre reste sur une ligne (« … »), et la description cède la place avant les boutons, y compris avec une grande taille de texte.
+- Guide TV, aperçu : en changeant de chaîne, le son et l'image de la chaîne précédente ne passent plus sous le titre de la nouvelle le temps de sa lecture en base ; un flux radio (sans image) s'entend de nouveau avec le logo.
 - Guide : dans la fenêtre d'actions d'un programme, un libellé de bouton long ne rogne plus l'indication dessous ; dans le guide du téléphone, un titre long ne cache plus l'horaire de la case.
 - Guide TV : l'aperçu de la chaîne ne s'entend plus sans son image. Le son reste coupé jusqu'à ce que la vidéo s'affiche dans l'encadré, et se coupe de nouveau dès que la sélection change.
 
