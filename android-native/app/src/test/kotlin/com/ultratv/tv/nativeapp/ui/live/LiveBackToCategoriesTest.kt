@@ -13,6 +13,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
@@ -34,6 +37,8 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.isFocusable
 import androidx.compose.ui.test.isFocused
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.requestFocus
 import androidx.compose.ui.unit.LayoutDirection
@@ -70,8 +75,9 @@ class LiveBackToCategoriesTest {
     private val menu = RailMenuState()
     private var exits = 0
     private val modalOpen = mutableStateOf(false)
-    private val cats = listOf("all", "news", "sport", "kids")
-    private val selected = "sport"
+    private var cats = listOf("all", "news", "sport", "kids")
+    private var selected = "sport"
+    private var catState: LazyListState? = null
 
     @Composable
     private fun Rail(modifier: Modifier) {
@@ -104,9 +110,12 @@ class LiveBackToCategoriesTest {
                         val catTarget = remember { FocusRequester() }
                         val catList = remember { FocusRequester() }
                         var contentFocused by remember { mutableStateOf(false) }
-                        LiveBackToCategories(contentFocused = contentFocused, selectedCategory = catTarget, categoryList = catList)
-                        Column(Modifier.width(160.dp).focusRequester(catList)) {
-                            cats.forEach { c ->
+                        // Comme l'écran : vraie colonne paresseuse, état de défilement et retour fournis par LiveScreen.
+                        val selectedIndex = cats.indexOf(selected)
+                        val state = rememberLiveCategoryListState(selectedIndex).also { catState = it }
+                        LiveBackToCategories(contentFocused = contentFocused, categoryState = state, selectedIndex = selectedIndex, selectedCategory = catTarget, categoryList = catList)
+                        LazyColumn(Modifier.width(160.dp).fillMaxHeight().focusRequester(catList), state = state) {
+                            items(cats, key = { it }) { c ->
                                 FocusSurface(onClick = {}, modifier = Modifier.size(150.dp, 40.dp).testTag("cat-$c").then(if (c == selected) Modifier.focusRequester(catTarget) else Modifier)) { _ -> }
                             }
                         }
@@ -174,5 +183,64 @@ class LiveBackToCategoriesTest {
         focus("ch-m6")
         back()
         assertTrue("tactile : la règle racine s'applique telle quelle", focusedTag() != "cat-$selected")
+    }
+
+    // ── Longue liste (cas courant) : la catégorie en cours est hors de l'écran du haut de la colonne. ──
+    private fun longue() { cats = (1..60).map { "c$it" }; selected = "c45" }
+
+    @Test fun ouverture_longueListe_laColonneMontreDejaLaCategorieEnCours() {
+        longue()
+        mount()
+        focus("ch-tf1")
+        rule.onNodeWithTag("cat-c45").assertIsDisplayed()
+        assertTrue("la 45e catégorie est affichée", catState!!.isItemShown(44))
+    }
+
+    @Test fun retour_longueListe_focusSurLa45eCategorieAffichee_puisMenu() {
+        longue()
+        mount()
+        focus("ch-arte")
+        back()
+        assertEquals("Retour : focus sur la catégorie en cours (45e)", "cat-c45", focusedTag())
+        rule.onNodeWithTag("cat-c45").assertIsDisplayed()
+        assertFalse(menu.expanded)
+        back()
+        assertTrue("depuis les catégories : le menu s'ouvre", menu.expanded)
+        assertEquals("rail-${Routes.LIVE}", focusedTag())
+        assertEquals(0, exits)
+    }
+
+    @Test fun retour_longueListe_colonneRemonteeEnHaut_defileJusquALaCategoriePuisFocus() {
+        longue()
+        mount()
+        focus("ch-m6")
+        // Colonne revenue en haut (état ancien, défilement manuel…) : la 45e n'est plus composée.
+        rule.runOnIdle { kotlinx.coroutines.runBlocking { catState!!.scrollToItem(0) } }
+        rule.waitForIdle()
+        assertFalse("hors écran avant Retour", catState!!.isItemShown(44))
+        assertEquals("ch-m6", focusedTag())
+        back()
+        assertEquals("cat-c45", focusedTag())
+        rule.onNodeWithTag("cat-c45").assertIsDisplayed()
+    }
+
+    @Test fun retour_longueListe_enArabe() {
+        longue()
+        mount(rtl = true)
+        focus("ch-tf1")
+        rule.runOnIdle { kotlinx.coroutines.runBlocking { catState!!.scrollToItem(0) } }
+        rule.waitForIdle()
+        back()
+        assertEquals("cat-c45", focusedTag())
+        back()
+        assertTrue(menu.expanded)
+    }
+
+    @Test fun retour_longueListe_tactile_inchange() {
+        longue()
+        mount(touch = true)
+        focus("ch-m6")
+        back()
+        assertTrue(focusedTag() != "cat-c45")
     }
 }
