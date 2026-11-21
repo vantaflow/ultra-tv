@@ -10,7 +10,8 @@ six raccourcis, cartes sombres) ; les habitudes attendues sont une image plein �
 visible, une fiche qui donne envie, un lecteur aux commandes peu nombreuses et nommées.
 
 On reprend ces **habitudes de navigation**, pas l'apparence ni la marque d'une autre appli : l'identité d'Ultra TV reste
-(rouge `#FF3B47`, Sora pour les titres, Manrope pour le reste, fond `#0A0C10`).
+(Sora pour les titres, Manrope pour le reste, et les thèmes existants avec leurs couleurs ; le rouge `#FF3B47` et le
+fond `#0A0C10` des maquettes sont ceux du thème Sombre).
 
 ## Référence visuelle
 
@@ -53,9 +54,13 @@ Les équipes, ligues, le QR code et le code d'envoi y sont des emplacements.
 
 - **Télécommande d'abord.** Haut / bas change de rangée, gauche / droite parcourt, Retour remonte d'un niveau. Aucune
   cible atteignable seulement en diagonale. Le focus restauré au retour sur un écran est celui qu'on a quitté.
-- **Deux thèmes.** Les maquettes sont en sombre ; le thème clair existant doit rester correct. On passe par les jetons
-  `Ux.*` existants, jamais par des couleurs écrites en dur, sauf sur une image ou la vidéo (voile sombre + texte clair
-  dans les deux thèmes, comme l'OSD aujourd'hui).
+- **Tous les thèmes sont conservés** (demande explicite du propriétaire) : Sombre, Clair, Automatique, OLED, et les
+  thèmes de couleur Minuit, Forêt, Prune, Sable (clair), Contraste et Sarcelle, chacun avec son fond, ses surfaces, son
+  accent et sa couleur de focus. Les maquettes sont dessinées dans le thème Sombre ; elles fixent la mise en page, pas
+  les couleurs. On passe toujours par les jetons `Ux.*`, jamais par des couleurs écrites en dur : l'accent, l'anneau de
+  focus et les surfaces sont ceux du thème choisi. Seule exception, ce qui est posé sur une image ou sur la vidéo : voile
+  sombre et texte clair, boutons blancs, identiques dans tous les thèmes (comme l'OSD aujourd'hui). Chaque lot vérifie
+  son écran dans tous les thèmes (captures) et ne retire ni ne renomme aucun thème.
 - **Appareils modestes.** Pas de flou ni d'animation coûteuse quand `LocalLowRam` est vrai ou sous Android 12 ; images
   demandées à la taille affichée ; listes paresseuses avec `key` et `contentType` ; l'image à la une ne change qu'une
   fois le focus arrêté.
@@ -111,7 +116,9 @@ Décidé par l'auteur du document, à corriger si besoin :
 - **Commandes du lecteur direct** : sept boutons nommés (Pause, Depuis le début, Chaînes, Guide, Enregistrer, Audio et
   sous-titres, Favori) puis « Plus », qui ouvre toutes les autres actions de `OsdActionId` existantes. Aucune action
   n'est supprimée. « Depuis le début » n'apparaît que si la chaîne le permet, comme aujourd'hui.
-- **Affiche focalisée** : agrandissement de 10 % et anneau blanc de 5 unités, sans bandeau d'infos supplémentaire.
+- **Affiche ou carte focalisée** : agrandissement de 10 % (6 % pour les vignettes larges) et l'anneau de focus du thème,
+  sans bandeau d'infos supplémentaire. L'anneau blanc des maquettes est celui du thème Sombre ; il n'est imposé que sur
+  une image.
 - **Top 10** : la rangée existante `TOP10`, avec le rang dessiné en grand derrière l'affiche.
 
 ## Ce qui existe déjà et sert tel quel

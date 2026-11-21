@@ -14,7 +14,7 @@ Chemins abrégés : `K = android-native/app/src/main/kotlin/com/ultratv/tv/nativ
 
 ## Global Constraints
 
-- Identité inchangée : accent `#FF3B47`, Sora pour les titres, Manrope pour le reste. Couleurs par les jetons `Ux.*`, jamais en dur, sauf sur une image : voile sombre `#0A0C10` et texte clair dans les deux thèmes.
+- Identité inchangée : Sora pour les titres, Manrope pour le reste. Tous les thèmes existants sont conservés (Sombre, Clair, Automatique, OLED, Minuit, Forêt, Prune, Sable, Contraste, Sarcelle) : couleurs par les jetons `Ux.*`, jamais en dur ; accent, surfaces et anneau de focus sont ceux du thème. Seule exception, ce qui est posé sur une image : voile sombre `#0A0C10`, texte clair et boutons blancs, identiques dans tous les thèmes.
 - Aucune fonction ne disparaît. Le bloc `SHORTCUTS` reste proposé dans Réglages › Accueil.
 - Une préférence `home_order` / `home_hidden` non vide n'est jamais réinterprétée.
 - Performance : listes paresseuses avec `key` et `contentType` ; état de focus local à la carte ; agrandissement au focus par `graphicsLayer` ; voiles dessinés une fois (`drawWithCache`) ; une seule image de fond décodée à la taille affichée ; aucun flou.
@@ -192,7 +192,7 @@ Comportements à préserver (ils ont chacun un commentaire dans le code actuel) 
 - Consumes: `LiveBadge`, `ProgressLine` (tâche 2) ; `ChannelCardUi` tel qu'il est (aucun champ ajouté : si le programme en cours est absent, la carte montre seulement la chaîne).
 - Produces: `testTag` `"home-channel-<id>"` par carte.
 
-Valeurs : carte **392 × 220**, coins 16, écart 20 ; en haut à gauche `LiveBadge` puis numéro et nom de chaîne ; en bas titre du programme (Sora Bold 26, une ligne, ellipse) et horaire ; `ProgressLine` collée au bas. « Tout voir » reste la dernière carte, à la même hauteur. Focus : `FocusSurface` existant avec `focusedScale = 1.06f` et anneau blanc de 5.
+Valeurs : carte **392 × 220**, coins 16, écart 20 ; en haut à gauche `LiveBadge` puis numéro et nom de chaîne ; en bas titre du programme (Sora Bold 26, une ligne, ellipse) et horaire ; `ProgressLine` collée au bas. « Tout voir » reste la dernière carte, à la même hauteur. Focus : `FocusSurface` existant avec `focusedScale = 1.06f` et l'anneau de focus du thème (comportement par défaut, sans couleur imposée).
 
 - [ ] **Step 1: Tests qui échouent** : la première carte fait 392 × 220 ; ▼ depuis `"hero-watch"` amène le focus sur la première carte de chaîne ; une carte sans programme en cours s'affiche sans planter et sans `ProgressLine`.
 - [ ] **Step 2: Constater l'échec.**
@@ -208,9 +208,9 @@ Valeurs : carte **392 × 220**, coins 16, écart 20 ; en haut à gauche `LiveBad
 - Test: `T/ui/home/HomeTvStructureTest.kt`
 
 **Interfaces:**
-- Produces: `PosterCell(..., focusedScale: Float? = null, ringColor: Color? = null)` — `null` = comportement actuel, pour que le catalogue ne change pas ; l'accueil passe `1.10f` et `Color.White`. `testTag` `"top10-rank-<n>"`.
+- Produces: `PosterCell(..., focusedScale: Float? = null, ringColor: Color? = null)` — `null` = comportement actuel, pour que le catalogue ne change pas ; l'accueil passe `1.10f` et laisse `ringColor` à `null` : l'anneau reste celui du thème. `testTag` `"top10-rank-<n>"`.
 
-Valeurs : cellule Top 10 de **336** de large ; chiffre Sora ExtraBold **300**, tracé au contour (épaisseur 4, couleur `Ux.Text3`), derrière l'affiche, du côté du début de lecture ; affiche de 200 du côté opposé. Le chiffre est décoratif pour les lecteurs d'écran (`clearAndSetSemantics { }`, le `testTag` étant posé sur un parent) ; l'affiche garde sa description. `PosterRowPadding` : la marge haute suit le nouvel agrandissement (10 % de 300 = 15, plus l'anneau de 5) sans recouvrir le titre de la rangée.
+Valeurs : cellule Top 10 de **336** de large ; chiffre Sora ExtraBold **300**, tracé au contour (épaisseur 4, couleur `Ux.Text3`), derrière l'affiche, du côté du début de lecture ; affiche de 200 du côté opposé. Le chiffre est décoratif pour les lecteurs d'écran (`clearAndSetSemantics { }`, le `testTag` étant posé sur un parent) ; l'affiche garde sa description. `PosterRowPadding` : la marge haute suit le nouvel agrandissement (10 % de 300 = 15, plus l'épaisseur de l'anneau du thème) sans recouvrir le titre de la rangée.
 
 - [ ] **Step 1: Tests qui échouent** : dix rangs `"top10-rank-1"`…`"top10-rank-10"` au plus, dans l'ordre ; en arabe, le rang est à droite de son affiche ; une affiche focalisée de `PosterRow` ne recouvre pas le titre de sa rangée (bornes non sécantes) ; `PosterCell` sans les nouveaux paramètres rend la même taille qu'avant dans un test du catalogue existant.
 - [ ] **Step 2: Constater l'échec.**
@@ -264,6 +264,7 @@ Valeurs : cellule Top 10 de **336** de large ; chiffre Sora ExtraBold **300**, t
 - [ ] **Step 1: Suite complète** — `./gradlew --offline -q :app:testDebugUnitTest` → 0 échec hors `I18nGoldenTest` (chiffres arabes seulement).
 - [ ] **Step 2: Mesure avant / après.** Sur un même appareil ou émulateur Android TV, installer le debug de `main` puis celui de la branche. Pour chacun : démarrage à froid, 30 s de parcours de l'accueil (▼ jusqu'à la dernière rangée, ▶ au bout de deux rangées, retour en haut). Relever dans `adb logcat` les lignes du tag `perf` pour `home` (`frames=… janky=… slow=… p95≈…`) et toute ligne `perf stall … route=home`. Critère : ni le taux d'images lentes ni le p95 ne se dégradent, aucune nouvelle ligne `stall`. Si aucun appareil ni émulateur n'est disponible, s'arrêter et le dire : ce point ne se remplace pas par une estimation.
 - [ ] **Step 3: Profil de démarrage.** Ouvrir `baseline-prof.txt` : s'il nomme des classes de `ui/home` supprimées ou renommées (par exemple `ShortcutGrid`), mettre les lignes à jour ; s'il ne contient que des règles par paquet, ne rien changer.
-- [ ] **Step 4: Captures.** Copier les captures de `HomeRenderTest` vers `docs/screenshots` (fr sombre et clair, en, ar).
+- [ ] **Step 4: Tous les thèmes.** Ajouter à `HomeRenderTest` un test qui rend l'accueil dans CHAQUE thème de `AppTheme` (focus sur une carte de la rangée Direct, puis sur une affiche) et écrit `home-tv-theme-<nom>.png` ; il échoue si un thème plante. Ouvrir chaque capture : texte lisible, élément focalisé évident, accent et anneau du thème, rien d'écrit en dur qui jure. Corriger tout défaut avant de continuer.
+- [ ] **Step 4 bis: Captures.** Copier les captures de `HomeRenderTest` vers `docs/screenshots` (fr sombre et clair, en, ar).
 - [ ] **Step 5: CHANGELOG et README**, puis commit — `Accueil TV : journal des modifications, captures`.
 - [ ] **Step 6: PR** vers `main`, corps : ce qui change à l'écran, les comportements préservés (liste de la tâche 3), le tableau de mesure avant / après, les captures. Ne pas fusionner sans CI verte ; ne rien publier.
