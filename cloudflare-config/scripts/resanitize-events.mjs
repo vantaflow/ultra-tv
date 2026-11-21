@@ -15,6 +15,10 @@
 //   sont jamais relues ;
 // - sans --apply : aucune écriture ;
 // - idempotent (sanitizeLog(sanitizeLog(x)) = sanitizeLog(x)) et relançable : une seconde passe ne change rien ;
+// - contrôle INDÉPENDANT du nettoyage : `residue` compte les lignes où un identifiant déjà masqué par l'ancien Worker
+//   reste suivi d'un mot (`password=<redacted> FIN`, forme écrite pour tout mot de passe à espace) ; `residue.before`
+//   avant réécriture, `residue.after` sur le texte réécrit. La preuve de fin est une passe de compte qui affiche
+//   `"residue":{"before":0,…}`, et non `changed: 0` (une règle manquante donnerait aussi `changed: 0`) ;
 // - n'affiche JAMAIS le contenu d'une ligne : seulement des compteurs et des identifiants numériques ;
 // - par petits lots (une lecture puis au plus une écriture groupée par lot, dans une transaction) ;
 // - vide aussi la colonne `mac` (plus jamais remplie par le Worker).
@@ -28,6 +32,23 @@ import { sanitizeLog } from "../src/sanitize.js";
 const FIELDS = { message: 4000, stack: 32 * 1024, tag: 32, device: 128, version: 32 };
 const SELECT = "SELECT id, kind, message, stack, tag, device, version, mac FROM events WHERE ts < ? AND id > ? ORDER BY id LIMIT ?";
 const UPDATE = "UPDATE events SET message = ?, stack = ?, tag = ?, device = ?, version = ?, mac = NULL WHERE id = ? AND ts < ?";
+
+// Comptage indépendant de `sanitizeLog` (simple expression, pas les règles du nettoyage) : nom d'identifiant saisi ou
+// d'autorisation, séparateur, `<redacted>` collé au séparateur, puis un blanc et un mot qui n'est pas un champ
+// `clé=valeur` ni `clé:` (le mot s'arrête aux mêmes ponctuations qu'une valeur : & ; , " ' } ] ) < > |).
+const RESIDUE = /(?<![\w-])(username|user|login|password|passwd|pass|pwd|psw|pw|[\w-]{0,32}auth[\w-]{0,32})(\\?["'])?\s{0,8}(?:[=:]|%3D|%3A)\s{0,8}["']?<redacted>[ \t]+([^\s&;,"'}\])<>|]{1,256})/gi;
+
+/** Le texte garde-t-il une fin d'identifiant derrière un `<redacted>` ? (Ne renvoie jamais le texte.) */
+export function hasResidue(text) {
+  if (typeof text !== "string" || !text.includes("<redacted>")) return false;
+  RESIDUE.lastIndex = 0;
+  for (let m; (m = RESIDUE.exec(text));) {
+    const tok = m[3];
+    if (!/[=:]/.test(tok.replace(/=+$/, "")) && !"([{".includes(tok[0])) return true;
+  }
+  return false;
+}
+const rowHasResidue = (values) => Object.keys(FIELDS).some((f) => hasResidue(values[f]));
 
 /** Arguments de la ligne de commande ; lève une erreur lisible si --before manque ou est invalide. */
 export function parseArgs(argv, now = Date.now()) {
@@ -72,7 +93,7 @@ export function resanitizeRow(row, hostKey) {
  * par exemple `TursoD1` (src/turso.js). [log] ne reçoit que des compteurs.
  */
 export async function resanitize(db, { beforeMs, apply = false, batch = 50, afterId = 0, hostKey = null, log = () => {} }) {
-  const stats = { scanned: 0, changed: 0, written: 0, byKind: {}, byField: {}, lastId: afterId };
+  const stats = { scanned: 0, changed: 0, written: 0, byKind: {}, byField: {}, residue: { before: 0, after: 0 }, lastId: afterId };
   let cursor = afterId;
   for (;;) {
     const { results } = await db.prepare(SELECT).bind(beforeMs, cursor, batch).all();
@@ -81,6 +102,8 @@ export async function resanitize(db, { beforeMs, apply = false, batch = 50, afte
     for (const row of results) {
       stats.scanned++;
       const r = resanitizeRow(row, hostKey);
+      if (rowHasResidue(row)) stats.residue.before++;
+      if (rowHasResidue(r.values)) stats.residue.after++;
       if (!r.changed) continue;
       stats.changed++;
       stats.byKind[row.kind] = (stats.byKind[row.kind] || 0) + 1;
@@ -94,7 +117,7 @@ export async function resanitize(db, { beforeMs, apply = false, batch = 50, afte
     }
     cursor = results[results.length - 1].id;
     stats.lastId = cursor;
-    log(`lot jusqu'à l'id ${cursor} : ${results.length} lue(s), ${updates.length} à réécrire${apply ? ", écrites" : ""} (total : ${stats.scanned} lues, ${stats.changed} à réécrire)`);
+    log(`lot jusqu'à l'id ${cursor} : ${results.length} lue(s), ${updates.length} à réécrire${apply ? ", écrites" : ""} (total : ${stats.scanned} lues, ${stats.changed} à réécrire, ${stats.residue.before} avec reste d'identifiant avant, ${stats.residue.after} après)`);
     if (results.length < batch) break;
   }
   return stats;
@@ -141,7 +164,8 @@ async function main() {
   console.log(`${opt.apply ? "ÉCRITURE" : "COMPTE SEUL (--apply pour écrire)"} : lignes antérieures à ${new Date(opt.beforeMs).toISOString()}, lots de ${opt.batch}, après l'id ${opt.afterId}`);
   try {
     const s = await resanitize(db, { ...opt, hostKey: opt.hostFingerprint ? hostKey : null, log: (m) => console.log(m) });
-    console.log(JSON.stringify({ apply: opt.apply, scanned: s.scanned, changed: s.changed, written: s.written, byKind: s.byKind, byField: s.byField, lastId: s.lastId }));
+    console.log(JSON.stringify({ apply: opt.apply, scanned: s.scanned, changed: s.changed, written: s.written, residue: s.residue, byKind: s.byKind, byField: s.byField, lastId: s.lastId }));
+    if (s.residue.after) console.error(`ATTENTION : ${s.residue.after} ligne(s) garderaient un reste d'identifiant après réécriture (règle manquante) : ne pas conclure, signaler.`);
   } catch (e) {
     // Message d'erreur du pilote seulement (jamais une ligne) ; reprise possible avec --after-id.
     console.error("échec :", sanitizeLog(String(e?.message ?? e), 300), "— relancer avec --after-id <dernier id affiché>");
