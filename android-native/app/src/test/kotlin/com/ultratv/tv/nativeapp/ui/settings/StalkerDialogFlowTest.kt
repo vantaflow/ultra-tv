@@ -147,7 +147,7 @@ class StalkerDialogFlowTest {
             Dlg.M3U -> M3uDialog({ dialog = Dlg.NONE }) { _, _ -> dialog = Dlg.NONE }
             Dlg.STALKER -> {
                 var checking by remember { mutableStateOf(false) }
-                StalkerDialog({ dialog = Dlg.NONE }, busy = checking) { _, _, _, _, _ -> checking = true }
+                StalkerDialog({ dialog = Dlg.NONE }, busy = checking) { _, _, _, _, _, _ -> checking = true }
             }
             Dlg.NONE -> Unit
         }

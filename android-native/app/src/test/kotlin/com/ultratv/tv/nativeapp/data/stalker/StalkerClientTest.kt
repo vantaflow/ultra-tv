@@ -125,6 +125,41 @@ class StalkerClientTest {
         assertEquals(api, store.get(portal()))
     }
 
+    /** Portail qui ne connaît pas l'identité calculée : refus avec, accepté avec la MAC seule ; mémorisé pour la suite. */
+    @Test fun profilRefuseAvecIdentite_reessaiAvecLaMacSeule() = runBlocking {
+        routes["stb/get_profile"] = { r -> if (r.requestUrl!!.queryParameter("sn") != null) json("Authorization failed.") else json("""{"js":{"id":"1"}}""") }
+        routes["itv/get_genres"] = { json("""{"js":[{"id":"10","title":"News"}]}""") }
+        val c = client()
+        c.probe(StalkerClient.Account(portal(), mac))
+        val profiles = seen.filter { it.requestUrl!!.queryParameter("action") == "get_profile" }
+        assertTrue(profiles.any { it.requestUrl!!.queryParameter("sn") != null })      // d'abord le comportement historique
+        val last = profiles.last().requestUrl!!
+        assertNull(last.queryParameter("sn")); assertNull(last.queryParameter("device_id")); assertNull(last.queryParameter("signature"))
+        // Session suivante : directement la MAC seule.
+        seen.clear()
+        c.probe(StalkerClient.Account(portal(), mac))
+        assertNull(seen.first { it.requestUrl!!.queryParameter("action") == "get_profile" }.requestUrl!!.queryParameter("sn"))
+    }
+
+    /** Portail qui accepte l'identité calculée : rien ne change (un seul profil, avec l'identité). */
+    @Test fun profilAccepte_aucunEssaiSansIdentite() = runBlocking {
+        client().probe(StalkerClient.Account(portal(), mac))
+        val profiles = seen.filter { it.requestUrl!!.queryParameter("action") == "get_profile" }
+        assertEquals(1, profiles.size)
+        assertEquals(StalkerDevice(mac).sn, profiles.single().requestUrl!!.queryParameter("sn"))
+    }
+
+    /** Identité saisie : envoyée telle quelle (valeurs vides complétées depuis la MAC), sans essai sans identité. */
+    @Test fun identiteSaisie_envoyeeTelleQuelle() = runBlocking {
+        routes["stb/get_profile"] = { json("Authorization failed.") }
+        val id = StalkerIdentity(sn = "ABC123", deviceId = "DEV1")
+        client().probe(StalkerClient.Account(portal(), mac, identity = id))
+        val profiles = seen.filter { it.requestUrl!!.queryParameter("action") == "get_profile" }
+        assertTrue(profiles.isNotEmpty())
+        assertTrue(profiles.all { it.requestUrl!!.queryParameter("sn") == "ABC123" && it.requestUrl!!.queryParameter("device_id") == "DEV1" })
+        assertEquals(StalkerDevice(mac).deviceId2, profiles.first().requestUrl!!.queryParameter("device_id2"))
+    }
+
     @Test fun pointDEntreeMemorise_plusDeSondeEnsuite() = runBlocking {
         val store = StalkerEndpointStore.inMemory()
         client(store).probe(StalkerClient.Account(portal(), mac))

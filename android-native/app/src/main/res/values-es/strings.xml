@@ -1902,4 +1902,8 @@
     <string name="mlib_err_notfound">No se encontró nada en la dirección de «%1$s» (%2$s). Compruébala en la web.</string>
     <string name="mlib_err_tls">«%1$s» (%2$s): falló la conexión segura (certificado). Prueba la dirección http.</string>
     <string name="mlib_err_retry">Nuevo intento en %1$d min.</string>
+    <string name="stalker_identity_toggle">Identidad del decodificador (opcional)</string>
+    <string name="stalker_identity_hint">Solo si tu proveedor lo exige: copia estos valores de tu otro reproductor (sus ajustes STB). Si no, déjalo vacío.</string>
+    <string name="stalker_field_serial">Número de serie</string>
+    <string name="stalker_field_signature">Firma</string>
 </resources>

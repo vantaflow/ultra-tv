@@ -1966,4 +1966,10 @@
     <string name="mlib_err_notfound">لم يُعثر على شيء في عنوان «%1$s» (%2$s). تحقّق منه في الموقع.</string>
     <string name="mlib_err_tls">«%1$s» (%2$s): فشل الاتصال الآمن (الشهادة). جرّب العنوان بـ http.</string>
     <string name="mlib_err_retry">محاولة جديدة بعد %1$d دقيقة.</string>
+    <string name="stalker_identity_toggle">هوية جهاز الاستقبال (اختياري)</string>
+    <string name="stalker_identity_hint">فقط إذا طلبها مزوّدك: انسخ هذه القيم من مشغّلك الآخر (إعدادات STB). وإلا فاتركها فارغة.</string>
+    <string name="stalker_field_serial">الرقم التسلسلي</string>
+    <string name="stalker_field_device_id">معرّف الجهاز 1 (Device ID)</string>
+    <string name="stalker_field_device_id2">معرّف الجهاز 2 (Device ID 2)</string>
+    <string name="stalker_field_signature">التوقيع</string>
 </resources>

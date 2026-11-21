@@ -108,3 +108,11 @@ val DesignStrings.jumpToEpisode get() = tx(R.string.dsb1_jump_to_episode)
 val DesignStrings.seasonsHelp get() = tx(R.string.dsb1_seasons_help)
 val DesignStrings.longPressDownload get() = tx(R.string.dsb1_long_press_download)
 fun DesignStrings.episodesCount(n: Int) = tp(R.plurals.dsb1_episodes_count, n, n)
+
+// Portail Stalker : identité de boîtier facultative (formulaire d'ajout).
+val DesignStrings.stalkerIdentityToggle get() = tx(R.string.stalker_identity_toggle)
+val DesignStrings.stalkerIdentityHint get() = tx(R.string.stalker_identity_hint)
+val DesignStrings.stalkerFieldSerial get() = tx(R.string.stalker_field_serial)
+val DesignStrings.stalkerFieldDeviceId get() = tx(R.string.stalker_field_device_id)
+val DesignStrings.stalkerFieldDeviceId2 get() = tx(R.string.stalker_field_device_id2)
+val DesignStrings.stalkerFieldSignature get() = tx(R.string.stalker_field_signature)

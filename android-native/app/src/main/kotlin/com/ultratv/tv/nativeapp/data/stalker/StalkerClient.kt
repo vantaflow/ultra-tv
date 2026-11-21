@@ -79,12 +79,19 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
         .build()
 
     /** Connexion à un portail : adresse saisie, MAC normalisée, identifiants facultatifs. */
-    data class Account(val portal: String, val mac: String, val login: String = "", val password: String = "", val device: StalkerDevice = StalkerDevice(mac)) {
+    data class Account(
+        val portal: String, val mac: String, val login: String = "", val password: String = "",
+        val identity: StalkerIdentity = StalkerIdentity(), val device: StalkerDevice = StalkerDevice.of(mac, identity),
+    ) {
         val key: String get() = portal.trim().trimEnd('/').lowercase() + "|" + mac
         override fun toString() = "Stalker(${StalkerPortal.referer(portal).substringBefore('?')})"   // jamais la MAC ni les identifiants
     }
 
-    private data class Session(val api: String, val token: String)
+    /** [bare] : profil envoyé avec la MAC seule (sans numéro de série, Device ID ni signature). */
+    private data class Session(val api: String, val token: String, val bare: Boolean = false)
+
+    /** Portails qui n'acceptent le profil QUE sans identité de boîtier : on commence par là la fois suivante. */
+    private val bareFirst = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
     private val sessions = java.util.concurrent.ConcurrentHashMap<String, Session>()
     private val locks = java.util.concurrent.ConcurrentHashMap<String, Mutex>()
@@ -95,7 +102,7 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
 
     fun accountOf(p: ProviderEntity): Account {
         val (login, pass) = StalkerCreds.unpack(p.password)
-        return Account(p.baseUrl, StalkerMac.normalize(p.username) ?: p.username.uppercase(), login, pass)
+        return Account(p.baseUrl, StalkerMac.normalize(p.username) ?: p.username.uppercase(), login, pass, StalkerCreds.identity(p.password))
     }
 
     // ───────────────────────── Session ─────────────────────────
@@ -129,14 +136,29 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
         // Un même serveur peut répondre à plusieurs chemins (portal.php d'un autre panneau + le vrai portail sous
         // /stalker_portal/) : s'arrêter au premier jeton faisait refuser toute la suite (« identifiants refusés »).
         var refusedFirst: Session? = null
-        for (api in candidates) {
-            val token = try { handshake(a, api) } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (t: Throwable) { last = t; null }
-                ?: continue
-            val s = Session(api, token)
-            // Profil : indispensable sur la plupart des portails pour « activer » le jeton.
-            val profile = try { raw(a, s, profileParams(a)) } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (_: Throwable) { null }
-            if (profile != null && refused(profile)) { if (refusedFirst == null) refusedFirst = s; continue }
-            return finishOpen(a, s, known)
+        // D'abord l'identité de boîtier calculée depuis la MAC (comportement historique : rien ne change pour les portails
+        // qui l'acceptent), puis, si le profil est refusé partout, la MAC seule : un portail dont l'abonnement a été
+        // enregistré sans identité (ou avec une autre) refuse des valeurs qu'il ne connaît pas. Identité saisie par
+        // l'utilisateur : envoyée telle quelle, pas d'essai sans.
+        val modes = when {
+            !a.identity.isEmpty -> listOf(false)
+            a.key in bareFirst -> listOf(true, false)
+            else -> listOf(false, true)
+        }
+        for (bare in modes) {
+            for (api in candidates) {
+                val token = try { handshake(a, api) } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (t: Throwable) { last = t; null }
+                    ?: continue
+                val s = Session(api, token, bare)
+                // Profil : indispensable sur la plupart des portails pour « activer » le jeton.
+                val profile = try { raw(a, s, profileParams(a, bare)) } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (_: Throwable) { null }
+                if (profile != null && refused(profile)) { if (refusedFirst == null) refusedFirst = s; continue }
+                if (bare) { if (bareFirst.add(a.key)) com.ultratv.tv.nativeapp.UtvLog.w("StalkerProbe", "profile accepted with mac only") }
+                else bareFirst.remove(a.key)
+                return finishOpen(a, s, known)
+            }
+            // Aucun point d'entrée ne répond du tout : inutile de tout reprendre sans identité.
+            if (refusedFirst == null) break
         }
         refusedFirst?.let {
             com.ultratv.tv.nativeapp.UtvLog.w("StalkerProbe", "profile refused on every endpoint candidates=${candidates.size}")
@@ -153,8 +175,7 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
         if (a.login.isNotEmpty()) {
             val ok = jsOf(StalkerJson.parse(raw(a, s, listOf(
                 "type" to "stb", "action" to "do_auth", "login" to a.login, "password" to a.password,
-                "device_id" to a.device.deviceId, "device_id2" to a.device.deviceId2,
-            ))))
+            ) + (if (s.bare) emptyList() else listOf("device_id" to a.device.deviceId, "device_id2" to a.device.deviceId2)))))
             if (ok == false || ok == "false") throw denied()
         }
         return s
@@ -167,11 +188,14 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
         return js.s("token")
     }
 
-    private fun profileParams(a: Account): List<Pair<String, String>> = listOf(
+    /** Paramètres de `get_profile` ; [bare] : sans numéro de série, Device ID ni signature (MAC seule, par le cookie). */
+    private fun profileParams(a: Account, bare: Boolean = false): List<Pair<String, String>> = listOf(
         "type" to "stb", "action" to "get_profile", "hd" to "1",
         "ver" to "ImageDescription: 0.2.18-r23-250; ImageDate: Thu Sep 13 11:31:16 EEST 2018; PORTAL version: 5.6.1; API Version: JS API version: 343; STB API version: 146; Player Engine version: 0x58c",
-        "num_banks" to "2", "sn" to a.device.sn, "stb_type" to a.device.model, "client_type" to "STB", "image_version" to "218",
-        "video_out" to "hdmi", "device_id" to a.device.deviceId, "device_id2" to a.device.deviceId2, "signature" to a.device.signature,
+        "num_banks" to "2",
+    ) + (if (bare) emptyList() else listOf("sn" to a.device.sn)) + listOf(
+        "stb_type" to a.device.model, "client_type" to "STB", "image_version" to "218", "video_out" to "hdmi",
+    ) + (if (bare) emptyList() else listOf("device_id" to a.device.deviceId, "device_id2" to a.device.deviceId2, "signature" to a.device.signature)) + listOf(
         "auth_second_step" to "1", "hw_version" to "1.7-BD-00", "not_valid_token" to "0", "api_signature" to "262", "prehash" to "0",
         "timestamp" to (System.currentTimeMillis() / 1000).toString(),
     )

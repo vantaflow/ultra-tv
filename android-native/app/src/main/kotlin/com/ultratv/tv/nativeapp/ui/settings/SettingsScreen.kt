@@ -504,9 +504,9 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, on
                 onDismiss = { closeReason[0] = "cancel"; dialog = OpenDialog.NONE },
                 busy = checking,
                 onBack = { closeReason[0] = "back"; dialog = OpenDialog.NONE },
-            ) { n, u, mac, login, pw ->
+            ) { n, u, mac, login, pw, identity ->
                 checking = true
-                vm.addStalkerAndSync(n, u, mac, login, pw, D.stalkerFailed) { ok -> checking = false; if (ok) { closeReason[0] = "submit"; dialog = OpenDialog.NONE } }
+                vm.addStalkerAndSync(n, u, mac, login, pw, D.stalkerFailed, identity) { ok -> checking = false; if (ok) { closeReason[0] = "submit"; dialog = OpenDialog.NONE } }
             }
         }
         // Serveurs multimédias personnels : connexion vérifiée avant l'ajout, le dialogue reste ouvert (« Connexion au serveur… ») jusqu'au verdict.

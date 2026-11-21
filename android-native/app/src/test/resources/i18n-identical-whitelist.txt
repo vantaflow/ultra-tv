@@ -25,3 +25,8 @@ ar|sync_notification
 ar|tv_favorites_channel
 ar|search_hint
 ar|ds_hint_ok
+fr|stalker_field_device_id
+fr|stalker_field_device_id2
+fr|stalker_field_signature
+es|stalker_field_device_id
+es|stalker_field_device_id2

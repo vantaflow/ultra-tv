@@ -52,15 +52,48 @@ object StalkerMac {
 object StalkerCreds {
     private const val SEP = '\u0000'
 
-    fun pack(login: String, password: String): String =
-        if (login.isEmpty() && password.isEmpty()) "" else "$login$SEP$password"
+    /**
+     * Identifiant et mot de passe, puis l'identité de boîtier saisie (facultative). Sans identité, format inchangé
+     * (« identifiant␀mot de passe ») : les sources déjà enregistrées se relisent telles quelles.
+     */
+    fun pack(login: String, password: String, identity: StalkerIdentity = StalkerIdentity()): String = when {
+        !identity.isEmpty -> listOf(login, password, identity.sn, identity.deviceId, identity.deviceId2, identity.signature).joinToString(SEP.toString())
+        login.isEmpty() && password.isEmpty() -> ""
+        else -> "$login$SEP$password"
+    }
 
     /** (identifiant, mot de passe) ; une valeur sans séparateur est un mot de passe seul (identifiant vide). */
     fun unpack(stored: String): Pair<String, String> {
         if (stored.isEmpty()) return "" to ""
-        val i = stored.indexOf(SEP)
-        return if (i < 0) "" to stored else stored.substring(0, i) to stored.substring(i + 1)
+        val parts = stored.split(SEP)
+        return if (parts.size < 2) "" to stored else parts[0] to parts[1]
     }
+
+    /** Identité de boîtier saisie (vide si aucune). */
+    fun identity(stored: String): StalkerIdentity {
+        val parts = stored.split(SEP)
+        if (parts.size < 3) return StalkerIdentity()
+        fun at(i: Int) = parts.getOrElse(i) { "" }
+        return StalkerIdentity(at(2), at(3), at(4), at(5))
+    }
+
+    /** [stored] reçu d'ailleurs (cloud) en gardant l'identité de boîtier saisie sur cet appareil. */
+    fun keepIdentity(stored: String, local: String): String {
+        val id = identity(local)
+        if (id.isEmpty) return stored
+        val (login, password) = unpack(stored)
+        return pack(login, password, id)
+    }
+}
+
+/**
+ * Identité de boîtier recopiée depuis un autre lecteur (numéro de série, Device ID 1/2, signature) : certains portails
+ * lient l'abonnement à ces valeurs. Champs vides = valeurs calculées depuis la MAC.
+ */
+data class StalkerIdentity(val sn: String = "", val deviceId: String = "", val deviceId2: String = "", val signature: String = "") {
+    val isEmpty: Boolean get() = sn.isBlank() && deviceId.isBlank() && deviceId2.isBlank() && signature.isBlank()
+    fun trimmed() = StalkerIdentity(sn.trim(), deviceId.trim(), deviceId2.trim(), signature.trim())
+    override fun toString() = "StalkerIdentity(${if (isEmpty) "empty" else "custom"})"   // jamais les valeurs
 }
 
 /** Adresse interne `stalker://<source>/<type>?cmd=…[&series=N]` stockée à la place d'une URL de flux. */
@@ -179,6 +212,20 @@ data class StalkerDevice(
     val model: String = "MAG250",
 ) {
     companion object {
+        /** Identité saisie ([identity]) là où elle est renseignée, valeurs calculées depuis la MAC ailleurs. */
+        fun of(mac: String, identity: StalkerIdentity): StalkerDevice {
+            if (identity.isEmpty) return StalkerDevice(mac)
+            val d = StalkerDevice(mac)
+            val sn = identity.sn.trim().ifEmpty { d.sn }
+            return StalkerDevice(
+                mac = mac,
+                sn = sn,
+                deviceId = identity.deviceId.trim().ifEmpty { d.deviceId },
+                deviceId2 = identity.deviceId2.trim().ifEmpty { d.deviceId2 },
+                signature = identity.signature.trim().ifEmpty { sha256(sn + mac).uppercase() },
+            )
+        }
+
         const val USER_AGENT = "Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3"
         const val X_USER_AGENT = "Model: MAG250; Link: WiFi"
 

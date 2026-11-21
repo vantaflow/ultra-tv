@@ -9,6 +9,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Amélioration de télémétrie.
 - Amélioration de télémétrie.
 
+### Corrigé
+- Stalker : si le portail refuse l'identité de boîtier calculée depuis la MAC, l'appli réessaie avec la MAC seule (portails enregistrés sans identité). Les portails qui fonctionnent déjà ne changent pas.
+
+### Ajouté
+- Stalker : champs facultatifs « Identité du boîtier » (numéro de série, Device ID 1/2, signature) dans le formulaire d'ajout, à recopier depuis un autre lecteur quand le fournisseur lie l'abonnement à ces valeurs.
+
 ## [1.3.70] — 2026-11-21 (Android)
 
 ### Corrigé

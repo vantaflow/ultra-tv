@@ -102,6 +102,12 @@ import com.ultratv.tv.nativeapp.i18n.fieldPortalUrl
 import com.ultratv.tv.nativeapp.i18n.formSubStalker
 import com.ultratv.tv.nativeapp.i18n.kindStalker
 import com.ultratv.tv.nativeapp.i18n.macHint
+import com.ultratv.tv.nativeapp.i18n.stalkerIdentityToggle
+import com.ultratv.tv.nativeapp.i18n.stalkerIdentityHint
+import com.ultratv.tv.nativeapp.i18n.stalkerFieldSerial
+import com.ultratv.tv.nativeapp.i18n.stalkerFieldDeviceId
+import com.ultratv.tv.nativeapp.i18n.stalkerFieldDeviceId2
+import com.ultratv.tv.nativeapp.i18n.stalkerFieldSignature
 import com.ultratv.tv.nativeapp.i18n.stalkerChecking
 import com.ultratv.tv.nativeapp.ui.design.DIcon
 import com.ultratv.tv.nativeapp.ui.design.Icons
@@ -528,12 +534,19 @@ internal fun macDigits(input: String): String {
  * ([busy]) et se ferme quand l'appelant a fini.
  */
 @Composable
-fun StalkerDialog(onDismiss: () -> Unit, busy: Boolean = false, onBack: (() -> Unit)? = null, onSubmit: (name: String, portal: String, mac: String, login: String, pass: String) -> Unit) {
+fun StalkerDialog(onDismiss: () -> Unit, busy: Boolean = false, onBack: (() -> Unit)? = null, onSubmit: (name: String, portal: String, mac: String, login: String, pass: String, identity: com.ultratv.tv.nativeapp.data.stalker.StalkerIdentity) -> Unit) {
     var name by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }
     var mac by remember { mutableStateOf(com.ultratv.tv.nativeapp.data.stalker.StalkerMac.DEFAULT_PREFIX.filter { it != ':' }) }
     var login by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
+    // Identité de boîtier (facultative, repliée) : à recopier d'un autre lecteur quand le portail y lie l'abonnement.
+    var showIdentity by remember { mutableStateOf(false) }
+    var sn by remember { mutableStateOf("") }
+    var devId by remember { mutableStateOf("") }
+    var devId2 by remember { mutableStateOf("") }
+    var signature by remember { mutableStateOf("") }
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     val S = LocalStrings.current
     val D = LocalDs.current
     val urlOk = url.isBlank() || isValidHttpUrl(url)
@@ -543,7 +556,7 @@ fun StalkerDialog(onDismiss: () -> Unit, busy: Boolean = false, onBack: (() -> U
         subtitle = D.formSubStalker,
         icon = Icons.Monitor,
         onDismiss = onDismiss,
-        onSubmit = { if (!busy) onSubmit(name, url.trim(), mac.chunked(2).joinToString(":"), login.trim(), pass) },
+        onSubmit = { if (!busy) onSubmit(name, url.trim(), mac.chunked(2).joinToString(":"), login.trim(), pass, com.ultratv.tv.nativeapp.data.stalker.StalkerIdentity(sn, devId, devId2, signature).trimmed()) },
         canSubmit = isValidHttpUrl(url) && macOk && !busy,
         submitLabel = if (busy) D.stalkerChecking else null,
         onBack = onBack,
@@ -556,7 +569,20 @@ fun StalkerDialog(onDismiss: () -> Unit, busy: Boolean = false, onBack: (() -> U
             placeholder = "00:1A:79:XX:XX:XX", required = true, visual = MacVisualTransformation, testTag = "field-mac")
         Text(D.macHint, fontFamily = Manrope, fontSize = 20.spx, color = Ux.Text3, maxLines = 2)
         FormField(D.fieldPortalLogin, login, { login = it }, testTag = "field-login")
-        FormField(D.fieldPortalPassword, pass, { pass = it }, password = true, last = true, placeholder = "••••••••", testTag = "field-pass")
+        FormField(D.fieldPortalPassword, pass, { pass = it }, password = true, last = !showIdentity, placeholder = "••••••••", testTag = "field-pass")
+        FocusSurface(onClick = { showIdentity = !showIdentity }, shape = RoundedCornerShape(if (touch) 12.dp else 14.design), bg = Ux.Surface2, modifier = Modifier.fillMaxWidth().testTag("identity-toggle")) { f ->
+            Box(Modifier.fillMaxWidth().padding(vertical = if (touch) 10.dp else 14.design), contentAlignment = Alignment.Center) {
+                Text((if (showIdentity) "▾ " else "▸ ") + D.stalkerIdentityToggle, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = if (touch) 14.sp else 20.spx,
+                    color = if (f) Ux.TextOnLight else Ux.Text, maxLines = 1)
+            }
+        }
+        if (showIdentity) {
+            Text(D.stalkerIdentityHint, fontFamily = Manrope, fontSize = 20.spx, color = Ux.Text3, maxLines = 3)
+            FormField(D.stalkerFieldSerial, sn, { sn = it }, keyboardType = KeyboardType.Ascii, testTag = "field-sn")
+            FormField(D.stalkerFieldDeviceId, devId, { devId = it }, keyboardType = KeyboardType.Ascii, testTag = "field-device-id")
+            FormField(D.stalkerFieldDeviceId2, devId2, { devId2 = it }, keyboardType = KeyboardType.Ascii, testTag = "field-device-id2")
+            FormField(D.stalkerFieldSignature, signature, { signature = it }, keyboardType = KeyboardType.Ascii, last = true, testTag = "field-signature")
+        }
     }
 }
 
