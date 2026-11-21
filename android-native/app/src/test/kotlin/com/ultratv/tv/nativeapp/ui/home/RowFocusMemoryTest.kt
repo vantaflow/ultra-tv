@@ -58,4 +58,12 @@ class RowFocusMemoryTest {
         rule.waitForIdle()
         assertTrue("clés périmées ignorées", restore.isPending())
     }
+
+    @Test fun indexOfSaved_seulementPourLaRangeeDeLElementSauvegarde() {
+        val restore = HomeFocusRestore(saved)
+        org.junit.Assert.assertEquals(2, restore.indexOfSaved("ROW", listOf("m1", "m2", "m3")))
+        org.junit.Assert.assertEquals(-1, restore.indexOfSaved("AUTRE", listOf("m1", "m2", "m3")))
+        org.junit.Assert.assertEquals(-1, restore.indexOfSaved("ROW", listOf("m1", "m2")))
+        org.junit.Assert.assertEquals(-1, HomeFocusRestore(null).indexOfSaved("ROW", listOf("m3")))
+    }
 }

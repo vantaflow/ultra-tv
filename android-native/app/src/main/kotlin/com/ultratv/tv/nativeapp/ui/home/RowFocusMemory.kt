@@ -1,7 +1,9 @@
 package com.ultratv.tv.nativeapp.ui.home
 
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.listSaver
@@ -9,6 +11,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
+import kotlinx.coroutines.flow.first
 
 /**
  * Mémoire d'une rangée de l'accueil : la recherche directionnelle de Compose choisit la carte la plus proche
@@ -110,6 +113,13 @@ internal class HomeFocusRestore(var saved: String? = null) {
         return pending
     }
 
+    /** Index, dans [keys] (clés de la rangée [row], dans l'ordre), de l'élément sauvegardé ; -1 s'il n'est pas de cette rangée ou n'y est plus. */
+    fun indexOfSaved(row: String, keys: List<String>): Int {
+        val s = saved ?: return -1
+        if (savedRow != row) return -1
+        return keys.indexOf(s.substring(row.length + 1))
+    }
+
     fun idOf(row: String, key: Any) = "$row\u0000$key"
 
     /** Le focus est arrivé sur [id] : fin de l'attente si c'est la cible, sinon mémorisation pour une prochaine sortie. */
@@ -140,16 +150,30 @@ internal fun rowMemory(memory: RowFocusMemory, key: Any): Modifier {
 }
 
 /**
- * Déclare à la restauration les clés de la rangée [memory], tirées de ses données ([keys], appelée seulement tant que la
- * restauration est en attente : rien n'est alloué ensuite). À poser sous [rememberRowFocusMemory].
+ * Déclare à la restauration les clés de la rangée [memory], tirées de ses données ([keys], dans l'ordre de la rangée,
+ * appelée seulement tant que la restauration est en attente : rien n'est alloué ensuite). À poser sous [rememberRowFocusMemory].
+ *
+ * [listState] : l'historique est trié par date décroissante, donc la carte quittée (lue, remontée en tête) existe dans les
+ * données sans être dans la fenêtre composée de la rangée, qui garde son ancien défilement. Pendant l'attente, la rangée
+ * défile jusqu'à elle (un défilement, aucune demande de focus) : elle est alors composée, devient la seule candidate et la
+ * demande de focus initiale de l'écran tombe dessus sans attendre le dernier recours.
  */
 @Composable
-internal fun RegisterRowKeys(memory: RowFocusMemory, data: Any?, keys: () -> Collection<Any>) {
+internal fun RegisterRowKeys(memory: RowFocusMemory, data: Any?, listState: LazyListState? = null, keys: () -> List<Any>) {
     val restore = LocalHomeFocusRestore.current ?: return
     if (!restore.pending) return
-    val set = remember(restore, data) { keys().mapTo(HashSet()) { it.toString() } }
+    val list = remember(restore, data) { keys().map { it.toString() } }
+    val set = remember(restore, list) { list.toHashSet() }
     SideEffect { restore.registerRow(memory.id, set) }
     DisposableEffect(restore, memory) { onDispose { restore.unregisterRow(memory.id) } }
+    if (listState != null) LaunchedEffect(restore, list) {
+        val index = restore.indexOfSaved(memory.id, list)
+        if (index < 0) return@LaunchedEffect
+        // Attend la première mesure : avant elle, rien n'est « visible ». Une carte déjà visible ne déplace rien.
+        androidx.compose.runtime.snapshotFlow { listState.layoutInfo.visibleItemsInfo.isNotEmpty() }.first { it }
+        val key = list[index]
+        if (listState.layoutInfo.visibleItemsInfo.none { it.key.toString() == key }) listState.scrollToItem(index)
+    }
 }
 
 /** Bouton du bandeau « À la une » ([key] : watch, info, list) : mêmes règles de restauration que les cartes des rangées. */

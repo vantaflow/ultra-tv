@@ -17,7 +17,7 @@ internal object HomeTvFixtures {
         isShow = false, kind = TmdbKind.MOVIE,
     )
 
-    private fun resume(i: Int) = ResumeCardUi(
+    fun resume(i: Int) = ResumeCardUi(
         key = "r$i", entry = WatchHistoryEntity(providerId = 1, kind = "MOVIE", remoteId = "$i", title = "Film $i", poster = null, streamUrl = "u"),
         title = "Film $i", progress = 0.4f, minutesLeft = 30,
     )

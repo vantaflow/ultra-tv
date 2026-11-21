@@ -576,7 +576,7 @@ class HomeTvNavigationTest {
         assertTrue("jamais sur la carte disparue", focusNow("après abandon") != "home-poster-m3")
     }
 
-    @Test fun retourSurLAccueil_carteExistanteMaisPasEncoreComposee_resteAttendue_pasDeRelachementPrematuré() {
+    @Test fun retourSurLAccueil_carteExistanteMaisPasEncoreComposee_laRangeeDefileJusquaElle_aucuneAutreCarteNePrendLeFocus() {
         mount()
         rowsState.value = rowsState.value.copy(latestMovies = (1..30).map { HomeTvFixtures.posterUi("m", it) })
         rule.waitForIdle()
@@ -587,11 +587,37 @@ class HomeTvNavigationTest {
         rule.onNodeWithTagExists("detail-button")
         // Pendant l'absence : quarante nouvelles affiches avant la carte quittée, qui existe toujours mais hors de la fenêtre composée.
         rule.runOnUiThread { rowsState.value = rowsState.value.copy(latestMovies = (1..40).map { HomeTvFixtures.posterUi("n", it) } + HomeTvFixtures.posterUi("m", 20)) }
-        val frames = imagesAvantFocus(max = 40)
-        assertEquals("la carte attendue n'est pas composée : aucun élément ne doit prendre le focus avant le délai de dernier recours (40 images = 640 ms)", 40, frames)
-        // Le délai de dernier recours reste la borne : ensuite un élément est focalisé.
-        rule.mainClock.advanceTimeBy(1_500); rule.waitForIdle()
-        focusNow("après le dernier recours")
+        rule.mainClock.autoAdvance = false
+        rule.runOnUiThread { screen.value = "home" }
+        val passage = mutableListOf<String>()
+        var n = 0
+        // Avant, ce cas attendait le délai de dernier recours sans aucun focus (640 ms et plus) : la rangée défile maintenant jusqu'à la carte.
+        while (n < 40 && passage.isEmpty()) {
+            rule.mainClock.advanceTimeByFrame(); n++
+            rule.onAllNodes(isFocused()).fetchSemanticsNodes().forEach { nd -> tagOf(nd)?.let { t -> if (t != "detail-button" && !t.startsWith("rail-")) passage += t } }
+        }
+        rule.mainClock.autoAdvance = true
+        rule.waitForIdle()
+        assertTrue("le focus doit arriver sans attendre le dernier recours, il est arrivé après $n images", n <= 15)
+        assertEquals("aucune autre carte ne prend le focus : la carte quittée", listOf("home-poster-m20"), passage.distinct())
+        assertEquals("home-poster-m20", focusNow("après le retour"))
+    }
+
+    @Test fun retourSurLAccueil_septiemeCarteDeReprendre_remonteeEnTeteParLHistorique_leFocusArriveSansAttente() {
+        mount()
+        rowsState.value = rowsState.value.copy(resume = (1..12).map { HomeTvFixtures.resume(it) })
+        rule.waitForIdle()
+        downTo("home-resume-")
+        repeat(6) { step(forward, "carte") }
+        assertEquals("home-resume-r7", focusNow("avant"))
+        rule.runOnIdle { screen.value = "detail" }; rule.waitForIdle()
+        rule.onNodeWithTagExists("detail-button")
+        // La lecture met la carte en tête de l'historique (tri par date décroissante) : même clé, index 0, la rangée garde son défilement.
+        rule.runOnUiThread { rowsState.value = rowsState.value.copy(resume = (listOf(7) + (1..12).filter { it != 7 }).map { HomeTvFixtures.resume(it) }) }
+        val frames = imagesAvantFocus(max = 60)
+        // Pas d'attente du délai de dernier recours (1 000 ms = 62 images) : le focus arrive en quelques images.
+        assertTrue("le focus doit arriver sans attente, il est arrivé après $frames images", frames <= 15)
+        assertEquals("la carte quittée, en tête de rangée", "home-resume-r7", focusNow("après le retour"))
     }
 
     @Test fun retourSurLAccueil_rangeeQuiArriveApresLeRetour_laCarteQuitteeEstRestauree() {

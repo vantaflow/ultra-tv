@@ -521,9 +521,10 @@ private fun HomeSection(
 @Composable
 private fun ResumeRow(cards: List<ResumeCardUi>, onPlay: (WatchHistoryEntity) -> Unit) {
     val memory = rememberRowFocusMemory()
-    RegisterRowKeys(memory, cards) { cards.map { it.key } }
+    val listState = rememberLazyListState()
+    RegisterRowKeys(memory, cards, listState) { cards.map { it.key } }
     RowEdgeMargin(ResumeEdgeMargin) {
-        LazyRow(Modifier.homeRow().then(memory.tracker).testTag("home-resume-row"), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PaddingValues(start = RowBleed, end = 96.design, top = 18.design, bottom = 18.design)) {
+        LazyRow(Modifier.homeRow().then(memory.tracker).testTag("home-resume-row"), state = listState, horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PaddingValues(start = RowBleed, end = 96.design, top = 18.design, bottom = 18.design)) {
             items(cards, key = { it.key }, contentType = { "resume" }) { c -> ResumeCard(c, rowMemory(memory, c.key).testTag("home-resume-${c.key}")) { onPlay(c.entry) } }
         }
     }
@@ -547,9 +548,10 @@ private fun NewEpisodesRow(cards: List<NewEpisodeCardUi>, onOpen: (PosterCardUi)
 @Composable
 private fun PosterRow(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
     val memory = rememberRowFocusMemory()
-    RegisterRowKeys(memory, cards) { cards.map { it.key } }
+    val listState = rememberLazyListState()
+    RegisterRowKeys(memory, cards, listState) { cards.map { it.key } }
     RowEdgeMargin(PosterEdgeMargin) {
-        LazyRow(Modifier.homeRow().then(memory.tracker).testTag("home-poster-row"), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
+        LazyRow(Modifier.homeRow().then(memory.tracker).testTag("home-poster-row"), state = listState, horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
             items(cards, key = { it.key }, contentType = { "poster" }) { p ->
                 com.ultratv.tv.nativeapp.ui.catalog.PosterCell(
                     p.item, Modifier.width(PosterWidth).then(rowMemory(memory, p.key)).testTag("home-poster-${p.key}"),
@@ -565,11 +567,12 @@ private fun PosterRow(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit)
 private fun ChannelRow(cards: List<ChannelCardUi>, onPlay: (ChannelEntity) -> Unit, seeAll: String, up: FocusRequester?, onSeeAll: () -> Unit) {
     // ▲ depuis n'importe quelle carte, à la sortie du groupe : « Regarder » (sans cela, la recherche géométrique choisit le bouton le plus proche, à droite).
     val memory = rememberRowFocusMemory()
-    RegisterRowKeys(memory, cards) { cards.map { it.channel.id } + "see-all" }
+    val listState = rememberLazyListState()
+    RegisterRowKeys(memory, cards, listState) { cards.distinctBy { it.channel.id }.map { it.channel.id } + "see-all" }
     val rowModifier = Modifier.homeRow(up)
     RowEdgeMargin(ChannelEdgeMargin) {
         LazyRow(
-            rowModifier.then(memory.tracker).testTag("home-channel-row"), horizontalArrangement = Arrangement.spacedBy(20.design),
+            rowModifier.then(memory.tracker).testTag("home-channel-row"), state = listState, horizontalArrangement = Arrangement.spacedBy(20.design),
             // Marge verticale : la carte focalisée grandit de 6 % (13 de chaque côté) + anneau (≈ 11) et la rangée rogne ce qui dépasse.
             contentPadding = PaddingValues(start = RowBleed, end = 96.design, top = 24.design, bottom = 24.design)) {
             items(cards.distinctBy { it.channel.id }, key = { it.channel.id }, contentType = { "channel" }) { c -> ChannelCard(c, memory) { onPlay(c.channel) } }
@@ -607,9 +610,10 @@ internal const val HomePosterScale = 1.10f
 @Composable
 private fun Top10Row(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
     val memory = rememberRowFocusMemory()
-    RegisterRowKeys(memory, cards) { cards.map { it.key } }
+    val listState = rememberLazyListState()
+    RegisterRowKeys(memory, cards, listState) { cards.map { it.key } }
     RowEdgeMargin(PosterEdgeMargin) {
-        LazyRow(Modifier.homeRow().then(memory.tracker).testTag("home-top10-row"), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
+        LazyRow(Modifier.homeRow().then(memory.tracker).testTag("home-top10-row"), state = listState, horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
             itemsIndexed(cards, key = { _, p -> p.key }, contentType = { _, _ -> "top10" }) { i, p ->
                 Box(Modifier.width(Top10CellWidth)) {
                     Top10Rank(i + 1, Modifier.align(Alignment.TopStart))
