@@ -403,6 +403,8 @@ data class SyncErrorStrings(
     val rateLimited: String,
     val invalidResponse: String,
     val localNetwork: String,
+    val accountExpired: String,
+    val emptyList: String,
     val fixSource: String,
     val retry: String,
     val title: String,
@@ -419,6 +421,8 @@ data class SyncErrorStrings(
         com.ultratv.tv.nativeapp.data.net.SyncErrorKind.RATE_LIMITED -> rateLimited
         com.ultratv.tv.nativeapp.data.net.SyncErrorKind.INVALID_RESPONSE -> invalidResponse
         com.ultratv.tv.nativeapp.data.net.SyncErrorKind.LOCAL_NETWORK -> localNetwork
+        com.ultratv.tv.nativeapp.data.net.SyncErrorKind.ACCOUNT_EXPIRED -> accountExpired
+        com.ultratv.tv.nativeapp.data.net.SyncErrorKind.EMPTY_LIST -> emptyList
         com.ultratv.tv.nativeapp.data.net.SyncErrorKind.OTHER -> other
     }
 }
@@ -692,6 +696,8 @@ private fun buildStrings(lang: AppLang): Strings {
             rateLimited = tx(R.string.syncerr_rate_limited),
             invalidResponse = tx(R.string.syncerr_invalid_response),
             localNetwork = tx(R.string.syncerr_local_network),
+            accountExpired = tx(R.string.syncerr_account_expired),
+            emptyList = tx(R.string.syncerr_empty_list),
             fixSource = tx(R.string.syncerr_fix_source),
             retry = tx(R.string.syncerr_retry),
             title = tx(R.string.syncerr_title),

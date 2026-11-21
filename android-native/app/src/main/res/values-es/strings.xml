@@ -1935,5 +1935,7 @@
     <string name="ds_err_no_picture">Hay sonido pero no imagen</string>
     <string name="syncerr_rate_limited">Demasiadas solicitudes — el proveedor limita el acceso, vuelve a intentarlo en unos minutos</string>
     <string name="syncerr_invalid_response">El servidor respondió con algo que no es una lista — comprueba la dirección</string>
+    <string name="syncerr_account_expired">Suscripción caducada — renuévala con tu proveedor</string>
+    <string name="syncerr_empty_list">El proveedor devolvió una lista vacía — se conserva tu catálogo</string>
     <string name="syncerr_local_network">Esta dirección está en una red local — conecta el dispositivo a la misma red y desactiva la VPN</string>
 </resources>

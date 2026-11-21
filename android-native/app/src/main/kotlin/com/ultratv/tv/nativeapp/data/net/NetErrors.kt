@@ -11,6 +11,19 @@ import javax.net.ssl.SSLException
 /** Réponse HTTP non réussie d'un fournisseur. */
 class HttpStatusException(val code: Int, message: String = "HTTP $code") : IOException(message)
 
+/**
+ * Le fournisseur répond (souvent HTTP 200) mais refuse le compte : Xtream `user_info.auth = 0` ou statut Expired / Banned /
+ * Disabled. Pas une [IOException] : ni nouvelle tentative, ni repli « catégorie par catégorie » ; la synchro échoue et
+ * le catalogue en base reste en place. Aucun identifiant dans le message.
+ */
+class AccountRefusedException(val expired: Boolean) : RuntimeException(if (expired) "account expired" else "account refused")
+
+/**
+ * Liste vide (ou presque, voir [com.ultratv.tv.nativeapp.data.repo.CatalogGuard]) alors que la base contient un
+ * catalogue : la synchro est refusée et RIEN n'est effacé. [part] = LIVE / MOVIE / SERIES.
+ */
+class EmptyCatalogException(val part: String, val before: Int, val received: Int) : RuntimeException("empty list $part: $received/$before")
+
 /** Catégories d'échec réseau présentées à l'utilisateur (message traduit + action « corriger la source »). */
 enum class SyncErrorKind {
     HOST_NOT_FOUND,     // DNS : le domaine n'existe plus (NXDOMAIN)
@@ -24,6 +37,8 @@ enum class SyncErrorKind {
     RATE_LIMITED,       // 429 : trop de demandes, le fournisseur limite l'accès
     INVALID_RESPONSE,   // réponse illisible : page web ou texte à la place de la liste attendue
     LOCAL_NETWORK,      // adresse du réseau local (192.168.x, 10.x, 172.16-31.x) injoignable : autre réseau ou VPN actif
+    ACCOUNT_EXPIRED,    // le fournisseur répond, mais l'abonnement est expiré (Xtream `user_info.status` = Expired)
+    EMPTY_LIST,         // liste vide (ou presque) alors que la base contient un catalogue : rien n'est effacé
     OTHER,
 }
 
@@ -35,6 +50,8 @@ object NetErrors {
         while (cur != null && depth++ < 8) {
             when (cur) {
                 is HttpStatusException -> return fromHttp(cur.code)
+                is AccountRefusedException -> return if (cur.expired) SyncErrorKind.ACCOUNT_EXPIRED else SyncErrorKind.UNAUTHORIZED
+                is EmptyCatalogException -> return SyncErrorKind.EMPTY_LIST
                 is UnknownHostException -> return SyncErrorKind.HOST_NOT_FOUND
                 is SocketTimeoutException -> return SyncErrorKind.TIMEOUT
                 is ConnectException, is NoRouteToHostException -> return SyncErrorKind.UNREACHABLE

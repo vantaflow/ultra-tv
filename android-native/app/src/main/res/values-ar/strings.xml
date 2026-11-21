@@ -2001,5 +2001,7 @@
     <string name="ds_err_no_picture">الصوت يعمل لكن بلا صورة</string>
     <string name="syncerr_rate_limited">طلبات كثيرة — المزوّد يحدّ من الوصول، أعد المحاولة بعد بضع دقائق</string>
     <string name="syncerr_invalid_response">ردّ الخادم بشيء غير قائمة التشغيل — تحقّق من العنوان</string>
+    <string name="syncerr_account_expired">انتهى الاشتراك — جدّده لدى مزوّدك</string>
+    <string name="syncerr_empty_list">أرسل المزوّد قائمة فارغة — تم الاحتفاظ بالكتالوج</string>
     <string name="syncerr_local_network">هذا العنوان على شبكة محلية — صِل الجهاز بالشبكة نفسها وأوقف الـVPN</string>
 </resources>
