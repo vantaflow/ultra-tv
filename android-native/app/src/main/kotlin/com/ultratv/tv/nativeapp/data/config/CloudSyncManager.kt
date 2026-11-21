@@ -281,7 +281,7 @@ class CloudSyncManager @Inject constructor(
         return received
     }
 
-    private val stateScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+    private val stateScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO + com.ultratv.tv.nativeapp.BackgroundTasks.handler("cloudState"))
     @Volatile private var watchingState = false
 
     /**
@@ -313,7 +313,7 @@ class CloudSyncManager @Inject constructor(
         }
     }
 
-    private val prefsScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+    private val prefsScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO + com.ultratv.tv.nativeapp.BackgroundTasks.handler("cloudPrefs"))
     @Volatile private var watching = false
 
     /** À appeler une fois au démarrage : publie (anti-rebond 1,5 s) les changements faits par l'utilisateur. */

@@ -28,7 +28,7 @@ class LiveOrderBackfill @Inject constructor(
     private val channelDao: ChannelDao,
     private val categoryDao: CategoryDao,
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + com.ultratv.tv.nativeapp.BackgroundTasks.handler("liveOrder"))
     private val lock = Mutex()
     private val _running = MutableStateFlow(false)
 
