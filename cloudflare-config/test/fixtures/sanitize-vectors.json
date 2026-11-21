@@ -1,0 +1,1205 @@
+[
+  {
+    "name": "F1 xtream court .ts",
+    "input": "url=http://fournisseur.invalid:8080/ZZUSERZZ/ZZPASSZZ/12345.ts vidéo=- audio=-",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur.invalid",
+      "12345"
+    ],
+    "mustContain": [
+      "http://",
+      ".ts",
+      "vidéo=- audio=-"
+    ]
+  },
+  {
+    "name": "F1 xtream court sans extension",
+    "input": "GET http://fournisseur.invalid:80/ZZUSERZZ/ZZPASSZZ/12345 -> 403",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur.invalid",
+      "12345"
+    ],
+    "mustContain": [
+      "http://",
+      "-> 403"
+    ]
+  },
+  {
+    "name": "F1 xtream court .m3u8",
+    "input": "open http://fournisseur.invalid:8080/ZZUSERZZ/ZZPASSZZ/777.m3u8 failed",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      ".m3u8",
+      "failed"
+    ]
+  },
+  {
+    "name": "F1 xtream court .mkv https",
+    "input": "https://fournisseur.invalid/ZZUSERZZ/ZZPASSZZ/55.mkv",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "https://",
+      ".mkv"
+    ]
+  },
+  {
+    "name": "F1 xtream court .mp4 en majuscules",
+    "input": "HTTP://FOURNISSEUR.INVALID:8080/ZZUSERZZ/ZZPASSZZ/9.MP4",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "FOURNISSEUR.INVALID",
+      "fournisseur.invalid"
+    ],
+    "mustContain": []
+  },
+  {
+    "name": "F1 message OkHttp avec adresse courte",
+    "input": "java.lang.IllegalArgumentException: Expected URL scheme 'http' or 'https' but no scheme was found for http://fournisseur.invalid:8080/ZZUSERZZ/ZZPASSZZ/1.ts",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "IllegalArgumentException",
+      "Expected URL scheme 'http' or 'https'"
+    ]
+  },
+  {
+    "name": "F1 forme longue live",
+    "input": "http://fournisseur.invalid:80/live/ZZUSERZZ/ZZPASSZZ/1234.ts",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "/live",
+      ".ts"
+    ]
+  },
+  {
+    "name": "F1 forme longue movie",
+    "input": "https://fournisseur.invalid/movie/ZZUSERZZ/ZZPASSZZ/55.mkv",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "/movie",
+      ".mkv"
+    ]
+  },
+  {
+    "name": "F1 forme longue series",
+    "input": "http://fournisseur.invalid/series/ZZUSERZZ/ZZPASSZZ/8.mp4",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "/series",
+      ".mp4"
+    ]
+  },
+  {
+    "name": "F1 forme longue timeshift",
+    "input": "http://fournisseur.invalid/timeshift/ZZUSERZZ/ZZPASSZZ/60/2026-11-21:10-00/42.ts",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur.invalid",
+      "2026-11-21:10-00"
+    ],
+    "mustContain": [
+      "/timeshift",
+      ".ts"
+    ]
+  },
+  {
+    "name": "espace dans l'identifiant (forme longue)",
+    "input": "url=http://fournisseur.invalid:8080/live/ZZUSER ZZ/ZZPASSZZ/123.ts vidéo=video/avc audio=-",
+    "mustNotContain": [
+      "ZZUSER",
+      "ZZPASSZZ",
+      "fournisseur.invalid",
+      "123.ts"
+    ],
+    "mustContain": [
+      "/live",
+      "vidéo=video/avc audio=-"
+    ]
+  },
+  {
+    "name": "espace dans le mot de passe (forme longue)",
+    "input": "url=http://fournisseur.invalid:8080/live/ZZUSERZZ/ZZPASS ZZ/123.ts vidéo=-",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASS",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "/live",
+      "vidéo=-"
+    ]
+  },
+  {
+    "name": "espaces multiples dans les deux",
+    "input": "http://fournisseur.invalid/live/ZZ USERX ZZ/ZZ PASSX ZZ/123.ts http=403",
+    "mustNotContain": [
+      "USERX",
+      "PASSX",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "/live",
+      "http=403"
+    ]
+  },
+  {
+    "name": "espace dans l'identifiant (forme courte)",
+    "input": "url=http://fournisseur.invalid:8080/ZZUSER ZZ/ZZPASSZZ/1.ts code=403",
+    "mustNotContain": [
+      "ZZUSER",
+      "ZZPASSZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "code=403"
+    ]
+  },
+  {
+    "name": "espace encodée %20",
+    "input": "http://fournisseur.invalid/live/ZZUSER%20ZZ/ZZPASS%20ZZ/1.ts",
+    "mustNotContain": [
+      "ZZUSER",
+      "ZZPASS",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "/live"
+    ]
+  },
+  {
+    "name": "espace encodée +",
+    "input": "http://fournisseur.invalid/live/ZZUSER+ZZ/ZZPASS+ZZ/1.ts",
+    "mustNotContain": [
+      "ZZUSER",
+      "ZZPASS",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "/live"
+    ]
+  },
+  {
+    "name": "caractères @ : ! $ dans le chemin",
+    "input": "http://fournisseur.invalid/live/ZZUSER@ZZ/ZZPA:SS!$ZZ/1.ts",
+    "mustNotContain": [
+      "ZZUSER",
+      "ZZPA",
+      "SS!$ZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "/live"
+    ]
+  },
+  {
+    "name": "caractères non ASCII dans le chemin",
+    "input": "http://fournisseur.invalid/movie/ZZUSÉRZZ/ZZPÄSSZZ/9.mkv",
+    "mustNotContain": [
+      "ZZUSÉRZZ",
+      "ZZPÄSSZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "/movie",
+      ".mkv"
+    ]
+  },
+  {
+    "name": "adresse entre parenthèses et guillemets simples",
+    "input": "Unable to open ('http://fournisseur.invalid/live/ZZUSERZZ/ZZPASSZZ/1.ts') now",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "Unable to open",
+      "now"
+    ]
+  },
+  {
+    "name": "adresse à barres échappées dans du JSON",
+    "input": "{\"stream_url\":\"http:\\/\\/fournisseur.invalid:8080\\/live\\/ZZUSERZZ\\/ZZPASSZZ\\/1.ts\",\"ok\":true}",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "stream_url",
+      "\"ok\":true"
+    ]
+  },
+  {
+    "name": "F2 JSON input d'une JsonDecodingException",
+    "input": "kotlinx.serialization.json.internal.JsonDecodingException: Unexpected JSON token at offset 120: Expected end of the object\nJSON input: {\"user_info\":{\"username\":\"ZZUSERZZ\",\"password\":\"ZZPASSZZ\",\"auth\":1,\"status\":\"Active\",\"exp_date\":\"1767225600\"},\"server_info\":{\"url\":\"fournisseur.invalid\",\"port\":\"8080\"}}",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "JsonDecodingException",
+      "offset 120",
+      "\"status\":\"Active\"",
+      "\"port\":\"8080\""
+    ]
+  },
+  {
+    "name": "F2 JSON avec espaces autour des deux-points",
+    "input": "{ \"username\" : \"ZZUSER ZZ\" , \"password\" : \"ZZPASS ZZ\" }",
+    "mustNotContain": [
+      "ZZUSER",
+      "ZZPASS"
+    ],
+    "mustContain": [
+      "username",
+      "password"
+    ]
+  },
+  {
+    "name": "F2 JSON échappé dans une chaîne",
+    "input": "{\"msg\":\"{\\\"password\\\":\\\"ZZPASSZZ\\\",\\\"user\\\":\\\"ZZUSERZZ\\\"}\"}",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ"
+    ],
+    "mustContain": [
+      "msg"
+    ]
+  },
+  {
+    "name": "F2 guillemets simples",
+    "input": "{'pass': 'ZZPASSZZ', 'login': 'ZZUSERZZ'}",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ"
+    ],
+    "mustContain": [
+      "pass",
+      "login"
+    ]
+  },
+  {
+    "name": "F2 mac et token en JSON",
+    "input": "{\"mac\":\"00:1A:79:AB:CD:EF\",\"token\":\"ZZTOKENZZ\",\"stb_type\":\"MAG250\"}",
+    "mustNotContain": [
+      "00:1A:79:AB:CD:EF",
+      "AB:CD:EF",
+      "ZZTOKENZZ"
+    ],
+    "mustContain": [
+      "MAG250"
+    ]
+  },
+  {
+    "name": "F2 mot de passe contenant un guillemet échappé",
+    "input": "{\"password\":\"ZZPA\\\"SSZZ\",\"x\":1}",
+    "mustNotContain": [
+      "ZZPA",
+      "SSZZ"
+    ],
+    "mustContain": [
+      "\"x\":1"
+    ]
+  },
+  {
+    "name": "F3 réponse OAuth JSON",
+    "input": "{\"access_token\":\"ZZTOKENZZ\",\"refresh_token\":\"ZZTOKEN2ZZ\",\"id_token\":\"ZZTOKEN3ZZ\",\"token_type\":\"bearer\",\"expires_in\":7776000}",
+    "mustNotContain": [
+      "ZZTOKENZZ",
+      "ZZTOKEN2ZZ",
+      "ZZTOKEN3ZZ"
+    ],
+    "mustContain": [
+      "token_type",
+      "expires_in",
+      "7776000"
+    ]
+  },
+  {
+    "name": "F3 paramètres dans une adresse",
+    "input": "https://api.example.invalid/oauth/token?client_id=abc&client_secret=ZZSECRETZZ&code=ZZCODEZZ",
+    "mustNotContain": [
+      "ZZSECRETZZ",
+      "ZZCODEZZ",
+      "api.example.invalid"
+    ],
+    "mustContain": [
+      "https://"
+    ]
+  },
+  {
+    "name": "F3 corps de formulaire hors adresse",
+    "input": "POST body: grant_type=refresh_token&refresh_token=ZZTOKENZZ&client_secret=ZZSECRETZZ",
+    "mustNotContain": [
+      "ZZTOKENZZ",
+      "ZZSECRETZZ"
+    ],
+    "mustContain": [
+      "grant_type"
+    ]
+  },
+  {
+    "name": "F3 en-tête Authorization Bearer",
+    "input": "Authorization: Bearer ZZTOKENZZ",
+    "mustNotContain": [
+      "ZZTOKENZZ"
+    ],
+    "mustContain": [
+      "Authorization"
+    ]
+  },
+  {
+    "name": "F3 Bearer seul dans un message",
+    "input": "request failed with Bearer ZZTOKENZZ (401)",
+    "mustNotContain": [
+      "ZZTOKENZZ"
+    ],
+    "mustContain": [
+      "(401)"
+    ]
+  },
+  {
+    "name": "F3 Basic en paramètre",
+    "input": "authorization=Basic WlpVU0VSWlo6WlpQQVNTWlo= status=401",
+    "mustNotContain": [
+      "WlpVU0VSWlo6WlpQQVNTWlo="
+    ],
+    "mustContain": [
+      "status=401"
+    ]
+  },
+  {
+    "name": "F3 api_key apikey auth id_token",
+    "input": "id_token=ZZTOKENZZ api_key=ZZKEY1ZZ apikey=ZZKEY2ZZ auth=ZZAUTHZZ",
+    "mustNotContain": [
+      "ZZTOKENZZ",
+      "ZZKEY1ZZ",
+      "ZZKEY2ZZ",
+      "ZZAUTHZZ"
+    ],
+    "mustContain": []
+  },
+  {
+    "name": "F3 jeton JWT nu",
+    "input": "jwt rejected: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJaWlVTRVJaWiJ9.ZZSIGNATUREZZ",
+    "mustNotContain": [
+      "eyJzdWIiOiJaWlVTRVJaWiJ9",
+      "ZZSIGNATUREZZ"
+    ],
+    "mustContain": [
+      "jwt rejected"
+    ]
+  },
+  {
+    "name": "F3 jeton d'appareil utv_",
+    "input": "Authorization: Bearer utv_ZZZZZZZZZZZZZZZZZZZZZZZZZZZZ and utv_YYYYYYYYYYYYYYYYYYYYYYYY",
+    "mustNotContain": [
+      "ZZZZZZZZZZZZZZZZ",
+      "YYYYYYYYYYYYYYYY"
+    ],
+    "mustContain": []
+  },
+  {
+    "name": "F4 X-Plex-Token dans une adresse",
+    "input": "GET http://192.168.77.88:32400/library/metadata/1?X-Plex-Token=ZZTOKENZZ failed",
+    "mustNotContain": [
+      "ZZTOKENZZ",
+      "192.168.77.88"
+    ],
+    "mustContain": [
+      "failed"
+    ]
+  },
+  {
+    "name": "F4 X-Plex-Token hors adresse",
+    "input": "/library/metadata/1?X-Plex-Token=ZZTOKENZZ",
+    "mustNotContain": [
+      "ZZTOKENZZ"
+    ],
+    "mustContain": [
+      "X-Plex-Token"
+    ]
+  },
+  {
+    "name": "F4 X-Emby-Token en en-tête",
+    "input": "X-Emby-Token: ZZTOKENZZ",
+    "mustNotContain": [
+      "ZZTOKENZZ"
+    ],
+    "mustContain": [
+      "X-Emby-Token"
+    ]
+  },
+  {
+    "name": "F4 X-MediaBrowser-Token",
+    "input": "X-MediaBrowser-Token=ZZTOKENZZ&foo=1",
+    "mustNotContain": [
+      "ZZTOKENZZ"
+    ],
+    "mustContain": [
+      "foo=1"
+    ]
+  },
+  {
+    "name": "F4 X-Emby-Authorization MediaBrowser",
+    "input": "X-Emby-Authorization: MediaBrowser Client=\"Ultra TV\", Device=\"Salon\", DeviceId=\"ZZDEVICEZZ\", Version=\"1.3\", Token=\"ZZTOKENZZ\"",
+    "mustNotContain": [
+      "ZZTOKENZZ",
+      "ZZDEVICEZZ"
+    ],
+    "mustContain": [
+      "X-Emby-Authorization"
+    ]
+  },
+  {
+    "name": "F4 Token=\"…\" Emby hors en-tête",
+    "input": "MediaBrowser DeviceId=\"ZZDEVICEZZ\", Token=\"ZZTOKENZZ\"",
+    "mustNotContain": [
+      "ZZTOKENZZ",
+      "ZZDEVICEZZ"
+    ],
+    "mustContain": [
+      "MediaBrowser"
+    ]
+  },
+  {
+    "name": "F4 api_key Jellyfin dans une adresse",
+    "input": "http://fournisseur.invalid:8096/Videos/12/stream?static=true&api_key=ZZTOKENZZ",
+    "mustNotContain": [
+      "ZZTOKENZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "http://"
+    ]
+  },
+  {
+    "name": "F4 api_key Jellyfin hors adresse",
+    "input": "/Videos/12/stream?static=true&api_key=ZZTOKENZZ",
+    "mustNotContain": [
+      "ZZTOKENZZ"
+    ],
+    "mustContain": [
+      "static=true"
+    ]
+  },
+  {
+    "name": "F5 MAC deux-points",
+    "input": "portal handshake mac 00:1A:79:AB:CD:EF refused",
+    "mustNotContain": [
+      "00:1A:79:AB:CD:EF",
+      "AB:CD:EF"
+    ],
+    "mustContain": [
+      "portal handshake",
+      "refused"
+    ]
+  },
+  {
+    "name": "F5 MAC tirets minuscules",
+    "input": "device 00-1a-79-ab-cd-ef rejected",
+    "mustNotContain": [
+      "00-1a-79-ab-cd-ef",
+      "ab-cd-ef"
+    ],
+    "mustContain": [
+      "rejected"
+    ]
+  },
+  {
+    "name": "F5 MAC encodée %3A",
+    "input": "mac=00%3A1A%3A79%3AAB%3ACD%3AEF&x=1",
+    "mustNotContain": [
+      "00%3A1A%3A79%3AAB%3ACD%3AEF",
+      "AB%3ACD%3AEF"
+    ],
+    "mustContain": [
+      "x=1"
+    ]
+  },
+  {
+    "name": "F5 MAC encodée seule",
+    "input": "cookie value 00%3A1a%3A79%3Aab%3Acd%3Aef seen",
+    "mustNotContain": [
+      "00%3A1a%3A79%3Aab%3Acd%3Aef",
+      "ab%3Acd%3Aef"
+    ],
+    "mustContain": [
+      "seen"
+    ]
+  },
+  {
+    "name": "F5 paramètres Stalker hors adresse",
+    "input": "load.php?type=stb&action=handshake&sn=ZZSERIALZZ&device_id=ZZDEVID1ZZ&device_id2=ZZDEVID2ZZ&signature=ZZSIGZZ&stb_type=MAG250",
+    "mustNotContain": [
+      "ZZSERIALZZ",
+      "ZZDEVID1ZZ",
+      "ZZDEVID2ZZ",
+      "ZZSIGZZ"
+    ],
+    "mustContain": [
+      "action=handshake",
+      "stb_type=MAG250"
+    ]
+  },
+  {
+    "name": "F5 en-tête Cookie entier",
+    "input": "Cookie: mac=00:1A:79:AB:CD:EF; stb_lang=en; timezone=Europe/Paris; token=ZZTOKENZZ",
+    "mustNotContain": [
+      "00:1A:79:AB:CD:EF",
+      "AB:CD:EF",
+      "ZZTOKENZZ"
+    ],
+    "mustContain": [
+      "Cookie"
+    ]
+  },
+  {
+    "name": "F5 en-tête Set-Cookie",
+    "input": "Set-Cookie: PHPSESSID=ZZSESSIONZZ; path=/",
+    "mustNotContain": [
+      "ZZSESSIONZZ"
+    ],
+    "mustContain": [
+      "Set-Cookie"
+    ]
+  },
+  {
+    "name": "F5 adresse Stalker complète",
+    "input": "http://fournisseur.invalid/stalker_portal/server/load.php?type=itv&action=create_link&cmd=ffmpeg%20http://localhost/ch/123&mac=00:1A:79:AB:CD:EF",
+    "mustNotContain": [
+      "00:1A:79:AB:CD:EF",
+      "AB:CD:EF",
+      "fournisseur.invalid",
+      "localhost/ch"
+    ],
+    "mustContain": [
+      "http://"
+    ]
+  },
+  {
+    "name": "F5 schéma stalker:",
+    "input": "stalker:fournisseur.invalid/c/?mac=00:1A:79:AB:CD:EF",
+    "mustNotContain": [
+      "fournisseur.invalid",
+      "00:1A:79:AB:CD:EF",
+      "AB:CD:EF"
+    ],
+    "mustContain": [
+      "stalker:"
+    ]
+  },
+  {
+    "name": "F6 /get/<jeton>/playlist.m3u",
+    "input": "https://cdn.fournisseur.invalid/get/ZZTOKENZZ/playlist.m3u",
+    "mustNotContain": [
+      "ZZTOKENZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      ".m3u"
+    ]
+  },
+  {
+    "name": "F6 /play/<jeton>/index.m3u8",
+    "input": "https://cdn.fournisseur.invalid/play/ZZTOKENZZ/index.m3u8",
+    "mustNotContain": [
+      "ZZTOKENZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      ".m3u8"
+    ]
+  },
+  {
+    "name": "F6 /hls/<jeton>/stream.m3u8",
+    "input": "https://cdn.fournisseur.invalid/hls/ZZTOKENZZ/stream.m3u8",
+    "mustNotContain": [
+      "ZZTOKENZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "/hls",
+      ".m3u8"
+    ]
+  },
+  {
+    "name": "F6 /playlist/<jeton>/index.m3u8",
+    "input": "url=https://cdn.fournisseur.invalid/playlist/ZZTOKENZZ/index.m3u8",
+    "mustNotContain": [
+      "ZZTOKENZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      ".m3u8"
+    ]
+  },
+  {
+    "name": "F6 jeton en fragment",
+    "input": "https://fournisseur.invalid/list.m3u#ZZTOKENZZ",
+    "mustNotContain": [
+      "ZZTOKENZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      ".m3u"
+    ]
+  },
+  {
+    "name": "F7 get.php",
+    "input": "http://fournisseur.invalid:8080/get.php?username=ZZUSERZZ&password=ZZPASSZZ&type=m3u_plus&output=ts",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "get.php"
+    ]
+  },
+  {
+    "name": "F7 player_api.php",
+    "input": "GET http://fournisseur.invalid/player_api.php?password=ZZPASSZZ&username=ZZUSERZZ&action=get_live_streams",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "player_api.php"
+    ]
+  },
+  {
+    "name": "F7 majuscules hors adresse",
+    "input": "GET.PHP?USERNAME=ZZUSERZZ&PASSWORD=ZZPASSZZ",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ"
+    ],
+    "mustContain": []
+  },
+  {
+    "name": "F7 paramètres encodés",
+    "input": "next=%2Fget.php%3Fusername%3DZZUSERZZ%26password%3DZZPASSZZ%26type%3Dm3u",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ"
+    ],
+    "mustContain": [
+      "next="
+    ]
+  },
+  {
+    "name": "F7 adresse entière encodée",
+    "input": "redirect url=http%3A%2F%2Ffournisseur.invalid%3A8080%2Fget.php%3Fusername%3DZZUSERZZ%26password%3DZZPASSZZ done",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "done"
+    ]
+  },
+  {
+    "name": "F7 séparateur point-virgule",
+    "input": "username=ZZUSERZZ;password=ZZPASSZZ",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ"
+    ],
+    "mustContain": []
+  },
+  {
+    "name": "F7 espace dans le mot de passe en paramètre d'adresse",
+    "input": "http://fournisseur.invalid/get.php?username=ZZUSERZZ&password=ZZPASS ZZ&type=m3u failed",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASS",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "get.php",
+      "failed"
+    ]
+  },
+  {
+    "name": "F7 forme user= pass= dans un message",
+    "input": "fail user=ZZUSERZZ pass=ZZPASSZZ",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ"
+    ],
+    "mustContain": [
+      "fail"
+    ]
+  },
+  {
+    "name": "F8 user:pass@hôte",
+    "input": "http://ZZUSERZZ:ZZPASSZZ@fournisseur.invalid:8080/list.m3u",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      ".m3u"
+    ]
+  },
+  {
+    "name": "F8 @ dans le mot de passe de l'autorité",
+    "input": "http://ZZUSERZZ:ZZP@SSZZ@fournisseur.invalid/x",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZP@SS",
+      "SSZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": []
+  },
+  {
+    "name": "F8 rtsp avec identifiants et IP privée",
+    "input": "rtsp://ZZUSERZZ:ZZPASSZZ@192.168.77.88:554/stream1",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "192.168.77.88"
+    ],
+    "mustContain": [
+      "rtsp://"
+    ]
+  },
+  {
+    "name": "F8 Jellyfin sur IP privée",
+    "input": "JELLYFIN http://192.168.77.88:8096: connexion refusée (ConnectException: failed to connect to /192.168.77.88 (port 8096) from /10.11.12.13 (port 40312) after 10000ms)",
+    "mustNotContain": [
+      "192.168.77.88",
+      "10.11.12.13"
+    ],
+    "mustContain": [
+      "ConnectException",
+      "(port 8096)",
+      "after 10000ms"
+    ]
+  },
+  {
+    "name": "F8 autres IP privées",
+    "input": "lan 172.20.30.40 and fe80::1234:5678:9abc and fd12:3456:789a::1 and [fe80::1]:8096",
+    "mustNotContain": [
+      "172.20.30.40",
+      "fe80::1234",
+      "fd12:3456",
+      "fe80::1]"
+    ],
+    "mustContain": [
+      "lan",
+      "8096"
+    ]
+  },
+  {
+    "name": "F8 hôte dans UnknownHostException",
+    "input": "java.net.UnknownHostException: Unable to resolve host \"fournisseur.invalid\": No address associated with hostname",
+    "mustNotContain": [
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "UnknownHostException",
+      "No address associated with hostname"
+    ]
+  },
+  {
+    "name": "F8 hôte nu dans UnknownHostException",
+    "input": "java.net.UnknownHostException: fournisseur.invalid",
+    "mustNotContain": [
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "UnknownHostException"
+    ]
+  },
+  {
+    "name": "F8 hôte dans SSLPeerUnverifiedException",
+    "input": "javax.net.ssl.SSLPeerUnverifiedException: Hostname fournisseur.invalid not verified",
+    "mustNotContain": [
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "SSLPeerUnverifiedException",
+      "not verified"
+    ]
+  },
+  {
+    "name": "F8 OkHttp failed to connect",
+    "input": "java.net.SocketTimeoutException: failed to connect to fournisseur.invalid/203.0.113.77 (port 8080) from /192.168.77.88 (port 51000) after 10000ms",
+    "mustNotContain": [
+      "fournisseur.invalid",
+      "203.0.113.77",
+      "192.168.77.88"
+    ],
+    "mustContain": [
+      "SocketTimeoutException",
+      "(port 8080)",
+      "after 10000ms"
+    ]
+  },
+  {
+    "name": "F8 en-tête Host",
+    "input": "Host: fournisseur.invalid",
+    "mustNotContain": [
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "Host"
+    ]
+  },
+  {
+    "name": "F8 udp multicast et rtmp",
+    "input": "udp://@239.1.2.3:1234 and rtmp://fournisseur.invalid/app/ZZTOKENZZ",
+    "mustNotContain": [
+      "239.1.2.3",
+      "fournisseur.invalid",
+      "ZZTOKENZZ"
+    ],
+    "mustContain": [
+      "udp://",
+      "rtmp://"
+    ]
+  },
+  {
+    "name": "F9 adresse e-mail",
+    "input": "user zzuserzz@example.invalid failed",
+    "mustNotContain": [
+      "zzuserzz@example.invalid",
+      "zzuserzz"
+    ],
+    "mustContain": [
+      "failed"
+    ]
+  },
+  {
+    "name": "F9 e-mail avec +étiquette et mailto",
+    "input": "mailto:zz.user+tag@sub.example.invalid",
+    "mustNotContain": [
+      "zz.user+tag",
+      "sub.example.invalid"
+    ],
+    "mustContain": []
+  },
+  {
+    "name": "F9 e-mail en JSON",
+    "input": "{\"email\":\"zzuserzz@example.invalid\",\"plan\":\"pro\"}",
+    "mustNotContain": [
+      "zzuserzz"
+    ],
+    "mustContain": [
+      "\"plan\":\"pro\""
+    ]
+  },
+  {
+    "name": "pile OkHttp avec player_api.php",
+    "input": "java.net.SocketTimeoutException: timeout\n\tat okhttp3.internal.http2.Http2Stream$StreamTimeout.newTimeoutException(Http2Stream.kt:675)\n\tat okhttp3.internal.connection.RealCall.execute(RealCall.kt:154)\n\tat com.ultratv.tv.nativeapp.data.xtream.XtreamClient.get(XtreamClient.kt:88)\nCaused by: java.io.IOException: unexpected end of stream on http://fournisseur.invalid:8080/player_api.php?username=ZZUSERZZ&password=ZZPASSZZ&action=get_live_streams...\n\t... 12 more",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "SocketTimeoutException: timeout",
+      "Http2Stream.kt:675",
+      "RealCall.kt:154",
+      "XtreamClient.kt:88",
+      "Caused by: java.io.IOException: unexpected end of stream on",
+      "... 12 more"
+    ]
+  },
+  {
+    "name": "pile Media3 HttpDataSourceException",
+    "input": "androidx.media3.exoplayer.ExoPlaybackException: Source error\n\tat androidx.media3.exoplayer.ExoPlayerImplInternal.handleIoException(ExoPlayerImplInternal.java:736)\nCaused by: androidx.media3.datasource.HttpDataSource$InvalidResponseCodeException: Response code: 403\n\tat androidx.media3.datasource.DefaultHttpDataSource.open(DefaultHttpDataSource.java:413)\nCaused by: androidx.media3.datasource.HttpDataSource$HttpDataSourceException: Unable to connect to http://fournisseur.invalid:8080/ZZUSER ZZ/ZZPASSZZ/4242.ts\n\tat androidx.media3.datasource.DefaultHttpDataSource.makeConnection(DefaultHttpDataSource.java:620)",
+    "mustNotContain": [
+      "ZZUSER",
+      "ZZPASSZZ",
+      "fournisseur.invalid",
+      "4242"
+    ],
+    "mustContain": [
+      "ExoPlaybackException: Source error",
+      "ExoPlayerImplInternal.java:736",
+      "Response code: 403",
+      "DefaultHttpDataSource.java:413",
+      "DefaultHttpDataSource.java:620",
+      "HttpDataSourceException: Unable to connect to"
+    ]
+  },
+  {
+    "name": "pile kotlinx JsonDecodingException complète",
+    "input": "kotlinx.serialization.json.internal.JsonDecodingException: Unexpected JSON token at offset 57: Expected quotation mark '\"', but had '1' instead at path: $.user_info.exp_date\nJSON input: {\"user_info\":{\"username\":\"ZZUSERZZ\",\"password\":\"ZZPASSZZ\",\"message\":\"\",\"auth\":1,\"status\":\"Active\",\"exp_date\":1767225600,\"is_trial\":\"0\",\"active_cons\":\"0\",\"max_connections\":\"1\"},\"server_info\":{\"url\":\"fournisseur.invalid\",\"port\":\"8080\",\"https_port\":\"8443\",\"server_protocol\":\"http\",\"timezone\":\"Europe/Paris\"}}\n\tat kotlinx.serialization.json.internal.JsonExceptionsKt.JsonDecodingException(JsonExceptions.kt:24)\n\tat com.ultratv.tv.nativeapp.data.xtream.XtreamClient.auth(XtreamClient.kt:142)",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "JsonDecodingException: Unexpected JSON token at offset 57",
+      "$.user_info.exp_date",
+      "\"max_connections\":\"1\"",
+      "JsonExceptions.kt:24",
+      "XtreamClient.kt:142"
+    ]
+  },
+  {
+    "name": "ligne UtvPlay d'ExoEngine",
+    "input": "erreur lecture moteur=exo code=ERROR_CODE_IO_BAD_HTTP_STATUS http=403 cause=InvalidResponseCodeException url=http://fournisseur.invalid:8080/live/ZZUSERZZ/ZZPASSZZ/123.m3u8 vidéo=video/avc audio=audio/mp4a-latm",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur.invalid"
+    ],
+    "mustContain": [
+      "moteur=exo",
+      "code=ERROR_CODE_IO_BAD_HTTP_STATUS",
+      "http=403",
+      "cause=InvalidResponseCodeException",
+      "/live",
+      ".m3u8",
+      "vidéo=video/avc audio=audio/mp4a-latm"
+    ]
+  },
+  {
+    "name": "ligne UtvSync avec extrait JSON",
+    "input": "échec XTREAM après 812 ms: JsonDecodingException: Unexpected JSON token at offset 120 JSON input: {\"user_info\":{\"username\":\"ZZUSERZZ\",\"password\":\"ZZPASSZZ\",\"auth\":1",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ"
+    ],
+    "mustContain": [
+      "échec XTREAM après 812 ms",
+      "JsonDecodingException"
+    ]
+  },
+  {
+    "name": "intact : erreur simple",
+    "input": "Player error 404 on channel 12",
+    "mustNotContain": [
+      "<redacted>",
+      "<host#",
+      "<lan",
+      "<ip>",
+      "<mac>",
+      "<email>"
+    ],
+    "mustContain": [
+      "Player error 404 on channel 12"
+    ]
+  },
+  {
+    "name": "intact : gel d'interface",
+    "input": "perf stall 812ms route=live/guide",
+    "mustNotContain": [
+      "<redacted>",
+      "<host#",
+      "<lan",
+      "<ip>",
+      "<mac>",
+      "<email>"
+    ],
+    "mustContain": [
+      "perf stall 812ms route=live/guide"
+    ]
+  },
+  {
+    "name": "intact : repli de lecture",
+    "input": "fallback kind=FORMAT from=EXO/HW to=VLC live=true res=3840x2160 codec=hevc",
+    "mustNotContain": [
+      "<redacted>",
+      "<host#",
+      "<lan",
+      "<ip>",
+      "<mac>",
+      "<email>"
+    ],
+    "mustContain": [
+      "fallback kind=FORMAT from=EXO/HW to=VLC live=true res=3840x2160 codec=hevc"
+    ]
+  },
+  {
+    "name": "intact : pile Compose sans secret",
+    "input": "java.lang.IllegalStateException: Key \"— · M6\" was already used. If you are using LazyColumn/Row please make sure you provide a unique key for each item.\n\tat androidx.compose.foundation.lazy.layout.LazyLayoutItemProviderKt.getKey(LazyLayoutItemProvider.kt:12)",
+    "mustNotContain": [
+      "<redacted>",
+      "<host#",
+      "<lan",
+      "<ip>",
+      "<mac>",
+      "<email>"
+    ],
+    "mustContain": [
+      "java.lang.IllegalStateException: Key \"— · M6\" was already used. If you are using LazyColumn/Row please make sure you provide a unique key for each item.\n\tat androidx.compose.foundation.lazy.layout.LazyLayoutItemProviderKt.getKey(LazyLayoutItemProvider.kt:12)"
+    ]
+  },
+  {
+    "name": "intact : guide en échec",
+    "input": "guide: échec (timeout, HTTP 504, délai 30000, SocketTimeoutException) après 3 tentative(s)",
+    "mustNotContain": [
+      "<redacted>",
+      "<host#",
+      "<lan",
+      "<ip>",
+      "<mac>",
+      "<email>"
+    ],
+    "mustContain": [
+      "guide: échec (timeout, HTTP 504, délai 30000, SocketTimeoutException) après 3 tentative(s)"
+    ]
+  },
+  {
+    "name": "intact : versions",
+    "input": "version 1.3.72 (versionCode 10372) Android 14 sdk=34",
+    "mustNotContain": [
+      "<redacted>",
+      "<host#",
+      "<lan",
+      "<ip>",
+      "<mac>",
+      "<email>"
+    ],
+    "mustContain": [
+      "version 1.3.72 (versionCode 10372) Android 14 sdk=34"
+    ]
+  },
+  {
+    "name": "intact : heures et durées",
+    "input": "12:34:56.789 durée 00:01:30 délai 2.5s",
+    "mustNotContain": [
+      "<redacted>",
+      "<host#",
+      "<lan",
+      "<ip>",
+      "<mac>",
+      "<email>"
+    ],
+    "mustContain": [
+      "12:34:56.789 durée 00:01:30 délai 2.5s"
+    ]
+  },
+  {
+    "name": "intact : codecs",
+    "input": "video/hevc 3840x2160@60 audio/eac3 5.1 profile=Main10",
+    "mustNotContain": [
+      "<redacted>",
+      "<host#",
+      "<lan",
+      "<ip>",
+      "<mac>",
+      "<email>"
+    ],
+    "mustContain": [
+      "video/hevc 3840x2160@60 audio/eac3 5.1 profile=Main10"
+    ]
+  },
+  {
+    "name": "intact : phrase sur les schémas",
+    "input": "Expected URL scheme 'http' or 'https' but no colon was found",
+    "mustNotContain": [
+      "<redacted>",
+      "<host#",
+      "<lan",
+      "<ip>",
+      "<mac>",
+      "<email>"
+    ],
+    "mustContain": [
+      "Expected URL scheme 'http' or 'https' but no colon was found"
+    ]
+  },
+  {
+    "name": "intact : champs non sensibles",
+    "input": "token_type=bearer expires_in=3600 stb_type=MAG250 status=Active max_connections=1",
+    "mustNotContain": [
+      "<redacted>",
+      "<host#",
+      "<lan",
+      "<ip>",
+      "<mac>",
+      "<email>"
+    ],
+    "mustContain": [
+      "token_type=bearer expires_in=3600 stb_type=MAG250 status=Active max_connections=1"
+    ]
+  },
+  {
+    "name": "intact : connexion réinitialisée",
+    "input": "Unable to connect: Connection reset by peer (errno 104)",
+    "mustNotContain": [
+      "<redacted>",
+      "<host#",
+      "<lan",
+      "<ip>",
+      "<mac>",
+      "<email>"
+    ],
+    "mustContain": [
+      "Unable to connect: Connection reset by peer (errno 104)"
+    ]
+  },
+  {
+    "name": "intact : ANR",
+    "input": "main thread blocked ≥ 5 s\n\tat android.os.MessageQueue.nativePollOnce(Native Method)\n\tat android.os.Looper.loop(Looper.java:288)",
+    "mustNotContain": [
+      "<redacted>",
+      "<host#",
+      "<lan",
+      "<ip>",
+      "<mac>",
+      "<email>"
+    ],
+    "mustContain": [
+      "main thread blocked ≥ 5 s\n\tat android.os.MessageQueue.nativePollOnce(Native Method)\n\tat android.os.Looper.loop(Looper.java:288)"
+    ]
+  },
+  {
+    "name": "intact : référence de méthode Kotlin",
+    "input": "at com.ultratv.Foo::bar$lambda(Foo.kt:42)",
+    "mustNotContain": [
+      "<redacted>",
+      "<host#",
+      "<lan",
+      "<ip>",
+      "<mac>",
+      "<email>"
+    ],
+    "mustContain": [
+      "at com.ultratv.Foo::bar$lambda(Foo.kt:42)"
+    ]
+  }
+]

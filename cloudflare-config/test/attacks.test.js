@@ -138,7 +138,8 @@ describe("ingestion de crashs et d'événements", () => {
     expect(r.status).toBe(200);
     const kv = JSON.stringify(await d1Rows("events")) + JSON.stringify(await allKv());
     expect(kv).not.toContain("hunter2");
-    expect(kv).toContain("<redacted>");
+    expect(kv).not.toContain("bob");
+    expect(kv).toContain("<host#"); // adresse réduite à une empreinte d'hôte
   });
   it("POST_apiEvent_etCrash_neStockentJamaisLeIdentifiantDuCompte", async () => {
     const acct = await newAccount("alice.exemple@example.test"); const dev = await pairDevice(acct);
