@@ -190,10 +190,10 @@ class GuideRecompositionTest {
     }
 
     /** Compteurs d'un seul appui, et nombre d'images (frames) qui ont recomposé quelque chose. */
-    private class Snap(val rows: Map<Long, Int>, val cells: Map<Long, Int>, val header: Int, val buttons: Int, val preview: Int, val screen: Int, val frames: Int, val focus: String, val detail: String = "") {
+    private class Snap(val rows: Map<Long, Int>, val cells: Map<Long, Int>, val header: Int, val buttons: Int, val preview: Int, val screen: Int, val frames: Int, val focus: String, val detail: String = "", val measures: Int = 0) {
         val rowTotal get() = rows.values.sum()
         val cellTotal get() = cells.values.sum()
-        override fun toString() = "images=$frames[$detail] écran=$screen lignes=$rowTotal(${rows.size}) cases=$cellTotal(${cells.size}) en-tête=$header boutons=$buttons aperçu=$preview -> focus : $focus"
+        override fun toString() = "images=$frames[$detail] écran=$screen lignes=$rowTotal(${rows.size}) cases=$cellTotal(${cells.size}) en-tête=$header boutons=$buttons aperçu=$preview mesures=$measures -> focus : $focus"
     }
 
     private fun total() = probe.screen + probe.rowTotal + probe.cellTotal + probe.header + probe.preview
@@ -223,7 +223,7 @@ class GuideRecompositionTest {
         rule.mainClock.autoAdvance = true
         rule.waitForIdle()
         frame()
-        val snap = Snap(HashMap(probe.rows), HashMap(probe.cells), probe.header, probe.buttons, probe.preview, probe.screen, frames, focusedText(), detail.toString())
+        val snap = Snap(HashMap(probe.rows), HashMap(probe.cells), probe.header, probe.buttons, probe.preview, probe.screen, frames, focusedText(), detail.toString(), probe.cellMeasures)
         println("COMPTEURS $name : $snap")
         return snap
     }
@@ -624,5 +624,34 @@ class GuideRecompositionTest {
         rule.waitForIdle()
         assertTrue("les programmes sont arrivés", programmes.isNotEmpty())
         assertEquals("le focus reste sur « Demain »", "Demain", focusedText())
+    }
+
+    // ── Gain : placement des cases à la mise en page. ──
+
+    @Test fun plafond_bord_de_fenetre_aucune_case_restee_affichee_n_est_recomposee() {
+        mount()
+        val last = windowOf(4).last()
+        focusOn(last.title)
+        val before = windowStart
+        val r = gesture("▶ au bord (cases gardées)", Key.DirectionRight)
+        val after = windowStart
+        assertTrue(after > before)
+        fun inWin(e: EpgEntity, w: Long) = slotFor(e.startMs, e.endMs, w) != null
+        val kept = r.rows.keys.flatMap { ch -> all.getValue(ch).filter { inWin(it, before) && inWin(it, after) } }
+        // Seules exceptions : la case quittée par le focus et la première case affichée de chaque ligne (cible d'entrée).
+        val firsts = r.rows.keys.mapNotNull { ch -> all.getValue(ch).firstOrNull { inWin(it, before) }?.id } + r.rows.keys.mapNotNull { ch -> all.getValue(ch).firstOrNull { inWin(it, after) }?.id }
+        val stray = kept.map { it.id }.filter { it in r.cells.keys && it != last.id && it !in firsts }
+        assertEquals("cases restées affichées recomposées : $stray", emptyList<Long>(), stray)
+    }
+
+    @Test fun plafond_arrivee_hors_fenetre_ne_recompose_aucune_case() {
+        mount()
+        focusOn("P1-2")
+        val cur = programmes
+        probe.clear()
+        programmes = cur + (3L to (cur.getValue(3L) + EpgEntity(id = 3_999_001, channelId = 3, title = "Tard", description = null, startMs = at(11, 0), endMs = at(11, 1))))
+        rule.waitForIdle()
+        assertEquals(setOf(3L), probe.rows.keys)
+        assertEquals("aucune case affichée ne change : aucune recomposée", emptyMap<Long, Int>(), probe.cells)
     }
 }
