@@ -136,16 +136,17 @@ describe("sanitizeLog : bornes et coût", () => {
 
   // Coût. La contrainte réelle est la limite de 10 ms de temps CPU par requête de l'offre gratuite de Workers, pour
   // TOUTE la requête (nettoyage compris). Mesures en millisecondes entières (horloge de workerd) : la plus courte de
-  // 7 passes après échauffement, la moins sensible aux autres fichiers de test qui tournent en parallèle. Elles
+  // 7 passes (15 pour la pile réaliste) après échauffement, la moins sensible aux autres fichiers de test qui tournent en parallèle. Elles
   // dépendent de la machine.
   // - Pile réaliste de 30 Ko : doit tenir sous 10 ms (mesuré : 2 à 4 ms en node sur un Mac récent).
-  // - Entrées hostiles de 30 à 64 Ko : seuil INDICATIF de 40 ms (pires formes mesurées : 7 à 11 ms). Il garde la
+  // - Entrées hostiles de 30 à 64 Ko : seuil INDICATIF de 100 ms (pires formes mesurées : 7 à 11 ms sur une machine
+  //   au repos, 3 à 4 fois plus sur une machine chargée par une compilation). Il garde la
   //   linéarité (un retour arrière catastrophique coûterait des secondes) ; au-delà de 10 ms en production, seule la
   //   requête de l'attaquant échoue (erreur 1102), les autres requêtes ne sont pas touchées.
-  const fastest = (f) => {
+  const fastest = (f, runs = 7) => {
     for (let i = 0; i < 2; i++) f();
     let best = Infinity;
-    for (let i = 0; i < 7; i++) { const t = performance.now(); f(); best = Math.min(best, performance.now() - t); }
+    for (let i = 0; i < runs; i++) { const t = performance.now(); f(); best = Math.min(best, performance.now() - t); }
     return best;
   };
   const N = 48 * 1024;
@@ -176,8 +177,8 @@ describe("sanitizeLog : bornes et coût", () => {
     fill("%2541"), fill("\\u002f"), fill("a/b/1.ts "), fill("login failed for a / b "), fill("é@é.é "),
     Array.from({ length: 5000 }, () => `http://h${n++}.invalid/x`).join(" ").slice(0, N),
   ];
-  it.each(hostile.map((h, i) => [i, h]))("entrée hostile n°%i : coût linéaire (seuil indicatif 40 ms)", (_i, h) => {
-    expect(fastest(() => sanitizeLog(h, 32 * 1024, { hostKey: KEY }))).toBeLessThan(40);
+  it.each(hostile.map((h, i) => [i, h]))("entrée hostile n°%i : coût linéaire (seuil indicatif 100 ms)", (_i, h) => {
+    expect(fastest(() => sanitizeLog(h, 32 * 1024, { hostKey: KEY }))).toBeLessThan(100);
   });
 
   it("pile réaliste de 30 Ko : nettoyée en moins de 10 ms (limite CPU réelle), sans fuite", () => {
@@ -185,7 +186,7 @@ describe("sanitizeLog : bornes et coût", () => {
     const stack = `java.io.IOException: unexpected end of stream on http://fournisseur.invalid:8080/ZZUSERZZ/ZZPASSZZ/1.ts\n${frame.repeat(400)}`
       + `JSON input: {"username":"ZZUSERZZ","password":"ZZPASSZZ"}\n${frame.repeat(60)}`;
     expect(stack.length).toBeGreaterThan(30000);
-    expect(fastest(() => sanitizeLog(stack, 32 * 1024, { hostKey: KEY }))).toBeLessThan(10);
+    expect(fastest(() => sanitizeLog(stack, 32 * 1024, { hostKey: KEY }), 15)).toBeLessThan(10);
     const out = sanitizeLog(stack, 32 * 1024, { hostKey: KEY });
     expect(out).not.toContain("ZZUSERZZ");
     expect(out).not.toContain("ZZPASSZZ");
