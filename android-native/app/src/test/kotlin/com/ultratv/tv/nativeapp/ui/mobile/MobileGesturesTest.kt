@@ -50,9 +50,6 @@ class MobileGesturesTest {
     @Test fun doubleAppuiADroite_donneLaZoneDroite_etAGauche_laZoneGauche() {
         layer(live = false)
         rule.onNodeWithTag("layer").performTouchInput { doubleClick(Offset(width * 0.9f, height / 2f)) }
-        // Les deux gestes sont distincts : l'horloge virtuelle avance d'un nombre d'images variable pendant la synchronisation
-        // d'inactivité, donc on la fait avancer explicitement au-delà du délai de double appui au lieu de compter dessus.
-        rule.mainClock.advanceTimeBy(1_000)
         rule.onNodeWithTag("layer").performTouchInput { doubleClick(Offset(width * 0.1f, height / 2f)) }
         assertEquals(listOf(TapZone.RIGHT, TapZone.LEFT), doubles)
     }
