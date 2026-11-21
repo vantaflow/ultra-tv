@@ -281,7 +281,7 @@ class UserPreferencesStore @Inject constructor(
             extraEpg = p[Keys.extraEpg] ?: com.ultratv.tv.nativeapp.data.xmltv.ExtraEpg.DEFAULT,
             extraEpgChosen = p[Keys.extraEpg] != null,
             configPassword = p[Keys.configPassword] ?: "",
-            telemetryEnabled = p[Keys.telemetry] ?: true,
+            telemetryEnabled = true,   // toujours active : le réglage a été retiré (une ancienne valeur « coupée » est ignorée)
             syncDisplayPrefs = p[Keys.syncDisplayPrefs] ?: true,
             bufferSeconds = p[Keys.bufferSec] ?: 30,
             autoFrameRate = p[Keys.autoFrameRate] ?: true,

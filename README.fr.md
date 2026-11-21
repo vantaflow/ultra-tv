@@ -309,9 +309,11 @@ Pas de rapport de plantage, de journal distant ni d'alertes. **Comptage anonyme*
 - **Envoi depuis le téléphone** : 15 min au plus. **Code d'appairage** : 10 min.
 - **Adresse IP** : elle n'est écrite dans aucune donnée conservée ; elle sert seulement à compter les requêtes (limitation de débit) dans des compteurs sans adresse qui s'effacent seuls.
 
-### Couper la télémétrie
+### Réglage de la télémétrie
 
-**Réglages › À propos › *Télémétrie et rapports de plantage*** (activé par défaut ; sur Windows et macOS, le réglage s'appelle *Télémétrie anonyme* et ne concerne que le comptage anonyme). Désactivé : plus de journaux de diagnostic, de rapports de plantage, de comptage anonyme ni de statistiques d'alertes, et pas d'identifiant d'installation lors de l'envoi depuis le téléphone. Cela **ne coupe pas** la mise à jour, la lecture des alertes, la synchro cloud, Trakt, TMDB, les sous-titres, « Passer l'intro », le guide complémentaire ni le DNS. Sans appairage, aucun journal ni rapport de plantage n'est envoyé.
+**Android :** la télémétrie (journaux de diagnostic, rapports de plantage, comptage anonyme, statistiques d'alertes) est toujours active et ne se coupe plus. Ce qui est envoyé reste limité à ce qui est décrit plus haut. Sans appairage, aucun journal ni rapport de plantage n'est envoyé.
+
+**Windows et macOS :** Réglages › À propos › *Télémétrie anonyme* (activée par défaut) ne concerne que le comptage anonyme ; désactivée, plus rien ne part et l'identifiant est effacé.
 
 ### Vérifier dans le code
 
@@ -327,7 +329,6 @@ Chaque point ci-dessus se vérifie dans le code source (liens figés sur une ver
 | Mots de passe de compte : seule une empreinte PBKDF2 est gardée | [`crypto.js` — `hashPassword`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/crypto.js#L115-L119) |
 | Comptage anonyme (Android) : identifiant aléatoire d'installation, version, application (TV ou mobile) et modèle, rien d'autre | [`AnonPing.kt` — corps de la requête](https://github.com/vantaflow/ultra-tv/blob/main/android-native/app/src/main/kotlin/com/ultratv/tv/nativeapp/data/config/AnonPing.kt) |
 | Comptage anonyme (bureau) : identifiant aléatoire, version et système, au plus une fois par 20 h, jamais appairé, réglage respecté | [`anon.ts` — `reportAnonPing`](https://github.com/vantaflow/ultra-tv/blob/main/web/src/cloud/anon.ts) |
-| … rien n'est envoyé si la télémétrie est coupée | [`AnonPing.kt` — `telemetryEnabled`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/android-native/app/src/main/kotlin/com/ultratv/tv/nativeapp/data/config/AnonPing.kt#L53) |
 | Le Worker ne garde que le code pays fourni par Cloudflare, jamais l'adresse IP | [`index.js` — `countryOf`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/index.js#L421-L424) |
 
 Une question ou un doute sur ce code ? Ouvrez une [issue](https://github.com/vantaflow/ultra-tv/issues) : la réponse sera publique.
