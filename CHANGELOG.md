@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.72] — 2026-11-21 (Android)
+
 ### Modifié
 - Lecteur : l'écran d'erreur dit la cause et quoi faire, au lieu de « Problème de réseau » pour tout. Panne du serveur du fournisseur (5xx), trop de lectures simultanées (429), demande rejetée, serveur injoignable, chaîne retirée, format illisible, décodage impossible sur l'appareil et « du son mais pas d'image » ont chacun leur message et leur conseil ; le code HTTP est rappelé en petit quand il aide le support.
 - Synchronisation : trois causes ont maintenant leur propre message. Adresse du réseau local injoignable (« connectez l'appareil au même réseau et désactivez le VPN »), trop de demandes (429, auparavant présenté à tort comme un refus du type d'accès) et réponse illisible (page web à la place de la liste, auparavant « La synchronisation a échoué »).
