@@ -30,7 +30,7 @@ object MediaFailure {
                 else -> Reason.REFUSED
             }
         }
-        SyncErrorKind.UNAUTHORIZED -> Reason.AUTH
+        SyncErrorKind.UNAUTHORIZED, SyncErrorKind.ACCOUNT_EXPIRED -> Reason.AUTH
         SyncErrorKind.HOST_NOT_FOUND -> Reason.HOST_NOT_FOUND
         SyncErrorKind.NOT_FOUND -> Reason.NOT_FOUND
         SyncErrorKind.TLS -> Reason.TLS

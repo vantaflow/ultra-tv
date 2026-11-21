@@ -438,6 +438,9 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
         val input = ControlCharFilter(stream).buffered(64 * 1024)
         // Un objet à la fois : la mémoire reste plate quelle que soit la taille de la réponse.
         val items = json.decodeToSequence(input, JsonObject.serializer(), DecodeSequenceMode.AUTO_DETECT)
+            // Compte expiré ou refusé : le panneau répond souvent 200 avec `{"user_info":{"auth":0}}` au lieu de la liste.
+            // Levé AVANT tout élément, donc dans la transaction d'écriture : rien n'est effacé.
+            .mapIndexed { i, o -> if (i == 0) XtreamAuth.check(o); o }
             .mapNotNull { transform(p, it) }
         return block(items)
     }
@@ -547,6 +550,21 @@ data class XtreamAccount(
                 trial = str("is_trial") == "1",
                 server = (srv?.get("url") as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() },
             )
+        }
+    }
+}
+
+/** Réponse « compte refusé » d'un panneau Xtream à la place d'une liste (voir [com.ultratv.tv.nativeapp.data.net.AccountRefusedException]). */
+internal object XtreamAuth {
+    /** Lève si [o] est un objet `user_info` qui refuse le compte ; sans effet pour un élément de liste ordinaire. */
+    fun check(o: JsonObject) {
+        val ui = o["user_info"] as? JsonObject ?: return
+        val auth = (ui["auth"] as? JsonPrimitive)?.contentOrNull?.trim()?.lowercase()
+        val status = (ui["status"] as? JsonPrimitive)?.contentOrNull?.trim()?.lowercase()
+        val expired = status == "expired"
+        if (expired || status == "banned" || status == "disabled" || auth == "0" || auth == "false") {
+            com.ultratv.tv.nativeapp.RemoteLog.warn("SyncGuard", "compte refusé par le fournisseur statut=${status ?: "?"} auth=${auth ?: "?"} : catalogue gardé")
+            throw com.ultratv.tv.nativeapp.data.net.AccountRefusedException(expired)
         }
     }
 }

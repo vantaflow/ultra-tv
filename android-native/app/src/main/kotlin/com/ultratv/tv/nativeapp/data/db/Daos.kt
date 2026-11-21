@@ -214,6 +214,10 @@ interface ChannelDao {
     @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid")
     suspend fun count(pid: Long): Int
 
+    /** Chaînes venues du fournisseur (sans les chaînes ajoutées à la main) : référence de la garde anti-effacement. */
+    @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid AND remoteId NOT LIKE 'custom:%'")
+    suspend fun countProvided(pid: Long): Int
+
     @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid")
     fun observeCount(pid: Long): Flow<Int>
 

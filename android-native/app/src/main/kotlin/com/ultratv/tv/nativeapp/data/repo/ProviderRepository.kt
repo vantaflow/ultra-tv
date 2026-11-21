@@ -171,6 +171,8 @@ class ProviderRepository @Inject constructor(
                 // Sans tvg-chno, numéro séquentiel par catégorie APRÈS le retrait des masquées (sinon aucun numéro au zapping).
                 // Une playlist qui numérote ses chaînes garde ses numéros.
                 .let { if (it.any { c -> c.num > 0 }) it else ChannelSeq().assign(it) }
+            // Page vide, page HTML d'erreur (compte expiré) ou liste effondrée : rien n'est effacé (voir CatalogGuard).
+            CatalogGuard.check("LIVE", channelDao.countProvided(p.id), channels.size)
             // Suppression + réinsertion dans UNE transaction : atomique (jamais de catalogue vide
             // si on coupe au milieu) et une seule invalidation Room au lieu d'une par lot.
             db.withTransaction {
@@ -749,6 +751,8 @@ class ProviderRepository @Inject constructor(
         val incremental: IncrementalTable<T>? = null,
         /** Catégories sautées pendant la lecture (portail Stalker) : leur contenu actuel est gardé par l'écriture incrémentale. */
         val keepCats: (Long) -> Collection<String> = { emptyList() },
+        /** Éléments en base venus du fournisseur : référence de la garde anti-effacement ([CatalogGuard]). */
+        val count: suspend (Long) -> Int = { 0 },
     )
 
     private fun livePart(kind: String = "XTREAM") = PartSpec<com.ultratv.tv.nativeapp.data.db.ChannelEntity>(
@@ -762,6 +766,7 @@ class ProviderRepository @Inject constructor(
         // (suppression + insertion) laissait tous les programmes orphelins jusqu'au guide de la nuit.
         // Rang de catégorie (ordre du Direct, voir LiveOrder) posé à l'insertion : aucune réécriture après coup.
         { all -> val rows = withoutHidden(all); val keep = liveIds; channelDao.upsertAll(liveRanks.stamp(if (keep.isEmpty()) rows else rows.map { c -> keep[c.remoteId]?.let { c.copy(id = it) } ?: c })) },
+        count = { channelDao.countProvided(it) },
     )
 
     /** remoteId → identifiant des chaînes AVANT la synchro en cours (voir [livePart]). */
@@ -780,6 +785,7 @@ class ProviderRepository @Inject constructor(
         { movieDao.upsertAll(it) },
         incremental = IncrementalTable.MOVIES,
         keepCats = { pid -> stalkerFailedCats(pid, "MOVIE") },
+        count = { movieDao.observeCount(it).first() },
     )
 
     private fun seriesPart(kind: String = "XTREAM") = PartSpec<com.ultratv.tv.nativeapp.data.db.SeriesEntity>(
@@ -792,6 +798,7 @@ class ProviderRepository @Inject constructor(
         { seriesDao.upsertAll(it) },
         incremental = IncrementalTable.SERIES,
         keepCats = { pid -> stalkerFailedCats(pid, "SERIES") },
+        count = { seriesDao.observeCount(it).first() },
     )
 
     // ───────────── Serveurs Jellyfin / Emby : bibliothèques = catégories ─────────────
@@ -1080,6 +1087,9 @@ class ProviderRepository @Inject constructor(
         if (spec.kind == "LIVE") liveIds = channelDao.idsByRemote(p.id).associate { it.remoteId to it.id }
         val fetched = lock(catsAhead?.await() ?: spec.fetchCats(p))
         val before = categoryDao.forProviderKind(p.id, spec.kind)
+        // Garde anti-effacement : plus AUCUNE catégorie alors que la base en a (compte expiré qui répond `[]`) → rien n'est
+        // touché, la synchro échoue avec une cause claire. « Mes chaînes » (locale) ne compte pas.
+        if (fetched.isEmpty()) CatalogGuard.check(spec.kind, before.count { it.remoteId != ManualChannels.CUSTOM_CAT }, 0)
         val merged = CatalogPlan.merge(fetched, before, langs, u.includeMulti, u.includeUnknownLang)
         noteLangDisabled(p.id, spec.kind, merged, before)
         val enabledIds = merged.filter { it.enabled }.map { it.remoteId }
@@ -1094,6 +1104,10 @@ class ProviderRepository @Inject constructor(
         }
         // Les catégories viennent d'être réécrites (nouveaux id) : rangs du Direct relus avant d'insérer les chaînes.
         if (spec.kind == LiveOrder.KIND) liveRanks = LiveOrder.ranks(categoryDao.forProviderKind(p.id, spec.kind))
+        // Référence de la garde anti-effacement : éléments des catégories actives (les désactivées viennent d'être purgées).
+        val itemsBefore = spec.count(p.id)
+        // Catégories reçues vides : effacées seulement à la fin, si au moins une catégorie a renvoyé quelque chose.
+        val emptyCats = java.util.concurrent.ConcurrentLinkedQueue<String>()
         var strategy = CatalogPlan.strategy(merged.size, enabledIds.size, p.categoryFilter)
         var written = 0
         val tier = adaptive.state.value.device.tier
@@ -1107,7 +1121,7 @@ class ProviderRepository @Inject constructor(
                 while (queue.isNotEmpty() && !verified && strategy == SyncStrategy.PER_CATEGORY) {
                     val id = queue.removeAt(0); idx++
                     val items = fetchCat(p, spec, id) ?: continue   // Stalker : catégorie sautée, contenu précédent gardé
-                    if (items.isEmpty()) { db.withTransaction { spec.deleteCat(p.id, id) }; continue }       // vide : ne prouve rien, on essaie la suivante
+                    if (items.isEmpty()) { emptyCats += id; continue }       // vide : ne prouve rien, on essaie la suivante
                     if (items.any { spec.catOf(it) != null && spec.catOf(it) != id }) {
                         providerDao.setCategoryFilter(p.id, 0); strategy = SyncStrategy.GLOBAL_FILTERED
                     } else {
@@ -1126,12 +1140,19 @@ class ProviderRepository @Inject constructor(
                         async {
                             gate.withPermit {
                                 val items = fetchCat(p, spec, id)
-                                val n = if (items == null) 0 else insertCategory(p, spec, id, items, langByCat)
+                                val n = when {
+                                    items == null -> 0
+                                    items.isEmpty() -> { emptyCats += id; 0 }
+                                    else -> insertCategory(p, spec, id, items, langByCat)
+                                }
                                 progress(done.incrementAndGet().toFloat() / total, count.addAndGet(n))
                             }
                         }
                     }.forEach { it.await() }
                 }
+                // Toutes les catégories vides alors que la base en contenait : compte expiré probable, rien n'est effacé.
+                if (count.get() == 0 && emptyCats.isNotEmpty()) CatalogGuard.check(spec.kind, itemsBefore, 0)
+                if (emptyCats.isNotEmpty()) db.withTransaction { emptyCats.toList().chunked(500).forEach { spec.deleteCats(p.id, it) } }
                 return count.get()
             }
         }
@@ -1140,7 +1161,8 @@ class ProviderRepository @Inject constructor(
         // Transaction unique : une liste coupée en route est annulée (l'ancien catalogue reste) au lieu d'être gardée à moitié.
         // Serveur qui filtre par catégorie : la coupure est rattrapée par une requête par catégorie active.
         return try {
-            streamAllInto(p, spec, strategy == SyncStrategy.GLOBAL, enabledSet, langByCat, progress, onDownloaded)
+            // Catégories vides notées pendant une vérification abandonnée (serveur sans filtre) : la liste complète les réécrit.
+            streamAllInto(p, spec, strategy == SyncStrategy.GLOBAL, enabledSet, langByCat, progress, onDownloaded, itemsBefore)
         } catch (e: Exception) {
             val cut = e is java.io.IOException || e is kotlinx.serialization.SerializationException
             if (!cut || p.categoryFilter != 1 || enabledIds.isEmpty()) throw e
@@ -1163,6 +1185,7 @@ class ProviderRepository @Inject constructor(
         p: ProviderEntity, spec: PartSpec<T>, all: Boolean, enabledSet: Set<String>, langByCat: Map<String, String>,
         progress: (Float, Int) -> Unit,
         onDownloaded: () -> Unit = {},
+        itemsBefore: Int = 0,
     ): Int {
         var n = 0
         val inc = spec.incremental
@@ -1181,6 +1204,8 @@ class ProviderRepository @Inject constructor(
                             n += batch.size
                             progress((n / 60_000f).coerceAtMost(0.95f), n)
                         }
+                    // Liste vide ou effondrée : exception DANS la transaction, rien n'est retiré (voir CatalogGuard).
+                    CatalogGuard.check(spec.kind, itemsBefore, n)
                     pass.keepCategories(spec.keepCats(p.id))
                     val removed = pass.finish()
                     android.util.Log.i("UltraSync", "${spec.kind}: ${pass.inserted} new, ${pass.updated} changed, $removed removed, ${n - pass.inserted - pass.updated} unchanged")
@@ -1202,6 +1227,8 @@ class ProviderRepository @Inject constructor(
                         n += rows.size
                         progress((n / 60_000f).coerceAtMost(0.95f), n)
                     }
+                // Liste vide ou effondrée : l'exception annule la transaction, suppression comprise (voir CatalogGuard).
+                CatalogGuard.check(spec.kind, itemsBefore, n)
             }
         }
         return n

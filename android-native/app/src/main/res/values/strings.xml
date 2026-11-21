@@ -1954,5 +1954,7 @@
     <string name="ds_err_no_picture">There is sound but no picture</string>
     <string name="syncerr_rate_limited">Too many requests — the provider is limiting access, try again in a few minutes</string>
     <string name="syncerr_invalid_response">The server replied with something other than a playlist — check the address</string>
+    <string name="syncerr_account_expired">Subscription expired — renew it with your provider</string>
+    <string name="syncerr_empty_list">The provider returned an empty list — your catalogue is kept</string>
     <string name="syncerr_local_network">This address is on a local network — connect this device to the same network and turn off any VPN</string>
 </resources>

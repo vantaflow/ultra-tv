@@ -66,9 +66,10 @@ internal object EpgErrors {
             SyncErrorKind.TIMEOUT -> EpgFailReason.TIMEOUT
             SyncErrorKind.HOST_NOT_FOUND, SyncErrorKind.UNREACHABLE, SyncErrorKind.TLS, SyncErrorKind.LOCAL_NETWORK -> EpgFailReason.NETWORK
             SyncErrorKind.SERVER_ERROR, SyncErrorKind.RATE_LIMITED -> EpgFailReason.SERVER
-            SyncErrorKind.UNAUTHORIZED, SyncErrorKind.PROVIDER_BLOCKED -> EpgFailReason.AUTH
+            SyncErrorKind.UNAUTHORIZED, SyncErrorKind.PROVIDER_BLOCKED, SyncErrorKind.ACCOUNT_EXPIRED -> EpgFailReason.AUTH
             SyncErrorKind.NOT_FOUND -> EpgFailReason.NOT_FOUND
             SyncErrorKind.INVALID_RESPONSE -> EpgFailReason.BAD_FORMAT
+            SyncErrorKind.EMPTY_LIST -> EpgFailReason.EMPTY
             SyncErrorKind.OTHER -> EpgFailReason.OTHER
         }
     }
