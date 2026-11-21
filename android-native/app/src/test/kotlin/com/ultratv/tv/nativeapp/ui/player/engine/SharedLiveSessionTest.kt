@@ -399,7 +399,11 @@ class SharedLiveSessionTest {
         shared.setPictureShown(shared.session!!.state.value.showsMedia)
         assertEquals("pas de son avant que le moteur soit prêt", true, e.muted)
         e.flow.tryEmit(EngineEvent.Ready)
-        assertTrue("audio seul prêt", shared.session!!.state.value.audioOnly)
+        assertFalse("audio seul pas confirmé tout de suite (VLC : la piste vidéo peut arriver après Ready)", shared.session!!.state.value.audioOnly)
+        scope.advanceTimeBy(AUDIO_ONLY_CONFIRM_MS - 100)
+        assertFalse("pas encore", shared.session!!.state.value.audioOnly)
+        scope.advanceTimeBy(200)
+        assertTrue("audio seul prêt après le délai", shared.session!!.state.value.audioOnly)
         shared.setPictureShown(shared.session!!.state.value.showsMedia)
         assertEquals(false, e.muted)
     }
@@ -424,8 +428,64 @@ class SharedLiveSessionTest {
         shared.preview("1:r", "1:r", "http://radio", muted = false, create)
         engines.single().video = false
         engines.single().flow.tryEmit(EngineEvent.Ready)
+        scope.advanceTimeBy(AUDIO_ONLY_CONFIRM_MS + 100)
         assertTrue(shared.session!!.state.value.audioOnly)
         shared.preview("1:a", "1:a", "http://a", muted = false, create)
         assertFalse("la chaîne suivante repart sans marque audio seul", shared.session!!.state.value.audioOnly)
+    }
+
+    @Test
+    fun guide_pisteVideoQuiArriveApresReady_jamaisDeSonAvantLImage() {
+        shared.gateAudioOnPicture = true
+        shared.preview("1:h", "1:h", "http://hls", muted = false, create)
+        val e = engines.single(); e.video = false          // VLC : Playing avant l'ajout de la piste vidéo
+        e.flow.tryEmit(EngineEvent.Ready)
+        scope.advanceTimeBy(500)
+        e.video = true                                      // la piste arrive
+        scope.advanceTimeBy(AUDIO_ONLY_CONFIRM_MS * 3)
+        val st = shared.session!!.state.value
+        assertFalse("une piste vidéo est arrivée : pas audio seul", st.audioOnly)
+        assertFalse(st.showsMedia)
+        shared.setPictureShown(st.showsMedia)
+        assertEquals("le son attend l'image", true, e.muted)
+        firstFrame()
+        shared.setPictureShown(shared.session!!.state.value.showsMedia)
+        assertEquals(false, e.muted)
+    }
+
+    @Test
+    fun guide_imageQuiArriveAvantLeDelai_pasAudioSeul() {
+        shared.preview("1:h", "1:h", "http://hls", muted = false, create)
+        val e = engines.single(); e.video = false
+        e.flow.tryEmit(EngineEvent.Ready)
+        scope.advanceTimeBy(300)
+        firstFrame()
+        scope.advanceTimeBy(AUDIO_ONLY_CONFIRM_MS * 2)
+        assertFalse(shared.session!!.state.value.audioOnly)
+    }
+
+    @Test
+    fun guide_changementDeFluxPendantLeDelai_rienNeFuitDeLAncienFlux() {
+        shared.gateAudioOnPicture = true
+        shared.preview("1:r", "1:r", "http://radio", muted = false, create)
+        val e = engines.single(); e.video = false
+        e.flow.tryEmit(EngineEvent.Ready)
+        scope.advanceTimeBy(500)
+        shared.preview("1:a", "1:a", "http://a", muted = false, create)   // même moteur, flux suivant, aucun Ready encore
+        scope.advanceTimeBy(AUDIO_ONLY_CONFIRM_MS * 3)
+        assertFalse("la confirmation de l'ancien flux ne touche pas le nouveau", shared.session!!.state.value.audioOnly)
+        assertFalse(shared.session!!.state.value.showsMedia)
+    }
+
+    @Test
+    fun guide_liberationPendantLeDelai_aucuneConfirmationOrpheline() {
+        shared.preview("1:r", "1:r", "http://radio", muted = false, create)
+        val s = shared.session!!
+        val e = engines.single(); e.video = false
+        e.flow.tryEmit(EngineEvent.Ready)
+        scope.advanceTimeBy(500)
+        s.release()
+        scope.advanceTimeBy(AUDIO_ONLY_CONFIRM_MS * 3)
+        assertFalse(s.state.value.audioOnly)
     }
 }
