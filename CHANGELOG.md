@@ -12,6 +12,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Accueil TV, appareils modestes : l'image « À la une » reste fixe, sans rotation ni fondu, sur une box sous Android 12 ou avec peu de mémoire, même avec « Animations : Normales ». Le téléphone garde la rotation d'avant.
 - Réglages › À propos : une ligne « Paiement par carte » grisée, marquée « Bientôt disponible », apparaît sous « Soutenir Ultra TV ». Elle se parcourt à la télécommande mais ne fait rien pour l'instant : aucun prix, aucun lien, aucune connexion.
 - Catalogue (téléphone et tablette avec clavier ou manette) : la pastille de filtre focalisée n'est plus collée au bord de l'écran. Ce changement concerne le catalogue, pas l'accueil.
+- Télécommande (TV) : sur l'Accueil, le Guide, le Direct, Films, Séries et les autres écrans du menu, Retour ouvre le menu latéral avec le focus sur l'écran courant, au lieu d'afficher seulement « Maintenez Retour pour quitter ». Menu ouvert, Retour garde la règle d'avant (retour à l'accueil, puis le message de sortie). Fenêtres et sous-niveaux gardent la priorité.
 
 ### Corrigé
 - Arabe : les rangées de l'accueil et du catalogue ne sont plus rognées au bord de départ.

@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp
 
+import com.ultratv.tv.nativeapp.ui.mobile.navigateTopLevel
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.wrapContentSize
@@ -602,6 +603,8 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition, simpleHome: Boolean
         val decided by StartupNav.startupDecided.collectAsState()
         androidx.compose.runtime.LaunchedEffect(rememberRoute, decided) { if (decided && rememberRoute != null) appVm.setLastScreen(rememberRoute) }
         val onPlayer = com.ultratv.tv.nativeapp.ui.mobile.isFullscreenRoute(backEntryRoute?.destination?.route)
+        // Menu latéral de la TV : Retour l'ouvre (RailBackHandler, en fin de racine).
+        val railMenu = androidx.compose.runtime.remember { com.ultratv.tv.nativeapp.ui.components.RailMenuState() }
         when (layout) {
             com.ultratv.tv.nativeapp.ui.mobile.NavLayout.BOTTOM_TABS, com.ultratv.tv.nativeapp.ui.mobile.NavLayout.SIDE_RAIL -> {
                 val profileVm: com.ultratv.tv.nativeapp.ui.profile.ProfileViewModel = androidx.hilt.navigation.compose.hiltViewModel()
@@ -635,7 +638,7 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition, simpleHome: Boolean
                     ) {
                         androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.common.LocalContentFocusMemory provides contentFocus) { ScaledForSimple(simpleHome, simpleScale) { NavGraph(nav, simpleHome) } }
                     }
-                    if (!fullscreen) SidebarNav(navController = nav)
+                    if (!fullscreen) SidebarNav(navController = nav, menu = railMenu)
                 }
             }
         }
@@ -651,6 +654,19 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition, simpleHome: Boolean
         com.ultratv.tv.nativeapp.ui.common.HandoffHost()
         // Alertes de l’administrateur (tableau de bord) : pendant la lecture plein écran, seules les urgentes (en bandeau).
         com.ultratv.tv.nativeapp.ui.common.AnnouncementHost(suppressed = onPlayer)
+        // Posé en DERNIER : les gestionnaires de Retour les plus récents passent d'abord (fenêtres, alertes, écrans), puis celui-ci,
+        // puis le retour arrière du graphe, puis la règle de sortie de l'activité.
+        if (layout == com.ultratv.tv.nativeapp.ui.mobile.NavLayout.TV_RAIL) {
+            val route = backEntryRoute?.destination?.route
+            com.ultratv.tv.nativeapp.ui.components.RailBackHandler(
+                route = route, menu = railMenu, modalOpen = overlays.hasModal, simpleHome = simpleHome,
+                railShown = route?.startsWith("player") != true && !com.ultratv.tv.nativeapp.ui.simple.SimpleHome.railHidden(simpleHome, route),
+                onMenuToHome = {
+                    com.ultratv.tv.nativeapp.ui.home.HomeFreshStart.mark()
+                    nav.navigateTopLevel(Routes.HOME)
+                },
+            )
+        }
         }
       }
     }

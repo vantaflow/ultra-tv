@@ -125,7 +125,7 @@ const val RAIL_EXPANDED_PX = 360
 @androidx.tv.material3.ExperimentalTvMaterial3Api
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
-fun SidebarNav(navController: NavController) {
+fun SidebarNav(navController: NavController, menu: RailMenuState = remember { RailMenuState() }) {
     val current by navController.currentBackStackEntryAsState()
     val route = current?.destination?.route ?: "home"
     val S = LocalStrings.current
@@ -139,7 +139,8 @@ fun SidebarNav(navController: NavController) {
     val hasLibraries by badgesVm.hasLibraries.collectAsState()
     val items = remember(sportOn, hasLibraries) { railItemsFor(sportOn, hasLibraries) }
     val lowRam = LocalLowRam.current
-    var expanded by remember { mutableStateOf(false) }
+    // État hissé : Retour (racine) ouvre le menu par [RailMenuState.open].
+    var expanded by menu::expanded
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val rtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
     // Sortie du menu vers le contenu (à droite, à gauche en arabe).
@@ -168,6 +169,8 @@ fun SidebarNav(navController: NavController) {
     val showLabels by remember { androidx.compose.runtime.derivedStateOf { expanded || labelAlphaState.value > 0f } }
 
     val activeFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    val railRoot = remember { androidx.compose.ui.focus.FocusRequester() }
+    RailMenuFocusLink(menu, railRoot)
     // Renvoi du focus vers la page REPORTÉ à l'image suivante : déplacé pendant le traitement de l'événement de focus
     // (contenu disparu, ex. sources retirées), il forçait la liste de la page à se composer au milieu d'une
     // recomposition — « Compose Runtime internal error (pending composition has not been applied) », Fire TV 1.2.96.
@@ -191,6 +194,7 @@ fun SidebarNav(navController: NavController) {
                     .weight(1f)
                     .background(Ux.Rail)
                     .clipToBounds()
+                    .focusRequester(railRoot)
                     // Entrer dans le menu (← depuis la page) place le focus sur la PAGE OUVERTE, pas sur Rechercher.
                     .focusProperties { enter = { if (hasActive) activeFocus else androidx.compose.ui.focus.FocusRequester.Default } }
                     .focusGroup()
@@ -274,6 +278,8 @@ fun SidebarNav(navController: NavController) {
                                     // Refermé tout de suite : sinon le menu et son voile restaient sur l'ancien écran
                                     // jusqu'à ce que la nouvelle page prenne le focus (superposition visible).
                                     expanded = false
+                                    // Retour à l'accueil par le menu : il s'ouvre comme à neuf (la carte quittée n'est restaurée qu'au retour d'une fiche ou du lecteur).
+                                    if (item.route == com.ultratv.tv.nativeapp.nav.Routes.HOME) com.ultratv.tv.nativeapp.ui.home.HomeFreshStart.mark()
                                     // Mêmes règles de pile que le mobile (Accueil : retour réel au départ).
                                     navController.navigateTopLevel(item.route)
                                 } else leaveRail()
