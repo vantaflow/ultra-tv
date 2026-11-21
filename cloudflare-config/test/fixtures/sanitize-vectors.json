@@ -1012,7 +1012,7 @@
     "input": "Player error 404 on channel 12",
     "mustNotContain": [
       "<redacted>",
-      "<host#",
+      "<host",
       "<lan",
       "<ip>",
       "<mac>",
@@ -1027,7 +1027,7 @@
     "input": "perf stall 812ms route=live/guide",
     "mustNotContain": [
       "<redacted>",
-      "<host#",
+      "<host",
       "<lan",
       "<ip>",
       "<mac>",
@@ -1042,7 +1042,7 @@
     "input": "fallback kind=FORMAT from=EXO/HW to=VLC live=true res=3840x2160 codec=hevc",
     "mustNotContain": [
       "<redacted>",
-      "<host#",
+      "<host",
       "<lan",
       "<ip>",
       "<mac>",
@@ -1057,7 +1057,7 @@
     "input": "java.lang.IllegalStateException: Key \"— · M6\" was already used. If you are using LazyColumn/Row please make sure you provide a unique key for each item.\n\tat androidx.compose.foundation.lazy.layout.LazyLayoutItemProviderKt.getKey(LazyLayoutItemProvider.kt:12)",
     "mustNotContain": [
       "<redacted>",
-      "<host#",
+      "<host",
       "<lan",
       "<ip>",
       "<mac>",
@@ -1072,7 +1072,7 @@
     "input": "guide: échec (timeout, HTTP 504, délai 30000, SocketTimeoutException) après 3 tentative(s)",
     "mustNotContain": [
       "<redacted>",
-      "<host#",
+      "<host",
       "<lan",
       "<ip>",
       "<mac>",
@@ -1087,7 +1087,7 @@
     "input": "version 1.3.72 (versionCode 10372) Android 14 sdk=34",
     "mustNotContain": [
       "<redacted>",
-      "<host#",
+      "<host",
       "<lan",
       "<ip>",
       "<mac>",
@@ -1102,7 +1102,7 @@
     "input": "12:34:56.789 durée 00:01:30 délai 2.5s",
     "mustNotContain": [
       "<redacted>",
-      "<host#",
+      "<host",
       "<lan",
       "<ip>",
       "<mac>",
@@ -1117,7 +1117,7 @@
     "input": "video/hevc 3840x2160@60 audio/eac3 5.1 profile=Main10",
     "mustNotContain": [
       "<redacted>",
-      "<host#",
+      "<host",
       "<lan",
       "<ip>",
       "<mac>",
@@ -1132,7 +1132,7 @@
     "input": "Expected URL scheme 'http' or 'https' but no colon was found",
     "mustNotContain": [
       "<redacted>",
-      "<host#",
+      "<host",
       "<lan",
       "<ip>",
       "<mac>",
@@ -1147,7 +1147,7 @@
     "input": "token_type=bearer expires_in=3600 stb_type=MAG250 status=Active max_connections=1",
     "mustNotContain": [
       "<redacted>",
-      "<host#",
+      "<host",
       "<lan",
       "<ip>",
       "<mac>",
@@ -1162,7 +1162,7 @@
     "input": "Unable to connect: Connection reset by peer (errno 104)",
     "mustNotContain": [
       "<redacted>",
-      "<host#",
+      "<host",
       "<lan",
       "<ip>",
       "<mac>",
@@ -1177,7 +1177,7 @@
     "input": "main thread blocked ≥ 5 s\n\tat android.os.MessageQueue.nativePollOnce(Native Method)\n\tat android.os.Looper.loop(Looper.java:288)",
     "mustNotContain": [
       "<redacted>",
-      "<host#",
+      "<host",
       "<lan",
       "<ip>",
       "<mac>",
@@ -1192,7 +1192,7 @@
     "input": "at com.ultratv.Foo::bar$lambda(Foo.kt:42)",
     "mustNotContain": [
       "<redacted>",
-      "<host#",
+      "<host",
       "<lan",
       "<ip>",
       "<mac>",
@@ -1200,6 +1200,638 @@
     ],
     "mustContain": [
       "at com.ultratv.Foo::bar$lambda(Foo.kt:42)"
+    ]
+  },
+  {
+    "name": "I1 player_api.php : mot de passe à espace en dernier paramètre",
+    "input": "GET http://fournisseur.invalid/player_api.php?username=ZZUSERZZ&password=ZZPASSZZ ZZFINZZ",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur",
+      "ZZFINZZ"
+    ],
+    "mustContain": [
+      "player_api.php"
+    ]
+  },
+  {
+    "name": "I1 get.php : mot de passe à espace en dernier, champs du journal ensuite",
+    "input": "UtvPlay échec http://fournisseur.invalid:8080/get.php?username=ZZUSERZZ&password=ZZPASSZZ ZZFINZZ vidéo=- audio=-",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur",
+      "ZZFINZZ"
+    ],
+    "mustContain": [
+      "get.php",
+      "vidéo=- audio=-"
+    ]
+  },
+  {
+    "name": "I1 identifiant à espace en dernier paramètre",
+    "input": "http://fournisseur.invalid/xmltv.php?password=ZZPASSZZ&username=ZZUSERZZ ZZFINZZ",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur",
+      "ZZFINZZ"
+    ],
+    "mustContain": [
+      "xmltv.php"
+    ]
+  },
+  {
+    "name": "I1 forme longue : mot de passe à espace en dernier segment",
+    "input": "http://fournisseur.invalid/live/ZZUSERZZ/ZZPASSZZ ZZFINZZ",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur",
+      "ZZFINZZ"
+    ],
+    "mustContain": [
+      "/live"
+    ]
+  },
+  {
+    "name": "I1 clé password hors adresse, valeur à espace",
+    "input": "connexion refusée password=ZZPASSZZ ZZFINZZ code=401",
+    "mustNotContain": [
+      "ZZPASSZZ",
+      "ZZFINZZ"
+    ],
+    "mustContain": [
+      "code=401"
+    ]
+  },
+  {
+    "name": "I1 clé password hors adresse, valeur à deux espaces en fin de texte",
+    "input": "password=ZZPASSZZ ZZFINZZ ZZFIN2ZZ",
+    "mustNotContain": [
+      "ZZPASSZZ",
+      "ZZFINZZ",
+      "ZZFIN2ZZ"
+    ],
+    "mustContain": []
+  },
+  {
+    "name": "I1 clé username hors adresse : le champ suivant reste",
+    "input": "user=ZZUSERZZ ZZFINZZ status=401 (refusé)",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZFINZZ"
+    ],
+    "mustContain": [
+      "status=401 (refusé)"
+    ]
+  },
+  {
+    "name": "I2 schéma collé à un chiffre",
+    "input": "code=403http://fournisseur.invalid/ZZUSERZZ/ZZPASSZZ/1.ts",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": [
+      "code=403",
+      "http://",
+      ".ts"
+    ]
+  },
+  {
+    "name": "I2 schéma collé à un tiret",
+    "input": "source-http://fournisseur.invalid/ZZUSERZZ/ZZPASSZZ/1.ts",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": [
+      "http://"
+    ]
+  },
+  {
+    "name": "I2 schéma précédé de %20 et %22",
+    "input": "x%20http://fournisseur.invalid/ZZUSERZZ/ZZPASSZZ/1.ts et %22https://fournisseur.invalid/ZZUSERZZ/ZZPASSZZ/2.ts%22",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": [
+      "https://"
+    ]
+  },
+  {
+    "name": "I2 url%3D suivi d'un schéma en clair",
+    "input": "next=a&url%3Dhttp://fournisseur.invalid/ZZUSERZZ/ZZPASSZZ/1.ts",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": [
+      "http://"
+    ]
+  },
+  {
+    "name": "I2 redirect%3D suivi d'une adresse encodée",
+    "input": "redirect%3Dhttp%3A%2F%2Ffournisseur.invalid%2FZZUSERZZ%2FZZPASSZZ%2F1.ts",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": [
+      "http:"
+    ]
+  },
+  {
+    "name": "I2 adresse encodée en casse mêlée",
+    "input": "next=HtTp%3a%2F%2ffournisseur.invalid%2flive%2fZZUSERZZ%2fZZPASSZZ%2f1.ts",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": []
+  },
+  {
+    "name": "I2 adresse doublement encodée",
+    "input": "src=x http%253A%252F%252Ffournisseur.invalid%252FZZUSERZZ%252FZZPASSZZ%252F1.ts",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": []
+  },
+  {
+    "name": "I2 rtmps collé à un chiffre, identifiants dans l'autorité",
+    "input": "id=7rtmps://ZZUSERZZ:ZZPASSZZ@fournisseur.invalid/live/x",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": [
+      "rtmps://"
+    ]
+  },
+  {
+    "name": "I2 barres en \\u002F (Gson)",
+    "input": "{\"src\":\"http:\\u002F\\u002Ffournisseur.invalid\\u002FZZUSERZZ\\u002FZZPASSZZ\\u002F1.ts\"}",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": []
+  },
+  {
+    "name": "I2 paramètres en \\u003d \\u0026 (Gson)",
+    "input": "get.php?username\\u003dZZUSERZZ\\u0026password\\u003dZZPASSZZ",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ"
+    ],
+    "mustContain": []
+  },
+  {
+    "name": "I3 guillemet dans l'identifiant",
+    "input": "http://fournisseur.invalid/ZZUSERZZ\"x/ZZPASSZZ/1.ts",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": []
+  },
+  {
+    "name": "I3 chevrons dans l'identifiant",
+    "input": "http://fournisseur.invalid/ZZUSERZZ<x/ZZPASSZZ/1.ts et http://fournisseur.invalid/ZZUSERZZ>y/ZZPASSZZ/2.ts",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": []
+  },
+  {
+    "name": "I3 barre oblique inverse dans l'identifiant",
+    "input": "http://fournisseur.invalid/ZZUSERZZ\\x/ZZPASSZZ/1.ts",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": []
+  },
+  {
+    "name": "I3 accent grave dans l'identifiant",
+    "input": "http://fournisseur.invalid/ZZUSERZZ`x/ZZPASSZZ/1.ts",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": []
+  },
+  {
+    "name": "I3 guillemet échappé dans un JSON",
+    "input": "{\"url\":\"http://fournisseur.invalid/live/ZZUSERZZ\\\"x/ZZPASSZZ/1.ts\",\"ok\":true}",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": [
+      "\"ok\":true"
+    ]
+  },
+  {
+    "name": "intact : JSON avec adresse puis champ à barre",
+    "input": "{\"url\":\"http://fournisseur.invalid/a\",\"note\":\"ok/fine\",\"n\":2}",
+    "mustNotContain": [
+      "fournisseur"
+    ],
+    "mustContain": [
+      "\"note\":\"ok/fine\",\"n\":2"
+    ]
+  },
+  {
+    "name": "règle en-têtes entiers : Authorization MediaBrowser sans Token=",
+    "input": "Authorization: MediaBrowser Client=\"x\", Token ZZTOKENZZ",
+    "mustNotContain": [
+      "ZZTOKENZZ"
+    ],
+    "mustContain": [
+      "Authorization"
+    ]
+  },
+  {
+    "name": "règle XTREAM_PATH hors adresse et hors requête",
+    "input": "chemin /live/ZZUSERZZ/ZZPASSZZ/1.ts introuvable",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ"
+    ],
+    "mustContain": [
+      "/live/"
+    ]
+  },
+  {
+    "name": "règle ligne de requête : chemin court",
+    "input": "GET /ZZUSERZZ/ZZPASSZZ/123.ts HTTP/1.1",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ"
+    ],
+    "mustContain": [
+      "GET /",
+      "HTTP/1.1"
+    ]
+  },
+  {
+    "name": "règle ligne de requête : espace dans l'identifiant",
+    "input": "GET /live/ZZUSERZZ x/ZZPASSZZ/1.ts HTTP/1.1",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ"
+    ],
+    "mustContain": [
+      "HTTP/1.1"
+    ]
+  },
+  {
+    "name": "règle \\/ : adresse en JSON à barres échappées sans clé d'adresse",
+    "input": "{\"src\":\"http:\\/\\/fournisseur.invalid\\/ZZUSERZZ\\/ZZPASSZZ\\/1.ts\"}",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": []
+  },
+  {
+    "name": "règle utv_ : jeton d'appareil seul",
+    "input": "jeton utv_ZZTOKENZZabcdefghijkl refusé",
+    "mustNotContain": [
+      "ZZTOKENZZ"
+    ],
+    "mustContain": [
+      "utv_",
+      "refusé"
+    ]
+  },
+  {
+    "name": "règle Basic : hors en-tête et hors clé",
+    "input": "envoi Basic WlpVU0VSWlo6WlpQQVNTWlo= refusé",
+    "mustNotContain": [
+      "WlpVU0VSWlo6WlpQQVNTWlo"
+    ],
+    "mustContain": [
+      "refusé"
+    ]
+  },
+  {
+    "name": "règle nom mac en paramètre nu",
+    "input": "portail mac=ZZMACZZ refusé",
+    "mustNotContain": [
+      "ZZMACZZ"
+    ],
+    "mustContain": [
+      "refusé"
+    ]
+  },
+  {
+    "name": "règle nom email en paramètre nu",
+    "input": "compte email=ZZUSERZZ inconnu",
+    "mustNotContain": [
+      "ZZUSERZZ"
+    ],
+    "mustContain": [
+      "inconnu"
+    ]
+  },
+  {
+    "name": "règle nom sn en paramètre nu",
+    "input": "portail sn=ZZSERIEZZ refusé",
+    "mustNotContain": [
+      "ZZSERIEZZ"
+    ],
+    "mustContain": [
+      "refusé"
+    ]
+  },
+  {
+    "name": "règle schéma encodé seul (%3A%2F%2F)",
+    "input": "next%3Dhttp%3A%2F%2Ffournisseur.invalid%2FZZUSERZZ%2FZZPASSZZ%2F1.ts",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": []
+  },
+  {
+    "name": "règle arrêt de valeur sur %26",
+    "input": "x%3Fpassword%3DZZPASSZZ%26type%3Dm3u",
+    "mustNotContain": [
+      "ZZPASSZZ"
+    ],
+    "mustContain": [
+      "type%3Dm3u"
+    ]
+  },
+  {
+    "name": "règle @ de l'autorité : IP privée reconnue derrière les identifiants",
+    "input": "rtsp://ZZUSERZZ:ZZPASSZZ@192.168.77.88:554/live",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "192.168.77.88"
+    ],
+    "mustContain": [
+      "<lan"
+    ]
+  },
+  {
+    "name": "règle ponctuation finale rendue au texte",
+    "input": "(voir http://fournisseur.invalid/live/ZZUSERZZ/ZZPASSZZ/1.ts).",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": [
+      ".ts)."
+    ]
+  },
+  {
+    "name": "règle arrêt d'une adresse encodée sur &",
+    "input": "src=http%3A%2F%2Ffournisseur.invalid%2Flive%2FZZUSERZZ%2FZZPASSZZ%2F1.ts&type=m3u",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": [
+      "&type=m3u"
+    ]
+  },
+  {
+    "name": "rare : tabulation dans l'identifiant",
+    "input": "http://fournisseur.invalid/ZZUSERZZ\tx/ZZPASSZZ/12345",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": []
+  },
+  {
+    "name": "rare : clés psw pw pin",
+    "input": "psw=ZZPASSZZ pw=ZZPASSZZB pin=ZZPINZZ",
+    "mustNotContain": [
+      "ZZPASSZZ",
+      "ZZPINZZ"
+    ],
+    "mustContain": []
+  },
+  {
+    "name": "rare : identifiants dans l'autorité sans schéma",
+    "input": "connexion ZZUSERZZ:ZZPASSZZ@fournisseur.invalid:8080 refusée",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": [
+      "refusée"
+    ]
+  },
+  {
+    "name": "rare : hôte:port/chemin sans schéma",
+    "input": "connect fournisseur.invalid:8080/ZZUSERZZ/ZZPASSZZ/1.ts failed",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": [
+      "failed"
+    ]
+  },
+  {
+    "name": "rare : chemin Windows avec nom d'utilisateur",
+    "input": "C:\\Users\\ZZUSERZZ\\AppData\\Local\\ultra-tv\\main.js:12",
+    "mustNotContain": [
+      "ZZUSERZZ"
+    ],
+    "mustContain": [
+      "AppData",
+      "main.js:12"
+    ]
+  },
+  {
+    "name": "rare : chemin macOS et Linux avec nom d'utilisateur",
+    "input": "/Users/ZZUSERZZ/Library/x et /home/ZZUSERZZ/.config/y",
+    "mustNotContain": [
+      "ZZUSERZZ"
+    ],
+    "mustContain": [
+      "/Library/x",
+      "/.config/y"
+    ]
+  },
+  {
+    "name": "rare : login failed for X / Y",
+    "input": "login failed for ZZUSERZZ / ZZPASSZZ",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ"
+    ],
+    "mustContain": [
+      "login failed for"
+    ]
+  },
+  {
+    "name": "rare : Chain validation failed for hôte",
+    "input": "SSLHandshakeException: Chain validation failed for fournisseur.invalid",
+    "mustNotContain": [
+      "fournisseur"
+    ],
+    "mustContain": [
+      "Chain validation failed for"
+    ]
+  },
+  {
+    "name": "rare : mot de passe en tableau JSON",
+    "input": "{\"password\":[\"ZZPASSZZ\"],\"x\":1}",
+    "mustNotContain": [
+      "ZZPASSZZ"
+    ],
+    "mustContain": [
+      "\"x\":1"
+    ]
+  },
+  {
+    "name": "rare : MAC pointée",
+    "input": "portail 001A.79AB.CDEF refusé",
+    "mustNotContain": [
+      "001A.79AB.CDEF"
+    ],
+    "mustContain": [
+      "refusé"
+    ]
+  },
+  {
+    "name": "rare : e-mail à @ encodé et à lettres accentuées",
+    "input": "compte zzuserzz%40example.invalid inconnu, zzusérzz@example.invalid",
+    "mustNotContain": [
+      "zzuserzz",
+      "zzusérzz",
+      "example"
+    ],
+    "mustContain": [
+      "inconnu"
+    ]
+  },
+  {
+    "name": "rare : identifiants en XML",
+    "input": "<password>ZZPASSZZ</password><username>ZZUSERZZ</username>",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ"
+    ],
+    "mustContain": [
+      "<password>",
+      "</username>"
+    ]
+  },
+  {
+    "name": "rare : hôte après « talking to » et « SNI »",
+    "input": "timeout talking to fournisseur.invalid (SNI fournisseur.invalid)",
+    "mustNotContain": [
+      "fournisseur"
+    ],
+    "mustContain": [
+      "timeout talking to"
+    ]
+  },
+  {
+    "name": "rare : adresse coupée par un saut de ligne",
+    "input": "http://fournisseur.invalid/ZZUSERZZ\r\nx/ZZPASSZZ/1.ts",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": []
+  },
+  {
+    "name": "intact : dates et fractions",
+    "input": "échec le 21/11/2026 à 3/4 du chargement, segment 12/40",
+    "mustNotContain": [
+      "<redacted>"
+    ],
+    "mustContain": [
+      "21/11/2026",
+      "3/4",
+      "12/40"
+    ]
+  },
+  {
+    "name": "règle continuation : espace dans l'identifiant au milieu de la requête",
+    "input": "http://fournisseur.invalid/get.php?username=ZZUSERZZ ZZFINZZ&type=m3u_plus&output=ts",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZFINZZ",
+      "fournisseur"
+    ],
+    "mustContain": [
+      "get.php"
+    ]
+  },
+  {
+    "name": "règle continuation : identifiant à plusieurs espaces, forme courte sans extension",
+    "input": "http://fournisseur.invalid/Jean Paul ZZUSERZZ/ZZPASSZZ/12345 -> 401",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": [
+      "-> 401"
+    ]
+  },
+  {
+    "name": "règle valeur de clé d'hôte : chemin réduit à part",
+    "input": "url=fournisseur.invalid/ZZUSERZZ/ZZPASSZZ/1.ts",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": [
+      "url=",
+      ".ts"
+    ]
+  },
+  {
+    "name": "règle ?* : la présence d'une requête reste visible",
+    "input": "http://fournisseur.invalid/get.php?username=ZZUSERZZ&password=ZZPASSZZ",
+    "mustNotContain": [
+      "ZZUSERZZ",
+      "ZZPASSZZ",
+      "fournisseur"
+    ],
+    "mustContain": [
+      "get.php?"
     ]
   }
 ]
