@@ -518,6 +518,12 @@ private fun GuidePreviewPane(sel: androidx.compose.runtime.State<Pair<ChannelEnt
     val lockedNow by androidx.compose.runtime.rememberUpdatedState(locked)
     val mutedNow by androidx.compose.runtime.rememberUpdatedState(!pv.sound)
     val channel = sel.value?.first
+    // Son seulement tant que l'encadré montre la vidéo de la chaîne sélectionnée : jamais l'audio d'une chaîne sous son logo
+    // (avant la première image, flux sans image décodée, ancien flux pendant le délai après un changement de programme).
+    if (shared != null) DisposableEffect(shared) {
+        shared.gateAudioOnPicture = true
+        onDispose { if (shared.owner != com.ultratv.tv.nativeapp.ui.player.engine.LiveOwner.FULLSCREEN) shared.gateAudioOnPicture = false }
+    }
     if (videoPreview && shared != null) {
         LaunchedEffect(shared) { shared.env = pvm.env() }
         LaunchedEffect(pv.sound) { shared.applyPreviewMuted(!pv.sound) }
@@ -554,6 +560,9 @@ private fun GuidePreviewPane(sel: androidx.compose.runtime.State<Pair<ChannelEnt
         videoPreview && playingKey != null && ownerNow == com.ultratv.tv.nativeapp.ui.player.engine.LiveOwner.PREVIEW &&
             channel != null && shared.rowKey == com.ultratv.tv.nativeapp.ui.live.channelKey(channel)
     }
+    val pic by (session?.state ?: NO_SESSION_STATE).collectAsState()
+    val shown = session != null && pic.phase == com.ultratv.tv.nativeapp.ui.player.engine.Phase.PLAYING && pic.hasPicture
+    if (shared != null) LaunchedEffect(shared, shown) { shared.setPictureShown(shown) }
     Box(modifier.clip(RoundedCornerShape(24.design)).background(Ux.Tone), contentAlignment = Alignment.Center) {
         if (channel != null) {
             val logo: @Composable () -> Unit = { ChannelBigMark(channel, com.ultratv.tv.nativeapp.ui.common.shownChannelNumber(channel), Modifier.fillMaxSize(), radius = 24, pad = 80, bg = Ux.Tone) }
@@ -561,6 +570,8 @@ private fun GuidePreviewPane(sel: androidx.compose.runtime.State<Pair<ChannelEnt
         }
     }
 }
+
+private val NO_SESSION_STATE = MutableStateFlow(com.ultratv.tv.nativeapp.ui.player.engine.SessionState())
 
 private fun Int.dp1() = androidx.compose.ui.unit.Dp(0.5f)
 

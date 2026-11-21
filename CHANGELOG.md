@@ -18,6 +18,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Arabe : les nombres s'affichent partout en chiffres latins. Cinq textes (temps d'écran, enregistrements en cours, onglets) sortaient en chiffres arabo-indiens sur certains appareils, à côté de chiffres latins ailleurs.
 - Guide TV : dans l'en-tête, « Regarder » et « Enregistrer » ne sont plus rognés quand le programme est en cours avec un titre long. Le titre reste sur une ligne (« … »), et la description cède la place avant les boutons, y compris avec une grande taille de texte.
 - Guide : dans la fenêtre d'actions d'un programme, un libellé de bouton long ne rogne plus l'indication dessous ; dans le guide du téléphone, un titre long ne cache plus l'horaire de la case.
+- Guide TV : l'aperçu de la chaîne ne s'entend plus sans son image. Le son reste coupé jusqu'à ce que la vidéo s'affiche dans l'encadré, et se coupe de nouveau dès que la sélection change.
 
 ## [1.3.72] — 2026-11-21 (Android)
 

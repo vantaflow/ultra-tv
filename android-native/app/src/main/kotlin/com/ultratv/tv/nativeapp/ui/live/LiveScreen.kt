@@ -153,7 +153,8 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
     val holdNow by androidx.compose.runtime.rememberUpdatedState(holdAfterReturn)
     val mutedNow by androidx.compose.runtime.rememberUpdatedState(!pv.sound)
     if (videoPreview && shared != null) {
-        LaunchedEffect(shared) { shared.env = pvm.env() }
+        // Le Direct garde son comportement : le son conditionnel à l'image est propre au Guide.
+        LaunchedEffect(shared) { shared.env = pvm.env(); shared.gateAudioOnPicture = false }
         LaunchedEffect(pv.sound) { shared.applyPreviewMuted(!pv.sound) }
         // La chaîne focalisée depuis [delayMs] (réglable, ~0,7 s) joue dans l'aperçu ; collectLatest : un focus qui
         // change pendant la résolution annule le lancement (jamais deux flux).
