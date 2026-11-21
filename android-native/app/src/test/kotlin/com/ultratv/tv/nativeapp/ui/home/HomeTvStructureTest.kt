@@ -16,6 +16,7 @@ import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.isFocusable
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.assertHasClickAction
@@ -624,7 +625,7 @@ class HomeTvStructureTest {
      * son anneau, reste dans l'écran aux deux bords ; vers la fin de la rangée la carte ne recule jamais (pas de saut ni
      * d'oscillation du défilement) ; chaque touche déplace d'UNE carte.
      */
-    private fun assertRowNeverClipped(block: HomeBlock, lang: AppLang, count: Int, scale: Float, tag: (Int) -> String, data: HomeRows.() -> HomeRows, rowTag: String? = null) {
+    private fun assertRowNeverClipped(block: HomeBlock, lang: AppLang, count: Int, scale: Float, tag: (Int) -> String, data: HomeRows.() -> HomeRows, rowTag: String? = null, ringDp: Float = 10.design.value) {
         val base = HomeLayout.defaultFor(true)
         setHome(hero = null, layout = base.move(block, -base.order.indexOf(block)), lang = lang)
         rowsState.value = rowsState.value.data()
@@ -637,10 +638,21 @@ class HomeTvStructureTest {
         fun check(i: Int) {
             cardOf(tag(i)).assertIsFocused()
             val (l, t, r, b) = enlarged(scale)
+            // Géométrie réelle : position déjà agrandie (autour du centre), taille de mise en page, contour agrandi aussi.
+            val f = rule.onNode(isFocused()).getUnclippedBoundsInRoot()
+            val tr = f.left.value - ringDp * scale; val tt = f.top.value - ringDp * scale
+            val trr = f.left.value + f.width.value * scale + ringDp * scale; val tb = f.top.value + f.height.value * scale + ringDp * scale
+            assertTrue("carte $i : contour coupé à gauche ($tr)", tr >= screen.left.value)
+            assertTrue("carte $i : contour coupé à droite ($trr / ${screen.right})", trr <= screen.right.value)
+            assertTrue("carte $i : contour coupé en haut ($tt)", tt >= screen.top.value)
+            assertTrue("carte $i : contour coupé en bas ($tb)", tb <= screen.bottom.value)
             assertTrue("carte $i coupée en haut ($t)", t >= screen.top.value)
             assertTrue("carte $i coupée en bas ($b / ${screen.bottom})", b <= screen.bottom.value)
             if (rowTag != null) {
-                val row = rule.onNodeWithTag(rowTag).getUnclippedBoundsInRoot()
+                // Plusieurs rangées d'affiches portent le même repère : on prend celle qui contient la carte ; sinon la seule.
+                val rows = rule.onAllNodes(hasTestTag(rowTag))
+                val withCard = rule.onAllNodes(hasTestTag(rowTag) and hasAnyDescendant(hasTestTag(tag(i))))
+                val row = (if (rows.fetchSemanticsNodes().size == 1) rows[0] else withCard[0]).getUnclippedBoundsInRoot()
                 assertTrue("carte $i rognée en haut par la rangée ($t / ${row.top})", t >= row.top.value)
                 assertTrue("carte $i rognée en bas par la rangée ($b / ${row.bottom})", b <= row.bottom.value)
             }
@@ -676,7 +688,48 @@ class HomeTvStructureTest {
     @Test fun rangeDirect_jamaisRognee_enArabe() = assertRowNeverClipped(HomeBlock.CHANNELS, AppLang.Arabic, 8, 1.06f, { "home-channel-$it" }, channelRows(8), "home-channel-row")
     @Test fun rangeTop10_jamaisRognee_enFrancais() = assertRowNeverClipped(HomeBlock.TOP10, AppLang.French, 10, 1.10f, { "home-poster-t$it" }, { this })
     @Test fun rangeTop10_jamaisRognee_enArabe() = assertRowNeverClipped(HomeBlock.TOP10, AppLang.Arabic, 10, 1.10f, { "home-poster-t$it" }, { this })
+    @Test fun rangeAffiches_jamaisRognee_enFrancais() = assertRowNeverClipped(HomeBlock.LATEST_MOVIES, AppLang.French, 6, 1.10f, { "home-poster-m$it" }, { this })
     @Test fun rangeAffiches_jamaisRognee_enArabe() = assertRowNeverClipped(HomeBlock.LATEST_MOVIES, AppLang.Arabic, 6, 1.10f, { "home-poster-m$it" }, { this })
+
+    /**
+     * Rangée d'affiches : l'affiche focalisée (agrandie de 10 %) et son contour restent ENTIERS dans la rangée et dans
+     * l'écran, en haut comme en bas. Le zoom est un `graphicsLayer` : la position relevée est celle de l'affiche déjà
+     * agrandie (autour de son centre) mais sa taille relevée est celle de la mise en page, d'où `taille × zoom` ici.
+     * Contour = 6 de décalage + 4 d'épaisseur (unités design), agrandis aussi. Top 10 : le grand chiffre ne déborde pas non plus.
+     */
+    private fun assertPosterRowFits(block: HomeBlock, lang: AppLang, count: Int, prefix: String, rowTag: String, rankTag: ((Int) -> String)? = null) {
+        val base = HomeLayout.defaultFor(true)
+        setHome(hero = null, layout = base.move(block, -base.order.indexOf(block)), lang = lang)
+        val screen = rule.onRoot().getUnclippedBoundsInRoot()
+        val scale = 1.10f; val ring = 10.design.value * scale
+        focusPoster("${prefix}1")
+        val forward = if (lang.rtl) Key.DirectionLeft else Key.DirectionRight
+        for (i in 1..count) {
+            poster("$prefix$i").assertIsFocused()
+            val f = rule.onNode(isFocused()).getUnclippedBoundsInRoot()
+            val l = f.left.value - ring; val t = f.top.value - ring
+            val r = f.left.value + f.width.value * scale + ring; val b = f.top.value + f.height.value * scale + ring
+            val rows = rule.onAllNodes(hasTestTag(rowTag))
+            val row = (if (rows.fetchSemanticsNodes().size == 1) rows[0] else rule.onAllNodes(hasTestTag(rowTag) and hasAnyDescendant(hasTestTag("home-poster-$prefix$i")))[0]).getUnclippedBoundsInRoot()
+            assertTrue("$prefix$i : rognée en haut par la rangée ($t / ${row.top})", t >= row.top.value)
+            assertTrue("$prefix$i : rognée en bas par la rangée ($b / ${row.bottom})", b <= row.bottom.value)
+            assertTrue("$prefix$i : coupée en haut par l'écran ($t)", t >= screen.top.value)
+            assertTrue("$prefix$i : coupée en bas par l'écran ($b / ${screen.bottom})", b <= screen.bottom.value)
+            assertTrue("$prefix$i : coupée à gauche ($l)", l >= screen.left.value)
+            assertTrue("$prefix$i : coupée à droite ($r / ${screen.right})", r <= screen.right.value)
+            if (rankTag != null) {
+                val k = rule.onNodeWithTag(rankTag(i)).getUnclippedBoundsInRoot()
+                assertTrue("$prefix$i : chiffre rogné en haut (${k.top} / ${row.top})", k.top.value >= row.top.value)
+                assertTrue("$prefix$i : chiffre rogné en bas (${k.bottom} / ${row.bottom})", k.bottom.value <= row.bottom.value)
+            }
+            if (i < count) press(forward)
+        }
+    }
+
+    @Test fun affiches_rangeeEntiere_enFrancais() = assertPosterRowFits(HomeBlock.LATEST_MOVIES, AppLang.French, 6, "m", "home-poster-row")
+    @Test fun affiches_rangeeEntiere_enArabe() = assertPosterRowFits(HomeBlock.LATEST_MOVIES, AppLang.Arabic, 6, "m", "home-poster-row")
+    @Test fun top10_rangeeEntiere_enFrancais() = assertPosterRowFits(HomeBlock.TOP10, AppLang.French, 10, "t", "home-top10-row") { "top10-rank-$it" }
+    @Test fun top10_rangeeEntiere_enArabe() = assertPosterRowFits(HomeBlock.TOP10, AppLang.Arabic, 10, "t", "home-top10-row") { "top10-rank-$it" }
 
     private data class Quad(val a: String, val b: String, val c: Int, val d: String)
 

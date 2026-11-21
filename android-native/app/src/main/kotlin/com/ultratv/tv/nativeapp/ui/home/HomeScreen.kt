@@ -407,14 +407,21 @@ private class HomePivotSpec(private val topFocused: () -> Boolean) : BringIntoVi
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 private fun Modifier.homeRow(): Modifier = this.rowBleedStart(RowBleed).focusRestorer().focusGroup()
 
-/** Marge de bord des rangées d'affiches : 10 % de 200 (10) + décalage et épaisseur de l'anneau agrandis (11), arrondi. */
-private val PosterEdgeMargin get() = 24.design
+/*
+ * Marges de bord au défilement. Le zoom de la carte focalisée est un `graphicsLayer` : la demande de défilement reçoit un
+ * rectangle dont la position est déjà agrandie (autour du centre, soit g = (zoom - 1) / 2 × largeur de moins) mais dont la
+ * taille est celle de la mise en page. Côté fin, il faut donc la marge du zoom ET de l'anneau, plus ce décalage g :
+ * marge = 2 g + anneau (anneau agrandi aussi). Unités design.
+ */
 
-/** Rangée « Reprendre » (320, zoom 4 % : 6,4 de chaque côté) + anneau (≈ 10), arrondi. */
-private val ResumeEdgeMargin get() = 18.design
+/** Rangée d'affiches (200, zoom 10 % : g = 10) + anneau (10 × 1,10 = 11) : 31. */
+private val PosterEdgeMargin get() = 31.design
 
-/** Rangée « En direct » (392, zoom 6 % : 11,8 de chaque côté) + anneau (≈ 10,6), arrondi. */
-private val ChannelEdgeMargin get() = 24.design
+/** Rangée « Reprendre » (320, zoom 4 % : g = 6,4) + anneau (10 × 1,04 = 10,4) : 23,2, arrondi à 24. */
+private val ResumeEdgeMargin get() = 24.design
+
+/** Rangée « En direct » (392, zoom 6 % : g = 11,8) + anneau (10 × 1,06 = 10,6) : 34,2, arrondi à 35. */
+private val ChannelEdgeMargin get() = 35.design
 
 @Composable
 private fun HomeSection(
@@ -488,7 +495,7 @@ private fun NewEpisodesRow(cards: List<NewEpisodeCardUi>, onOpen: (PosterCardUi)
 private fun PosterRow(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
     val memory = rememberRowFocusMemory()
     RowEdgeMargin(PosterEdgeMargin) {
-        LazyRow(Modifier.homeRow().then(memory.tracker), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
+        LazyRow(Modifier.homeRow().then(memory.tracker).testTag("home-poster-row"), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
             items(cards, key = { it.key }, contentType = { "poster" }) { p ->
                 com.ultratv.tv.nativeapp.ui.catalog.PosterCell(
                     p.item, Modifier.width(PosterWidth).then(rowMemory(memory, p.key)).testTag("home-poster-${p.key}"),
@@ -546,7 +553,7 @@ private const val HomePosterScale = 1.10f
 private fun Top10Row(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
     val memory = rememberRowFocusMemory()
     RowEdgeMargin(PosterEdgeMargin) {
-        LazyRow(Modifier.homeRow().then(memory.tracker), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
+        LazyRow(Modifier.homeRow().then(memory.tracker).testTag("home-top10-row"), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
             itemsIndexed(cards, key = { _, p -> p.key }, contentType = { _, _ -> "top10" }) { i, p ->
                 Box(Modifier.width(Top10CellWidth)) {
                     Top10Rank(i + 1, Modifier.align(Alignment.TopStart))
