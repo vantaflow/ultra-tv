@@ -615,6 +615,62 @@ class HomeTvStructureTest {
         }
     }
 
+    // ───────────── Rangées jamais rognées : marge de bord, des deux côtés, en LTR et en RTL ─────────────
+
+    private fun cardOf(tag: String) = rule.onNode(isFocusable() and (hasTestTag(tag) or hasAnyAncestor(hasTestTag(tag))))
+
+    /**
+     * Parcourt une rangée de bout en bout (▶ puis ◀ en LTR, inversé en RTL) : la carte focalisée, agrandie de [scale] et de
+     * son anneau, reste dans l'écran aux deux bords ; vers la fin de la rangée la carte ne recule jamais (pas de saut ni
+     * d'oscillation du défilement) ; chaque touche déplace d'UNE carte.
+     */
+    private fun assertRowNeverClipped(block: HomeBlock, lang: AppLang, count: Int, scale: Float, tag: (Int) -> String, data: HomeRows.() -> HomeRows) {
+        val base = HomeLayout.defaultFor(true)
+        setHome(hero = null, layout = base.move(block, -base.order.indexOf(block)), lang = lang)
+        rowsState.value = rowsState.value.data()
+        rule.waitForIdle()
+        val screen = rule.onRoot().getUnclippedBoundsInRoot()
+        val rtl = lang.rtl
+        val forward = if (rtl) Key.DirectionLeft else Key.DirectionRight
+        val backward = if (rtl) Key.DirectionRight else Key.DirectionLeft
+        cardOf(tag(1)).requestFocus(); rule.waitForIdle(); cardOf(tag(1)).assertIsFocused()
+        fun check(i: Int) {
+            cardOf(tag(i)).assertIsFocused()
+            val (l, _, r, _) = enlarged(scale)
+            assertTrue("carte $i coupée à gauche ($l)", l >= screen.left.value)
+            assertTrue("carte $i coupée à droite ($r / ${screen.right})", r <= screen.right.value)
+        }
+        check(1)
+        // Position de la carte dans le sens de la lecture : ne doit jamais reculer quand on avance.
+        var last = Float.NEGATIVE_INFINITY
+        for (i in 2..count) {
+            press(forward); check(i)
+            val f = rule.onNode(isFocused()).getUnclippedBoundsInRoot()
+            val pos = if (rtl) -f.left.value else f.left.value
+            assertTrue("carte $i : le défilement a reculé ($pos après $last)", pos >= last - 1f)
+            last = pos
+        }
+        for (i in count - 1 downTo 1) { press(backward); check(i) }
+    }
+
+    private fun resumeRows(n: Int): HomeRows.() -> HomeRows = {
+        copy(resume = (1..n).map { i ->
+            ResumeCardUi(key = "r$i", entry = WatchHistoryEntity(providerId = 1, kind = "MOVIE", remoteId = "$i", title = "Film $i", poster = null, streamUrl = "u"), title = "Film $i", progress = 0.4f, minutesLeft = 30)
+        })
+    }
+
+    private fun channelRows(n: Int): HomeRows.() -> HomeRows = {
+        copy(channels = (1..n).map { i -> ChannelCardUi(ChannelEntity(id = i.toLong(), providerId = 1, remoteId = "$i", name = "Nova $i", logo = null, categoryId = null, streamUrl = "u", num = i), null) })
+    }
+
+    @Test fun rangeReprendre_jamaisRognee_enFrancais() = assertRowNeverClipped(HomeBlock.RESUME, AppLang.French, 8, 1.04f, { "home-resume-r$it" }, resumeRows(8))
+    @Test fun rangeReprendre_jamaisRognee_enArabe() = assertRowNeverClipped(HomeBlock.RESUME, AppLang.Arabic, 8, 1.04f, { "home-resume-r$it" }, resumeRows(8))
+    @Test fun rangeDirect_jamaisRognee_enFrancais() = assertRowNeverClipped(HomeBlock.CHANNELS, AppLang.French, 8, 1.06f, { "home-channel-$it" }, channelRows(8))
+    @Test fun rangeDirect_jamaisRognee_enArabe() = assertRowNeverClipped(HomeBlock.CHANNELS, AppLang.Arabic, 8, 1.06f, { "home-channel-$it" }, channelRows(8))
+    @Test fun rangeTop10_jamaisRognee_enFrancais() = assertRowNeverClipped(HomeBlock.TOP10, AppLang.French, 10, 1.10f, { "home-poster-t$it" }, { this })
+    @Test fun rangeTop10_jamaisRognee_enArabe() = assertRowNeverClipped(HomeBlock.TOP10, AppLang.Arabic, 10, 1.10f, { "home-poster-t$it" }, { this })
+    @Test fun rangeAffiches_jamaisRognee_enArabe() = assertRowNeverClipped(HomeBlock.LATEST_MOVIES, AppLang.Arabic, 6, 1.10f, { "home-poster-m$it" }, { this })
+
     private data class Quad(val a: String, val b: String, val c: Int, val d: String)
 
     @Test fun affiches_memoire_garde_uneCarteDisparue_neLaisseJamaisLaRangeeInatteignable() {

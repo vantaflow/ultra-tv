@@ -404,8 +404,8 @@ private class HomePivotSpec(private val topFocused: () -> Boolean) : BringIntoVi
 private fun Modifier.homeRow(): Modifier = this.rowBleedStart(RowBleed).focusRestorer().focusGroup()
 
 /**
- * Défilement horizontal d'une rangée d'affiches : l'affiche focalisée doit être visible EN ENTIER avec sa marge
- * d'agrandissement (10 % + anneau), pas seulement collée au bord de l'écran, où elle serait rognée par la rangée.
+ * Défilement horizontal d'une rangée de cartes : la carte focalisée doit être visible EN ENTIER avec sa marge
+ * d'agrandissement et son anneau, pas seulement collée au bord de l'écran, où elle serait rognée par la rangée.
  */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 private class EdgeMarginSpec(private val margin: Float) : BringIntoViewSpec {
@@ -419,11 +419,18 @@ private class EdgeMarginSpec(private val margin: Float) : BringIntoViewSpec {
 /** Marge de bord des rangées d'affiches : 10 % de 200 (10) + décalage et épaisseur de l'anneau agrandis (11), arrondi. */
 private val PosterEdgeMargin get() = 24.design
 
+/** Rangée « Reprendre » (320, zoom 4 % : 6,4 de chaque côté) + anneau (≈ 10), arrondi. */
+private val ResumeEdgeMargin get() = 18.design
+
+/** Rangée « En direct » (392, zoom 6 % : 11,8 de chaque côté) + anneau (≈ 10,6), arrondi. */
+private val ChannelEdgeMargin get() = 24.design
+
+/** Marge de bord horizontale de la carte focalisée d'une rangée : [margin] reste visible entre elle et le bord de l'écran. */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-private fun PosterRowScroll(content: @Composable () -> Unit) {
-    val margin = with(androidx.compose.ui.platform.LocalDensity.current) { PosterEdgeMargin.toPx() }
-    val spec = remember(margin) { EdgeMarginSpec(margin) }
+private fun RowEdgeMargin(margin: androidx.compose.ui.unit.Dp, content: @Composable () -> Unit) {
+    val px = with(androidx.compose.ui.platform.LocalDensity.current) { margin.toPx() }
+    val spec = remember(px) { EdgeMarginSpec(px) }
     CompositionLocalProvider(LocalBringIntoViewSpec provides spec, content = content)
 }
 
@@ -473,8 +480,10 @@ private fun HomeSection(
 @Composable
 private fun ResumeRow(cards: List<ResumeCardUi>, onPlay: (WatchHistoryEntity) -> Unit) {
     val memory = rememberRowFocusMemory()
-    LazyRow(Modifier.homeRow().then(memory.tracker), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PaddingValues(start = RowBleed, end = 96.design)) {
-        items(cards, key = { it.key }, contentType = { "resume" }) { c -> ResumeCard(c, rowMemory(memory, c.key)) { onPlay(c.entry) } }
+    RowEdgeMargin(ResumeEdgeMargin) {
+        LazyRow(Modifier.homeRow().then(memory.tracker), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PaddingValues(start = RowBleed, end = 96.design)) {
+            items(cards, key = { it.key }, contentType = { "resume" }) { c -> ResumeCard(c, rowMemory(memory, c.key).testTag("home-resume-${c.key}")) { onPlay(c.entry) } }
+        }
     }
 }
 
@@ -496,7 +505,7 @@ private fun NewEpisodesRow(cards: List<NewEpisodeCardUi>, onOpen: (PosterCardUi)
 @Composable
 private fun PosterRow(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
     val memory = rememberRowFocusMemory()
-    PosterRowScroll {
+    RowEdgeMargin(PosterEdgeMargin) {
         LazyRow(Modifier.homeRow().then(memory.tracker), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
             items(cards, key = { it.key }, contentType = { "poster" }) { p ->
                 com.ultratv.tv.nativeapp.ui.catalog.PosterCell(
@@ -514,13 +523,15 @@ private fun ChannelRow(cards: List<ChannelCardUi>, onPlay: (ChannelEntity) -> Un
     // ▲ depuis n'importe quelle carte, à la sortie du groupe : « Regarder » (sans cela, la recherche géométrique choisit le bouton le plus proche, à droite).
     val memory = rememberRowFocusMemory()
     val rowModifier = if (up != null) Modifier.focusProperties { exit = { d -> if (d == androidx.compose.ui.focus.FocusDirection.Up) up else FocusRequester.Default } }.homeRow() else Modifier.homeRow()
-    LazyRow(
-        rowModifier.then(memory.tracker).testTag("home-channel-row"), horizontalArrangement = Arrangement.spacedBy(20.design),
-        // Marge verticale : la carte focalisée grandit de 6 % (haut et bas) et la rangée rogne ce qui dépasse.
-        contentPadding = PaddingValues(start = RowBleed, end = 96.design, top = 14.design, bottom = 14.design)) {
-        items(cards.distinctBy { it.channel.id }, key = { it.channel.id }, contentType = { "channel" }) { c -> ChannelCard(c, memory) { onPlay(c.channel) } }
-        // « Tout voir » : dernière carte de la rangée (un lien en haut à droite du titre capterait le focus en descendant).
-        item(key = "see-all", contentType = "see-all") { SeeAllCard(seeAll, memory, onSeeAll) }
+    RowEdgeMargin(ChannelEdgeMargin) {
+        LazyRow(
+            rowModifier.then(memory.tracker).testTag("home-channel-row"), horizontalArrangement = Arrangement.spacedBy(20.design),
+            // Marge verticale : la carte focalisée grandit de 6 % (haut et bas) et la rangée rogne ce qui dépasse.
+            contentPadding = PaddingValues(start = RowBleed, end = 96.design, top = 14.design, bottom = 14.design)) {
+            items(cards.distinctBy { it.channel.id }, key = { it.channel.id }, contentType = { "channel" }) { c -> ChannelCard(c, memory) { onPlay(c.channel) } }
+            // « Tout voir » : dernière carte de la rangée (un lien en haut à droite du titre capterait le focus en descendant).
+            item(key = "see-all", contentType = "see-all") { SeeAllCard(seeAll, memory, onSeeAll) }
+        }
     }
 }
 
@@ -552,7 +563,7 @@ private const val HomePosterScale = 1.10f
 @Composable
 private fun Top10Row(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
     val memory = rememberRowFocusMemory()
-    PosterRowScroll {
+    RowEdgeMargin(PosterEdgeMargin) {
         LazyRow(Modifier.homeRow().then(memory.tracker), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
             itemsIndexed(cards, key = { _, p -> p.key }, contentType = { _, _ -> "top10" }) { i, p ->
                 Box(Modifier.width(Top10CellWidth)) {

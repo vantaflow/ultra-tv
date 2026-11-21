@@ -339,13 +339,16 @@ fun Modifier.leaveOnVerticalDpad(): Modifier = composed {
  * bords, donc la PREMIÈRE carte, agrandie et cerclée au focus, était coupée à gauche. La rangée est élargie de [bleed]
  * vers la gauche puis décalée d'autant : les cartes restent à la même position, mais la zone de rognage commence
  * [bleed] plus tôt. À combiner avec `contentPadding(start = bleed)`. Le parent doit disposer de cette marge.
+ * Le « début » suit le sens de lecture : en droite à gauche la rangée déborde à DROITE (sinon la marge de début se
+ * retrouvait du mauvais côté et la zone de rognage collait au bord gauche de l'écran).
  */
 fun Modifier.rowBleedStart(bleed: androidx.compose.ui.unit.Dp): Modifier = this.layout { measurable, constraints ->
     val extra = bleed.roundToPx()
     val maxW = if (constraints.hasBoundedWidth) constraints.maxWidth + extra else constraints.maxWidth
     val placeable = measurable.measure(constraints.copy(minWidth = (constraints.minWidth + extra).coerceAtMost(maxW), maxWidth = maxW))
     val w = (placeable.width - extra).coerceAtLeast(0)
-    layout(w, placeable.height) { placeable.place(-extra, 0) }
+    val rtl = layoutDirection == androidx.compose.ui.unit.LayoutDirection.Rtl
+    layout(w, placeable.height) { placeable.place(if (rtl) 0 else -extra, 0) }
 }
 
 /** Débordement standard des rangées d'affiches : agrandissement au focus (≈ 6 %) + liseré. */
