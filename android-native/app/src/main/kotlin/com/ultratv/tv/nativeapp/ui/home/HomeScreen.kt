@@ -327,7 +327,10 @@ internal fun HomeTvContent(
     CompositionLocalProvider(LocalBringIntoViewSpec provides pivotSpec, LocalHomeFocusRestore provides restore, LocalHomeEdgeGate provides edgeGate) {
         LazyColumn(
             // Touches reçues par l'accueil : une sortie de rangée différée dont la touche est périmée est abandonnée (voir [HomeEdgeGate]).
-            Modifier.fillMaxSize().onPreviewKeyEvent { if (it.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) edgeGate.keys++; false },
+            Modifier.fillMaxSize().onPreviewKeyEvent { if (it.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) edgeGate.keys++; false }
+                // Le focus initial est FAIT dès qu'un élément de l'accueil le porte : un bandeau qui arrive après les rangées (fonds résolus
+                // en retard, première synchro) ne le déplace plus sans touche et ne fait pas défiler la liste.
+                .onFocusChanged { if (it.hasFocus) onHeroFocused() },
             state = listState,
             // Les rangées portent elles-mêmes leur marge gauche (elles débordent de RowBleed dans cette marge sans être rognées par la liste).
             contentPadding = PaddingValues(bottom = 54.design),

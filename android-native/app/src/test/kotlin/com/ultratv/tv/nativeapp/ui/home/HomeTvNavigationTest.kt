@@ -38,6 +38,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -467,6 +468,31 @@ class HomeTvNavigationTest {
         // La navigation continue normalement ensuite.
         assertEquals("home-poster-m4", step(forward, "après les changements"))
         assertEquals("home-poster-m3", step(backward, "après les changements"))
+    }
+
+    @Test fun bandeauQuiArriveApresLesRangees_neVoleJamaisLeFocus_etNeFaitPasDefilerLaListe() {
+        mount(withHero = false)
+        // Les rangées arrivent à l'image suivante : la demande de focus de l'écran réessaie toutes les 100 ms.
+        rule.mainClock.advanceTimeBy(1_000); rule.waitForIdle()
+        // Pas de bandeau : l'écran a posé le focus sur un élément des rangées et l'utilisateur a déjà bougé.
+        val first = focusNow("départ")
+        assertTrue("focus initial sur une carte, pas sur le bandeau ($first)", !first.startsWith("hero-"))
+        val moved = step(forward, "déjà ailleurs")
+        // Les fonds sont résolus en retard : le bandeau apparaît au-dessus (600 de haut).
+        val seen = focusTrace(120) { heroSource.value = hero }
+        rule.mainClock.advanceTimeBy(4_000); rule.waitForIdle()
+        assertEquals("le bandeau est bien affiché", 1, rule.onAllNodes(hasTestTag("hero-watch")).fetchSemanticsNodes().size)
+        assertTrue("le focus n'a jamais bougé : $seen", seen.all { it == moved })
+        assertEquals("après l'arrivée du bandeau", moved, focusNow("après l'arrivée du bandeau"))
+        // La liste n'a pas défilé d'elle-même : le haut du bandeau est toujours en haut de l'écran.
+        assertEquals("la liste est restée en haut", 0f, rule.onNodeWithTag("home-hero").getUnclippedBoundsInRoot().top.value, 1f)
+    }
+
+    @Test fun accueilQuiSOuvreAvecLeBandeau_lePremierFocusEstSurRegarder_etLaListeResteEnHaut() {
+        mount()
+        rule.mainClock.advanceTimeBy(4_000); rule.waitForIdle()
+        assertEquals("hero-watch", focusNow("départ"))
+        rule.onNodeWithTag("hero-watch").assertIsDisplayed()
     }
 
     @Test fun retourSurLAccueil_apresUneFiche_memeAfficheFocalisee_etRegarderNeLaReprendPas() {
