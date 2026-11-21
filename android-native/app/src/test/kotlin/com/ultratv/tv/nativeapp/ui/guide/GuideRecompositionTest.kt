@@ -112,8 +112,11 @@ class GuideRecompositionTest {
     private val cache = GuideProgrammeCache()
     private var lastVisible = emptyList<Long>()
 
+    /** Programmes retenus (requête lente) : rien n'arrive tant que c'est vrai. */
+    private var holdData = false
+
     private fun vmOnVisible(visibleIds: List<Long>) {
-        if (visibleIds.isEmpty()) return
+        if (visibleIds.isEmpty() || holdData) return
         val (from, to) = guideNeededRange(windowStart)
         val missing = cache.missing(visibleIds, from, to)
         if (missing.isEmpty()) { readyWindow = windowStart; return }
@@ -607,5 +610,19 @@ class GuideRecompositionTest {
         press(Key.MediaRewind); rule.runOnIdle { vmOnVisible(lastVisible) }; rule.waitForIdle()
         assertEquals(0, day)
         assertFocusOn(p.title)
+    }
+
+    // ── M9 : le focus initial tardif ne reprend pas le focus posé ailleurs entre-temps. ──
+
+    @Test fun m9_programmes_tardifs_le_focus_initial_ne_vole_pas_les_jours() {
+        holdData = true
+        mount()
+        rule.onNode(hasText("Demain") and hasClickAction()).performSemanticsAction(SemanticsActions.RequestFocus)
+        rule.waitForIdle()
+        holdData = false
+        rule.runOnIdle { vmOnVisible(lastVisible) }
+        rule.waitForIdle()
+        assertTrue("les programmes sont arrivés", programmes.isNotEmpty())
+        assertEquals("le focus reste sur « Demain »", "Demain", focusedText())
     }
 }
