@@ -46,15 +46,16 @@ internal class GuideProgrammeCache(private val maxChannels: Int = 200) {
                 if (extend) minOf(old!!.from, from) else from, if (extend) maxOf(old!!.to, to) else to, generation, raw,
                 if (keep) old!!.rows else rows,
             )
-            if (!keep && (rows.isNotEmpty() || old?.rows?.isNotEmpty() == true)) changed = true
+            // Chaîne lue pour la première fois, même sans programme : publiée (« lue, rien à cette heure » ≠ « pas encore lue »).
+            if (old == null || (!keep && (rows.isNotEmpty() || old.rows.isNotEmpty()))) changed = true
         }
         return changed
     }
 
-    /** Listes à afficher, par chaîne (les chaînes sans programme n'y figurent pas). */
+    /** Listes à afficher, par chaîne lue (liste vide : chaîne lue, sans programme sur la plage ; absente : pas encore lue). */
     fun snapshot(): Map<Long, List<EpgEntity>> {
         val out = HashMap<Long, List<EpgEntity>>(entries.size * 2)
-        for ((id, e) in entries) if (e.rows.isNotEmpty()) out[id] = e.rows
+        for ((id, e) in entries) out[id] = e.rows
         return out
     }
 

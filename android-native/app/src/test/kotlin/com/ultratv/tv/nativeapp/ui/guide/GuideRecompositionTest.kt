@@ -63,8 +63,13 @@ class GuideRecompositionTest {
     private val nChannels = 16
     private val chans = (1..nChannels).map { ChannelEntity(id = it.toLong(), providerId = 1, remoteId = "$it", name = "Chaîne $it", logo = null, categoryId = "c", streamUrl = "u", num = it) }
 
+    /** Chaînes sans aucun programme entre 00:00 et 06:00 (donc sans case dans la fenêtre 01:00 – 04:00), mais avec une liste non vide. */
+    private var hole: Set<Long> = emptySet()
+
     /** Programmes de 40 à 90 minutes, sur 3 jours à partir de 00:00, titres « Pc-i » uniques. */
-    private val all: Map<Long, List<EpgEntity>> = chans.associate { c ->
+    private val all: Map<Long, List<EpgEntity>> by lazy { buildAll().mapValues { (id, l) -> if (id in hole) l.filter { it.endMs <= at(0, 0) || it.startMs >= at(6, 0) } else l } }
+
+    private fun buildAll(): Map<Long, List<EpgEntity>> = chans.associate { c ->
         val out = ArrayList<EpgEntity>()
         var t = at(0, 0); var i = 1
         val lens = listOf(50, 70, 40, 60, 90, 45)
@@ -88,6 +93,7 @@ class GuideRecompositionTest {
     private var nowBase = at(1, 31)
     private val clock = mutableLongStateOf(at(1, 31))
     private var day by mutableStateOf(0)
+    private var dayRequests = 0
     private var rtl = false
 
     // ── Modèle de vue simulé : la même logique que GuideGridViewModel (cache par plage, plages manquantes seulement). ──
@@ -118,11 +124,11 @@ class GuideRecompositionTest {
                 Box(Modifier.fillMaxSize().padding(start = 48.design)) {
                     GuideTvContent(
                         channelCount = chans.size, channelAt = { chans[it] }, peekAt = { chans[it] }, itemKey = { chans[it].id },
-                        progsFor = { programmes[it].orEmpty() }, windowStart = windowStart, day = day, D = D, clock = clock,
+                        progsFor = { programmes[it].orEmpty() }, loadedFor = { programmes.containsKey(it) }, windowStart = windowStart, day = day, D = D, clock = clock,
                         groups = listOf(DirectCategory(CATEGORY_ALL, null, chans.size)), group = CATEGORY_ALL, guideLoad = GuideLoad.Idle, nameColPx = 260,
                         groupName = { "Toutes" },
                         nowProvider = { nowBase + (nowTick++ % 1_000) },
-                        onDay = { d -> day = d; windowStart = if (d == 0) at(1, 0) else at(20, 0); vmOnVisible(lastVisible) }, onWindowStart = { windowStart = it; vmOnVisible(lastVisible) }, onGroup = {},
+                        onDay = { d -> dayRequests++; day = d; windowStart = if (d == 0) at(1, 0) else at(20, 0); vmOnVisible(lastVisible) }, onWindowStart = { windowStart = it; vmOnVisible(lastVisible) }, onGroup = {},
                         onVisible = { ids -> lastVisible = ids; vmOnVisible(ids) },
                         onRetry = {},
                         onSelect = { _, _ -> }, onWatch = { watched = it.name }, onRemind = { _, _ -> }, onRecord = { _, _ -> },
@@ -409,5 +415,56 @@ class GuideRecompositionTest {
         assertTrue("l'en-tête se met à jour au plus une image après les cases (images : ${r.frames})", r.frames <= 2)
         // Le panneau du haut montre le programme focalisé.
         rule.onNode(hasText("P1-3") and !hasClickAction()).assertExists()
+    }
+
+    // ── C1 : une ligne sans case dans la fenêtre (chaîne « événement », « Demain » à 20:00) ne bloque jamais l'entrée. ──
+
+    @Test fun c1_premiere_ligne_sans_case_le_focus_initial_va_sur_la_premiere_ligne_qui_en_a() {
+        hole = setOf(1L)
+        mount()
+        assertTrue("focus initial attendu sur la chaîne 2 : ${focusedText()}", focusedText().startsWith("P2-"))
+    }
+
+    @Test fun c1_premiere_ligne_sans_case_bas_depuis_les_jours_entre_dans_la_grille() {
+        hole = setOf(1L)
+        mount()
+        rule.onNode(hasText("Demain") and hasClickAction()).performSemanticsAction(SemanticsActions.RequestFocus)
+        rule.waitForIdle()
+        press(Key.DirectionDown)
+        assertTrue("▼ depuis les jours doit entrer dans la grille (chaîne 2) : ${focusedText()}", focusedText().startsWith("P2-"))
+    }
+
+    @Test fun c1_deux_premieres_lignes_sans_case_bas_depuis_les_jours_entre_sur_la_troisieme() {
+        hole = setOf(1L, 2L)
+        mount()
+        assertTrue("focus initial : ${focusedText()}", focusedText().startsWith("P3-"))
+        rule.onNode(hasText("Demain") and hasClickAction()).performSemanticsAction(SemanticsActions.RequestFocus)
+        rule.waitForIdle()
+        press(Key.DirectionDown)
+        assertTrue("▼ depuis les jours : ${focusedText()}", focusedText().startsWith("P3-"))
+    }
+
+    @Test fun c1_une_ligne_vide_au_milieu_se_traverse_sans_piege() {
+        hole = setOf(3L)
+        mount()
+        focusOn(windowOf(2).first { it.startMs <= at(1, 31) && it.endMs > at(1, 31) }.title)
+        press(Key.DirectionDown)
+        assertTrue("▼ saute la ligne vide (chaîne 3) et va sur la chaîne 4 : ${focusedText()}", focusedText().startsWith("P4-"))
+        press(Key.DirectionUp)
+        assertTrue("▲ revient sur la chaîne 2 : ${focusedText()}", focusedText().startsWith("P2-"))
+    }
+
+    @Test fun c1_grille_sans_aucune_case_affiche_un_message_et_une_action() {
+        hole = chans.map { it.id }.toSet()
+        mount()
+        rule.onNode(hasText("Aucun programme pour cette période", substring = true)).assertExists()
+        rule.onNode(hasText("Demain") and hasClickAction()).performSemanticsAction(SemanticsActions.RequestFocus)
+        rule.waitForIdle()
+        press(Key.DirectionDown)
+        assertEquals("▼ depuis les jours va sur l'action du message", "Revenir à maintenant", focusedText())
+        val before = dayRequests
+        press(Key.Enter)
+        assertEquals("l'action ramène à maintenant (onDay(0))", before + 1, dayRequests)
+        assertEquals(0, day)
     }
 }

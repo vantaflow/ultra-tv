@@ -572,6 +572,9 @@
     <string name="dg_guide_group_title">Grupo de canales</string>
     <string name="dg_guide_group_pill">Grupo: %1$s</string>
     <string name="dg_guide_group_empty">Ningún canal de este grupo tiene guía en este periodo.</string>
+    <string name="dg_guide_window_empty">No hay programas para este periodo.</string>
+    <string name="dg_guide_back_to_now">Volver a ahora</string>
+    <string name="dg_guide_all_channels">Todos los canales</string>
     <string name="dg_channel_logos">Logotipos de canales</string>
     <string name="dg_guide_name_width_label">Columna de canales de la guía</string>
     <string name="dg_guide_name_width_name_narrow">Estrecha</string>

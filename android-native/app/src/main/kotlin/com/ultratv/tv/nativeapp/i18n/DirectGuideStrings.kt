@@ -50,6 +50,10 @@ fun epgProgressText(D: DesignStrings, bytes: Long, total: Long, programmes: Int)
 val DesignStrings.guideGroupTitle get() = tx(R.string.dg_guide_group_title)
 fun DesignStrings.guideGroupPill(name: String) = tx(R.string.dg_guide_group_pill, name)
 val DesignStrings.guideGroupEmpty get() = tx(R.string.dg_guide_group_empty)
+// Guide TV : aucune case dans la fenêtre pour les chaînes visibles.
+val DesignStrings.guideWindowEmpty get() = tx(R.string.dg_guide_window_empty)
+val DesignStrings.guideBackToNow get() = tx(R.string.dg_guide_back_to_now)
+val DesignStrings.guideAllChannels get() = tx(R.string.dg_guide_all_channels)
 
 // Lisibilité du Guide : logos des chaînes et largeur de la colonne des noms (Réglages › Affichage).
 val DesignStrings.channelLogos get() = tx(R.string.dg_channel_logos)
