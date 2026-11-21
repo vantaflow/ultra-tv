@@ -470,6 +470,7 @@ internal fun ProgramInfo(
         val s = sel.value
         if (s == null) { Text(D.noProgramInfo, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 2); return@Column }
         val (ch, p) = s
+        ProbeHeader()
         val nowMs = clock.value
         val isNow = p.startMs <= nowMs && p.endMs > nowMs
         val head = (if (isNow) "${D.nowBadge} · " else "") + "${ch.title} · ${EpgClock.range(p.startMs, p.endMs)}"
@@ -532,6 +533,7 @@ private fun GuidePreviewPane(
     /** Première chaîne de la liste : montrée (et lue si l'aperçu est actif) tant qu'aucun programme n'est encore sélectionné. */
     firstChannel: ChannelEntity?,
 ) {
+    ProbePreview()
     val shared = com.ultratv.tv.nativeapp.ui.player.engine.LocalSharedLive.current
     val pv by pvm.previewPrefs.state.collectAsState()
     val userPrefs by pvm.userPrefs.collectAsState()
@@ -645,6 +647,7 @@ private fun GuideRow(
     firstModifier: Modifier, onSelect: (EpgEntity) -> Unit, onRemind: (EpgEntity) -> Unit, onFocusProg: (EpgEntity) -> Unit,
     nowMs: Long = System.currentTimeMillis(),
 ) {
+    ProbeRow(c.id)
     Row(Modifier.fillMaxWidth().height(84.designT)) {
         // Cellule de la chaîne (maquette) : numéro, logo 48 et nom dans une carte arrondie, 8 px avant les programmes.
         Row(Modifier.width(nameColPx.design).fillMaxHeight().padding(end = 8.design).clip(RoundedCornerShape(18.design)).background(Ux.Card2).padding(horizontal = 14.design), verticalAlignment = Alignment.CenterVertically) {
@@ -679,6 +682,7 @@ private fun GuideRow(
                     modifier = Modifier.offset(x = gridW * slot.startFrac).width(w).fillMaxHeight()
                         .then(if (idx == 0 || isNow) firstModifier.takeIf { idx == 0 } ?: Modifier else Modifier),
                 ) { f ->
+                    ProbeCell(p.id)
                     val wPx = (w.value * 2).toInt()      // largeur en px de maquette
                     if (f) LaunchedEffect(p.id) { onFocusProg(p) }
                     // Sous ~90 px : fond seul (le titre apparaît dans le panneau du bas). Entre 90 et 200 px : titre seul.
@@ -723,6 +727,7 @@ internal fun GuideTvContent(
     /** Instant « maintenant » des cases de la grille (injectable pour un rendu de test figé). */
     nowProvider: () -> Long = { System.currentTimeMillis() },
 ) {
+    ProbeScreen()
     val focus = LocalFocusManager.current
     var inGrid by remember { mutableStateOf(false) }
     // Programme focalisé : lu SEULEMENT par le panneau du haut et l'aperçu — lu ici, chaque déplacement recomposait
