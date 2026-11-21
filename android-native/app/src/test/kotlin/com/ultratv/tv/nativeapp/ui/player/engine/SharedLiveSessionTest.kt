@@ -488,4 +488,45 @@ class SharedLiveSessionTest {
         scope.advanceTimeBy(AUDIO_ONLY_CONFIRM_MS * 3)
         assertFalse(s.state.value.audioOnly)
     }
+
+    // ── Aperçu : un seul essai, aucun enchaînement de replis du plein écran (constat box : Exo, Exo logiciel puis VLC en 35 s). ──
+
+    @Test
+    fun apercu_sansImage_vueHorsEcran_aucunRepli_niErreur() {
+        shared.preview("1:a", "1:a", "http://a", true, create)
+        engines.single().flow.tryEmit(EngineEvent.Ready)
+        scope.advanceTimeBy(40_000)
+        assertEquals("aucun autre moteur ni décodeur ouvert : la vidéo n'est pas à l'écran", 1, engines.size)
+        assertEquals(listOf("http://a"), loads)
+    }
+
+    @Test
+    fun apercu_erreur_unSeulEssai_etatDErreurSansRepli() {
+        shared.preview("1:a", "1:a", "http://a", true, create)
+        engines.single().flow.tryEmit(EngineEvent.Error(PlayErrorKind.DECODER))
+        scope.advanceTimeBy(20_000)
+        assertEquals("aucun repli de décodeur ou de moteur dans l'aperçu", 1, engines.size)
+        assertEquals(Phase.ERROR, shared.session!!.state.value.phase)
+        assertTrue(engines.single().released)
+    }
+
+    @Test
+    fun apercu_relanceDeLaMemeChaineMoinsDUneSecondeApres_pasDeSecondeOuverture() {
+        shared.preview("1:a", "1:a", "http://a", true, create)
+        engines.single().flow.tryEmit(EngineEvent.Error(PlayErrorKind.DECODER))
+        assertEquals(Phase.ERROR, shared.session!!.state.value.phase)
+        assertFalse(shared.preview("1:a", "1:a", "http://a", true, create))
+        assertEquals(listOf("http://a"), loads)
+    }
+
+    @Test
+    fun pleinEcran_garde_les_replis_du_lecteur() {
+        shared.preview("1:a", "1:a", "http://a", true, create)
+        firstFrame()
+        assertTrue(shared.openFullscreen("1:a", create))
+        shared.adopt("1:a")
+        assertFalse(shared.session!!.previewMode)
+        shared.demote()
+        assertTrue(shared.session!!.previewMode)
+    }
 }
