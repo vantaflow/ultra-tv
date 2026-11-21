@@ -40,6 +40,23 @@ class GuideGridTest {
         val now = 10 * h + 17 * 60_000L
         assertEquals(10 * h + 0L, guideWindowStart(now, 0))
     }
+    // ── Bord de fenêtre borné aux données (I3) ──
+    private val m = 60_000L
+    @Test fun edgeShift_avecVoisin_decale_de_90_minutes() {
+        assertEquals(10 * h + 90 * m, guideEdgeShift(10 * h, true, e(11 * h, 13 * h), hasNeighbour = true))
+        assertEquals(10 * h - 90 * m, guideEdgeShift(10 * h, false, e(9 * h, 11 * h), hasNeighbour = true))
+    }
+    @Test fun edgeShift_sansVoisin_programme_dans_la_fenetre_butee() {
+        assertEquals(10 * h, guideEdgeShift(10 * h, true, e(12 * h, 13 * h), hasNeighbour = false))
+        assertEquals(10 * h, guideEdgeShift(10 * h, false, e(10 * h, 11 * h), hasNeighbour = false))
+    }
+    @Test fun edgeShift_sansVoisin_long_programme_va_jusqu_a_sa_fin_arrondie_a_la_demi_heure() {
+        // Dernier programme 12:00 – 14:10, fenêtre 10:00 – 13:00 : 90 min puis 14:30 − 3 h = 11:30 au plus.
+        assertEquals(11 * h + 30 * m, guideEdgeShift(10 * h, true, e(12 * h, 14 * h + 10 * m), hasNeighbour = false))
+        // Premier programme 08:20 – 11:00, fenêtre 10:00 : jusqu'à 08:00 au plus (la demi-heure qui le contient).
+        assertEquals(8 * h + 30 * m, guideEdgeShift(10 * h, false, e(8 * h + 20 * m, 11 * h), hasNeighbour = false))
+        assertEquals(8 * h, guideEdgeShift(9 * h, false, e(8 * h + 20 * m, 11 * h), hasNeighbour = false))
+    }
 }
 
 class ProgramActionStateTest {
@@ -59,4 +76,5 @@ class ProgramActionStateTest {
         val s = com.ultratv.tv.nativeapp.ui.guide.programActionState(prog(500, 5_000), replayUrl = null, nowMs = 1_000)
         org.junit.Assert.assertFalse(s.remindEnabled); org.junit.Assert.assertTrue(s.recordEnabled)
     }
+
 }
