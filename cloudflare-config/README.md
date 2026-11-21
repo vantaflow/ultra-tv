@@ -127,7 +127,7 @@ Les anciens `ADMIN_PASSWORD` et `CRASH_TOKEN` ne sont **plus lus**.
 | POST | `/api/envoi/poll` | code + secret | La TV récupère la source (une seule fois, puis supprimée) |
 | GET | `/envoyer?c=CODE` | aucune | Page publique d'envoi (sans compte) |
 | POST | `/api/anon/ping` | aucune (débit par IP) | Relevé anonyme d'une installation sans compte (table D1 `anon_pings`, conservation 180 jours) |
-| POST | `/api/anon/crash`, `/api/anon/events` | aucune (60/h par IP ; par installation : 10 plantages et 30 lots par heure) | Plantages et lignes d'erreur d'un appareil sans compte : modèle, version, pays, empreinte courte de l'identifiant d'installation (table `events`, mêmes durées) |
+| POST | `/api/anon/crash`, `/api/anon/events` | aucune (limiteur natif, sans Durable Object : par IP, plafond global `ANON_TELEMETRY_PER_HOUR` (300 par défaut), puis par installation) | Plantages et lignes d'erreur d'un appareil sans compte : modèle, version, pays, empreinte courte de l'identifiant d'installation ; 20 lignes gardées par lot, trace limitée à 16 Ko (table `events`, mêmes durées) |
 | GET | `/api/config` | `Bearer` jeton d'appareil | Fournisseurs déchiffrés pour cet appareil |
 | POST | `/api/device/rotate` | `Bearer` | Nouveau jeton, l'ancien meurt |
 | POST | `/api/event`, `/api/crash` | `Bearer` | Télémétrie nettoyée et bornée (table D1 `events` : 7 jours, crashs 30 jours) |

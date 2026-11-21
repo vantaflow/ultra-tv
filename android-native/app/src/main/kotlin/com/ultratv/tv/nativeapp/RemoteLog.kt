@@ -89,6 +89,9 @@ object RemoteLog {
             .connectTimeout(3, TimeUnit.SECONDS)
             .readTimeout(3, TimeUnit.SECONDS)
             .writeTimeout(3, TimeUnit.SECONDS)
+            // Borne de l'appel entier, repli d'hôte compris : le gestionnaire de plantage ne doit pas retenir le
+            // processus (le rapport reste dans crash.txt et repart au démarrage suivant).
+            .callTimeout(4, TimeUnit.SECONDS)
             .build()
     }
 
@@ -146,7 +149,7 @@ object RemoteLog {
         if (raw.isBlank()) return
         // Version qui a réellement planté (écrite au moment du plantage), pas celle qui envoie le rapport :
         // sinon un plantage d'une ancienne version remonte sous le numéro de la nouvelle.
-        val (crashedVersion, crashedCode, stack) = CrashFile.parse(raw, ctx.versionName, ctx.versionCode)
+        val (crashedVersion, crashedCode, stack) = CrashFile.latest(raw, ctx.versionName, ctx.versionCode, CRASH_REPORT_MAX_CHARS)
         runCatching {
             val body = JSONObject().apply {
                 put("mac", ctx.mac)
@@ -154,11 +157,13 @@ object RemoteLog {
                 put("versionCode", crashedCode)
                 put("device", ctx.device)
                 put("androidSdk", ctx.androidSdk)
-                put("stack", sanitize(stack).take(60_000))
+                put("stack", sanitize(stack).take(CRASH_REPORT_MAX_CHARS))
             }
             val req = request(TelemetryRoute.CRASH, TelemetryRoute.ANON_CRASH, body) ?: return@runCatching
             eventClient.newCall(req).execute().use { resp ->
-                if (resp.isSuccessful) file.delete()
+                // Envoyé, ou refusé pour de bon par le Worker (corps invalide ou trop gros) : le renvoyer à chaque
+                // démarrage ne servirait à rien et bloquerait les plantages suivants.
+                if (resp.isSuccessful || resp.code == 400 || resp.code == 413) file.delete()
             }
         }
     }
@@ -308,6 +313,9 @@ object RemoteLog {
 
     private val JSON = "application/json".toMediaType()
 
+    /** Taille d'un rapport de plantage différé : sous la limite de corps du Worker (48 Ko), échappement JSON compris. */
+    private const val CRASH_REPORT_MAX_CHARS = 30_000
+
     /** Relevé mémoire au moment du plantage (tas Java, classe de tas, RAM libre) ; sans contexte, seul le tas est connu. */
     private fun memorySnapshot(ctx: android.content.Context?): com.ultratv.tv.nativeapp.data.memory.CrashMemory.Snapshot {
         val mb = 1024L * 1024
@@ -345,15 +353,35 @@ internal object CrashFile {
     fun entry(versionName: String, versionCode: Int, payload: String): String = "$PREFIX$versionName $versionCode\n$payload\n\n"
 
     /**
-     * Version et code de la PREMIÈRE entrée du fichier (sinon ceux d'aujourd'hui : fichier d'une version qui n'écrivait
-     * pas l'en-tête), et la trace sans les lignes d'en-tête.
+     * Rapport à envoyer : les plantages les plus récents de la DERNIÈRE version qui a planté, sans les lignes d'en-tête,
+     * dans la limite de [maxChars] (un seul plantage plus long est coupé à son début, où se trouve la cause). Renvoie la
+     * version et le code de ces plantages ; ceux d'aujourd'hui pour un fichier d'une version qui n'écrivait pas d'en-tête.
+     *
+     * La limite compte : le Worker refuse un corps trop gros, et le fichier d'un appareil qui n'a jamais pu envoyer
+     * (sans compte, hors ligne) grossit à chaque plantage.
      */
-    fun parse(raw: String, currentName: String, currentCode: Int): Triple<String, Int, String> {
-        val header = raw.lineSequence().firstOrNull { it.startsWith(PREFIX) }
-        val parts = header?.removePrefix(PREFIX)?.trim()?.split(' ')
-        val name = parts?.getOrNull(0)?.takeIf { it.isNotBlank() } ?: currentName
-        val code = parts?.getOrNull(1)?.toIntOrNull() ?: currentCode
-        val stack = raw.lineSequence().filterNot { it.startsWith(PREFIX) }.joinToString("\n")
-        return Triple(name, code, stack)
+    fun latest(raw: String, currentName: String, currentCode: Int, maxChars: Int): Triple<String, Int, String> {
+        data class Entry(val name: String, val code: Int, val body: StringBuilder = StringBuilder())
+        val entries = ArrayList<Entry>()
+        for (line in raw.lineSequence()) {
+            if (line.startsWith(PREFIX)) {
+                val parts = line.removePrefix(PREFIX).trim().split(' ')
+                entries += Entry(parts.getOrNull(0)?.takeIf { it.isNotBlank() } ?: currentName, parts.getOrNull(1)?.toIntOrNull() ?: currentCode)
+            } else {
+                if (entries.isEmpty()) entries += Entry(currentName, currentCode)
+                entries.last().body.append(line).append('\n')
+            }
+        }
+        val filled = entries.filter { it.body.isNotBlank() }
+        val last = filled.lastOrNull() ?: return Triple(currentName, currentCode, "")
+        val kept = ArrayDeque<String>()
+        var size = 0
+        for (e in filled.asReversed()) {
+            if (e.name != last.name || e.code != last.code) break
+            val body = e.body.toString().trimEnd() + "\n\n"
+            if (kept.isNotEmpty() && size + body.length > maxChars) break
+            kept.addFirst(body); size += body.length
+        }
+        return Triple(last.name, last.code, kept.joinToString("").trimEnd().take(maxChars))
     }
 }

@@ -55,6 +55,40 @@ describe("télémétrie d'un appareil sans compte", () => {
     expect(row.message).not.toContain("secret123");
   });
 
+  it("lot : seules les 20 premières lignes sont gardées, une trace est raccourcie", async () => {
+    const install = crypto.randomUUID();
+    const events = Array.from({ length: 50 }, (_, i) => ({ level: "error", tag: "t", message: `ligne ${i}` }));
+    const r = await post("/api/anon/events", { install, version: "9.7.0", events });
+    expect(r.status).toBe(200);
+    expect((await rows("version = '9.7.0'")).length).toBe(20);
+    await post("/api/anon/crash", { install, version: "9.7.1", stack: "x".repeat(40000) });
+    const [crash] = await rows("version = '9.7.1'");
+    expect(crash.stack.length).toBeLessThanOrEqual(16 * 1024);
+  });
+
+  it("corps qui n'est pas un objet : refusé sans erreur serveur", async () => {
+    for (const body of [null, [], "texte", 7]) {
+      expect((await post("/api/anon/crash", body)).status).toBe(400);
+      expect((await post("/api/anon/events", body)).status).toBe(400);
+    }
+  });
+
+  it("plafond global : au-delà, les requêtes sont refusées quels que soient l'adresse IP et l'identifiant", async () => {
+    const saved = env.ANON_TELEMETRY_PER_HOUR;
+    env.ANON_TELEMETRY_PER_HOUR = "100"; // limiteur natif le plus strict : 10 requêtes par minute, tous appareils confondus
+    try {
+      let refused = 0;
+      for (let i = 0; i < 16; i++) {
+        const r = await post("/api/anon/crash", { install: crypto.randomUUID(), version: "9.8.0", stack: `s${i}` });
+        if (r.status === 429) refused++;
+      }
+      expect(refused).toBeGreaterThan(0);
+      expect((await rows("version = '9.8.0'")).length).toBeLessThanOrEqual(10);
+    } finally {
+      env.ANON_TELEMETRY_PER_HOUR = saved;
+    }
+  });
+
   it("débit borné par installation", async () => {
     const install = crypto.randomUUID();
     let refused = 0;

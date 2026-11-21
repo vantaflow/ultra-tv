@@ -454,6 +454,9 @@ class PlaybackSession(
                     delay(10_000)
                     if (engine === e && hdrKind == null) com.ultratv.tv.nativeapp.RemoteLog.warn("play", "hdr named but not signalled engine=${combo.engine.name} surface=${if (textureNow) "texture" else "surface"} ${e.colorDebug() ?: "-"}")
                 }
+                // La lecture a repris : un code HTTP d'une tentative précédente (503 au démarrage, puis succès) ne doit
+                // pas qualifier une erreur ultérieure sans réponse du serveur (Wi-Fi coupé une heure plus tard).
+                lastHttp = null
                 _state.value = _state.value.copy(phase = Phase.PLAYING, error = null, errorHttp = null, hasPicture = true, buffering = false)
                 armBlackPictureCheck(e)
                 // La combinaison est retenue pour la chaîne si elle a demandé un repli ou un choix manuel et tient 5 s.
