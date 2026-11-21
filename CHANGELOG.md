@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.73] — 2026-11-21 (Android)
+
 ### Modifié
 - Accueil TV : le titre « À la une » devient une grande image sur toute la largeur, avec « Regarder », « Plus d'infos » et « Ma liste » posés dessus. La rangée « En direct » passe en larges cartes (chaîne, programme en cours, horaire, progression) et le Top 10 s'affiche avec un grand chiffre derrière chaque affiche. Les raccourcis (Direct, Films, Séries…) sont masqués par défaut sur TV ; ils restent disponibles dans Réglages › Accueil, et vos choix déjà faits sont conservés.
 - Accueil TV, télécommande : chaque rangée se souvient de la carte quittée, et en revenant d'une fiche on retrouve la même carte. ◀ au début d'une rangée ouvre le menu latéral au lieu de sauter vers une autre rangée. La carte focalisée n'est plus jamais rognée au bord de l'écran. Si la carte quittée a disparu pendant l'absence, le focus se pose aussitôt ailleurs au lieu de laisser l'écran sans sélection pendant une seconde. Au retour du lecteur après une lecture lancée loin dans « Reprendre » ou « Récemment regardées », la rangée défile jusqu'à la carte (remontée en tête) et le focus s'y pose sans attente. Un bandeau « À la une » qui apparaît après les rangées ne déplace plus le focus.
@@ -13,6 +15,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Corrigé
 - Arabe : les rangées de l'accueil et du catalogue ne sont plus rognées au bord de départ.
+- Arabe : les nombres s'affichent partout en chiffres latins. Cinq textes (temps d'écran, enregistrements en cours, onglets) sortaient en chiffres arabo-indiens sur certains appareils, à côté de chiffres latins ailleurs.
 
 ## [1.3.72] — 2026-11-21 (Android)
 
