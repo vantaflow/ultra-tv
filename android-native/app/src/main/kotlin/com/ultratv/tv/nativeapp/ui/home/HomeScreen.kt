@@ -253,7 +253,7 @@ fun HomeScreen(
  * lui, l'en-tête (salutation, sources, heure) ; puis les rangées (raccourcis compris, quand l'utilisateur les affiche). Les rangées arrivent toutes prêtes ([HomeRows]) ; [emptyTop] dessine l'encart des états sans « À la une »
  * (aucune source, erreur, chargement) et [sportRow] la rangée « Sport en direct » quand la rubrique est activée.
  */
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 internal fun HomeTvContent(
     slot: HomeTopSlot, hero: HeroItem?, heroIndex: Int, heroCount: Int, heroExtras: State<Map<String, HeroExtras>>,
@@ -290,6 +290,20 @@ internal fun HomeTvContent(
     // Lu par le pivot hors composition (pendant le défilement) : drapeau simple, posé avant la demande de défilement.
     val topFocusFlag = remember { booleanArrayOf(false) }
     val pivotSpec = remember { HomePivotSpec { topFocusFlag[0] } }
+    // Dernière carte focalisée, sauvegardée avec l'entrée de navigation : de retour d'une fiche, le focus y revient.
+    val restore = rememberSaveable(saver = HomeFocusRestore.Saver) { HomeFocusRestore() }
+    // Retour sur l'accueil : la carte sauvegardée est composée quelques images après le premier focus (donné à la première
+    // carte composée) ; dès qu'elle l'est, le focus lui revient, sauf si l'utilisateur a déjà appuyé sur une touche.
+    LaunchedEffect(restore) {
+        if (!restore.pending) return@LaunchedEffect
+        val t0 = android.os.SystemClock.uptimeMillis()
+        repeat(RESTORE_FRAMES) {
+            if (com.ultratv.tv.nativeapp.ui.common.InputClock.lastKeyMs > t0) { restore.pending = false; return@LaunchedEffect }
+            if (restore.targetComposed) { restore.pending = false; runCatching { restore.requester.requestFocus() }; return@LaunchedEffect }
+            androidx.compose.runtime.withFrameNanos { }
+        }
+        restore.pending = false
+    }
     LaunchedEffect(topHasFocus, animsOff) {
         if (!topHasFocus) return@LaunchedEffect
         androidx.compose.runtime.snapshotFlow {
@@ -311,9 +325,10 @@ internal fun HomeTvContent(
             count(ShortcutId.SERIES)?.let { add(D.homeSeriesCount(it, formatCount(it, D.locale))) }
         }.joinToString(" · ")
     }
-    CompositionLocalProvider(LocalBringIntoViewSpec provides pivotSpec) {
+    CompositionLocalProvider(LocalBringIntoViewSpec provides pivotSpec, LocalHomeFocusRestore provides restore) {
         LazyColumn(
-            Modifier.fillMaxSize(),
+            // Retour sur l'accueil recomposé de zéro : le focus va d'abord sur la carte sauvegardée (sinon comportement habituel).
+            Modifier.fillMaxSize().focusRestorer { if (restore.pending && restore.targetComposed) restore.requester else FocusRequester.Default },
             state = listState,
             // Les rangées portent elles-mêmes leur marge gauche (elles débordent de RowBleed dans cette marge sans être rognées par la liste).
             contentPadding = PaddingValues(bottom = 54.design),
@@ -321,7 +336,7 @@ internal fun HomeTvContent(
         ) {
             item(key = "top", contentType = slot.name) {
                 CompositionLocalProvider(LocalBringIntoViewSpec provides inheritedSpec) {
-                    Column(Modifier.onFocusChanged { topFocusFlag[0] = it.hasFocus; topHasFocus = it.hasFocus }) {
+                    Column(Modifier.onFocusChanged { topFocusFlag[0] = it.hasFocus; topHasFocus = it.hasFocus; if (it.hasFocus) { restore.saved = null; restore.pending = false } }) {
                         if (slot == HomeTopSlot.HERO && hero != null) {
                             // Image pleine largeur de la zone de contenu : aucune marge horizontale sur cet élément.
                             Hero(
@@ -337,13 +352,13 @@ internal fun HomeTvContent(
                 }
             }
             items(order, key = { it.name }, contentType = { it.contentType }) { id ->
-                CompositionLocalProvider(LocalBringIntoViewSpec provides inheritedSpec) {
+                CompositionLocalProvider(LocalBringIntoViewSpec provides inheritedSpec, LocalHomeRowId provides id.name) {
                     val upTarget = if (slot == HomeTopSlot.HERO && hero != null && id == order.firstOrNull()) heroWatch else null
                     Box(Modifier.padding(start = HomeStart)) {
                         // Rubrique Sport activée : « Sport en direct » juste sous la rangée « Direct » (à défaut, en dernier).
                         if (sportOn && id == sportAnchor) Column(verticalArrangement = Arrangement.spacedBy(30.design)) {
                             HomeSection(id, rows, sportTile, playHistory, openPoster, playChannel, onShortcut, upTarget)
-                            sportRow(Modifier.homeRow(), PaddingValues(start = RowBleed, end = 96.design))
+                            CompositionLocalProvider(LocalHomeRowId provides "SPORT") { sportRow(Modifier.homeRow(), PaddingValues(start = RowBleed, end = 96.design)) }
                         } else HomeSection(id, rows, sportTile, playHistory, openPoster, playChannel, onShortcut, upTarget)
                     }
                 }
@@ -351,6 +366,9 @@ internal fun HomeTvContent(
         }
     }
 }
+
+/** Images attendues, au plus, pour que la carte quittée soit composée au retour sur l'accueil. */
+private const val RESTORE_FRAMES = 40
 
 /** Marge gauche de l'accueil (maquette : 56 px après le rail). */
 private val HomeStart get() = 56.design
@@ -404,9 +422,29 @@ private class HomePivotSpec(private val topFocused: () -> Boolean) : BringIntoVi
  * Rangée horizontale de l'accueil : débordement à gauche (première carte agrandie non rognée) + groupe de focus avec
  * restauration — revenir dans la rangée (Haut/Bas, retour du menu latéral, rangée recomposée après être sortie de
  * l'écran) rend le focus à la DERNIÈRE carte visée de cette rangée, jamais à la première par défaut.
+ * Sorties : [up] reçoit ▲ (sinon recherche habituelle) ; ◀ / ▶ ne tombent jamais sur la carte d'une autre rangée, voir [HomeEdgeGate].
  */
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
-private fun Modifier.homeRow(): Modifier = this.rowBleedStart(RowBleed).focusRestorer().focusGroup()
+@Composable
+private fun Modifier.homeRow(up: FocusRequester? = null): Modifier {
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    return this.focusProperties {
+        exit = { d ->
+            when {
+                d == androidx.compose.ui.focus.FocusDirection.Up && up != null -> up
+                d == androidx.compose.ui.focus.FocusDirection.Left || d == androidx.compose.ui.focus.FocusDirection.Right -> {
+                    scope.launch {
+                        HomeEdgeGate.closed = true
+                        try { focusManager.moveFocus(d) } finally { HomeEdgeGate.closed = false }
+                    }
+                    FocusRequester.Cancel
+                }
+                else -> FocusRequester.Default
+            }
+        }
+    }.rowBleedStart(RowBleed).focusRestorer().focusGroup()
+}
 
 /*
  * Marges de bord au défilement : calculées par [edgeMarginFor] (2 g + anneau) à partir des constantes mêmes de chaque
@@ -516,7 +554,7 @@ private fun PosterRow(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit)
 private fun ChannelRow(cards: List<ChannelCardUi>, onPlay: (ChannelEntity) -> Unit, seeAll: String, up: FocusRequester?, onSeeAll: () -> Unit) {
     // ▲ depuis n'importe quelle carte, à la sortie du groupe : « Regarder » (sans cela, la recherche géométrique choisit le bouton le plus proche, à droite).
     val memory = rememberRowFocusMemory()
-    val rowModifier = if (up != null) Modifier.focusProperties { exit = { d -> if (d == androidx.compose.ui.focus.FocusDirection.Up) up else FocusRequester.Default } }.homeRow() else Modifier.homeRow()
+    val rowModifier = Modifier.homeRow(up)
     RowEdgeMargin(ChannelEdgeMargin) {
         LazyRow(
             rowModifier.then(memory.tracker).testTag("home-channel-row"), horizontalArrangement = Arrangement.spacedBy(20.design),
