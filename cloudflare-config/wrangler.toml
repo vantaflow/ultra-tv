@@ -76,6 +76,7 @@ new_sqlite_classes = ["Guard"]
 #   OPENSUBTITLES_API_KEY  clé OpenSubtitles (proxy /api/subtitles/*) ; absente -> 503 et l'application désactive l'option
 #   OMDB_API_KEY        clé OMDb (notes IMDb / Rotten Tomatoes, /api/ratings) ; absente -> 503 et les notes sont masquées
 #   ACCOUNT_RELAY_KEY   clé partagée avec le relais d'abonnement (même valeur que RELAY_KEY sur Vercel, >= 32 caractères)
+#   LOG_HOST_SALT       sel des empreintes d'hôte des journaux (>= 32 caractères : openssl rand -hex 32) ; absent -> <host> sans empreinte
 
 # Relais d'abonnement hors Cloudflare (relay/, projet Vercel utv-relay) : fournisseurs qui bloquent les serveurs
 # Cloudflare. Sans ACCOUNT_RELAY_KEY, il n'est jamais appelé.
