@@ -255,6 +255,9 @@ internal fun SettingsTvLayout(
         // focalisée (« À propos » depuis le bas d'Affichage) — et comme la rubrique suit le focus, le volet changeait.
         Column(
             Modifier.width(520.design).fillMaxHeight().background(Ux.Rail)
+                // Entrée dans l'écran (ouverture des Réglages) : les rubriques, dans toutes les langues. En arabe, l'entrée par défaut
+                // de Compose part du coin haut gauche, où se trouve le volet : le focus tombait sur le premier réglage.
+                .then(com.ultratv.tv.nativeapp.ui.common.screenEntryTarget())
                 .focusProperties { enter = { rubFocus[selected] } }.focusGroup()
                 .verticalScroll(rememberScrollState())
                 .padding(start = 32.design, end = 32.design, top = 48.design, bottom = 32.design), // même marge que le Direct (72 laissait un vide après le menu)
@@ -285,11 +288,12 @@ internal fun SettingsTvLayout(
         val paneScroll = rememberScrollState()
         androidx.compose.runtime.LaunchedEffect(selected) { paneScroll.scrollTo(0) }
         val paneScope = rememberCoroutineScope()
+        val rtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
         Column(
             Modifier.weight(1f).fillMaxHeight()
                 // Seulement à l'arrivée par la flèche horizontale depuis les rubriques : un focus RENDU au volet (fenêtre de choix
                 // fermée après une validation) revenait sur la première ligne, volet remonté en haut (retour Reddit).
-                .focusProperties { enter = { if (SettingsFocus.enteringFromRubrics()) { paneScope.launch { paneScroll.scrollTo(0) }; firstSlot.target() } else androidx.compose.ui.focus.FocusRequester.Default } }.focusGroup()
+                .focusProperties { enter = { if (SettingsFocus.enteringFromRubrics(rtl = rtl)) { paneScope.launch { paneScroll.scrollTo(0) }; firstSlot.target() } else androidx.compose.ui.focus.FocusRequester.Default } }.focusGroup()
                 .verticalScroll(paneScroll).padding(start = 72.design, end = 88.design, top = 54.design, bottom = 54.design),
             verticalArrangement = Arrangement.spacedBy(24.design),
         ) {
@@ -985,7 +989,14 @@ private fun AboutPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, app:
 
 /** Règle d'entrée dans le volet des Réglages (pure, testée). */
 internal object SettingsFocus {
-    /** Entrée depuis la liste des rubriques : flèche droite (ou gauche en arabe) pressée à l'instant. */
-    fun enteringFromRubrics(lastKeyCode: Int = com.ultratv.tv.nativeapp.ui.common.InputClock.lastKeyCode, recent: Boolean = com.ultratv.tv.nativeapp.ui.common.InputClock.recentKey()): Boolean =
-        recent && (lastKeyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT || lastKeyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT)
+    /**
+     * Entrée depuis la liste des rubriques : la flèche VERS le volet pressée à l'instant — ▶ en lecture de gauche à droite,
+     * ◀ en arabe (RTL). Avant, les deux flèches comptaient : en arabe, ▶ (sortie du volet vers les rubriques, ou passage
+     * depuis le menu latéral) était prise pour une entrée.
+     */
+    fun enteringFromRubrics(
+        lastKeyCode: Int = com.ultratv.tv.nativeapp.ui.common.InputClock.lastKeyCode,
+        recent: Boolean = com.ultratv.tv.nativeapp.ui.common.InputClock.recentKey(),
+        rtl: Boolean,
+    ): Boolean = recent && lastKeyCode == (if (rtl) android.view.KeyEvent.KEYCODE_DPAD_LEFT else android.view.KeyEvent.KEYCODE_DPAD_RIGHT)
 }

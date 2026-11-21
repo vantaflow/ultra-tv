@@ -600,6 +600,8 @@ private fun SplitBody(
     androidx.activity.compose.BackHandler(enabled = gridFocused) { runCatching { listReq.requestFocus() } }
 
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    // Flèche vers la grille : ▶ en LTR, ◀ en arabe (la grille est à gauche des catégories).
+    val towardGridKey = com.ultratv.tv.nativeapp.ui.common.towardContentKey(androidx.compose.ui.platform.LocalLayoutDirection.current)
     LaunchedEffect(Unit) {
         val i = chips.indexOfFirst { it.remoteId == selected }
         if (i > 2) listState.scrollToItem(i - 2)
@@ -620,9 +622,10 @@ private fun SplitBody(
                 CategoryRow(
                     label = categoryLabel(c), count = c.count, selected = isSel,
                     modifier = (if (isSel) Modifier.focusRequester(selReq) else Modifier)
-                        // Droite : la catégorie focalisée devient tout de suite la catégorie choisie (sans attendre la
-                        // pause de l'aperçu), la grille affichée est donc la sienne et Gauche y revient.
-                        .onPreviewKeyEvent { e -> if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && e.key == androidx.compose.ui.input.key.Key.DirectionRight) vm.select(c.remoteId); false }
+                        // Flèche vers la grille (▶, ◀ en arabe) : la catégorie focalisée devient tout de suite la catégorie
+                        // choisie (sans attendre la pause de l'aperçu), la grille affichée est donc la sienne et la flèche
+                        // inverse y revient.
+                        .onPreviewKeyEvent { e -> if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && e.key == towardGridKey) vm.select(c.remoteId); false }
                         .onFocusChanged { if (it.isFocused) vm.preview(c.remoteId) },
                     onClick = { vm.select(c.remoteId); runCatching { gridReq.requestFocus() } },
                 )

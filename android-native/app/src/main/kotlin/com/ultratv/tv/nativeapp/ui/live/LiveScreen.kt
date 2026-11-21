@@ -236,6 +236,8 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
             Text(D.directTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 40.spx, modifier = Modifier.padding(bottom = 10.design), maxLines = 1)
             val markMoved = Modifier.onPreviewKeyEvent { e -> if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && (e.key == androidx.compose.ui.input.key.Key.DirectionUp || e.key == androidx.compose.ui.input.key.Key.DirectionDown)) userMoved = true; false }
             val focus = LocalFocusManager.current
+            // OK sur une catégorie : le focus passe aux chaînes, à droite en LTR, à GAUCHE en arabe (sinon il partait vers le menu).
+            val towardChannels = com.ultratv.tv.nativeapp.ui.common.towardContent(androidx.compose.ui.platform.LocalLayoutDirection.current)
             LazyColumn(modifier = markMoved.focusRequester(catListFocus), verticalArrangement = Arrangement.spacedBy(10.design), contentPadding = PaddingValues(bottom = 54.design)) {
                 // Catégorie répétée par le fournisseur : clés départagées (règle commune), jamais de plantage.
                 val catKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(cats) { it.id }
@@ -246,7 +248,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
                         count = c.count, selected = c.id == selected, locked = c.locked,
                         modifier = if (c.id == selected) Modifier.focusRequester(selectedCatFocus) else Modifier,
                         onFocus = { if (userMoved) vm.selectCategory(c.id) },
-                        onClick = { vm.selectCategory(c.id); focus.moveFocus(FocusDirection.Right) },
+                        onClick = { vm.selectCategory(c.id); focus.moveFocus(towardChannels) },
                     )
                 }
             }
