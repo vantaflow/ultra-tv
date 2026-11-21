@@ -45,6 +45,8 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.requestFocus
 import androidx.compose.ui.test.isFocusable
 import androidx.compose.ui.test.hasAnyAncestor
@@ -493,6 +495,28 @@ class HomeTvNavigationTest {
         rule.mainClock.advanceTimeBy(4_000); rule.waitForIdle()
         assertEquals("hero-watch", focusNow("départ"))
         rule.onNodeWithTag("hero-watch").assertIsDisplayed()
+    }
+
+    @Test fun hautDepuisLaPremiereRangee_quandLeBandeauNEstPasCompose_laToucheGardeUnComportementDefini() {
+        mount(long = true)
+        focusNow("départ")
+        step(Key.DirectionDown, "première rangée")
+        val firstRow = focusNow("première rangée")
+        assertTrue("première rangée sous le bandeau ($firstRow)", !firstRow.startsWith("hero-"))
+        // Le bandeau sort de la composition (liste défilée au doigt, focus resté dans la rangée).
+        rule.onRoot().performTouchInput { swipeUp(); swipeUp() }
+        rule.waitForIdle()
+        assertTrue("le bandeau n'est plus composé", rule.onAllNodes(hasTestTag("hero-watch")).fetchSemanticsNodes().isEmpty())
+        assertEquals("le focus est resté sur la carte", firstRow, rule.onAllNodes(isFocused()).fetchSemanticsNodes().mapNotNull { tagOf(it) }.single())
+        // ▲ : le bouton « Regarder » n'est pas attaché, la demande ne lui est pas faite ; la recherche habituelle fait venir le bandeau.
+        val out = java.io.ByteArrayOutputStream()
+        val realOut = System.out
+        System.setOut(java.io.PrintStream(out, true))
+        try { press(Key.DirectionUp); rule.mainClock.advanceTimeBy(1_000); rule.waitForIdle() } finally { System.setOut(realOut) }
+        assertTrue("aucune demande de focus vers un FocusRequester non attaché : $out", !out.toString().contains("FocusRequester is not initialized"))
+        // Comportement défini : la touche n'est pas avalée, la recherche habituelle de Compose décide, un seul élément reste focalisé.
+        val after = focusNow("après ▲")
+        assertTrue("▲ n'est pas avalée : le focus a quitté la carte ($after)", after != firstRow)
     }
 
     @Test fun retourSurLAccueil_apresUneFiche_memeAfficheFocalisee_etRegarderNeLaReprendPas() {

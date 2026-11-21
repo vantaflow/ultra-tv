@@ -312,7 +312,7 @@ internal fun HomeTvContent(
     // Raccourcis : une rangée comme les autres, seulement si l'utilisateur les affiche (masqués par défaut sur TV).
     val order = rows.order
     // Bouton « Regarder » du bandeau : cible de ▲ depuis la rangée « En direct » quand elle est juste sous l'image.
-    val heroWatch = remember { FocusRequester() }
+    val heroWatch = remember { HeroWatchTarget() }
     val sportAnchor = if (HomeSectionId.CHANNELS in order) HomeSectionId.CHANNELS else order.lastOrNull()
     val sportTile = if (sportOn) SportTile(sportLive, onGoSport) else null
     val stats = remember(providerCount, rows.shortcuts, D) {
@@ -343,7 +343,7 @@ internal fun HomeTvContent(
                             // Image pleine largeur de la zone de contenu : aucune marge horizontale sur cet élément.
                             Hero(
                                 hero, heroExtras, onWatch = onWatchHero, onInfo = onInfoHero, inList = heroInList, onToggleList = onToggleHeroList, takeFocus = !heroFocusDone, onFocused = onHeroFocused, onFocusTop = scrollTop,
-                                index = heroIndex, count = heroCount, mayRotate = heroRotates, clock = clock, watchRequester = heroWatch, modifier = Modifier.fillMaxWidth().height(HeroHeight).testTag("home-hero"),
+                                index = heroIndex, count = heroCount, mayRotate = heroRotates, clock = clock, watchTarget = heroWatch, modifier = Modifier.fillMaxWidth().height(HeroHeight).testTag("home-hero"),
                             )
                         } else Column(Modifier.padding(start = HomeStart, top = 44.design, end = 72.design), verticalArrangement = Arrangement.spacedBy(30.design)) {
                             // Salutation seulement sans image « À la une » (avec elle, l'heure se lit sur l'image).
@@ -367,6 +367,15 @@ internal fun HomeTvContent(
             }
         }
     }
+}
+
+/**
+ * Cible de ▲ depuis la rangée sous le bandeau : le bouton « Regarder ». [attached] : le bandeau est composé. La liste paresseuse
+ * peut l'avoir retiré (liste défilée, touche ▲ maintenue) ; viser alors [requester] ne ferait rien (avertissement, touche ignorée).
+ */
+private class HeroWatchTarget {
+    val requester = FocusRequester()
+    @JvmField var attached = false
 }
 
 /** Marge gauche de l'accueil (maquette : 56 px après le rail). */
@@ -427,7 +436,7 @@ private class HomePivotSpec(private val topFocused: () -> Boolean) : BringIntoVi
  */
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
-private fun Modifier.homeRow(up: FocusRequester? = null): Modifier {
+private fun Modifier.homeRow(up: HeroWatchTarget? = null): Modifier {
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val gate = LocalHomeEdgeGate.current
@@ -437,7 +446,8 @@ private fun Modifier.homeRow(up: FocusRequester? = null): Modifier {
             exit = { d ->
                 when {
                     gate == null || gate.closed -> FocusRequester.Default
-                    d == androidx.compose.ui.focus.FocusDirection.Up && up != null -> up
+                    // Bandeau pas (ou plus) composé : aucune demande vers un FocusRequester non attaché, la recherche habituelle fait composer l'élément précédent.
+                    d == androidx.compose.ui.focus.FocusDirection.Up && up != null -> if (up.attached) up.requester else FocusRequester.Default
                     d == androidx.compose.ui.focus.FocusDirection.Left || d == androidx.compose.ui.focus.FocusDirection.Right -> {
                         val keys = gate.keys
                         scope.launch {
@@ -487,7 +497,7 @@ private fun HomeSection(
     openPoster: (PosterCardUi) -> Unit,
     playChannel: (ChannelEntity) -> Unit,
     onShortcut: (ShortcutId) -> Unit,
-    upTarget: FocusRequester? = null,
+    upTarget: HeroWatchTarget? = null,
 ) {
     val D = LocalDs.current
     when (id) {
@@ -567,7 +577,7 @@ private fun PosterRow(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit)
 
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
-private fun ChannelRow(cards: List<ChannelCardUi>, onPlay: (ChannelEntity) -> Unit, seeAll: String, up: FocusRequester?, onSeeAll: () -> Unit) {
+private fun ChannelRow(cards: List<ChannelCardUi>, onPlay: (ChannelEntity) -> Unit, seeAll: String, up: HeroWatchTarget?, onSeeAll: () -> Unit) {
     // ▲ depuis n'importe quelle carte, à la sortie du groupe : « Regarder » (sans cela, la recherche géométrique choisit le bouton le plus proche, à droite).
     val memory = rememberRowFocusMemory()
     val listState = rememberLazyListState()
@@ -727,10 +737,10 @@ private fun Section(title: String, content: @Composable () -> Unit) {
 private fun Hero(
     h: HeroItem, extras: State<Map<String, HeroExtras>>, onWatch: (HeroItem) -> Unit, onInfo: (HeroItem) -> Unit,
     inList: State<Set<String>>, onToggleList: (HeroItem) -> Unit,
-    takeFocus: Boolean, onFocused: () -> Unit, onFocusTop: () -> Unit, clock: State<Long>, index: Int = 0, count: Int = 1, mayRotate: Boolean = false, watchRequester: FocusRequester? = null, modifier: Modifier = Modifier,
+    takeFocus: Boolean, onFocused: () -> Unit, onFocusTop: () -> Unit, clock: State<Long>, index: Int = 0, count: Int = 1, mayRotate: Boolean = false, watchTarget: HeroWatchTarget? = null, modifier: Modifier = Modifier,
 ) = com.ultratv.tv.nativeapp.ui.design.NoTextWrap {
     // Bandeau de hauteur fixe : pas de ligne de plus (les boutons « Regarder / Plus d'infos » étaient écrasés).
-    HeroBody(h, extras, onWatch, onInfo, inList, onToggleList, takeFocus, onFocused, onFocusTop, clock, index, count, mayRotate, watchRequester, modifier)
+    HeroBody(h, extras, onWatch, onInfo, inList, onToggleList, takeFocus, onFocused, onFocusTop, clock, index, count, mayRotate, watchTarget, modifier)
 }
 
 /** API de l'appareil, lue UNE fois (jamais dans la composition). */
@@ -745,10 +755,12 @@ private fun rememberHeroMayRotate(): Boolean =
 private fun HeroBody(
     h: HeroItem, extras: State<Map<String, HeroExtras>>, onWatch: (HeroItem) -> Unit, onInfo: (HeroItem) -> Unit,
     inList: State<Set<String>>, onToggleList: (HeroItem) -> Unit,
-    takeFocus: Boolean, onFocused: () -> Unit, onFocusTop: () -> Unit, clock: State<Long>, index: Int, count: Int, mayRotate: Boolean, watchRequester: FocusRequester?, modifier: Modifier,
+    takeFocus: Boolean, onFocused: () -> Unit, onFocusTop: () -> Unit, clock: State<Long>, index: Int, count: Int, mayRotate: Boolean, watchTarget: HeroWatchTarget?, modifier: Modifier,
 ) {
     val D = LocalDs.current
-    val requester = remember(watchRequester) { watchRequester ?: FocusRequester() }
+    val requester = remember(watchTarget) { watchTarget?.requester ?: FocusRequester() }
+    // « Regarder » n'est ciblable qu'une fois le bandeau composé (voir [HeroWatchTarget]).
+    androidx.compose.runtime.DisposableEffect(watchTarget) { watchTarget?.attached = true; onDispose { watchTarget?.attached = false } }
     var focused by remember { mutableStateOf(false) }
     if (takeFocus) RequestInitialFocus(requester, hasFocus = { focused })
     val rtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
