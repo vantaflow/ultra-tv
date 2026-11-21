@@ -664,6 +664,10 @@ class HomeTvStructureTest {
             val rank = rule.onNodeWithTag("top10-rank-$i").getUnclippedBoundsInRoot()
             assertTrue("grand chiffre $i coupé à gauche (${rank.left} / ${screen.left})", rank.left.value >= screen.left.value - 0.5f)
             assertTrue("grand chiffre $i coupé à droite (${rank.right} / ${screen.right})", rank.right.value <= screen.right.value + 0.5f)
+            // Le chiffre doit rester lisible : l'affiche ne doit pas en cacher plus de 40 % (« 10 » ne doit pas se lire « 1 »).
+            val poster = cardOf("home-poster-t$i").getUnclippedBoundsInRoot()
+            val visible = if (rtl) rank.right.value - (poster.left.value + poster.width.value) else poster.left.value - rank.left.value
+            assertTrue("grand chiffre $i caché par l'affiche : ${visible} visible sur ${rank.width.value}", visible >= rank.width.value * 0.6f)
         }
         check(1)
         for (i in 2..10) { press(forward); check(i) }

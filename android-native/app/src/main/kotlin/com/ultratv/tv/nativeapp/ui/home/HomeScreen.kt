@@ -614,6 +614,9 @@ private fun SeeAllCard(label: String, memory: RowFocusMemory, onClick: () -> Uni
 /** Cellule du Top 10 : 336 de large (chiffre derrière, affiche de 200 du côté opposé). */
 private val Top10CellWidth get() = 336.design
 
+/** Cellule du rang à deux chiffres : plus large d'un chiffre, sinon l'affiche cachait le « 0 » et « 10 » se lisait « 1 ». */
+private val Top10WideCellWidth get() = 526.design
+
 /** Agrandissement de l'affiche focalisée sur l'accueil (10 %). */
 internal const val HomePosterScale = 1.10f
 
@@ -631,10 +634,12 @@ private fun Top10Row(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) 
     val cellPx = with(density) { Top10CellWidth.toPx() }
     val reservePx = with(density) { ((HomePosterScale - 1f) / 2f * PosterWidth.toPx()) }
     val cellModifier = remember(cellPx, reservePx) { Modifier.width(Top10CellWidth).bringIntoViewResponder(WholeCellResponder(cellPx, reservePx)) }
+    val widePx = with(density) { Top10WideCellWidth.toPx() }
+    val wideCellModifier = remember(widePx, reservePx) { Modifier.width(Top10WideCellWidth).bringIntoViewResponder(WholeCellResponder(widePx, reservePx)) }
     RowEdgeMargin(PosterEdgeMargin) {
         LazyRow(Modifier.homeRow().then(memory.tracker).testTag("home-top10-row"), state = listState, horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
-            itemsIndexed(cards, key = { _, p -> p.key }, contentType = { _, _ -> "top10" }) { i, p ->
-                Box(cellModifier) {
+            itemsIndexed(cards, key = { _, p -> p.key }, contentType = { i, _ -> if (i >= 9) "top10-wide" else "top10" }) { i, p ->
+                Box(if (i >= 9) wideCellModifier else cellModifier) {
                     Top10Rank(i + 1, Modifier.align(Alignment.TopStart))
                     com.ultratv.tv.nativeapp.ui.catalog.PosterCell(
                         p.item, Modifier.width(PosterWidth).align(Alignment.TopEnd).then(rowMemory(memory, p.key)).testTag("home-poster-${p.key}"),
@@ -661,7 +666,7 @@ private class WholeCellResponder(private val widthPx: Float, private val reserve
 /** Grand chiffre au contour (couleur du thème) : dessiné une fois par cellule, aucune lecture d'état de focus. */
 @Composable
 private fun Top10Rank(rank: Int, modifier: Modifier) {
-    // Taille NON soumise à « Taille du texte » : la cellule est de largeur fixe (336), « 10 » à ×1,3 la déborderait. Style mémorisé (rien d'alloué à la recomposition).
+    // Taille NON soumise à « Taille du texte » : la cellule est de largeur fixe (336, ou 526 pour « 10 »), un chiffre à ×1,3 la déborderait. Style mémorisé (rien d'alloué à la recomposition).
     val density = androidx.compose.ui.platform.LocalDensity.current
     val stroke = with(density) { 4.design.toPx() }
     val size = with(density) { (300 / 2f).dp.toSp() }
