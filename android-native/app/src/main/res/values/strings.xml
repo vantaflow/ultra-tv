@@ -1823,6 +1823,12 @@
     <string name="mlib_hub_title">My libraries</string>
     <string name="mlib_hub_row_hint">Servers, status and what you are watching</string>
     <string name="mlib_hub_empty">No library yet. Add a Jellyfin, Emby or Plex server, or a NAS share, in Settings › Sources.</string>
+    <string name="mlib_filter_all_sources">All sources</string>
+    <string name="mlib_filter_empty_movies">No movie in your libraries</string>
+    <string name="mlib_filter_empty_series">No series in your libraries</string>
+    <string name="mlib_filter_empty_movies_source">No movie in this library</string>
+    <string name="mlib_filter_empty_series_source">No series in this library</string>
+    <string name="mlib_filter_empty_source">Nothing in this library yet</string>
     <string name="mlib_status_online">Online</string>
     <string name="mlib_status_relay">Relay</string>
     <string name="mlib_status_offline">Offline · last copy %1$s</string>

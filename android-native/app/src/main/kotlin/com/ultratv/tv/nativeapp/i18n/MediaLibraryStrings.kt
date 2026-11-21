@@ -70,3 +70,11 @@ fun cloudMediaErrorText(lang: AppLang, reason: com.ultratv.tv.nativeapp.data.con
     }
     return if (retryMin != null && retryMin > 0) main + " " + I18n.string(lang, R.string.mlib_err_retry, retryMin) else main
 }
+
+// Filtres de « Mes bibliothèques » (type et source) et messages quand un filtre ne donne rien.
+val DesignStrings.mlibFilterAllSources get() = tx(R.string.mlib_filter_all_sources)
+val DesignStrings.mlibFilterEmptyMovies get() = tx(R.string.mlib_filter_empty_movies)
+val DesignStrings.mlibFilterEmptySeries get() = tx(R.string.mlib_filter_empty_series)
+val DesignStrings.mlibFilterEmptyMoviesSource get() = tx(R.string.mlib_filter_empty_movies_source)
+val DesignStrings.mlibFilterEmptySeriesSource get() = tx(R.string.mlib_filter_empty_series_source)
+val DesignStrings.mlibFilterEmptySource get() = tx(R.string.mlib_filter_empty_source)

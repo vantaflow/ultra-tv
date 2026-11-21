@@ -16,6 +16,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.focus.focusRestorer
+import com.ultratv.tv.nativeapp.ui.catalog.Chip
+import com.ultratv.tv.nativeapp.i18n.mlibFilterAllSources
+import com.ultratv.tv.nativeapp.i18n.mlibFilterEmptyMovies
+import com.ultratv.tv.nativeapp.i18n.mlibFilterEmptyMoviesSource
+import com.ultratv.tv.nativeapp.i18n.mlibFilterEmptySeries
+import com.ultratv.tv.nativeapp.i18n.mlibFilterEmptySeriesSource
+import com.ultratv.tv.nativeapp.i18n.mlibFilterEmptySource
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -69,7 +78,7 @@ import com.ultratv.tv.nativeapp.ui.settings.MediaLogo
 fun LibraryHubScreen(onOpenMovie: (Long) -> Unit, onOpenSeries: (Long) -> Unit, onSeeAll: (providerId: Long, series: Boolean, libraryId: String?) -> Unit = { _, _, _ -> }, vm: LibraryHubViewModel = hiltViewModel()) {
     val D = LocalDs.current
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
-    val rows by vm.rows.collectAsState()
+    val view by vm.view.collectAsState()
     var nasOpen by remember { mutableStateOf<LibraryRow?>(null) }
     BackHandler(enabled = nasOpen != null) { nasOpen = null }
     Column(
@@ -77,16 +86,65 @@ fun LibraryHubScreen(onOpenMovie: (Long) -> Unit, onOpenSeries: (Long) -> Unit, 
         verticalArrangement = Arrangement.spacedBy(if (touch) 12.dp else 30.design),
     ) {
         Text(D.mlibHubTitle, fontFamily = Sora, fontWeight = FontWeight.ExtraBold, fontSize = if (touch) 26.sp else 50.spx, color = Ux.Text, maxLines = 1)
-        val list = rows
+        val v = view
         val open = nasOpen
-        when {
-            list == null -> Unit
-            open != null -> NasDetailView(open, vm, touch)
-            list.isEmpty() -> Text(D.mlibHubEmpty, fontFamily = Manrope, fontSize = if (touch) 14.sp else 26.spx, color = Ux.Text3)
-            else -> LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(if (touch) 18.dp else 30.design)) {
-                items(list, key = { it.provider.id }) { r -> LibrarySection(r, touch, onOpenMovie, onOpenSeries, onSeeAll) { nasOpen = r } }
+        if (open != null && v != null) NasDetailView(open, vm, touch)
+        else LibraryHubContent(v, touch, vm::setType, vm::setSource, onOpenMovie, onOpenSeries, onSeeAll) { nasOpen = it }
+    }
+}
+
+/** Contenu de « Mes bibliothèques » sans ViewModel : filtres, message de filtre vide ou sections (testable seul). */
+@Composable
+internal fun androidx.compose.foundation.layout.ColumnScope.LibraryHubContent(
+    v: LibraryView?, touch: Boolean, onType: (LibraryType) -> Unit, onSource: (Long?) -> Unit,
+    onOpenMovie: (Long) -> Unit, onOpenSeries: (Long) -> Unit, onSeeAll: (Long, Boolean, String?) -> Unit, onOpenNas: (LibraryRow) -> Unit,
+) {
+    val D = LocalDs.current
+    when {
+        v == null -> Unit
+        v.rows.isEmpty() && v.empty == null -> Text(D.mlibHubEmpty, fontFamily = Manrope, fontSize = if (touch) 14.sp else 26.spx, color = Ux.Text3)
+        else -> {
+            LibraryFilterBars(v, onType, onSource, touch)
+            val empty = v.empty
+            if (empty != null) Text(
+                when (empty) {
+                    LibraryEmpty.MOVIES -> D.mlibFilterEmptyMovies
+                    LibraryEmpty.SERIES -> D.mlibFilterEmptySeries
+                    LibraryEmpty.MOVIES_IN_SOURCE -> D.mlibFilterEmptyMoviesSource
+                    LibraryEmpty.SERIES_IN_SOURCE -> D.mlibFilterEmptySeriesSource
+                    LibraryEmpty.SOURCE -> D.mlibFilterEmptySource
+                },
+                fontFamily = Manrope, fontSize = if (touch) 14.sp else 26.spx, color = Ux.Text3, modifier = Modifier.testTag("library-filter-empty"),
+            )
+            // Retour au contenu par ▼ : le focus revient sur l'élément quitté (focusRestorer), pas sur la première affiche.
+            else LazyColumn(Modifier.weight(1f).focusRestorer().focusGroup().testTag("library-content"), verticalArrangement = Arrangement.spacedBy(if (touch) 18.dp else 30.design)) {
+                items(v.rows, key = { it.provider.id }) { r -> LibrarySection(r, touch, onOpenMovie, onOpenSeries, onSeeAll) { onOpenNas(r) } }
             }
         }
+    }
+}
+
+/**
+ * Filtres combinables en haut de l'écran : Type (Tout / Films / Séries) puis Source (Toutes / une par bibliothèque), en pastilles
+ * du catalogue ([Chip]). Un filtre à un seul choix possible n'est pas affiché. Les pastilles ont des clés stables : choisir
+ * une pastille ne lui fait jamais perdre le focus.
+ */
+@Composable
+private fun LibraryFilterBars(v: LibraryView, onType: (LibraryType) -> Unit, onSource: (Long?) -> Unit, touch: Boolean) {
+    val D = LocalDs.current
+    Column(verticalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 12.design)) {
+    if (v.types.isNotEmpty()) LazyRow(Modifier.testTag("library-filter-type"), horizontalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 14.design)) {
+        items(v.types, key = { "t-${it.name}" }, contentType = { "chip" }) { t ->
+            val label = when (t) { LibraryType.ALL -> D.allChip; LibraryType.MOVIES -> D.moviesTitle; LibraryType.SERIES -> D.seriesTitle }
+            Chip(label, v.filter.type == t, Modifier.testTag("chip-type-${t.name}")) { onType(t) }
+        }
+    }
+    if (v.sources.isNotEmpty()) LazyRow(Modifier.testTag("library-filter-source"), horizontalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 14.design)) {
+        item(key = "s-all", contentType = "chip") { Chip(D.mlibFilterAllSources, v.filter.sourceId == null, Modifier.testTag("chip-source-all")) { onSource(null) } }
+        items(v.sources, key = { "s-${it.id}" }, contentType = { "chip" }) { o ->
+            Chip(LibraryFilterLogic.sourceLabel(o), v.filter.sourceId == o.id, Modifier.testTag("chip-source-${o.id}")) { onSource(o.id) }
+        }
+    }
     }
 }
 

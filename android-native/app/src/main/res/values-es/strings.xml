@@ -1801,6 +1801,12 @@
     <string name="mlib_hub_title">Mis bibliotecas</string>
     <string name="mlib_hub_row_hint">Servidores, estado y lo que estás viendo</string>
     <string name="mlib_hub_empty">Aún no hay bibliotecas. Añade un servidor Jellyfin, Emby o Plex, o un recurso NAS, en Ajustes › Fuentes.</string>
+    <string name="mlib_filter_all_sources">Todas las fuentes</string>
+    <string name="mlib_filter_empty_movies">Ninguna película en tus bibliotecas</string>
+    <string name="mlib_filter_empty_series">Ninguna serie en tus bibliotecas</string>
+    <string name="mlib_filter_empty_movies_source">Ninguna película en esta biblioteca</string>
+    <string name="mlib_filter_empty_series_source">Ninguna serie en esta biblioteca</string>
+    <string name="mlib_filter_empty_source">Aún no hay nada en esta biblioteca</string>
     <string name="mlib_status_online">En línea</string>
     <string name="mlib_status_relay">Relé</string>
     <string name="mlib_status_offline">Sin conexión · última copia %1$s</string>
