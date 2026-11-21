@@ -36,6 +36,8 @@ import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.i18n.designStringsFor
 import com.ultratv.tv.nativeapp.i18n.stringsFor
+import com.ultratv.tv.nativeapp.ui.common.EpgClock
+import com.ultratv.tv.nativeapp.ui.common.TimeFormatPref
 import com.ultratv.tv.nativeapp.ui.common.design
 import com.ultratv.tv.nativeapp.ui.components.RAIL_COLLAPSED_PX
 import com.ultratv.tv.nativeapp.ui.design.Ux
@@ -69,10 +71,19 @@ class HomeRenderTest {
 
     private val outDir = File("build/outputs/ui-v2").also { it.mkdirs() }
 
-    /** Le thème est un état global : toujours remis au sombre, même si un rendu échoue. */
-    @Before fun fakeImages() { installFakeImageLoader() }
+    private var savedTimeFormat = ""
 
-    @After fun resetTheme() { Ux.themeLight = false; Ux.themeOled = false; Ux.themeKind = AppTheme.DARK; resetImageLoader() }
+    /** Heure en 24 h (état global de l'horloge, qu'un autre test peut avoir laissé en 12 h) : les captures du README montrent « 20:36 ». */
+    @Before fun fakeImages() {
+        installFakeImageLoader()
+        savedTimeFormat = EpgClock.timeFormat
+        EpgClock.timeFormat = TimeFormatPref.H24.key
+    }
+
+    /** Le thème est un état global : toujours remis au sombre, même si un rendu échoue. */
+    @After fun resetTheme() {
+        EpgClock.timeFormat = savedTimeFormat
+        Ux.themeLight = false; Ux.themeOled = false; Ux.themeKind = AppTheme.DARK; resetImageLoader() }
 
     private fun channel(id: Long, num: Int, name: String) =
         ChannelEntity(id = id, providerId = 1, remoteId = "$id", name = name, logo = null, categoryId = null, streamUrl = "u", num = num)

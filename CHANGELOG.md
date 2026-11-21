@@ -4,6 +4,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Modifié
+- Accueil TV : le titre « À la une » devient une grande image sur toute la largeur, avec « Regarder », « Plus d'infos » et « Ma liste » posés dessus. La rangée « En direct » passe en larges cartes (chaîne, programme en cours, horaire, progression) et le Top 10 s'affiche avec un grand chiffre derrière chaque affiche. Les raccourcis (Direct, Films, Séries…) sont masqués par défaut sur TV ; ils restent disponibles dans Réglages › Accueil, et vos choix déjà faits sont conservés.
+- Accueil TV, télécommande : chaque rangée se souvient de la carte quittée, et en revenant d'une fiche on retrouve la même carte. ◀ au début d'une rangée ouvre le menu latéral au lieu de sauter vers une autre rangée. La carte focalisée n'est plus jamais rognée au bord de l'écran. Si la carte quittée a disparu pendant l'absence, le focus se pose aussitôt ailleurs au lieu de laisser l'écran sans sélection pendant une seconde.
+- Appareils modestes : l'image « À la une » reste fixe, sans rotation.
+- Catalogue (téléphone et tablette avec clavier ou manette) : la pastille de filtre focalisée n'est plus collée au bord de l'écran. Ce changement concerne le catalogue, pas l'accueil.
+
+### Corrigé
+- Arabe : les rangées de l'accueil et du catalogue ne sont plus rognées au bord de départ.
+
 ## [1.3.72] — 2026-11-21 (Android)
 
 ### Modifié
