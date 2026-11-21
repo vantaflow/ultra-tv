@@ -25,6 +25,10 @@ import androidx.compose.ui.test.pressKey
 import androidx.test.core.app.ApplicationProvider
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
 import com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity
+import com.ultratv.tv.nativeapp.ui.catalog.PosterItem
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.isFocusable
 import com.ultratv.tv.nativeapp.i18n.AppLang
 import com.ultratv.tv.nativeapp.i18n.I18n
 import com.ultratv.tv.nativeapp.i18n.LocalDs
@@ -82,7 +86,13 @@ class HomeRenderTest {
             key = "r$i", entry = WatchHistoryEntity(providerId = 1, kind = "MOVIE", remoteId = "$i", title = title, poster = null, streamUrl = "u"),
             title = title, progress = p, minutesLeft = left,
         )
+        fun poster(i: Int, title: String) = PosterCardUi(
+            key = "t$i", item = PosterItem(id = 100L + i, title = title, poster = null, year = 2020 + i % 5, rating = 6.5 + i % 3 * 0.8),
+            isShow = false, kind = com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE,
+        )
+        val titles = listOf("Orbite basse", "Le Dernier Train", "Marée haute", "Le Phare", "Horizon noir", "Court-circuit", "Les Gardiens", "Nuit blanche", "Sous la glace", "Dernier salon")
         return HomeRows(
+            top10 = titles.mapIndexed { i, t -> poster(i + 1, t) },
             channels = live,
             resume = listOf(
                 resume(1, "Orbite basse", 0.25f, 95), resume(2, "Les Gardiens du phare · S2 É4", 0.45f, 32), resume(3, "Marée haute", 0.80f, 18),
@@ -141,9 +151,11 @@ class HomeRenderTest {
         // Passage par l'autre bouton : le focus initial pris avant le mode clavier n'affiche pas l'anneau.
         rule.onNodeWithTag("hero-info").requestFocus()
         rule.waitForIdle()
-        rule.onNodeWithTag(focusTag).requestFocus()
+        // Une affiche porte son `testTag` sur sa cellule : on focalise la surface cliquable qu'elle contient.
+        val target = if (focusTag.startsWith("home-poster-")) rule.onNode(isFocusable() and hasAnyAncestor(hasTestTag(focusTag))) else rule.onNodeWithTag(focusTag)
+        target.requestFocus()
         rule.waitForIdle()
-        rule.onNodeWithTag(focusTag).assertIsFocused()
+        target.assertIsFocused()
         val bmp = rule.onRoot().captureToImage().asAndroidBitmap()
         File(outDir, file).outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
         println("Accueil capture : ${File(outDir, file).absolutePath} (${bmp.width}x${bmp.height})")
@@ -173,4 +185,9 @@ class HomeRenderTest {
 
     @Test fun capture_tv_en_sombre() { lang = AppLang.English; render(light = false, file = "home-tv-en.png", sport = true) }
     @Test fun capture_tv_ar_sombre() { lang = AppLang.Arabic; render(light = false, file = "home-tv-ar.png", sport = true) }
+
+    /** Top 10 : grand chiffre au contour derrière chaque affiche, affiche focalisée à 10 % avec l'anneau du thème. */
+    @Test fun capture_tv_fr_top10_focus_sombre() { render(light = false, file = "home-tv-fr-top10-focus.png", sport = false, focusTag = "home-poster-t3") }
+    @Test fun capture_tv_fr_top10_focus_clair() { render(light = true, file = "home-tv-fr-light-top10-focus.png", sport = false, focusTag = "home-poster-t3") }
+    @Test fun capture_tv_ar_top10_focus() { lang = AppLang.Arabic; render(light = false, file = "home-tv-ar-top10-focus.png", sport = false, focusTag = "home-poster-t3") }
 }

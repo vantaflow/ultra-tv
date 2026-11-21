@@ -532,6 +532,69 @@ class HomeTvStructureTest {
         press(Key.DirectionRight); poster("m1").assertIsFocused()
     }
 
+    @Test fun top10_rang_dixAuPlus_dansLOrdre_etJamaisFocalisable() {
+        setHomePosters()
+        val lefts = (1..4).map { rule.onNodeWithTag("top10-rank-$it").assert(!isFocusable()).getUnclippedBoundsInRoot().left.value }
+        assertEquals("rangs dans l'ordre", lefts.sorted(), lefts)
+        // Parcours de la rangée (les dernières cellules sont composées au défilement) : le focus ne se pose jamais sur un chiffre.
+        focusPoster("t1")
+        repeat(10) {
+            rule.onNode(isFocused() and hasAnyAncestor(tagStartsWith("top10-rank-"))).assertDoesNotExist()
+            press(Key.DirectionRight)
+        }
+        poster("t10").assertIsFocused()
+        rule.onNodeWithTag("top10-rank-10").assertExists().assert(!isFocusable())
+        rule.onNodeWithTag("top10-rank-11").assertDoesNotExist()
+    }
+
+    @Test fun top10_rang_estDecoratif_pourLesLecteursDEcran_etLAfficheResteActivable() {
+        setHomePosters()
+        val rank = rule.onNodeWithTag("top10-rank-1", useUnmergedTree = true).fetchSemanticsNode()
+        assertTrue("le chiffre ne porte aucun texte lu", rank.children.all { SemanticsProperties.Text !in it.config })
+        // L'affiche, elle, reste un élément d'accessibilité normal (activable).
+        poster("t1").assertHasClickAction()
+    }
+
+    private fun assertRankSide(rtl: Boolean) {
+        val rank = rule.onNodeWithTag("top10-rank-1").getUnclippedBoundsInRoot()
+        val p = poster("t1").getUnclippedBoundsInRoot()
+        if (rtl) assertTrue("en RTL le rang est à droite de l'affiche", rank.right.value > p.right.value && rank.left.value > p.left.value - 1f)
+        else assertTrue("en LTR le rang est à gauche de l'affiche", rank.left.value < p.left.value && rank.right.value < p.right.value + 1f)
+        // Affiche de 200 (en unités design).
+        assertEquals(200.design.value, p.width.value, 1f)
+    }
+
+    @Test fun top10_rang_aGaucheDeLAffiche_enLTR() { setHomePosters(AppLang.French); assertRankSide(rtl = false) }
+
+    @Test fun top10_rang_aDroiteDeLAffiche_enArabe() { setHomePosters(AppLang.Arabic); assertRankSide(rtl = true) }
+
+    /** Bornes de l'élément focalisé agrandies de [scale] puis de l'anneau (10 de décalage + épaisseur, agrandis aussi). */
+    private fun enlarged(scale: Float): List<Float> {
+        val f = rule.onNode(isFocused()).getUnclippedBoundsInRoot()
+        val mx = f.width.value * (scale - 1f) / 2f + 10.design.value * scale; val my = f.height.value * (scale - 1f) / 2f + 10.design.value * scale
+        return listOf(f.left.value - mx, f.top.value - my, f.right.value + mx, f.bottom.value + my)
+    }
+
+    @Test fun affichesFocalisees_agrandiesDe10Pourcent_neRecouvrentPasLeTitre_neSontPasRognees() {
+        setHomePosters()
+        val screen = rule.onRoot().getUnclippedBoundsInRoot()
+        for ((titleText, first, count, prefix) in listOf(Quad(titles.getValue(HomeSectionId.LATEST_MOVIES), "m1", 6, "m"), Quad(titles.getValue(HomeSectionId.TOP10), "t1", 10, "t"))) {
+            focusPoster(first)
+            for (i in 1..count) {
+                poster("$prefix$i").assertIsFocused()
+                val title = rule.onNode(hasText(titleText)).getUnclippedBoundsInRoot()
+                val (l, t, r, b) = enlarged(1.10f)
+                assertTrue("$prefix$i : recouvre le titre de la rangée (haut $t, bas du titre ${title.bottom})", t >= title.bottom.value)
+                assertTrue("$prefix$i : coupée à gauche ($l)", l >= screen.left.value)
+                assertTrue("$prefix$i : coupée à droite ($r / ${screen.right})", r <= screen.right.value)
+                assertTrue("$prefix$i : coupée en bas ($b / ${screen.bottom})", b <= screen.bottom.value)
+                if (i < count) press(Key.DirectionRight)
+            }
+        }
+    }
+
+    private data class Quad(val a: String, val b: String, val c: Int, val d: String)
+
     @Test fun affiches_memoire_garde_uneCarteDisparue_neLaisseJamaisLaRangeeInatteignable() {
         setHomePosters()
         focusPoster("m3")

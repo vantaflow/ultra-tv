@@ -45,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.unit.DpSize
@@ -401,6 +402,30 @@ private class HomePivotSpec(private val topFocused: () -> Boolean) : BringIntoVi
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 private fun Modifier.homeRow(): Modifier = this.rowBleedStart(RowBleed).focusRestorer().focusGroup()
 
+/**
+ * Défilement horizontal d'une rangée d'affiches : l'affiche focalisée doit être visible EN ENTIER avec sa marge
+ * d'agrandissement (10 % + anneau), pas seulement collée au bord de l'écran, où elle serait rognée par la rangée.
+ */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+private class EdgeMarginSpec(private val margin: Float) : BringIntoViewSpec {
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
+        val lead = offset - margin
+        val trail = offset + size + margin - containerSize
+        return when { lead < 0f && trail > 0f -> 0f; lead < 0f -> lead; trail > 0f -> trail; else -> 0f }
+    }
+}
+
+/** Marge de bord des rangées d'affiches : 10 % de 200 (10) + décalage et épaisseur de l'anneau agrandis (11), arrondi. */
+private val PosterEdgeMargin get() = 24.design
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+private fun PosterRowScroll(content: @Composable () -> Unit) {
+    val margin = with(androidx.compose.ui.platform.LocalDensity.current) { PosterEdgeMargin.toPx() }
+    val spec = remember(margin) { EdgeMarginSpec(margin) }
+    CompositionLocalProvider(LocalBringIntoViewSpec provides spec, content = content)
+}
+
 @Composable
 private fun HomeSection(
     id: HomeSectionId,
@@ -470,9 +495,14 @@ private fun NewEpisodesRow(cards: List<NewEpisodeCardUi>, onOpen: (PosterCardUi)
 @Composable
 private fun PosterRow(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
     val memory = rememberRowFocusMemory()
-    LazyRow(Modifier.homeRow().then(memory.tracker), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
-        items(cards, key = { it.key }, contentType = { "poster" }) { p ->
-            com.ultratv.tv.nativeapp.ui.catalog.PosterCell(p.item, Modifier.width(PosterWidth).then(rowMemory(memory, p.key)).testTag("home-poster-${p.key}"), kind = p.kind, imageWidth = PosterWidth) { onOpen(p) }
+    PosterRowScroll {
+        LazyRow(Modifier.homeRow().then(memory.tracker), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
+            items(cards, key = { it.key }, contentType = { "poster" }) { p ->
+                com.ultratv.tv.nativeapp.ui.catalog.PosterCell(
+                    p.item, Modifier.width(PosterWidth).then(rowMemory(memory, p.key)).testTag("home-poster-${p.key}"),
+                    kind = p.kind, imageWidth = PosterWidth, focusedScale = HomePosterScale,
+                ) { onOpen(p) }
+            }
         }
     }
 }
@@ -508,22 +538,45 @@ private fun SeeAllCard(label: String, memory: RowFocusMemory, onClick: () -> Uni
     }
 }
 
-/** « Top 10 aujourd'hui » : affiches avec leur rang (1 à 10) en pastille sur l'affiche. */
+/** Cellule du Top 10 : 336 de large (chiffre derrière, affiche de 200 du côté opposé). */
+private val Top10CellWidth get() = 336.design
+
+/** Agrandissement de l'affiche focalisée sur l'accueil (10 %). */
+private const val HomePosterScale = 1.10f
+
+/**
+ * « Top 10 aujourd'hui » : chaque affiche porte son rang en grand chiffre au contour, derrière elle, du côté du début de
+ * lecture (gauche en LTR, droite en RTL). Le chiffre est décoratif : jamais focalisable, ignoré des lecteurs d'écran.
+ */
 @Composable
 private fun Top10Row(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
     val memory = rememberRowFocusMemory()
-    LazyRow(Modifier.homeRow().then(memory.tracker), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
-        itemsIndexed(cards, key = { _, p -> p.key }, contentType = { _, _ -> "top10" }) { i, p ->
-            Box(Modifier.width(PosterWidth)) {
-                com.ultratv.tv.nativeapp.ui.catalog.PosterCell(p.item, Modifier.fillMaxWidth().then(rowMemory(memory, p.key)).testTag("home-poster-${p.key}"), kind = p.kind, imageWidth = PosterWidth) { onOpen(p) }
-                // Pastille de rang en bas à gauche de l'affiche (le titre et la méta occupent ~100 de plus sous l'affiche).
-                Text(
-                    "${i + 1}", color = Ux.OnAccent, fontFamily = Sora, fontWeight = FontWeight.ExtraBold, fontSize = 34.spx, maxLines = 1,
-                    modifier = Modifier.align(Alignment.BottomStart).padding(start = 10.design, bottom = 108.design)
-                        .clip(RoundedCornerShape(10.design)).background(Ux.Accent).padding(horizontal = 14.design, vertical = 2.design),
-                )
+    PosterRowScroll {
+        LazyRow(Modifier.homeRow().then(memory.tracker), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
+            itemsIndexed(cards, key = { _, p -> p.key }, contentType = { _, _ -> "top10" }) { i, p ->
+                Box(Modifier.width(Top10CellWidth)) {
+                    Top10Rank(i + 1, Modifier.align(Alignment.TopStart))
+                    com.ultratv.tv.nativeapp.ui.catalog.PosterCell(
+                        p.item, Modifier.width(PosterWidth).align(Alignment.TopEnd).then(rowMemory(memory, p.key)).testTag("home-poster-${p.key}"),
+                        kind = p.kind, imageWidth = PosterWidth, focusedScale = HomePosterScale,
+                    ) { onOpen(p) }
+                }
             }
         }
+    }
+}
+
+/** Grand chiffre au contour (couleur du thème) : dessiné une fois par cellule, aucune lecture d'état de focus. */
+@Composable
+private fun Top10Rank(rank: Int, modifier: Modifier) {
+    val stroke = with(androidx.compose.ui.platform.LocalDensity.current) { 4.design.toPx() }
+    Box(modifier.testTag("top10-rank-$rank")) {
+        Text(
+            "$rank", color = Ux.Text3, fontFamily = Sora, fontWeight = FontWeight.ExtraBold, fontSize = 300.spx, lineHeight = 300.spx,
+            maxLines = 1, softWrap = false,
+            style = androidx.compose.ui.text.TextStyle(drawStyle = androidx.compose.ui.graphics.drawscope.Stroke(width = stroke)),
+            modifier = Modifier.clearAndSetSemantics { },
+        )
     }
 }
 
@@ -591,10 +644,10 @@ private fun ShortcutTile(sc: ShortcutUi?, sport: SportTile?, modifier: Modifier,
 
 private val PosterWidth get() = 200.design
 /**
- * Marges des rangées d'affiches : l'affiche ciblée grandit de 15 % (≈ 23 px en haut pour 300 de haut) plus son contour (10) ;
- * sans cette marge, elle recouvrait le titre de la rangée (« Ma watchlist Trakt » barré par l'affiche).
+ * Marges des rangées d'affiches : l'affiche ciblée grandit de 10 % (15 en haut pour 300 de haut) plus son contour
+ * (décalé de 6, épaisseur 4, agrandi lui aussi : 11) ; sans cette marge, elle recouvrait le titre de la rangée.
  */
-private val PosterRowPadding get() = PaddingValues(start = RowBleed, end = 96.design, top = 34.design, bottom = 8.design)
+private val PosterRowPadding get() = PaddingValues(start = RowBleed, end = 96.design, top = 28.design, bottom = 8.design)
 
 @Composable
 private fun Section(title: String, content: @Composable () -> Unit) {

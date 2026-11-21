@@ -203,7 +203,7 @@ private fun CatalogHeroTvBody(hero: CatalogHero, featured: String, watch: String
 }
 
 /**
- * Affiche TV : 200 × 300 au repos ; focalisée, ×1,15 avec un contour de 4 px décalé de 4 px et son titre dessous
+ * Affiche TV : 200 × 300 au repos ; focalisée, ×1,15 (ou [focusedScale]) avec un contour de 4 px décalé de 4 px et son titre dessous
  * (titre · année · note). Un seul calque graphique ; l'état de focus n'est lu que dans la couche et le dessin.
  * Progression (si connue) : fine barre accent au bas de l'affiche.
  */
@@ -213,15 +213,18 @@ internal fun PosterCellTv(
     modifier: Modifier,
     kind: TmdbKind?,
     imageWidth: Dp?,
+    focusedScale: Float? = null,
     onClick: () -> Unit,
 ) {
     val anim = LocalAnimations.current
+    // null = agrandissement d'origine du catalogue (1,15) ; l'accueil passe sa propre valeur.
+    val scale = focusedScale ?: 1.15f
     var f by remember { mutableStateOf(false) }
     val outline = Ux.Cta
     Column(modifier.onFocusChanged { f = it.hasFocus }, verticalArrangement = Arrangement.spacedBy(10.design)) {
         Box(
             Modifier.fillMaxWidth().aspectRatio(2f / 3f)
-                .graphicsLayer { val s = if (f) anim.focusScale(1.15f) else 1f; scaleX = s; scaleY = s }
+                .graphicsLayer { val s = if (f) anim.focusScale(scale) else 1f; scaleX = s; scaleY = s }
                 .drawBehind {
                     if (f) {
                         val off = 6.design.toPx()

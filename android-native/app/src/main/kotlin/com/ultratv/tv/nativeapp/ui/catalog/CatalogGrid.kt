@@ -776,11 +776,12 @@ internal fun PosterCell(
     modifier: Modifier,
     kind: com.ultratv.tv.nativeapp.data.tmdb.TmdbKind? = com.ultratv.tv.nativeapp.ui.design.LocalPosterKind.current,
     imageWidth: androidx.compose.ui.unit.Dp? = null,
+    focusedScale: Float? = null,
     onClick: () -> Unit,
 ) {
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     // TV : affiche v2 (contour + titre au focus) ; tactile : cellule d'origine.
-    if (!touch) { PosterCellTv(item, modifier, kind, imageWidth, onClick); return }
+    if (!touch) { PosterCellTv(item, modifier, kind, imageWidth, focusedScale, onClick); return }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(if (touch) 6.dp else 12.design)) {
         FocusSurface(onClick = onClick, shape = RoundedCornerShape(18.design), bg = Ux.Surface, ringWidth = 5.design, focusedBg = Color0xE4E4E7, modifier = Modifier.fillMaxWidth().aspectRatio23()) {
             Box(Modifier.fillMaxSize()) {
