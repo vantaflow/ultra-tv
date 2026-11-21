@@ -90,4 +90,28 @@ class HomeLayoutTest {
     @Test fun block_chaqueRangee_appartientAUnSeulBloc() {
         for (s in HomeSectionId.entries) assertEquals(1, HomeBlock.entries.count { s in it.sections })
     }
+
+    @Test fun tv_jamaisPersonnalise_raccourcisMasques() {
+        val l = HomeLayout.parse("", "", tv = true)
+        assertFalse(l.isVisible(HomeBlock.SHORTCUTS))
+        assertFalse(HomeSectionId.SHORTCUTS in l.apply(HomeSectionId.entries))
+        assertEquals(HomeSectionId.CHANNELS, l.apply(HomeSectionId.entries).first())
+    }
+
+    @Test fun telephone_jamaisPersonnalise_inchange() =
+        assertEquals(HomeLayout.DEFAULT, HomeLayout.parse("", "", tv = false))
+
+    @Test fun tv_preferenceExistante_jamaisReinterpretee() =
+        assertTrue(HomeLayout.parse("", "TOP10", tv = true).isVisible(HomeBlock.SHORTCUTS))
+
+    @Test fun tv_raccourcisReaffiches_survitAuRedemarrage() {
+        val shown = HomeLayout.defaultFor(true).toggle(HomeBlock.SHORTCUTS)
+        val back = HomeLayout.parse(shown.orderCsv(tv = true), shown.hiddenCsv(), tv = true)
+        assertTrue(back.isVisible(HomeBlock.SHORTCUTS))
+    }
+
+    @Test fun tv_defaut_enregistreVide() {
+        val d = HomeLayout.defaultFor(true)
+        assertEquals("", d.orderCsv(tv = true)); assertEquals("SHORTCUTS", d.hiddenCsv())
+    }
 }

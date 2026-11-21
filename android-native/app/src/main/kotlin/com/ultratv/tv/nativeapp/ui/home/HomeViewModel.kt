@@ -96,7 +96,11 @@ class HomeViewModel @Inject constructor(
     private val tvMaze: com.ultratv.tv.nativeapp.data.extmeta.TvMazeRepository,
     private val profileRepo: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
     private val categoryDao: com.ultratv.tv.nativeapp.data.db.CategoryDao,
+    @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
 ) : ViewModel() {
+
+    /** Appareil TV : le défaut de disposition de l'accueil en dépend (raccourcis masqués). */
+    private val tv = com.ultratv.tv.nativeapp.ui.common.isTelevision(context)
 
     /** Garde les éléments dont la catégorie n'est pas masquée pour le PROFIL COURANT (catégories par profil). */
     private fun <T> kotlinx.coroutines.flow.Flow<List<T>>.visibleFor(pid: Long, kind: String, cat: (T) -> String?): kotlinx.coroutines.flow.Flow<List<T>> =
@@ -378,7 +382,7 @@ class HomeViewModel @Inject constructor(
      * précédente n'est pas réémise, donc l'écran ne recompose rien quand Room relit des données identiques.
      */
     /** Disposition de l'accueil (ordre / rangées masquées) : seule une modification du réglage réémet. */
-    private val homeLayout = prefsStore.flow.map { HomeLayout.parse(it.homeOrder, it.homeHidden) }.distinctUntilChanged()
+    private val homeLayout = prefsStore.flow.map { HomeLayout.parse(it.homeOrder, it.homeHidden, tv) }.distinctUntilChanged()
 
     /**
      * « Ajoutés récemment · <serveur> » : par serveur visible, 10 films + 10 séries récents (requêtes LIMIT sur la base locale,

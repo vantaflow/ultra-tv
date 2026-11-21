@@ -100,7 +100,7 @@ private const val DOWN = "M6 9l6 6 6-6"
  * Chaque modification est enregistrée tout de suite ; le focus suit la rangée déplacée.
  */
 @Composable
-internal fun HomeRowsDialog(initial: HomeLayout, onSave: (HomeLayout) -> Unit, onDismiss: () -> Unit) {
+internal fun HomeRowsDialog(initial: HomeLayout, tv: Boolean, onSave: (HomeLayout) -> Unit, onDismiss: () -> Unit) {
     val D = LocalDs.current
     var layout by remember { mutableStateOf(initial) }
     val focus = remember { HomeBlock.entries.associateWith { Triple(FocusRequester(), FocusRequester(), FocusRequester()) } }
@@ -149,7 +149,7 @@ internal fun HomeRowsDialog(initial: HomeLayout, onSave: (HomeLayout) -> Unit, o
             }
             Row(Modifier.padding(top = 8.design), horizontalArrangement = Arrangement.spacedBy(16.design)) {
                 PillButton(D.doneLabel, onDismiss, heightPx = 64, hPadPx = 34, fontPx = 22, weight = FontWeight.Bold, bg = Ux.Cta)
-                PillButton(D.resetDefault, { update(HomeLayout.DEFAULT) }, heightPx = 64, hPadPx = 30, fontPx = 22)
+                PillButton(D.resetDefault, { update(HomeLayout.defaultFor(tv)) }, heightPx = 64, hPadPx = 30, fontPx = 22)
             }
         }
     }

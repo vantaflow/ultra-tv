@@ -67,7 +67,7 @@ class AppViewModel @Inject constructor(
     fun setTextSize(key: String) = viewModelScope.launch { store.setTextSize(key) }
     fun setSimpleSize(key: String) = viewModelScope.launch { store.setSimpleSize(key) }
     fun setAnimations(key: String) = viewModelScope.launch { store.setAnimations(key) }
-    fun setHomeLayout(layout: com.ultratv.tv.nativeapp.ui.home.HomeLayout) = viewModelScope.launch { store.setHomeLayout(layout.orderCsv(), layout.hiddenCsv()) }
+    fun setHomeLayout(layout: com.ultratv.tv.nativeapp.ui.home.HomeLayout, tv: Boolean) = viewModelScope.launch { store.setHomeLayout(layout.orderCsv(tv), layout.hiddenCsv()) }
     fun setStartScreen(key: String) = viewModelScope.launch { store.setStartScreen(key) }
     fun setLastScreen(route: String) = viewModelScope.launch { if (prefs.value.lastScreen != route) store.setLastScreen(route) }
     fun setSimpleMode(v: Boolean) = viewModelScope.launch { store.setSimpleMode(v) }

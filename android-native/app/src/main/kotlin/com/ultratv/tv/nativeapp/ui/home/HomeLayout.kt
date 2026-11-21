@@ -58,17 +58,23 @@ data class HomeLayout(val order: List<HomeBlock>, val hidden: Set<HomeBlock>) {
         return copy(order = m)
     }
 
-    fun orderCsv(): String = if (order == HomeBlock.entries) "" else order.joinToString(",") { it.name }
+    /** Vide seulement pour le défaut de l'appareil ([tv]) : « jamais personnalisé » reste distinct d'un choix explicite. */
+    fun orderCsv(tv: Boolean = false): String = if (this == defaultFor(tv)) "" else order.joinToString(",") { it.name }
     fun hiddenCsv(): String = hidden.sortedBy { it.ordinal }.joinToString(",") { it.name }
 
     companion object {
         val DEFAULT = HomeLayout(HomeBlock.entries.toList(), emptySet())
 
+        /** Disposition d'un accueil jamais personnalisé : sur TV les raccourcis sont masqués (toujours réglables), sinon [DEFAULT]. */
+        fun defaultFor(tv: Boolean): HomeLayout = if (tv) DEFAULT.copy(hidden = setOf(HomeBlock.SHORTCUTS)) else DEFAULT
+
         private fun names(csv: String): List<HomeBlock> =
             csv.split(',').mapNotNull { n -> n.trim().takeIf { it.isNotEmpty() }?.let { t -> HomeBlock.entries.firstOrNull { it.name == t } } }.distinct()
 
         /** Lecture tolérante + fusion avec les blocs connus (voir la classe). */
-        fun parse(orderCsv: String?, hiddenCsv: String?): HomeLayout {
+        fun parse(orderCsv: String?, hiddenCsv: String?, tv: Boolean = false): HomeLayout {
+            // Aucune préférence enregistrée : défaut de l'appareil. Une préférence non vide n'est jamais réinterprétée.
+            if (orderCsv.isNullOrBlank() && hiddenCsv.isNullOrBlank()) return defaultFor(tv)
             val saved = names(orderCsv.orEmpty())
             val order = saved.toMutableList()
             HomeBlock.entries.forEachIndexed { i, b ->

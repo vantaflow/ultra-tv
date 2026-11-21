@@ -763,12 +763,13 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         }
     }
     // Personnalisation : accent, taille du texte, rangées de l'accueil.
+    val tv = remember { com.ultratv.tv.nativeapp.ui.common.isTelevision(ctx) }
+    val layout = remember(p.homeOrder, p.homeHidden) { com.ultratv.tv.nativeapp.ui.home.HomeLayout.parse(p.homeOrder, p.homeHidden, tv) }
     GroupLabel(D.personalization)
     SettingsCard {
         PrefRow(D.accentColor, D.accentName(AccentChoice.parse(p.accent))) { choice = "accent" }
         PrefRow(D.textSizeLabel, D.textSizeName(TextSize.parse(p.textSize))) { choice = "text" }
         PrefRow(D.animations, D.animationName(com.ultratv.tv.nativeapp.ui.design.AnimationLevel.parse(p.animations))) { choice = "anim" }
-        val layout = remember(p.homeOrder, p.homeHidden) { com.ultratv.tv.nativeapp.ui.home.HomeLayout.parse(p.homeOrder, p.homeHidden) }
         PrefRow(D.homeRows, D.homeRowsSummary(layout.order.count { layout.isVisible(it) }, layout.order.size)) { choice = "home" }
     }
     when (choice) {
@@ -778,7 +779,7 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         "accent" -> AccentDialog(AccentChoice.parse(p.accent), { app.setAccent(it.key); choice = "" }, { choice = "" })
         "anim" -> ChoiceDialog(D.animations, com.ultratv.tv.nativeapp.ui.design.AnimationLevel.entries.map { it to D.animationName(it) }, com.ultratv.tv.nativeapp.ui.design.AnimationLevel.parse(p.animations), { app.setAnimations(it.key); choice = "" }, { choice = "" })
         "text" -> ChoiceDialog(D.textSizeLabel, TextSize.entries.map { it to D.textSizeName(it) }, TextSize.parse(p.textSize), { app.setTextSize(it.key); choice = "" }, { choice = "" })
-        "home" -> HomeRowsDialog(com.ultratv.tv.nativeapp.ui.home.HomeLayout.parse(p.homeOrder, p.homeHidden), onSave = { app.setHomeLayout(it) }, onDismiss = { choice = "" })
+        "home" -> HomeRowsDialog(layout, tv, onSave = { app.setHomeLayout(it, tv) }, onDismiss = { choice = "" })
         "shortcuts" -> ShortcutsDialog(
             com.ultratv.tv.nativeapp.ui.mobile.bottomTabRoutes(p.bottomTabs, p.sportSection), p.sportSection,
             onSave = { app.setBottomTabs(it) }, onDismiss = { choice = "" },
