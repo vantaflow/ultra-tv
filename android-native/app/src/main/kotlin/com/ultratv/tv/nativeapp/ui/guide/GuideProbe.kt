@@ -20,11 +20,13 @@ internal class GuideProbe {
     var preview = 0
     /** Recompositions de l'écran entier ([GuideTvContent]). */
     var screen = 0
+    /** Mesures des cases (mise en page de leur position et largeur) : ce qu'un décalage de la fenêtre coûte encore sans recomposition. */
+    var cellMeasures = 0
 
-    fun clear() { rows.clear(); cells.clear(); header = 0; buttons = 0; preview = 0; screen = 0 }
+    fun clear() { rows.clear(); cells.clear(); header = 0; buttons = 0; preview = 0; screen = 0; cellMeasures = 0 }
     val rowTotal get() = rows.values.sum()
     val cellTotal get() = cells.values.sum()
-    override fun toString() = "écran=$screen lignes=$rowTotal(${rows.size}) cases=$cellTotal(${cells.size}) en-tête=$header boutons=$buttons aperçu=$preview"
+    override fun toString() = "écran=$screen lignes=$rowTotal(${rows.size}) cases=$cellTotal(${cells.size}) en-tête=$header boutons=$buttons aperçu=$preview mesures=$cellMeasures"
 }
 
 // Les points de mesure sont `inline` : sinon une recomposition du parent saute l'appel (mêmes paramètres) et ne compterait rien.

@@ -1,6 +1,7 @@
 package com.ultratv.tv.nativeapp.ui.guide
 
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.node.invalidateMeasurement
 import com.ultratv.tv.nativeapp.data.db.observeCategoryCounts
 import com.ultratv.tv.nativeapp.ui.design.designT
 import androidx.compose.foundation.background
@@ -818,10 +819,58 @@ internal class GuideFocusPlan {
     }
 }
 
+/**
+ * Place une case d'après les heures de son programme et la fenêtre [window] (lue À LA MISE EN PAGE) : position et largeur
+ * comme l'ancien `offset(gridW × début).width(gridW × durée − 8)`, mais un décalage de la fenêtre ne fait que remesurer et
+ * replacer la case, sans la recomposer. Positions miroitées en arabe (`placeRelative`).
+ */
+private data class GuideSlotElement(val startMs: Long, val endMs: Long, val window: androidx.compose.runtime.State<Long>, val gridW: Dp, val probe: GuideProbe?) :
+    androidx.compose.ui.node.ModifierNodeElement<GuideSlotNode>() {
+    override fun create() = GuideSlotNode(startMs, endMs, window, gridW, probe)
+    override fun update(node: GuideSlotNode) {
+        node.startMs = startMs; node.endMs = endMs; node.window = window; node.gridW = gridW; node.probe = probe
+        node.invalidateMeasurement()
+    }
+}
+
+private class GuideSlotNode(var startMs: Long, var endMs: Long, var window: androidx.compose.runtime.State<Long>, var gridW: Dp, var probe: GuideProbe?) :
+    Modifier.Node(), androidx.compose.ui.node.LayoutModifierNode {
+    override fun androidx.compose.ui.layout.MeasureScope.measure(measurable: androidx.compose.ui.layout.Measurable, constraints: androidx.compose.ui.unit.Constraints): androidx.compose.ui.layout.MeasureResult {
+        probe?.let { it.cellMeasures++ }
+        val slot = slotFor(startMs, endMs, window.value)
+        val w = if (slot == null) 0 else (gridW * slot.widthFrac - 8.design).coerceAtLeast(24.design).roundToPx()
+        val x = if (slot == null) 0 else (gridW * slot.startFrac).roundToPx()
+        val h = constraints.maxHeight
+        val pl = measurable.measure(androidx.compose.ui.unit.Constraints.fixed(w, h))
+        return layout(pl.width, pl.height) { if (slot != null) pl.placeRelative(x, 0) }
+    }
+}
+
+/**
+ * Textes d'une case (titre, puis badge et horaire) posés d'après sa largeur réelle : rien sous 45 dp (90 px de maquette), le
+ * titre seul sous 100 dp (200 px), tout au-delà ; marges et espacement de l'ancienne colonne (10 ou 18, 12, 4), centrés.
+ */
+@Composable
+private fun GuideCellTexts(content: @Composable () -> Unit) {
+    androidx.compose.ui.layout.Layout(content, Modifier.fillMaxSize()) { ms, c ->
+        val W = c.maxWidth; val H = c.maxHeight
+        if (W < 45.dp.roundToPx() || ms.isEmpty()) return@Layout layout(W, H) {}
+        val all = W >= 100.dp.roundToPx()
+        val padH = (if (all) 18 else 10).design.roundToPx(); val padV = 12.design.roundToPx(); val gap = 4.design.roundToPx()
+        val inner = androidx.compose.ui.unit.Constraints(0, maxOf(0, W - 2 * padH), 0, maxOf(0, H - 2 * padV))
+        val pls = (if (all) ms else ms.take(1)).map { it.measure(inner) }
+        val total = pls.sumOf { it.height } + gap * (pls.size - 1)
+        layout(W, H) {
+            var y = padV + (H - 2 * padV - total) / 2
+            for (pl in pls) { pl.placeRelative(padH, y); y += pl.height + gap }
+        }
+    }
+}
+
 /** Ligne de 84 px : colonne chaîne (logo fixe + nom) puis programmes positionnés par l'heure, 8 px d'écart. */
 @Composable
 private fun GuideRow(
-    c: ChannelEntity, progs: List<EpgEntity>, windowStart: Long, gridW: Dp, nameColPx: Int, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, clock: androidx.compose.runtime.State<Long>,
+    c: ChannelEntity, progs: List<EpgEntity>, windowStart: Long, window: androidx.compose.runtime.State<Long>, gridW: Dp, nameColPx: Int, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, clock: androidx.compose.runtime.State<Long>,
     plan: GuideFocusPlan, firstModifier: Modifier, onSelect: (EpgEntity) -> Unit, onRemind: (EpgEntity) -> Unit, onFocusProg: (EpgEntity) -> Unit,
     onFocusRefresh: (EpgEntity) -> Unit = {},
     nowProvider: () -> Long = { System.currentTimeMillis() },
@@ -848,64 +897,83 @@ private fun GuideRow(
             val q = remember(c.id) { com.ultratv.tv.nativeapp.data.repo.TitleCleaner.clean(c.name, live = true).quality }
             if (q != null) { Spacer(Modifier.width(8.design)); Text(q, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(6.design)).background(Ux.Surface2).padding(horizontal = 7.design, vertical = 2.design)) }
         }
-        // Cases calculées une fois par (programmes, fenêtre), pas à chaque recomposition de la ligne.
+        // Cases présentes (programmes qui touchent la fenêtre), calculées une fois par (programmes, fenêtre). Leur POSITION et leur
+        // LARGEUR ne sont pas décidées ici mais à la mise en page ([guideSlot]) : un décalage de la fenêtre ne recompose aucune
+        // case qui reste affichée, seules celles qui entrent sont composées.
         val slots = remember(progs, windowStart) { progs.map { slotFor(it.startMs, it.endMs, windowStart) } }
+        val probe = LocalGuideProbe.current
         // La liste peut dépasser la fenêtre (cache par plage) : la « première » case est la première AFFICHÉE.
         val firstShown = remember(slots) { slots.indexOfFirst { it != null } }
         // Cible de focus posée avant un changement de la grille (lue seulement quand elle vise cette chaîne).
         val planIdx = plan.targetIndex(c.id, progs, slots, firstShown)
         Box(Modifier.width(gridW).fillMaxHeight()) {
             progs.forEachIndexed { idx, p ->
-                val slot = slots[idx] ?: return@forEachIndexed
-                val isNow = p.startMs <= nowMs && p.endMs > nowMs
-                val w = (gridW * slot.widthFrac - 8.design).coerceAtLeast(24.design)
+                if (slots[idx] == null) return@forEachIndexed
                 // Une case par programme, clé = son DÉBUT (unique dans une ligne : index unique (chaîne, début) en base, et
                 // [normalizeRow] rend des débuts strictement croissants) : une liste qui change garde le nœud, donc le focus, des
                 // programmes qui restent, même quand un réimport du guide leur donne de nouveaux identifiants.
                 key(p.startMs) {
-                // Cible de focus posée avant un changement de la grille : prise par la case qui la compose, dans la même image.
-                val taker = if (idx == planIdx) remember { androidx.compose.ui.focus.FocusRequester() } else null
-                // Après l'image qui a posé la case : le focus perdu par les cases retirées est déjà rendu ailleurs, la prise vient APRÈS.
-                if (taker != null) LaunchedEffect(taker) {
-                    androidx.compose.runtime.withFrameNanos { }
-                    if (plan.targetIndex(c.id, progs, slots, firstShown) == idx) { plan.clear(); plan.take(taker) }
-                }
-                FocusSurface(
-                    onClick = { onSelect(p) },
-                    // Lu au moment de l'appui long : la lambda ne capture pas l'heure (elle changerait à chaque minute).
-                    onLongClick = { if (p.startMs > nowProvider()) onRemind(p) },
-                    shape = RoundedCornerShape(14.design),
-                    bg = if (isNow) Ux.NowTint else Ux.Card,
-                    ringWidth = 0.dp, focusedScale = 1f,
-                    // Sélection écrite PENDANT le passage du focus (même image que les cases) : un LaunchedEffect la décalait d'une image.
-                    modifier = Modifier.onFocusChanged { if (it.isFocused) onFocusProg(p) }
-                        .offset(x = gridW * slot.startFrac).width(w).fillMaxHeight()
-                        .then(if (taker != null) Modifier.focusRequester(taker) else Modifier)
-                        .then(if (idx == firstShown) firstModifier else Modifier),
-                ) { f ->
-                    ProbeCell(p.id)
-                    // Case focalisée dont le programme a été relu (réimport : nouvel identifiant, description corrigée) : la sélection
-                    // suit, sans déplacer le focus (l'en-tête et les boutons agissent sur le programme à jour).
-                    if (f) androidx.compose.runtime.SideEffect { onFocusRefresh(p) }
-                    val wPx = (w.value * 2).toInt()      // largeur en px de maquette
-                    // Sous ~90 px : fond seul (le titre apparaît dans le panneau du bas). Entre 90 et 200 px : titre seul.
-                    if (wPx >= 90) Column(Modifier.fillMaxSize().clip(RoundedCornerShape(14.design)).padding(horizontal = if (wPx < 200) 10.design else 18.design, vertical = 12.design), verticalArrangement = Arrangement.spacedBy(4.design, Alignment.CenterVertically)) {
-                        // softWrap = false : un titre trop long sur une ligne coupée, sans quoi la cellule repoussait l'horaire hors du cadre.
-                        Text(p.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, maxLines = 1, softWrap = false, overflow = TextOverflow.Clip)
-                        // Programme passé encore rejouable : badge « Replay » (la lecture passe par « Revoir »).
-                        if (wPx >= 200 && p.endMs <= nowMs && ReplayUrls.availability(c, p, nowMs) == ReplayAvailability.AVAILABLE)
-                            Text(D.replayTag, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(6.design)).background(if (f) Ux.OnFocus2.copy(alpha = 0.25f) else Ux.Surface2).padding(horizontal = 8.design, vertical = 2.design))
-                        if (wPx >= 200) Text("${EpgClock.range(p.startMs, p.endMs)}", color = if (f) Ux.OnFocus2 else if (isNow) Ux.AccentInk else Ux.Text3, fontFamily = Manrope, fontSize = 15.spx, maxLines = 1, overflow = TextOverflow.Clip)
-                    }
-                    // Progression dans le programme en cours : fine barre en pied de case, dessinée depuis l'horloge partagée.
-                    if (isNow) com.ultratv.tv.nativeapp.ui.common.EpgProgressBar(p.startMs, p.endMs, clock, Modifier.align(Alignment.BottomStart).padding(horizontal = 12.design, vertical = 8.design), heightDp = 2.5f, track = if (f) Color(0x33000000) else Ux.Surface)
-                }
+                    val isNow = p.startMs <= nowMs && p.endMs > nowMs
+                    // Programme passé encore rejouable : badge « Replay » (la lecture passe par « Revoir »), montré sur les cases larges.
+                    val replay = p.endMs <= nowMs && ReplayUrls.availability(c, p, nowMs) == ReplayAvailability.AVAILABLE
+                    // Fonction à part, aux paramètres stables : une ligne recomposée (case qui entre au bord de la fenêtre, arrivée de
+                    // programmes) saute les cases qui n'ont pas changé.
+                    GuideCell(
+                        c.id, p, isNow, replay, isFirst = idx == firstShown, isTarget = idx == planIdx, plan, window, gridW, probe, D, clock,
+                        firstModifier, onSelect, onRemind, onFocusProg, onFocusRefresh, nowProvider,
+                    )
                 }
             }
         }
     }
 }
 
+/** Case d'un programme dans une ligne du Guide TV (voir [GuideRow]). */
+@Composable
+private fun GuideCell(
+    channelId: Long, p: EpgEntity, isNow: Boolean, replay: Boolean, isFirst: Boolean, isTarget: Boolean, plan: GuideFocusPlan,
+    window: androidx.compose.runtime.State<Long>, gridW: Dp, probe: GuideProbe?, D: com.ultratv.tv.nativeapp.i18n.DesignStrings,
+    clock: androidx.compose.runtime.State<Long>, firstModifier: Modifier,
+    onSelect: (EpgEntity) -> Unit, onRemind: (EpgEntity) -> Unit, onFocusProg: (EpgEntity) -> Unit, onFocusRefresh: (EpgEntity) -> Unit,
+    nowProvider: () -> Long,
+) {
+    // Cible de focus posée avant un changement de la grille : prise par la case qui la compose, une image plus tard (le focus
+    // perdu par les cases retirées est alors déjà rendu ailleurs), seulement si elle est toujours visée.
+    val taker = if (isTarget) remember { androidx.compose.ui.focus.FocusRequester() } else null
+    val stillTarget = androidx.compose.runtime.rememberUpdatedState(isTarget)
+    if (taker != null) LaunchedEffect(taker) {
+        androidx.compose.runtime.withFrameNanos { }
+        if (stillTarget.value && plan.channelId == channelId) { plan.clear(); plan.take(taker) }
+    }
+    FocusSurface(
+        onClick = { onSelect(p) },
+        // Lu au moment de l'appui long : la lambda ne capture pas l'heure (elle changerait à chaque minute).
+        onLongClick = { if (p.startMs > nowProvider()) onRemind(p) },
+        shape = RoundedCornerShape(14.design),
+        bg = if (isNow) Ux.NowTint else Ux.Card,
+        ringWidth = 0.dp, focusedScale = 1f,
+        // Sélection écrite PENDANT le passage du focus (même image que les cases) : un LaunchedEffect la décalait d'une image.
+        modifier = Modifier.onFocusChanged { if (it.isFocused) onFocusProg(p) }
+            .then(GuideSlotElement(p.startMs, p.endMs, window, gridW, probe))
+            .then(if (taker != null) Modifier.focusRequester(taker) else Modifier)
+            .then(if (isFirst) firstModifier else Modifier),
+    ) { f ->
+        ProbeCell(p.id)
+        // Case focalisée dont le programme a été relu (réimport : nouvel identifiant, description corrigée) : la sélection
+        // suit, sans déplacer le focus (l'en-tête et les boutons agissent sur le programme à jour).
+        if (f) androidx.compose.runtime.SideEffect { onFocusRefresh(p) }
+        // Textes posés selon la largeur RÉELLE de la case, à la mise en page (sous ~90 px de maquette : fond seul ; entre
+        // 90 et 200 px : titre seul) : la largeur qui change au bord de la fenêtre ne recompose pas la case.
+        GuideCellTexts {
+            // softWrap = false : un titre trop long sur une ligne coupée, sans quoi la cellule repoussait l'horaire hors du cadre.
+            Text(p.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, maxLines = 1, softWrap = false, overflow = TextOverflow.Clip)
+            if (replay) Text(D.replayTag, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(6.design)).background(if (f) Ux.OnFocus2.copy(alpha = 0.25f) else Ux.Surface2).padding(horizontal = 8.design, vertical = 2.design))
+            Text(EpgClock.range(p.startMs, p.endMs), color = if (f) Ux.OnFocus2 else if (isNow) Ux.AccentInk else Ux.Text3, fontFamily = Manrope, fontSize = 15.spx, maxLines = 1, overflow = TextOverflow.Clip)
+        }
+        // Progression dans le programme en cours : fine barre en pied de case, dessinée depuis l'horloge partagée.
+        if (isNow) com.ultratv.tv.nativeapp.ui.common.EpgProgressBar(p.startMs, p.endMs, clock, Modifier.align(Alignment.BottomStart).padding(horizontal = 12.design, vertical = 8.design), heightDp = 2.5f, track = if (f) Color(0x33000000) else Ux.Surface)
+    }
+}
 
 /**
  * Guide TV (maquette Guide.dc.html / GuideClair.dc.html), sans ViewModel : aperçu + programme + actions, jours et catégories
@@ -944,6 +1012,8 @@ internal fun GuideTvContent(
     val lastShown = remember { longArrayOf(windowStart) }
     val shownWindow = if (lastShown[0] == windowStart || readyFor(windowStart)) windowStart else lastShown[0]
     androidx.compose.runtime.SideEffect { lastShown[0] = shownWindow }
+    // Même fenêtre en État : lue par les lignes (cases présentes) et par la mise en page des cases (position, largeur).
+    val shownState = androidx.compose.runtime.rememberUpdatedState(shownWindow)
     val focus = LocalFocusManager.current
     var inGrid by remember { mutableStateOf(false) }
     // Programme focalisé : lu SEULEMENT par le panneau du haut et l'aperçu — lu ici, chaque déplacement recomposait
@@ -1157,7 +1227,7 @@ internal fun GuideTvContent(
                             val progs by remember(c.id, progsFor) { androidx.compose.runtime.derivedStateOf { progsFor(c.id) } }
                             val entry = remember(c.id) { rowEntry.getOrPut(c.id) { FocusRequester() } }
                             GuideRow(
-                                c, progs, shownWindow, gridW, nameColPx, D, clock, plan,
+                                c, progs, shownWindow, shownState, gridW, nameColPx, D, clock, plan,
                                 firstModifier = Modifier.focusRequester(entry),
                                 onSelect = { p -> onSelect(c, p) }, onRemind = { p -> onRemind(c, p) }, onFocusProg = { p -> focusedProg.value = c to p },
                                 onFocusRefresh = { p -> focusedProg.value?.let { (fc, fp) -> if (fc.id == c.id && fp.startMs == p.startMs && fp != p) focusedProg.value = c to p } },
