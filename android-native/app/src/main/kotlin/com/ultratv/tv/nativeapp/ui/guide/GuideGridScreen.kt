@@ -881,7 +881,7 @@ private fun GuideTouch(
 }
 
 @Composable
-private fun TouchGuideRow(c: ChannelEntity, progs: List<EpgEntity>, windowStart: Long, scrollPx: Int, chanW: androidx.compose.ui.unit.Dp, onSelect: (EpgEntity) -> Unit, onRemind: (EpgEntity) -> Unit) {
+internal fun TouchGuideRow(c: ChannelEntity, progs: List<EpgEntity>, windowStart: Long, scrollPx: Int, chanW: androidx.compose.ui.unit.Dp, onSelect: (EpgEntity) -> Unit, onRemind: (EpgEntity) -> Unit) {
     val nowMs = System.currentTimeMillis()
     val gridW = TOUCH_SLOT_W * 6
     Box(Modifier.width(chanW + gridW).height(TOUCH_ROW_H)) {
@@ -895,11 +895,12 @@ private fun TouchGuideRow(c: ChannelEntity, progs: List<EpgEntity>, windowStart:
                     bg = if (isNow) Ux.Surface2 else Ux.SurfaceDeep,
                     modifier = Modifier.offset(x = gridW * slot.startFrac).width(w).fillMaxHeight().semantics { contentDescription = "${p.title}, ${EpgClock.hm(p.startMs)} – ${EpgClock.hm(p.endMs)}" },
                 ) { _ ->
-                    if (w >= 56.dp) Column(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)) {
+                    // Case de hauteur fixe (64 dp) : sans retour à la ligne automatique, un titre long ne chasse plus l'horaire.
+                    if (w >= 56.dp) com.ultratv.tv.nativeapp.ui.design.NoTextWrap { Column(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)) {
                         Text(p.title, color = if (isNow) Ux.Text else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         // En 12 h les horaires sont plus longs (« 4:30 PM – 5:00 PM ») : seuil relevé pour ne jamais déborder de la case.
                         if (w >= (if (EpgClock.use24()) 110.dp else 142.dp)) Text("${EpgClock.hm(p.startMs)} – ${EpgClock.hm(p.endMs)}", color = Ux.Text3, fontFamily = Manrope, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Clip)
-                    }
+                    } }
                 }
             }
         }
