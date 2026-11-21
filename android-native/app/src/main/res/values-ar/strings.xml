@@ -1246,14 +1246,14 @@
     <string name="str_onboarding_two_paths">طريقتان لإضافة موفّر:</string>
     <string name="str_onboarding_path_manual">1. افتح الإعدادات ← +Xtream / +M3U / +M3U ملف واملأ النموذج.</string>
     <string name="str_onboarding_path_cloud">2. استضف Cloudflare Worker من cloudflare-config/، ألصق عنوان MAC هذا في لوحة التحكم، ثم الإعدادات ← تعيين رابط الـ worker ← مزامنة من السحابة.</string>
-    <string name="str_parental_pin_enabled">PIN الرقابة الأبوية: مفعّل (٤ أرقام)</string>
+    <string name="str_parental_pin_enabled">PIN الرقابة الأبوية: مفعّل (4 أرقام)</string>
     <string name="str_parental_pin_not_set">PIN الرقابة الأبوية: غير محدد</string>
     <string name="str_parental_set_pin">تعيين PIN</string>
     <string name="str_parental_change_pin">تغيير PIN</string>
     <string name="str_parental_clear_pin">مسح</string>
     <string name="str_parental_manage_locked">إدارة القنوات المقفلة…</string>
     <string name="str_parental_set_title">تعيين PIN الرقابة الأبوية</string>
-    <string name="str_parental_pin_hint">PIN (٤ أرقام)</string>
+    <string name="str_parental_pin_hint">PIN (4 أرقام)</string>
     <string name="str_parental_confirm_hint">تأكيد PIN</string>
     <string name="str_parental_locked_title">🔒 محتوى مقفل</string>
     <string name="str_parental_enter_pin">أدخل PIN الرقابة الأبوية للمتابعة.</string>

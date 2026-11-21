@@ -56,7 +56,10 @@ object I18n {
         val resolved = resolve(lang)
         return resourcesCache.getOrPut(resolved.code) {
             val cfg = android.content.res.Configuration(ctx.resources.configuration)
-            cfg.setLocale(Locale.forLanguageTag(resolved.code))
+            // Chiffres LATINS (nu-latn) aussi pour les textes à nombre (« %1\$d ») : sans cela, l'arabe mêlait des chiffres
+            // arabo-indiens (5 textes formatés par les ressources) aux chiffres latins de tout le reste de l'interface, et le
+            // résultat changeait selon la version d'Android ou de Java. L'extension ne change pas le dossier `values-xx` choisi.
+            cfg.setLocale(Locale.Builder().setLocale(Locale.forLanguageTag(resolved.code)).setUnicodeLocaleKeyword("nu", "latn").build())
             ctx.createConfigurationContext(cfg).resources
         }
     }
