@@ -38,7 +38,7 @@ import { ratingsProxy } from "./ratings.js";
 import { fanartProxy, tvmazeProxy, sportsTeamProxy } from "./extmeta.js";
 import { sportsDayProxy, sportsLeagueProxy, sportsMatchProxy } from "./sportsdata.js";
 import { subtitlesSearch, subtitlesDownload, osLogin } from "./subtitles.js";
-import { sanitizeText } from "./sanitize.js";
+import { sanitizeText, sanitizeLog } from "./sanitize.js";
 import { recordEvent, recordEvents, anonTouch as anonTouchD1, purgeTelemetry, touchDeviceActivity, deviceActivity, withActivity, platformOf, modelOf, ANON_PLATFORMS } from "./telemetry.js";
 import { anonQuery, eventsQuery, parseListParams, paginate, sortRows, filterAccounts, filterDevices, flattenDevices, countBy, ANON_SORTS, EVENT_SORTS, ACCOUNT_SORTS, DEVICE_SORTS, DAY_MS } from "./admin.js";
 import { queryAnon, anonFacets, anonOverview, countEvents, queryEvents, eventFacets } from "./telemetryq.js";
@@ -212,7 +212,7 @@ export default {
       if (q > 30) console.warn("requêtes Turso nombreuses", q, new URL(req.url).pathname);
       return res;
     } catch (err) {
-      console.error("erreur:", err instanceof ConfigError ? `configuration: ${err.message}` : err?.message);
+      console.error("erreur:", err instanceof ConfigError ? `configuration: ${err.message}` : sanitizeLog(String(err?.message ?? ""), 500));
       return withSecurityHeaders(json({ error: err instanceof ConfigError ? "server_misconfigured" : "internal" }, 500));
     }
   },
@@ -1875,10 +1875,10 @@ async function ingest(req, env, kind) {
   if (body.error) return body.error;
   const b = body.value;
   const base = {
-    v: 2, ts: Date.now(), deviceId: auth.device.id,
-    mac: sanitizeText(b.mac, 32) || null, // étiquette fournie par l'appareil, non fiable
-    version: sanitizeText(b.version, 32) || null, versionCode: int(b.versionCode),
-    device: sanitizeText(b.device, 128) || null,
+    // Plus d'étiquette MAC dans les journaux (identifiant de l'appareil chez un portail Stalker) : `deviceId` suffit.
+    v: 2, ts: Date.now(), deviceId: auth.device.id, mac: null,
+    version: sanitizeLog(b.version, 32) || null, versionCode: int(b.versionCode),
+    device: sanitizeLog(b.device, 128) || null,
     // Compte et pays : le compte n'est jamais stocké en clair (l'identifiant peut être une adresse e-mail) mais sous la
     // forme d'une empreinte HMAC courte, non réversible sans SESSION_SECRET ; jamais l'adresse IP.
     acct: await opsAccountId(env, auth.acct.login), country: countryOf(req),
@@ -1889,7 +1889,7 @@ async function ingest(req, env, kind) {
     await withAccountLock(env, auth.acct.login, (acct) => setDeviceInfo(env, acct, auth.device.id, { version: ver })).catch(() => {});
   }
   const entry = isCrash
-    ? { ...base, androidSdk: int(b.androidSdk), stack: sanitizeText(b.stack, 32 * 1024) }
+    ? { ...base, androidSdk: int(b.androidSdk), stack: sanitizeLog(b.stack, 32 * 1024) }
     : cleanEvent(base, b);
   // D1 (pas KV : une écriture par événement épuisait le quota gratuit) ; conservation 7 jours, 30 jours pour les crashs.
   await recordEvent(env, kind, entry);
@@ -1898,7 +1898,7 @@ async function ingest(req, env, kind) {
 
 /** Journal nettoyé (mêmes bornes que `/api/event`) à partir d'un objet reçu. */
 const cleanEvent = (base, b) => ({
-  ...base, level: LEVELS.includes(b.level) ? b.level : "info", tag: sanitizeText(b.tag, 32) || "app", message: sanitizeText(b.message, 4000),
+  ...base, level: LEVELS.includes(b.level) ? b.level : "info", tag: sanitizeLog(b.tag, 32) || "app", message: sanitizeLog(b.message, 4000),
 });
 
 /**
@@ -1919,10 +1919,9 @@ async function ingestBatch(req, env) {
   if (b.events.length > EVENTS_BATCH_MAX) return json({ error: "too_many" }, 413);
   const now = Date.now();
   const base = {
-    v: 2, ts: now, deviceId: auth.device.id,
-    mac: sanitizeText(b.mac, 32) || null,
-    version: sanitizeText(b.version, 32) || null, versionCode: int(b.versionCode),
-    device: sanitizeText(b.device, 128) || null,
+    v: 2, ts: now, deviceId: auth.device.id, mac: null,
+    version: sanitizeLog(b.version, 32) || null, versionCode: int(b.versionCode),
+    device: sanitizeLog(b.device, 128) || null,
     acct: await opsAccountId(env, auth.acct.login), country: countryOf(req),
   };
   const ver = appVersionOf(b.version);
@@ -1969,11 +1968,11 @@ async function anonIngest(req, env, kind) {
   const now = Date.now();
   const base = {
     v: 2, ts: now, deviceId: `anon-${fingerprint}`, mac: null,
-    version: sanitizeText(b.version, 32) || null, versionCode: int(b.versionCode),
-    device: sanitizeText(b.device, 128) || null, acct: null, country: countryOf(req),
+    version: sanitizeLog(b.version, 32) || null, versionCode: int(b.versionCode),
+    device: sanitizeLog(b.device, 128) || null, acct: null, country: countryOf(req),
   };
   if (isCrash) {
-    await recordEvent(env, "crash", { ...base, androidSdk: int(b.androidSdk), stack: sanitizeText(b.stack, ANON_STACK_MAX) });
+    await recordEvent(env, "crash", { ...base, androidSdk: int(b.androidSdk), stack: sanitizeLog(b.stack, ANON_STACK_MAX) });
     return json({ ok: true });
   }
   const entries = b.events.filter((e) => e && typeof e === "object").slice(0, ANON_EVENTS_KEPT).map((e) => {
