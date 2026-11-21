@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.key
 import kotlinx.coroutines.launch
@@ -300,6 +301,9 @@ internal fun HomeTvContent(
     val restore = rememberSaveable(saver = HomeFocusRestore.Saver) { HomeFocusRestore() }
     // Abandon de la restauration si l'élément quitté n'existe plus (données changées) : tout redevient candidat bien avant
     // la fin des essais de la demande de focus initiale (3 s). Aucune demande de focus ici.
+    // Données là et carte quittée absente : [HomeFocusRestore] le voit tout de suite (rangées et ordre déclarés ici), le délai n'est que le dernier recours.
+    val order = rows.order
+    SideEffect { if (order.isNotEmpty()) restore.registerOrder(order.mapTo(HashSet()) { it.name }) }
     LaunchedEffect(restore) {
         if (restore.pending) { kotlinx.coroutines.delay(HomeFocusRestore.RESTORE_MS); restore.pending = false }
     }
@@ -310,7 +314,6 @@ internal fun HomeTvContent(
         }.collect { off -> if (off) { if (animsOff) listState.scrollToItem(0) else listState.animateScrollToItem(0) } }
     }
     // Raccourcis : une rangée comme les autres, seulement si l'utilisateur les affiche (masqués par défaut sur TV).
-    val order = rows.order
     // Bouton « Regarder » du bandeau : cible de ▲ depuis la rangée « En direct » quand elle est juste sous l'image.
     val heroWatch = remember { FocusRequester() }
     val sportAnchor = if (HomeSectionId.CHANNELS in order) HomeSectionId.CHANNELS else order.lastOrNull()
@@ -521,6 +524,7 @@ private fun HomeSection(
 @Composable
 private fun ResumeRow(cards: List<ResumeCardUi>, onPlay: (WatchHistoryEntity) -> Unit) {
     val memory = rememberRowFocusMemory()
+    RegisterRowKeys(memory, cards) { cards.map { it.key } }
     RowEdgeMargin(ResumeEdgeMargin) {
         LazyRow(Modifier.homeRow().then(memory.tracker).testTag("home-resume-row"), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PaddingValues(start = RowBleed, end = 96.design, top = 18.design, bottom = 18.design)) {
             items(cards, key = { it.key }, contentType = { "resume" }) { c -> ResumeCard(c, rowMemory(memory, c.key).testTag("home-resume-${c.key}")) { onPlay(c.entry) } }
@@ -546,6 +550,7 @@ private fun NewEpisodesRow(cards: List<NewEpisodeCardUi>, onOpen: (PosterCardUi)
 @Composable
 private fun PosterRow(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
     val memory = rememberRowFocusMemory()
+    RegisterRowKeys(memory, cards) { cards.map { it.key } }
     RowEdgeMargin(PosterEdgeMargin) {
         LazyRow(Modifier.homeRow().then(memory.tracker).testTag("home-poster-row"), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
             items(cards, key = { it.key }, contentType = { "poster" }) { p ->
@@ -563,6 +568,7 @@ private fun PosterRow(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit)
 private fun ChannelRow(cards: List<ChannelCardUi>, onPlay: (ChannelEntity) -> Unit, seeAll: String, up: FocusRequester?, onSeeAll: () -> Unit) {
     // ▲ depuis n'importe quelle carte, à la sortie du groupe : « Regarder » (sans cela, la recherche géométrique choisit le bouton le plus proche, à droite).
     val memory = rememberRowFocusMemory()
+    RegisterRowKeys(memory, cards) { cards.map { it.channel.id } + "see-all" }
     val rowModifier = Modifier.homeRow(up)
     RowEdgeMargin(ChannelEdgeMargin) {
         LazyRow(
@@ -604,6 +610,7 @@ internal const val HomePosterScale = 1.10f
 @Composable
 private fun Top10Row(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
     val memory = rememberRowFocusMemory()
+    RegisterRowKeys(memory, cards) { cards.map { it.key } }
     RowEdgeMargin(PosterEdgeMargin) {
         LazyRow(Modifier.homeRow().then(memory.tracker).testTag("home-top10-row"), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
             itemsIndexed(cards, key = { _, p -> p.key }, contentType = { _, _ -> "top10" }) { i, p ->

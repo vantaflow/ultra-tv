@@ -233,7 +233,6 @@ class HomeTvNavigationTest {
 
     // ───────────── Touches et constats ─────────────
 
-    /** Appui complet (comme MainActivity.dispatchKeyEvent, qui horodate la touche dans InputClock). */
     /** Focalisés à chaque image pendant [frames] images (autoAdvance coupé) : tout élément de passage y apparaît. */
     private fun focusTrace(frames: Int, action: () -> Unit): List<String> {
         rule.mainClock.autoAdvance = false
@@ -248,6 +247,7 @@ class HomeTvNavigationTest {
         return seen
     }
 
+    /** Appui complet (comme MainActivity.dispatchKeyEvent, qui horodate la touche dans InputClock). */
     private fun press(key: Key) {
         InputClock.lastKeyCode = key.nativeKeyCode
         InputClock.lastKeyMs = android.os.SystemClock.uptimeMillis()
@@ -547,7 +547,54 @@ class HomeTvNavigationTest {
         assertTrue("jamais nulle part, jamais sur la carte disparue ($tag)", tag != "home-poster-m3")
     }
 
-    @Test fun retourSurLAccueil_donneesJamaisArrivees_restaurationAbandonnee_leBandeauRepreudLeFocus() {
+    /** Images (de 16 ms) écoulées après le retour sur l'accueil avant qu'un de ses éléments soit focalisé ; [max] si jamais. */
+    private fun imagesAvantFocus(max: Int): Int {
+        rule.mainClock.autoAdvance = false
+        rule.runOnUiThread { screen.value = "home" }
+        var n = 0
+        while (n < max) {
+            rule.mainClock.advanceTimeByFrame(); n++
+            // Le menu latéral peut garder le focus de passage : seul un élément de l'accueil compte.
+            if (rule.onAllNodes(isFocused()).fetchSemanticsNodes().any { val t = tagOf(it); t != null && t != "detail-button" && !t.startsWith("rail-") }) break
+        }
+        rule.mainClock.autoAdvance = true
+        rule.waitForIdle()
+        return n
+    }
+
+    @Test fun retourSurLAccueil_carteDisparueDesDonnees_laRestaurationSeTermineAussitot_pasDeTrouDeFocus() {
+        mount()
+        downTo("home-poster-m")
+        repeat(2) { step(forward, "carte") }
+        rule.runOnIdle { screen.value = "detail" }; rule.waitForIdle()
+        rule.onNodeWithTagExists("detail-button")
+        // Pendant l'absence, la rangée est remplacée : la carte quittée n'existe plus dans les données.
+        rule.runOnUiThread { rowsState.value = rowsState.value.copy(latestMovies = (1..4).map { HomeTvFixtures.posterUi("n", it) }) }
+        val frames = imagesAvantFocus(max = 60)
+        // 60 images = 960 ms : bien avant le délai de dernier recours (1 000 ms). Un trou de plusieurs centaines de ms se voit comme un écran figé.
+        assertTrue("un élément doit être focalisé dans les 250 premières ms, il l'a été après $frames images", frames <= 15)
+        assertTrue("jamais sur la carte disparue", focusNow("après abandon") != "home-poster-m3")
+    }
+
+    @Test fun retourSurLAccueil_carteExistanteMaisPasEncoreComposee_resteAttendue_pasDeRelachementPrematuré() {
+        mount()
+        rowsState.value = rowsState.value.copy(latestMovies = (1..30).map { HomeTvFixtures.posterUi("m", it) })
+        rule.waitForIdle()
+        downTo("home-poster-m")
+        repeat(19) { step(forward, "carte") }
+        assertEquals("home-poster-m20", focusNow("avant"))
+        rule.runOnIdle { screen.value = "detail" }; rule.waitForIdle()
+        rule.onNodeWithTagExists("detail-button")
+        // Pendant l'absence : quarante nouvelles affiches avant la carte quittée, qui existe toujours mais hors de la fenêtre composée.
+        rule.runOnUiThread { rowsState.value = rowsState.value.copy(latestMovies = (1..40).map { HomeTvFixtures.posterUi("n", it) } + HomeTvFixtures.posterUi("m", 20)) }
+        val frames = imagesAvantFocus(max = 40)
+        assertEquals("la carte attendue n'est pas composée : aucun élément ne doit prendre le focus avant le délai de dernier recours (40 images = 640 ms)", 40, frames)
+        // Le délai de dernier recours reste la borne : ensuite un élément est focalisé.
+        rule.mainClock.advanceTimeBy(1_500); rule.waitForIdle()
+        focusNow("après le dernier recours")
+    }
+
+    @Test fun retourSurLAccueil_donneesJamaisArrivees_restaurationAbandonnee_leBandeauReprendLeFocus() {
         mount()
         downTo("home-poster-m")
         val seen = leaveAndReturn(frames = 150) { rowsState.value = HomeRows.EMPTY }

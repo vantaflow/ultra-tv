@@ -2,6 +2,7 @@ package com.ultratv.tv.nativeapp.ui.home
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -74,8 +75,32 @@ internal class HomeFocusRestore(var saved: String? = null) {
     @JvmField var pending = saved != null
     private val startMs = android.os.SystemClock.uptimeMillis()
 
+    /** Rangée de l'élément sauvegardé (« HERO », « SPORT » ou l'identité d'une rangée de la liste), calculée une fois. */
+    private val savedRow: String? = saved?.substringBefore('\u0000')
+
+    /**
+     * Clés (en texte) des cartes de chaque rangée, d'après ses DONNÉES et non d'après ce que la liste paresseuse a composé :
+     * une carte qui existe mais est hors de la fenêtre composée reste attendue. Posé par les rangées pendant l'attente seulement.
+     */
+    private val rowKeys = HashMap<String, Set<String>>()
+    /** Rangées existantes de la liste de l'accueil ; vide tant que les données ne sont pas arrivées (alors on attend le délai). */
+    @Volatile private var dataRows: Set<String> = emptySet()
+
+    fun registerRow(row: String, keys: Set<String>) { if (pending) rowKeys[row] = keys }
+    fun registerOrder(rows: Set<String>) { if (pending) dataRows = rows }
+
+    /** Les données sont là et l'élément sauvegardé n'y figure plus : inutile d'attendre, personne ne le focalisera. */
+    private fun savedAbsentFromData(): Boolean {
+        val s = saved ?: return false
+        val row = savedRow ?: return false
+        if (row == "HERO" || row == "SPORT") return false
+        rowKeys[row]?.let { return s.substring(row.length + 1) !in it }
+        return dataRows.isNotEmpty() && row !in dataRows
+    }
+
     fun isPending(): Boolean {
-        if (pending && com.ultratv.tv.nativeapp.ui.common.InputClock.lastKeyMs > startMs) pending = false
+        if (!pending) return false
+        if (com.ultratv.tv.nativeapp.ui.common.InputClock.lastKeyMs > startMs || savedAbsentFromData()) pending = false
         return pending
     }
 
@@ -106,6 +131,18 @@ internal fun rowMemory(memory: RowFocusMemory, key: Any): Modifier {
         Modifier.focusProperties { canFocus = memory.canFocus(key, id) }
             .onFocusChanged { if (it.hasFocus) { memory.last = key; if (id != null) restore?.focused(id) } }
     }
+}
+
+/**
+ * Déclare à la restauration les clés de la rangée [memory], tirées de ses données ([keys], appelée seulement tant que la
+ * restauration est en attente : rien n'est alloué ensuite). À poser sous [rememberRowFocusMemory].
+ */
+@Composable
+internal fun RegisterRowKeys(memory: RowFocusMemory, data: Any?, keys: () -> Collection<Any>) {
+    val restore = LocalHomeFocusRestore.current ?: return
+    if (!restore.pending) return
+    val set = remember(restore, data) { keys().mapTo(HashSet()) { it.toString() } }
+    SideEffect { restore.registerRow(memory.id, set) }
 }
 
 /** Bouton du bandeau « À la une » ([key] : watch, info, list) : mêmes règles de restauration que les cartes des rangées. */
