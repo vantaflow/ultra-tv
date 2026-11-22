@@ -56,6 +56,7 @@ class GoogleTvSync @Inject constructor(
     private val seriesDao: com.ultratv.tv.nativeapp.data.db.SeriesDao,
     private val prefsStore: com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore,
     private val providerDao: com.ultratv.tv.nativeapp.data.db.ProviderDao,
+    private val categoryDao: com.ultratv.tv.nativeapp.data.db.CategoryDao,
 ) {
     private val isTv = ctx.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
     private val prefs = ctx.getSharedPreferences("google_tv", Context.MODE_PRIVATE)
@@ -151,7 +152,7 @@ class GoogleTvSync @Inject constructor(
                 // une écriture toutes les 45 s dans Google TV, mais la première ne se fait jamais attendre).
                 .debounce(2_000).collectLatest { plan ->
                     delay(WatchNextPlan.waitMs(lastWatchNextSync, System.currentTimeMillis()))
-                    runCatching { syncWatchNext(WatchNextPlan.select(plan) + WatchNextPlan.selectLive(plan)) }.onFailure { e -> fail("watchnext", "watch next", e) }
+                    runCatching { val sel = WatchNextPlan.select(plan) + WatchNextPlan.selectLive(plan); syncWatchNext(sel, landscapes(sel)) }.onFailure { e -> fail("watchnext", "watch next", e) }
                     lastWatchNextSync = System.currentTimeMillis()
                 }
         }
@@ -165,10 +166,11 @@ class GoogleTvSync @Inject constructor(
                 }
             }.debounce(3_000).collect { runCatching { syncFavoritesChannel(it) }.onFailure { e -> fail("favorites", "favorites channel", e) } }
         }
-        // Chaîne « Nouveautés » : suit la source active. Les tables film / série bougent pendant toute la synchro du
-        // catalogue : on attend 5 s de calme (fin de synchro), puis la signature évite toute réécriture inutile.
+        // Chaîne « Nouveautés » : suit la source active ET le profil (catégories masquées, profil enfant). Les tables film /
+        // série bougent pendant toute la synchro du catalogue : on attend 5 s de calme (fin de synchro), puis la signature
+        // évite toute réécriture inutile.
         track {
-            activeProvider.flatMapLatest { pid -> if (pid == null) { report("skip:news", "news channel skipped: no active provider"); flowOf(emptyList()) } else latestFlow(pid) }
+            scope_.flatMapLatest { (_, pid) -> if (pid == null) { report("skip:news", "news channel skipped: no active provider"); flowOf(emptyList()) } else latestFlow(pid) }
                 .debounce(5_000).collect { runCatching { syncNewsChannel(it) }.onFailure { e -> fail("news", "news channel", e) } }
         }
     }
@@ -180,15 +182,41 @@ class GoogleTvSync @Inject constructor(
      * ne limitait que la publication, pas ce travail.
      */
     private fun latestFlow(pid: Long): kotlinx.coroutines.flow.Flow<List<NewsChannelPlan.Item>> =
-        providerDao.observeCatalogStamp(pid).distinctUntilChanged().map { latestNow(pid) }
+        combine(
+            providerDao.observeCatalogStamp(pid).distinctUntilChanged(),
+            profiles.hiddenCategoryKeys.distinctUntilChanged(),
+            profiles.current.map { it?.isKids == true }.distinctUntilChanged(),
+        ) { _, hidden, kids -> hidden to kids }.map { (hidden, kids) -> latestNow(pid, hidden, kids) }
 
-    private suspend fun latestNow(pid: Long): List<NewsChannelPlan.Item> {
+    /** Derniers ajouts visibles par le profil actif (avant, tout le catalogue de la source, même pour un profil enfant). */
+    private suspend fun latestNow(pid: Long, hidden: Set<String>? = null, kids: Boolean? = null): List<NewsChannelPlan.Item> {
+        val hiddenKeys = hidden ?: profiles.hiddenCategoryKeys.first()
+        val isKids = kids ?: (profiles.current.value?.isKids == true)
+        val locked = categoryDao.forProviderKind(pid, "MOVIE").filter { it.locked }.map { "MOVIE:$pid:${it.remoteId}" }.toSet() +
+            categoryDao.forProviderKind(pid, "SERIES").filter { it.locked }.map { "SERIES:$pid:${it.remoteId}" }.toSet()
         val ms = movies.latest(pid, NewsChannelPlan.FETCH)
         val ss = seriesDao.latest(pid, NewsChannelPlan.FETCH)
         return NewsChannelPlan.select(
-            ms.map { NewsChannelPlan.Item(NewsChannelPlan.Kind.MOVIE, it.providerId, it.remoteId, it.title, it.poster, it.addedKey) },
-            ss.map { NewsChannelPlan.Item(NewsChannelPlan.Kind.SERIES, it.providerId, it.remoteId, it.title, it.poster, it.addedKey) },
+            NewsChannelPlan.visible(ms.map { NewsChannelPlan.Item(NewsChannelPlan.Kind.MOVIE, it.providerId, it.remoteId, it.title, it.poster, it.addedKey, it.backdrop, it.categoryId) }, hiddenKeys, locked, isKids),
+            NewsChannelPlan.visible(ss.map { NewsChannelPlan.Item(NewsChannelPlan.Kind.SERIES, it.providerId, it.remoteId, it.title, it.poster, it.addedKey, it.backdrop, it.categoryId) }, hiddenKeys, locked, isKids),
         )
+    }
+
+    /** Fonds (images paysage) des films et séries de « Continuer à regarder », lus dans le catalogue local. */
+    private suspend fun landscapes(selected: List<com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity>): Map<WatchNextPlan.LandscapeKey, String> {
+        val out = HashMap<WatchNextPlan.LandscapeKey, String>()
+        for (h in selected) {
+            val key = WatchNextPlan.landscapeKey(h) ?: continue
+            if (key in out) continue
+            val bg = runCatching {
+                when (key.kind) {
+                    NewsChannelPlan.Kind.MOVIE -> movies.byRemoteId(h.providerId, key.remoteId)?.backdrop
+                    NewsChannelPlan.Kind.SERIES -> seriesDao.byRemoteId(h.providerId, key.remoteId)?.backdrop
+                }
+            }.getOrNull()
+            if (!bg.isNullOrBlank()) out[key] = bg
+        }
+        return out
     }
 
     /** Nom de la chaîne dans la langue de l'appli (« système » : langue de l'appareil). */
@@ -208,7 +236,7 @@ class GoogleTvSync @Inject constructor(
         val prof = profiles.currentIdNow
         val hist = history.observeRecent(prof, pid, 40).first()
         report("once", "initialize-programs broadcast received")
-        runCatching { syncWatchNext(WatchNextPlan.select(hist) + WatchNextPlan.selectLive(hist)) }.onFailure { fail("watchnext", "watch next", it) }
+        runCatching { val sel = WatchNextPlan.select(hist) + WatchNextPlan.selectLive(hist); syncWatchNext(sel, landscapes(sel)) }.onFailure { fail("watchnext", "watch next", it) }
         runCatching {
             val favs = favorites.observeForKind(prof, pid, "LIVE").first()
             syncFavoritesChannel(FavoritesChannelPlan.select(orderedByRemote(pid, favs.map { it.remoteId }), orderedByRemote(pid, WatchNextPlan.selectLive(hist).map { it.remoteId })))
@@ -225,7 +253,7 @@ class GoogleTvSync @Inject constructor(
 
     // ---- Watch Next -----------------------------------------------------------------
 
-    private fun syncWatchNext(selected: List<com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity>) {
+    private fun syncWatchNext(selected: List<com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity>, landscapes: Map<WatchNextPlan.LandscapeKey, String> = emptyMap()) {
         if (!providerAvailable()) return
         val cr = ctx.contentResolver
         // Lignes déjà publiées par l'application : identifiant interne -> identifiant de ligne.
@@ -261,14 +289,16 @@ class GoogleTvSync @Inject constructor(
                 if (!ok) failed++
                 continue
             }
+            val art = WatchNextPlan.art(h, WatchNextPlan.landscapeKey(h)?.let { landscapes[it] })
             val b = WatchNextProgram.Builder()
                 .setType(if (h.kind == "EPISODE") TvContractCompat.WatchNextPrograms.TYPE_TV_EPISODE else TvContractCompat.WatchNextPrograms.TYPE_MOVIE)
                 .setWatchNextType(TvContractCompat.WatchNextPrograms.WATCH_NEXT_TYPE_CONTINUE)
                 .setLastEngagementTimeUtcMillis(h.watchedAt)
                 // Titre nettoyé, comme « Reprendre la lecture » : « Captain Marvel », pas « TOP - Captain Marvel (2019) ».
                 .setTitle(com.ultratv.tv.nativeapp.data.repo.TitleCleaner.historyTitle(h.title))
-                .setPosterArtUri(Uri.parse(h.poster))
-                .setPosterArtAspectRatio(TvContractCompat.PreviewPrograms.ASPECT_RATIO_2_3)
+                // Fond du titre en 16:9 s'il existe (film, ou série de l'épisode), sinon l'affiche en 2:3.
+                .setPosterArtUri(Uri.parse(art.uri))
+                .setPosterArtAspectRatio(art.aspectRatio)
                 .setLastPlaybackPositionMillis(h.positionMs.toInt())
                 .setInternalProviderId(key)
                 .setIntentUri(Uri.parse(WatchNextPlan.deepLink(h)))
@@ -432,8 +462,8 @@ class GoogleTvSync @Inject constructor(
             .setChannelId(channelId)
             .setType(if (i.kind == NewsChannelPlan.Kind.MOVIE) TvContractCompat.PreviewPrograms.TYPE_MOVIE else TvContractCompat.PreviewPrograms.TYPE_TV_SERIES)
             .setTitle(i.title)
-            .setPosterArtUri(Uri.parse(i.poster))
-            .setPosterArtAspectRatio(TvContractCompat.PreviewPrograms.ASPECT_RATIO_2_3)
+            .setPosterArtUri(Uri.parse(NewsChannelPlan.art(i).uri))
+            .setPosterArtAspectRatio(NewsChannelPlan.art(i).aspectRatio)
             .setWeight(NewsChannelPlan.weight(index, selected.size))
             .setInternalProviderId(NewsChannelPlan.internalId(i))
             .setIntentUri(Uri.parse(NewsChannelPlan.deepLink(i)))
