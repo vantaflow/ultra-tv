@@ -485,6 +485,13 @@ interface ChannelDao {
         AND c.providerId = :pid AND c.junk = 0 AND c.isSeparator = 0 AND ${Hid.C} LIMIT :limit
     """)
     suspend fun searchFts(pid: Long, match: String, limit: Int): List<ChannelEntity>
+
+    /** Recherche en arabe (#247) : candidats par motif LIKE sur le nom brut (voir ArabicFold), filtrés ensuite en mémoire. */
+    @Query("""
+        SELECT c.* FROM channel c WHERE c.providerId = :pid AND c.junk = 0 AND c.isSeparator = 0 AND ${Hid.C}
+        AND c.name LIKE :pattern ESCAPE '\' LIMIT :limit
+    """)
+    suspend fun nameLike(pid: Long, pattern: String, limit: Int): List<ChannelEntity>
 }
 
 @Dao
@@ -643,6 +650,10 @@ interface MovieDao {
     @Query("SELECT * FROM movie WHERE providerId = :pid AND title LIKE :prefix ESCAPE '\\' LIMIT :limit")
     suspend fun titlePrefix(pid: Long, prefix: String, limit: Int): List<MovieEntity>
 
+    /** Recherche en arabe (#247) : candidats par motif LIKE sur le nom brut (voir ArabicFold), filtrés ensuite en mémoire. */
+    @Query("SELECT * FROM movie WHERE providerId = :pid AND name LIKE :pattern ESCAPE '\\' LIMIT :limit")
+    suspend fun nameLike(pid: Long, pattern: String, limit: Int): List<MovieEntity>
+
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(items: List<MovieEntity>)
@@ -796,6 +807,10 @@ interface SeriesDao {
      */
     @Query("SELECT * FROM series WHERE providerId = :pid AND title LIKE :prefix ESCAPE '\\' LIMIT :limit")
     suspend fun titlePrefix(pid: Long, prefix: String, limit: Int): List<SeriesEntity>
+
+    /** Recherche en arabe (#247) : candidats par motif LIKE sur le nom brut (voir ArabicFold), filtrés ensuite en mémoire. */
+    @Query("SELECT * FROM series WHERE providerId = :pid AND name LIKE :pattern ESCAPE '\\' LIMIT :limit")
+    suspend fun nameLike(pid: Long, pattern: String, limit: Int): List<SeriesEntity>
 
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

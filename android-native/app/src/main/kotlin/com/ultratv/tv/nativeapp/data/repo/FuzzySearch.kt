@@ -18,9 +18,9 @@ object FuzzySearch {
         return pre.joinToString(" OR ") { "$it*" }
     }
 
-    /** Minuscules, sans accents ni ponctuation, mots séparés. */
+    /** Minuscules, sans accents ni ponctuation, mots séparés ; arabe plié comme la recherche ([ArabicFold]). */
     fun tokens(s: String): List<String> =
-        Normalizer.normalize(s.lowercase(), Normalizer.Form.NFD)
+        Normalizer.normalize(ArabicFold.fold(s), Normalizer.Form.NFD)
             .replace(Regex("\\p{Mn}+"), "")
             .split(Regex("[^\\p{L}\\p{N}]+"))
             .filter { it.isNotEmpty() }

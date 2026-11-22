@@ -271,8 +271,12 @@ class CatalogRepository @Inject constructor(
         val sHead = if (wantSeries && prefix != null && (rawSeries.size >= cap || rawSeries.isEmpty())) {
             seriesDao.titlePrefix(pid, prefix, if (excludedSeries.isEmpty()) PREFIX_LIMIT else PREFIX_LIMIT * 4).visibleIn(excludedSeries) { it.categoryId }.take(PREFIX_LIMIT)
         } else emptyList()
-        var movies = SearchDedup.movies((mHead + rawMovies).distinctBy { it.id }).take(limit)
-        var series = SearchDedup.series((sHead + rawSeries).distinctBy { it.id }).take(limit)
+        // Saisie en arabe (#247) : l'index plein texte ne plie ni la hamza, ni ة/ه, ni ى/ي, ni les voyelles — titres
+        // retrouvés par un balayage normalisé des deux côtés (voir ArabicFold), ajoutés à la suite.
+        val mArabic = if (wantMovies) ArabicFold.search(query, mCap, { p, n -> movieDao.nameLike(pid, p, n) }) { it.name }.visibleIn(excludedMovies) { it.categoryId }.take(cap) else emptyList()
+        val sArabic = if (wantSeries) ArabicFold.search(query, sCap, { p, n -> seriesDao.nameLike(pid, p, n) }) { it.name }.visibleIn(excludedSeries) { it.categoryId }.take(cap) else emptyList()
+        var movies = SearchDedup.movies((mHead + rawMovies + mArabic).distinctBy { it.id }).take(limit)
+        var series = SearchDedup.series((sHead + rawSeries + sArabic).distinctBy { it.id }).take(limit)
         // Aucun film ni série : repli tolérant aux fautes de frappe (candidats par début de mot, classés par ressemblance).
         var fuzzy = false
         if (movies.isEmpty() && series.isEmpty() && query.trim().length >= 4) {
@@ -289,7 +293,10 @@ class CatalogRepository @Inject constructor(
             }
         }
         return SearchResults(
-            channels = if (only == null) channelDao.searchFts(pid, match, limit) else emptyList(),
+            channels = if (only == null) {
+                val fts = channelDao.searchFts(pid, match, limit)
+                (fts + ArabicFold.search(query, limit, { p, n -> channelDao.nameLike(pid, p, n) }) { it.name }).distinctBy { it.id }.take(limit)
+            } else emptyList(),
             movies = movies,
             series = series,
             // Programmes : LIKE sur tout le guide (pas d'index possible) — seulement à partir de 3 caractères.

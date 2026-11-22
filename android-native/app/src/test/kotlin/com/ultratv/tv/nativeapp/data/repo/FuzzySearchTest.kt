@@ -29,4 +29,9 @@ class FuzzySearchTest {
     @Test fun transpositionCountsAsOneEdit() {
         assertTrue(FuzzySearch.similarity("ofifce", "office") >= 0.8)
     }
+
+    @Test fun arabe_plieCommeLaRecherche() {
+        assertEquals(listOf("احمد", "حلمي"), FuzzySearch.tokens("أحمد حلمى"))
+        assertEquals(4, SearchRank.relevance("احمد حلمي", "أحمد حلمي"))
+    }
 }

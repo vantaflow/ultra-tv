@@ -21,6 +21,8 @@ object EpgSearch {
     const val SQL_LIMIT = 600
     private const val ESC = '\\'
     private val accentable = setOf('a', 'e', 'i', 'o', 'u', 'y', 'c', 'n')
+    /** Lettres arabes à plusieurs graphies après pliage (ا : أ إ آ, ه : ة, ي : ى) : `_` dans le motif (#247). */
+    private val arabicAmbiguous = setOf('\u0627', '\u0647', '\u064A')
 
     /**
      * Motif LIKE (ESCAPE '\') : les lettres qui existent avec accents deviennent `_` (SQLite ne plie que le
@@ -31,7 +33,7 @@ object EpgSearch {
         if (q.isEmpty()) return null
         val sb = StringBuilder("%")
         for (ch in q) when {
-            ch in accentable -> sb.append('_')
+            ch in accentable || ch in arabicAmbiguous -> sb.append('_')
             ch == '%' || ch == '_' || ch == ESC -> sb.append(ESC).append(ch)
             else -> sb.append(ch)
         }
