@@ -11,6 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.hasText
@@ -741,6 +742,39 @@ class GuideRecompositionTest {
         programmes = programmes.mapValues { (id, l) -> if (id != 4L) l else l.map { if (it.startMs == t.startMs) it.copy(id = 4_999_001, startMs = t.startMs + 5 * 60_000L, title = "${t.title} corrigé") else it } }
         rule.waitForIdle()
         assertFocusOn("${t.title} corrigé")
+    }
+
+    /**
+     * N-2 (scénario décrit, comportement non modifié) : focus posé SANS touche sur « Regarder » dans l'en-tête (restauration au
+     * retour du lecteur), puis nouvelle lecture des programmes. Le focus initial ne doit pas le reprendre.
+     */
+    @Test fun n2_focus_restaure_sur_regarder_sans_touche_n_est_pas_repris_par_le_focus_initial() {
+        holdData = true
+        mount()
+        holdData = false
+        rule.runOnIdle { vmOnVisible(lastVisible) }
+        rule.waitForIdle()
+        assertTrue("focus initial sur une case : ${focusedText()}", focusedText().startsWith("P1-"))
+        // Restauration (aucune touche) sur « Regarder ».
+        rule.onNode(hasText("Regarder") and hasClickAction()).performSemanticsAction(SemanticsActions.RequestFocus)
+        rule.waitForIdle()
+        assertEquals("Regarder", focusedText())
+        // Programmes relus (réimport), quelques images plus tard.
+        programmes = programmes.mapValues { (_, l) -> l.map { it.copy() } }
+        rule.waitForIdle()
+        repeat(10) { rule.mainClock.advanceTimeByFrame() }
+        rule.waitForIdle()
+        assertEquals("le focus restauré reste sur « Regarder »", "Regarder", focusedText())
+    }
+
+    /**
+     * N-2, retour réel du lecteur : la navigation recompose le Guide à neuf ; tant qu'aucune case n'a eu le focus, l'en-tête
+     * n'a pas de programme, donc pas de bouton « Regarder » où restaurer le focus.
+     */
+    @Test fun n2_recomposition_a_neuf_sans_programme_focalise_il_n_y_a_pas_de_bouton_regarder() {
+        holdData = true
+        mount()
+        rule.onAllNodes(hasText("Regarder") and hasClickAction()).assertCountEquals(0)
     }
 
     // ── I-2 : un repli ne vole jamais un focus que l'utilisateur a déplacé. ──
