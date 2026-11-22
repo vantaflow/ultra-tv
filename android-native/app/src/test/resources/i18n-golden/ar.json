@@ -1771,6 +1771,7 @@
   "DesignStrings.getSearchBest()": "أفضل نتيجة",
   "DesignStrings.getSearchSeeAll()": "عرض الكل",
   "DesignStrings.getSearchKeyboard()": "لوحة المفاتيح",
+  "DesignStrings.getSearchSystemKeyboard()": "لوحة مفاتيح النظام",
   "DesignStrings.getSearchDidYouMean()": "هل تقصد",
   "DesignStrings.getSearchCloseTitles()": "عناوين مشابهة",
   "DesignStrings.getSearchRecentlyAdded()": "أضيفت مؤخرًا",

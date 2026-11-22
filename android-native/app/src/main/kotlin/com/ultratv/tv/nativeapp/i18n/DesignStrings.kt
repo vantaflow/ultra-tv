@@ -514,6 +514,7 @@ class DesignStrings(val lang: AppLang) {
     val searchBest get() = tx(R.string.ds_search_best)
     val searchSeeAll get() = tx(R.string.ds_search_see_all)
     val searchKeyboard get() = tx(R.string.ds_search_keyboard)
+    val searchSystemKeyboard get() = tx(R.string.ds_search_system_keyboard)
     fun searchNoExact(q: String) = tx(R.string.ds_search_no_exact, q)
     val searchDidYouMean get() = tx(R.string.ds_search_did_you_mean)
     val searchCloseTitles get() = tx(R.string.ds_search_close_titles)

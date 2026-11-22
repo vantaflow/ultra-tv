@@ -1771,6 +1771,7 @@
   "DesignStrings.getSearchBest()": "MEJOR RESULTADO",
   "DesignStrings.getSearchSeeAll()": "Ver todo",
   "DesignStrings.getSearchKeyboard()": "Teclado",
+  "DesignStrings.getSearchSystemKeyboard()": "Teclado del sistema",
   "DesignStrings.getSearchDidYouMean()": "¿Quisiste decir",
   "DesignStrings.getSearchCloseTitles()": "TÍTULOS PARECIDOS",
   "DesignStrings.getSearchRecentlyAdded()": "AÑADIDOS RECIENTEMENTE",

@@ -1637,6 +1637,7 @@
     <string name="ds_search_best">MEJOR RESULTADO</string>
     <string name="ds_search_see_all">Ver todo</string>
     <string name="ds_search_keyboard">Teclado</string>
+    <string name="ds_search_system_keyboard">Teclado del sistema</string>
     <string name="ds_search_no_exact">Ningún título contiene «%1$s».</string>
     <string name="ds_search_did_you_mean">¿Quisiste decir</string>
     <string name="ds_search_close_titles">TÍTULOS PARECIDOS</string>

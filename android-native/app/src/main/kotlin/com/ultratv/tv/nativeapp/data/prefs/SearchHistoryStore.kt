@@ -39,4 +39,13 @@ class SearchHistoryStore @Inject constructor(@ApplicationContext private val ctx
     suspend fun clear() {
         ctx.searchDs.edit { it[KEY] = "" }
     }
+
+    private val LAYOUT = stringPreferencesKey("keyboard_layout")
+
+    /** Disposition choisie pour la grille de saisie TV (« LATIN » / « ARABIC ») ; null tant qu'aucun choix (#247). */
+    val keyboardLayout: Flow<String?> = ctx.searchDs.data.map { it[LAYOUT] }
+
+    suspend fun setKeyboardLayout(value: String) {
+        ctx.searchDs.edit { it[LAYOUT] = value }
+    }
 }
