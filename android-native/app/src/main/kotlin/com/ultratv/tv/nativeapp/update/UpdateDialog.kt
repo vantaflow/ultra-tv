@@ -15,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
+import com.ultratv.tv.nativeapp.i18n.updatePreReleaseBody
+import com.ultratv.tv.nativeapp.i18n.updatePreReleaseTag
 import com.ultratv.tv.nativeapp.ui.common.ModalFocusScope
 import com.ultratv.tv.nativeapp.ui.common.design
 import com.ultratv.tv.nativeapp.ui.design.StateCard
@@ -66,11 +68,12 @@ fun UpdateDialog(onClose: () -> Unit = {}) {
 
     ModalFocusScope(onBack = close, modifier = Modifier.background(com.ultratv.tv.nativeapp.ui.design.Ux.Scrim)) {
         StateCard(
-            title = D.updateTitle(update.versionName),
+            title = if (update.preRelease) D.updateTitle(update.versionName) + " · " + D.updatePreReleaseTag else D.updateTitle(update.versionName),
             body = when {
                 mismatch -> D.updateSignatureMismatch
                 failed -> D.updateFailed
                 launched -> D.updateLaunched
+                update.preRelease -> D.updateDefaultBody + "\n" + D.updatePreReleaseBody
                 else -> D.updateDefaultBody
             },
             iconPath = StateIcons.Download,
@@ -85,7 +88,7 @@ fun UpdateDialog(onClose: () -> Unit = {}) {
                     runCatching {
                         // Revérifier juste avant : si une version plus récente est sortie depuis l'invite
                         // (ex. 1.2.4 affichée, 1.2.5 publiée entre-temps), c'est elle qu'on installe.
-                        val target = UpdateChecker.checkForUpdate()?.takeIf { it.versionCode >= update.versionCode } ?: update
+                        val target = UpdateChecker.checkForUpdate()?.takeIf { if (it.rank > 0 && update.rank > 0) it.rank >= update.rank else it.versionCode >= update.versionCode } ?: update
                         withContext(Dispatchers.IO) { UpdateChecker.downloadAndInstall(ctx, target) { p -> progress = p } }
                     }.onSuccess { launched = true }
                      .onFailure { e -> if (e is kotlinx.coroutines.CancellationException) throw e; if (e is SignatureMismatchException) mismatch = true else failed = true }

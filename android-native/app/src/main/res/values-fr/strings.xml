@@ -1946,4 +1946,11 @@
     <string name="dt_not_found">Ce titre n\'est plus disponible</string>
     <string name="dt_episodes_error">Impossible de charger les épisodes</string>
     <string name="dt_hidden_profile">Non disponible pour ce profil</string>
+    <string name="ds_update_prerelease_tag">Pré-version</string>
+    <string name="ds_update_prerelease_body">Version de test : elle peut encore contenir des défauts.</string>
+    <string name="ds_update_channel">Canal de mise à jour</string>
+    <string name="ds_update_channel_stable">Stable</string>
+    <string name="ds_update_channel_pre">Pré-version</string>
+    <string name="ds_update_channel_hint">Pré-version propose aussi les versions de test dès leur publication.</string>
+    <string name="ds_update_channel_stay">Vous resterez sur la pré-version jusqu\'à la prochaine version stable plus récente.</string>
 </resources>

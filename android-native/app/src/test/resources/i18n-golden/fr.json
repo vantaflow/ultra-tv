@@ -1869,5 +1869,12 @@
   "ProfileStrings.getSearchAllSourcesHint()": "R\u00e9sultats de toutes les sources visibles, avec la source indiqu\u00e9e sur chacun",
   "DesignStrings/DesignStringsB1Kt.getDetailNotFound()": "Ce titre n'est plus disponible",
   "DesignStrings/DesignStringsB1Kt.getEpisodesLoadError()": "Impossible de charger les épisodes",
-  "DesignStrings/DesignStringsB1Kt.getDetailHiddenForProfile()": "Non disponible pour ce profil"
+  "DesignStrings/DesignStringsB1Kt.getDetailHiddenForProfile()": "Non disponible pour ce profil",
+  "DesignStrings/DesignStringsB1Kt.getUpdatePreReleaseTag()": "Pré-version",
+  "DesignStrings/DesignStringsB1Kt.getUpdatePreReleaseBody()": "Version de test : elle peut encore contenir des défauts.",
+  "DesignStrings/DesignStringsB1Kt.getUpdateChannel()": "Canal de mise à jour",
+  "DesignStrings/DesignStringsB1Kt.getUpdateChannelStable()": "Stable",
+  "DesignStrings/DesignStringsB1Kt.getUpdateChannelPre()": "Pré-version",
+  "DesignStrings/DesignStringsB1Kt.getUpdateChannelHint()": "Pré-version propose aussi les versions de test dès leur publication.",
+  "DesignStrings/DesignStringsB1Kt.getUpdateChannelStay()": "Vous resterez sur la pré-version jusqu'à la prochaine version stable plus récente."
 }

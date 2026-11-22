@@ -93,6 +93,11 @@ import com.ultratv.tv.nativeapp.i18n.startScreenHint
 import com.ultratv.tv.nativeapp.i18n.startScreenName
 import com.ultratv.tv.nativeapp.i18n.textSizeLabel
 import com.ultratv.tv.nativeapp.i18n.textSizeName
+import com.ultratv.tv.nativeapp.i18n.updateChannel
+import com.ultratv.tv.nativeapp.i18n.updateChannelHint
+import com.ultratv.tv.nativeapp.i18n.updateChannelPre
+import com.ultratv.tv.nativeapp.i18n.updateChannelStable
+import com.ultratv.tv.nativeapp.i18n.updateChannelStay
 import com.ultratv.tv.nativeapp.ui.design.DIcon
 import com.ultratv.tv.nativeapp.ui.design.FocusSurface
 import com.ultratv.tv.nativeapp.ui.design.GroupLabel
@@ -955,6 +960,7 @@ private fun AboutPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, app:
     val p by panes.state.collectAsState()
     val scope = rememberCoroutineScope()
     var msg by remember { mutableStateOf<String?>(null) }
+    var channelOpen by remember { mutableStateOf(false) }
     PaneTitle(D.rubAbout, D.setDescAbout)
     SettingsCard {
         // Dons (Ko-fi) : en tête de la rubrique, discret (une ligne comme les autres).
@@ -966,7 +972,20 @@ private fun AboutPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, app:
                 msg = if (info != null) S.settingsUpdateAvailableTemplate.format(info.versionName) else S.settingsUpToDateTemplate.format(com.ultratv.tv.nativeapp.BuildConfig.VERSION_NAME)
             }
         }
+        // Canal de mise à jour : Stable (défaut) ou Pré-version. Revenir à Stable depuis une pré-version la garde jusqu'à
+        // la prochaine version stable plus récente (jamais de retour à une version plus ancienne) : on le dit.
+        val pre by com.ultratv.tv.nativeapp.update.UpdateChannel.preRelease.collectAsState()
+        val stays = com.ultratv.tv.nativeapp.update.UpdateVersions.staysOnPreRelease(com.ultratv.tv.nativeapp.update.UpdateChannel.installed(), pre)
+        PrefRow(D.updateChannel, if (pre) D.updateChannelPre else D.updateChannelStable, hint = if (stays) D.updateChannelStay else D.updateChannelHint) { channelOpen = true }
         PrefRow(D.diagnostic, "", hint = D.diagnosticHint) { onNavigate("diagnostic") }
+    }
+    if (channelOpen) {
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(
+            D.updateChannel, listOf(false to D.updateChannelStable, true to D.updateChannelPre),
+            com.ultratv.tv.nativeapp.update.UpdateChannel.preRelease.value,
+            { com.ultratv.tv.nativeapp.update.UpdateChannel.set(ctx, it); msg = null; channelOpen = false }, { channelOpen = false },
+        )
     }
     // Attribution exigée par les conditions d'utilisation de l'API TMDB.
     androidx.tv.material3.Text(D.tmdbAttribution, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 32.spx, maxLines = 3)

@@ -196,6 +196,8 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
         super.onCreate()
         // Départ de la mesure « démarrage à froid » (jusqu'à la première image affichée sur un écran).
         com.ultratv.tv.nativeapp.perf.PerfTelemetry.markAppCreate()
+        // Canal de mise à jour (Stable / Pré-version) : lu avant la première recherche de mise à jour.
+        com.ultratv.tv.nativeapp.update.UpdateChannel.init(this)
 
         // Préchauffage du graphe lourd EN PARALLÈLE de la création de l'activité : ProviderRepository (OkHttp et ses
         // clients Xtream / M3U / XMLTV, tous les DAO, la base) et CloudSyncManager (lectures synchrones de préférences

@@ -52,6 +52,10 @@ object UpdateChecker {
         /** Profil de démarrage (.dm) à installer avec l'APK : démarrage compilé d'avance (1,1 s → 0,6 s sur box). */
         val dmName: String? = null,
         val dmUrl: String? = null,
+        /** Pré-version (« -rcN » / release marquée pré-version) : l'invite le signale. */
+        val preRelease: Boolean = false,
+        /** Rang comparable (voir [UpdateVersions.Version.rank]) ; 0 = inconnu (comparaison par [versionCode]). */
+        val rank: Long = 0L,
     )
 
     private val _state = MutableStateFlow<UpdateInfo?>(null)
@@ -66,10 +70,19 @@ object UpdateChecker {
             .build()
     }
 
+    /** Oublie la mise à jour trouvée (changement de canal). */
+    fun clear() { _state.value = null }
+
+    /**
+     * Release à proposer selon le canal ([UpdateChannel]) : « latest » sur le canal stable (comme avant), la plus récente
+     * des releases (pré-versions comprises) sur le canal pré-version. Jamais une version plus ancienne que l'installée.
+     */
     suspend fun checkForUpdate(): UpdateInfo? = withContext(Dispatchers.IO) {
         runCatching {
+            val pre = UpdateChannel.preRelease.value
+            val url = if (pre) "https://api.github.com/repos/$REPO/releases?per_page=20" else "https://api.github.com/repos/$REPO/releases/latest"
             val req = Request.Builder()
-                .url("https://api.github.com/repos/$REPO/releases/latest")
+                .url(url)
                 .header("Accept", "application/vnd.github+json")
                 .header("Cache-Control", "no-cache")
                 .build()
@@ -79,24 +92,18 @@ object UpdateChecker {
                     return@use null
                 }
                 val body = resp.body?.string().orEmpty()
-                val json = JSONObject(body)
-                val tag = json.optString("tag_name").trim()           // e.g. "v1.0.5"
+                val list: List<JSONObject> = if (pre) org.json.JSONArray(body).let { a -> (0 until a.length()).map { a.getJSONObject(it) } } else listOf(JSONObject(body))
+                val installed = UpdateChannel.installed() ?: UpdateVersions.Version(0, 0, BuildConfig.VERSION_CODE)
+                val releases = list.map { UpdateVersions.Release(it.optString("tag_name").trim(), it.optBoolean("prerelease"), it.optBoolean("draft")) }
+                val chosen = UpdateVersions.pick(releases, pre, installed) ?: run {
+                    RemoteLog.debug(TAG, "up to date (local=${installed.rank} channel=${if (pre) "pre" else "stable"})")
+                    return@use null
+                }
+                val json = list[releases.indexOf(chosen)]
+                val tag = chosen.tag                                   // e.g. "v1.0.5", "v1.3.73-rc2"
                 val notes = json.optString("body").take(8_000)
                 val verName = tag.removePrefix("v")
-                val remoteCode = versionCodeFromName(verName) ?: run {
-                    RemoteLog.warn(TAG, "unparseable tag $tag")
-                    return@use null
-                }
-                // Compare both sides on the same scale (semver → packed int).
-                // BuildConfig.VERSION_CODE is a small sequential number (17),
-                // while remoteCode encodes "x.y.z" as x*10000+y*100+z (10007).
-                // Earlier we were comparing 10007 > 17 every time, so the
-                // dialog kept popping even on the newest install.
-                val localCode = versionCodeFromName(BuildConfig.VERSION_NAME) ?: BuildConfig.VERSION_CODE
-                if (remoteCode <= localCode) {
-                    RemoteLog.debug(TAG, "up to date (local=$localCode remote=$remoteCode)")
-                    return@use null
-                }
+                val remote = UpdateVersions.parse(tag) ?: return@use null
                 val assetsJson = json.optJSONArray("assets")
                 val assets = buildList {
                     if (assetsJson != null) for (i in 0 until assetsJson.length()) {
@@ -110,28 +117,15 @@ object UpdateChecker {
                     RemoteLog.warn(TAG, "no installable APK asset on $tag")
                     return@use null
                 }
-                val info = UpdateInfo(tag, verName, remoteCode, choice.apkUrl, notes, choice.sha256Url, choice.apkName, choice.sumsUrl, choice.dmName, choice.dmUrl)
+                val info = UpdateInfo(tag, verName, remote.code, choice.apkUrl, notes, choice.sha256Url, choice.apkName, choice.sumsUrl, choice.dmName, choice.dmUrl,
+                    preRelease = remote.isPreRelease || chosen.preRelease, rank = remote.rank)
                 _state.value = info
-                RemoteLog.info(TAG, "update available: $tag (code $remoteCode)")
+                RemoteLog.info(TAG, "update available: $tag (rank ${remote.rank})")
                 info
             }
         }.onFailure {
             RemoteLog.warn(TAG, "check failed: ${it.javaClass.simpleName} ${it.message}")
         }.getOrNull()
-    }
-
-    /**
-     * Encodes a "x.y.z" versionName as one integer for comparison. Matches the
-     * scheme used in build.gradle.kts (versionCode is bumped manually but the
-     * versionName follows semver), so 1.0.5 → 10005.
-     */
-    private fun versionCodeFromName(name: String): Int? {
-        val parts = name.split(".").mapNotNull { it.toIntOrNull() }
-        if (parts.size < 2) return null
-        val major = parts.getOrNull(0) ?: 0
-        val minor = parts.getOrNull(1) ?: 0
-        val patch = parts.getOrNull(2) ?: 0
-        return major * 10_000 + minor * 100 + patch
     }
 
     /**

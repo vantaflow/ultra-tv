@@ -2004,4 +2004,11 @@
     <string name="dt_not_found">هذا العنوان لم يعد متاحًا</string>
     <string name="dt_episodes_error">تعذّر تحميل الحلقات</string>
     <string name="dt_hidden_profile">غير متاح لهذا الملف الشخصي</string>
+    <string name="ds_update_prerelease_tag">إصدار تجريبي</string>
+    <string name="ds_update_prerelease_body">نسخة اختبار: قد تحتوي بعدُ على أخطاء.</string>
+    <string name="ds_update_channel">قناة التحديث</string>
+    <string name="ds_update_channel_stable">مستقر</string>
+    <string name="ds_update_channel_pre">إصدار تجريبي</string>
+    <string name="ds_update_channel_hint">الإصدار التجريبي يعرض أيضًا نسخ الاختبار فور نشرها.</string>
+    <string name="ds_update_channel_stay">ستبقى على الإصدار التجريبي حتى صدور إصدار مستقر أحدث.</string>
 </resources>

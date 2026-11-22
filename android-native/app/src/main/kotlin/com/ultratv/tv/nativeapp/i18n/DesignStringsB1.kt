@@ -141,3 +141,12 @@ val DesignStrings.detailNotFound get() = tx(R.string.dt_not_found)
 val DesignStrings.episodesLoadError get() = tx(R.string.dt_episodes_error)
 // Fiches : contenu d'une catégorie masquée par le profil (profil Enfants, catégorie masquée) : aucun code ne la rouvre.
 val DesignStrings.detailHiddenForProfile get() = tx(R.string.dt_hidden_profile)
+
+// Mise à jour : canal Stable / Pré-version (Réglages › À propos) et invite d'une pré-version.
+val DesignStrings.updatePreReleaseTag get() = tx(R.string.ds_update_prerelease_tag)
+val DesignStrings.updatePreReleaseBody get() = tx(R.string.ds_update_prerelease_body)
+val DesignStrings.updateChannel get() = tx(R.string.ds_update_channel)
+val DesignStrings.updateChannelStable get() = tx(R.string.ds_update_channel_stable)
+val DesignStrings.updateChannelPre get() = tx(R.string.ds_update_channel_pre)
+val DesignStrings.updateChannelHint get() = tx(R.string.ds_update_channel_hint)
+val DesignStrings.updateChannelStay get() = tx(R.string.ds_update_channel_stay)

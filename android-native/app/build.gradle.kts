@@ -83,6 +83,9 @@ android {
         buildConfigField("String", "WORKER_FALLBACK_URL", "\"https://ultratv-config.khalilbenaz.workers.dev\"")
         // Édition déclarée au tableau de bord du compte (en-tête X-Ultra-Edition) ; « pro » dans la variante revendeur.
         buildConfigField("String", "EDITION", "\"$ultraEdition\"")
+        // Étiquette de publication (« v1.3.73-rc2 ») posée par le workflow de publication (GITHUB_REF_NAME) : distingue une
+        // pré-version de la version stable du même numéro pour la mise à jour intégrée (canal Stable / Pré-version). Vide en local.
+        buildConfigField("String", "RELEASE_TAG", "\"${System.getenv("GITHUB_REF_NAME")?.takeIf { it.matches(Regex("v[0-9][0-9A-Za-z.-]*")) } ?: ""}\"")
     }
 
     // Release signing — reads ULTRA_KEYSTORE / ULTRA_KEYSTORE_PASSWORD /
