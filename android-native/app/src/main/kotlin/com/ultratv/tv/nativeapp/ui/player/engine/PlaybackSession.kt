@@ -117,6 +117,8 @@ class PlaybackSession(
     private val engineFactory: (EngineKind, EngineConfig) -> PlayerEngine = { k, c -> if (k == EngineKind.EXO) ExoEngine(ctx, c) else VlcEngine(ctx, c) },
     /** Horloge monotone (ms) du plafond de la demande de lien ; temps virtuel dans les tests. */
     private val nowMs: () -> Long = { android.os.SystemClock.elapsedRealtime() },
+    /** Chaînes passées sur VLC après des pannes ExoPlayer répétées (durée de vie de l'appli) ; voir [LiveRecoveryPolicy]. */
+    private val liveEngineMemo: LiveEngineMemo = LiveEngineMemo.session,
 ) {
     private val _state = MutableStateFlow(SessionState())
     val state: StateFlow<SessionState> = _state.asStateFlow()
@@ -149,7 +151,10 @@ class PlaybackSession(
     private var manualSwitch = false
     private var launchedAtNs = 0L
     // Reconnexion automatique du direct (serveurs qui ferment la session, flux gelé).
-    private var reconnects = 0
+    /** Délais, plafond et bascule VLC des reconnexions du direct (remis à zéro au changement de chaîne et par « Réessayer »). */
+    private val recovery = LiveRecoveryPolicy()
+    /** Moteur VLC choisi par [recovery] ou par [liveEngineMemo] : jamais retenu durablement pour la chaîne (session seulement). */
+    private var vlcBySession = false
     private var everPlayed = false
     private var reconnectJob: Job? = null
     private var stallJob: Job? = null
@@ -157,7 +162,6 @@ class PlaybackSession(
     private var frozenJob: Job? = null
     /** Délai de démarrage : armé à chaque lancement de moteur, levé par la première image (ou Ready, relais du contrôle d'image). */
     private var startupJob: Job? = null
-    private var stableJob: Job? = null
     /** Nouvelle tentative / repli programmés par [onError] : annulés par un zap ou un nouveau moteur (double connexion sinon). */
     private var errorJob: Job? = null
     /** Demande de lien (adresse `stalker://`) en cours, et en-têtes du flux chargé dans le moteur en place. */
@@ -291,19 +295,24 @@ class PlaybackSession(
         this.url = url; this.key = channelKey; this.resumeMs = resumeMs
         armOpenDeadline()
         this.props = found?.takeIf { it.isProtected }
-        tried = mutableSetOf(); sameRetries = 0; manualSwitch = false
+        tried = mutableSetOf(); sameRetries = 0; manualSwitch = false; vlcBySession = false
         hdrKind = null; hdrSwitched = false; hdrSurfaceTrial = false; hdrDiagJob?.cancel()
         val hintSurface = hdrHint && videoSurfacePref() == "auto" && textureView && HdrOutput.displayHdrCapable(ctx) && !HdrOutput.surfaceKnownBad(ctx)
         val wantTexture = if (hintSurface) false else textureView
         syncPresence(); lastHttp = null; playedSinceMs = 0L
         diagStartMs = System.currentTimeMillis(); diagFirstFrameMs = null; diagRebuffers = 0; diagRebufferTotalMs = 0L; diagBufferingSinceMs = 0L; diagErrors.clear()
-        reconnects = 0; everPlayed = false; reconnectJob?.cancel(); stallJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel(); audioOnlyJob?.cancel()
+        recovery.reset(); everPlayed = false; reconnectJob?.cancel(); stallJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel(); errorJob?.cancel(); openJob?.cancel(); audioOnlyJob?.cancel()
         val s = settings()
         presetOverride = channelKey?.let { memory.bufferPreset(it) }
         val protectedNow = isProtected
         val next0 = PlaybackPlanner.initial(s.engine, s.decoder, if (protectedNow) null else channelKey?.let { memory.combo(it) }, protectedNow)
         // Stalker : VLC (LibVLC 3.x) ne sait pas envoyer le cookie `mac` (aucune option) → ExoPlayer, sauf VLC imposé par l'utilisateur.
-        val next = if (needsOpener && s.engine != EngineChoice.VLC && next0.engine == EngineKind.VLC) Combo(EngineKind.EXO, next0.decoder) else next0
+        val next1 = if (needsOpener && s.engine != EngineChoice.VLC && next0.engine == EngineKind.VLC) Combo(EngineKind.EXO, next0.decoder) else next0
+        // Chaîne passée sur VLC plus tôt dans cette session après des pannes ExoPlayer répétées : on y reste.
+        val next = if (isLive && next1.engine == EngineKind.EXO && channelKey != null && liveEngineMemo.prefersVlc(channelKey) && vlcAllowedFor(s.engine, protectedNow)) {
+            android.util.Log.i("UltraPlay", "live engine memo -> VLC (session)")
+            vlcBySession = true; Combo(EngineKind.VLC, next1.decoder)
+        } else next1
         props?.let(drmPrecheck)?.let { bad ->
             // Appareil sans le système demandé ou propriétés incomplètes : erreur claire, AUCUN moteur (et jamais VLC).
             watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel(); eventsJob?.cancel(); adaptJob?.cancel(); startupJob?.cancel()
@@ -415,7 +424,7 @@ class PlaybackSession(
     }
 
     /** « Réessayer » / retour sur l'appli : tout repart de zéro (sinon, compteur à 8 = écran d'erreur à la 1re coupure). */
-    fun retry() { tried = mutableSetOf(); sameRetries = 0; reconnects = 0; everPlayed = false; armOpenDeadline(); launch(combo) }
+    fun retry() { tried = mutableSetOf(); sameRetries = 0; recovery.reset(); everPlayed = false; armOpenDeadline(); launch(combo) }
 
     /** « Recharger » pendant une mise en mémoire tampon : relance le même flux (VOD : à la position courante, direct : même chaîne). */
     fun reload() {
@@ -427,7 +436,7 @@ class PlaybackSession(
     /** Changement manuel (pilule « Lecteur ») : on le mémorise tout de suite pour cette chaîne. */
     fun switchTo(c0: Combo) {
         val c = PlaybackPlanner.manualCombo(c0, isProtected)   // flux protégé : le choix VLC est ignoré
-        manualSwitch = true; tried = mutableSetOf(); combo = c; if (!isProtected) key?.let { memory.remember(it, c, null) }; armOpenDeadline(); launch(c)
+        manualSwitch = true; vlcBySession = false; tried = mutableSetOf(); combo = c; if (!isProtected) key?.let { memory.remember(it, c, null) }; armOpenDeadline(); launch(c)
     }
 
     /** Choix manuel de la piste audio : appliqué, puis sa langue est retenue pour ce titre (jamais l'identifiant de piste). */
@@ -450,7 +459,7 @@ class PlaybackSession(
         val c = PlaybackPlanner.manualCombo(c0, isProtected)
         eventsJob?.cancel(); watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel()
         // Nouveau moteur : une reconnexion ou une nouvelle tentative encore en attente rechargerait un flux qui joue.
-        reconnectJob?.cancel(); stallJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel(); audioOnlyJob?.cancel()
+        reconnectJob?.cancel(); stallJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel(); errorJob?.cancel(); openJob?.cancel(); audioOnlyJob?.cancel()
         releaseEngine()
         combo = c; tried += c; firstFrame = false; launchedAtNs = System.nanoTime()
         val s = settings()
@@ -530,7 +539,7 @@ class PlaybackSession(
                 if (!_state.value.buffering) { _state.value = _state.value.copy(buffering = true); diagRebuffers++; diagBufferingSinceMs = System.currentTimeMillis() }
                 android.util.Log.i("UltraPlay", "rebuffer engine=${combo.engine}"); network.onRebuffer(); applyQualityLimit(adapter.onRebuffer(System.currentTimeMillis()))
                 // Direct figé en chargement (serveur qui ne renvoie plus rien sans fermer) : reconnexion au bout de 12 s.
-                if (reconnectAllowed && stallJob?.isActive != true) stallJob = scope.launch { delay(STALL_MS); reconnectLive() }
+                if (reconnectAllowed && stallJob?.isActive != true) stallJob = scope.launch { delay(STALL_MS); reconnectLive(LiveRecoveryPolicy.Cause.STALL) }
             } else if (e.hasVideo && startupJob?.isActive != true) armStartup(e)   // rechargement avant toute image (après Ready) : même garde-fou
             EngineEvent.Ready -> { diagEndBuffering(); if (_state.value.buffering) _state.value = _state.value.copy(buffering = false); confirmAudioOnly(e); stallJob?.cancel(); startupJob?.cancel(); if (!firstFrame && watchdog?.isActive != true) armPictureWatchdog(e) }
             EngineEvent.FirstFrame -> {
@@ -542,8 +551,8 @@ class PlaybackSession(
                 firstFrame = true; audioOnlyJob?.cancel(); watchdog?.cancel(); blackJob?.cancel(); stallJob?.cancel(); startupJob?.cancel()
                 everPlayed = true
                 if (playedSinceMs == 0L) playedSinceMs = System.currentTimeMillis()
-                // 30 s de lecture stable : le compteur de reconnexions repart de zéro.
-                stableJob?.cancel(); stableJob = scope.launch { delay(30_000); reconnects = 0 }
+                // Le compteur de reconnexions n'est plus remis à zéro après 30 s : il compte sur une fenêtre glissante
+                // (voir [LiveRecoveryPolicy]), sinon un flux qui gèle toutes les 35 s se reconnecte sans fin.
                 // Mesure (jamais d'URL) : moteur, décodage et délai jusqu'à la première image.
                 if (again) android.util.Log.i("UltraPlay", "picture again (surface changed) engine=${combo.engine}")
                 else android.util.Log.i("UltraPlay", "firstFrame engine=${combo.engine} decoder=${combo.decoder} ms=${(System.nanoTime() - launchedAtNs) / 1_000_000}")
@@ -560,12 +569,12 @@ class PlaybackSession(
                 armBlackPictureCheck(e)
                 // La combinaison est retenue pour la chaîne si elle a demandé un repli ou un choix manuel et tient 5 s.
                 rememberJob?.cancel()
-                rememberJob = scope.launch { delay(5_000); if (tried.size > 1 || manualSwitch) key?.let { memory.remember(it, combo, null) } }
+                rememberJob = scope.launch { delay(5_000); if ((tried.size > 1 || manualSwitch) && !vlcBySession) key?.let { memory.remember(it, combo, null) } }
                 sameRetries = 0
             }
             // Direct : une « fin » est une session fermée par le serveur, pas la fin du programme → on se reconnecte.
             is EngineEvent.HdrDetected -> onHdr(ev.kind, e)
-            EngineEvent.Ended -> if (reconnectAllowed) reconnectLive() else _state.value = _state.value.copy(phase = Phase.ENDED)
+            EngineEvent.Ended -> if (reconnectAllowed) reconnectLive(LiveRecoveryPolicy.Cause.ENDED) else _state.value = _state.value.copy(phase = Phase.ENDED)
             is EngineEvent.Error -> onError(ev.kind, ev.httpStatus)
         }
     }
@@ -602,13 +611,14 @@ class PlaybackSession(
     private fun armFrozenWatch(e: PlayerEngine) {
         frozenJob?.cancel()
         val detector = FrozenLiveDetector()
+        var stallIgnoredLogged = false
         frozenJob = scope.launch {
             while (true) {
                 delay(2_000)
                 if (engine !== e || !reconnectAllowed) return@launch
                 val now = System.currentTimeMillis()
                 val checkFrames = e.hasVideo && e.view.isShown
-                if (detector.feed(now, firstFrame && e.isPlaying, e.positionMs, e.renderedFrames(), checkFrames)) {
+                if (detector.feed(now, firstFrame && e.isPlaying, e.positionMs, e.renderedFrames(), checkFrames, e.bytesReceived(), e.timestampJumps())) {
                     val line = "live frozen (${detector.reason(now)}) engine=${combo.engine} decoder=${combo.decoder} played=${if (playedSinceMs == 0L) 0 else (now - playedSinceMs) / 1000}s"
                     android.util.Log.i("UltraPlay", line); com.ultratv.tv.nativeapp.RemoteLog.warn("play", line)
                     val played = if (playedSinceMs == 0L) 0L else now - playedSinceMs
@@ -618,8 +628,14 @@ class PlaybackSession(
                     if (!afterSwitch && PlaybackPlanner.frozenMeansDecoder(played, combo.decoder) && fallbackAfter(PlayErrorKind.DECODER) != null) {
                         onError(PlayErrorKind.DECODER); return@launch
                     }
-                    reconnectLive(); return@launch
+                    reconnectLive(LiveRecoveryPolicy.Cause.FROZEN); return@launch
                 }
+                // Position immobile mais images, octets ou saut d'horodatage qui prouvent que la lecture continue : pas
+                // de reconnexion (elle rejouait le flux en arrière, en boucle). Une ligne par épisode.
+                if (detector.positionStallIgnored && !stallIgnoredLogged) {
+                    stallIgnoredLogged = true
+                    android.util.Log.i("UltraPlay", "live position stalled but stream alive (frames/bytes/timestamp jump) -> no reconnect engine=${combo.engine}")
+                } else if (!detector.positionStallIgnored) stallIgnoredLogged = false
             }
         }
     }
@@ -655,7 +671,7 @@ class PlaybackSession(
             // Direct qui jouait puis rechargé après une coupure : on retente la reconnexion (bornée), pas de changement de moteur.
             if (reconnectAllowed && everPlayed) {
                 android.util.Log.i("UltraPlay", "startup stall engine=${combo.engine} ms=$waited -> reconnect")
-                reconnectLive(); return@launch
+                reconnectLive(LiveRecoveryPolicy.Cause.STALL); return@launch
             }
             val next = fallbackAfter(PlayErrorKind.START_TIMEOUT)
             android.util.Log.i("UltraPlay", "startup stall engine=${combo.engine} ms=$waited -> " + (next?.let { "fallback ${it.engine}" } ?: "error"))
@@ -720,7 +736,7 @@ class PlaybackSession(
         // VLC ne donne pas de code : après un rechargement, une coupure serveur arrive classée FORMAT ; si le flux a déjà
         // joué, c'est une coupure, pas un format illisible.
         val k = if (everPlayed && kind == PlayErrorKind.FORMAT && combo.engine == EngineKind.VLC) PlayErrorKind.NETWORK else kind
-        if (reconnectAllowed && everPlayed && PlaybackPlanner.shouldReconnectLive(k)) { reconnectLive(); return }
+        if (reconnectAllowed && everPlayed && PlaybackPlanner.shouldReconnectLive(k)) { reconnectLive(LiveRecoveryPolicy.Cause.ERROR); return }
         network.onError()
         startupJob?.cancel()
         errorJob?.cancel()
@@ -759,28 +775,51 @@ class PlaybackSession(
         }
     }
 
-    /** Reconnexion du direct sur la même adresse (délais croissants) ; au-delà, écran d'erreur. */
-    private fun reconnectLive() {
-        stallJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel(); stableJob?.cancel()
+    /** VLC permis pour cette lecture : ni flux protégé, ni ExoPlayer imposé, ni portail Stalker / serveur à jeton (sauf VLC choisi). */
+    private fun vlcAllowedFor(choice: EngineChoice, protectedNow: Boolean): Boolean =
+        !protectedNow && choice != EngineChoice.EXO && !(needsOpener && choice != EngineChoice.VLC)
+
+    /**
+     * Reconnexion du direct sur la même adresse (délais croissants sur une fenêtre glissante, plafond, bascule VLC après
+     * des pannes ExoPlayer répétées : voir [LiveRecoveryPolicy]) ; au-delà du plafond, écran d'erreur. Une reconnexion
+     * rouvre l'adresse du direct : le serveur renvoie le point de direct, rien n'est rejoué depuis le tampon.
+     */
+    private fun reconnectLive(cause: LiveRecoveryPolicy.Cause) {
+        stallJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel()
         if (reconnectJob?.isActive == true) return
         // Appli en arrière-plan (lecteur en pause) : surtout pas de rechargement — le son repartirait. Le retour sur
         // l'appli relance la lecture (retry) de toute façon.
         if (!com.ultratv.tv.nativeapp.ui.common.AppForeground.visible) return
-        val wait = PlaybackPlanner.liveReconnectDelayMs(reconnects) ?: run {
-            releaseEngine()
-            _state.value = _state.value.copy(phase = Phase.ERROR, error = PlayErrorKind.NETWORK, errorHttp = lastHttp)
-            return
+        val now = System.currentTimeMillis()
+        val wait = when (val d = recovery.onFailure(now, combo.engine, cause, vlcAllowedFor(settings().engine, isProtected))) {
+            LiveRecoveryPolicy.Decision.GiveUp -> {
+                android.util.Log.i("UltraPlay", "live reconnect limit reached engine=${combo.engine} -> error")
+                com.ultratv.tv.nativeapp.RemoteLog.warn("play", "live reconnect limit reached engine=${combo.engine.name} cause=${cause.name.lowercase()}")
+                releaseEngine()
+                _state.value = _state.value.copy(phase = Phase.ERROR, error = PlayErrorKind.NETWORK, errorHttp = lastHttp)
+                return
+            }
+            LiveRecoveryPolicy.Decision.SwitchToVlc -> {
+                val line = "live exo failures repeated cause=${cause.name.lowercase()} -> VLC (session)"
+                android.util.Log.i("UltraPlay", line); com.ultratv.tv.nativeapp.RemoteLog.warn("play", line)
+                key?.let { liveEngineMemo.preferVlc(it) }
+                _notices.tryEmit(Notice.USING_VLC)
+                vlcBySession = true; val target = Combo(EngineKind.VLC, combo.decoder)
+                reconnectJob = scope.launch { delay(500); launch(target) }
+                return
+            }
+            is LiveRecoveryPolicy.Decision.Reconnect -> d
         }
-        reconnects++
+        val reconnects = wait.attempt
         if (isStalkerUrl) {
             val line = StalkerPlayLog.reconnect(reconnects, lastHttp, if (playedSinceMs == 0L) 0L else System.currentTimeMillis() - playedSinceMs)
             android.util.Log.i("UltraPlay", line); com.ultratv.tv.nativeapp.RemoteLog.info("StalkerPlay", line)
             lastHttp = null; playedSinceMs = 0L
         }
-        android.util.Log.i("UltraPlay", "live reconnect #$reconnects in ${wait}ms engine=${combo.engine}")
+        android.util.Log.i("UltraPlay", "live reconnect #$reconnects in ${wait.delayMs}ms engine=${combo.engine} cause=${cause.name.lowercase()}")
         _notices.tryEmit(Notice.RETRYING)
         reconnectJob = scope.launch {
-            delay(wait)
+            delay(wait.delayMs)
             firstFrame = false; launchedAtNs = System.nanoTime(); watchdog?.cancel(); blackJob?.cancel()
             val e = engine
             if (e != null && e.reusable) {
@@ -804,7 +843,7 @@ class PlaybackSession(
 
     fun release() {
         startJob?.cancel(); eventsJob?.cancel(); watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel(); adaptJob?.cancel()
-        reconnectJob?.cancel(); stallJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel(); presenceJob?.cancel()
+        reconnectJob?.cancel(); stallJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel(); errorJob?.cancel(); openJob?.cancel(); presenceJob?.cancel()
         releaseEngine()
     }
 }
