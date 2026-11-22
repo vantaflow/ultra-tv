@@ -1973,6 +1973,12 @@
     <string name="mem_clean_all_hint">Caches, images and temporary files in one go</string>
     <string name="mem_confirm_all_title">Clean everything?</string>
     <string name="mem_confirm_all_body">Empties the image cache, temporary files and the live pause buffer. Your sources, favourites, history, settings, recordings and downloads are kept.</string>
+    <string name="perso_screen_edges_label">Screen edges</string>
+    <string name="perso_screen_edges_hint">Margin for TVs that crop the picture edges (overscan). Full-screen video stays edge to edge.</string>
+    <string name="perso_screen_edges_none">None</string>
+    <string name="perso_screen_edges_small">Small (2.5%)</string>
+    <string name="perso_screen_edges_medium">Medium (5%)</string>
+    <string name="perso_screen_edges_large">Large (7.5%)</string>
     <string name="perso_ui_size_label">Interface size</string>
     <string name="perso_ui_size_small">Small</string>
     <string name="perso_ui_size_normal">Normal</string>

@@ -75,6 +75,16 @@ fun DesignStrings.uiSizeName(s: com.ultratv.tv.nativeapp.ui.design.UiSize): Stri
     com.ultratv.tv.nativeapp.ui.design.UiSize.XLARGE -> tx(R.string.perso_ui_size_xlarge)
 }
 
+val DesignStrings.screenEdgesLabel get() = tx(R.string.perso_screen_edges_label)
+val DesignStrings.screenEdgesHint get() = tx(R.string.perso_screen_edges_hint)
+
+fun DesignStrings.screenEdgesName(s: com.ultratv.tv.nativeapp.ui.design.ScreenEdges): String = when (s) {
+    com.ultratv.tv.nativeapp.ui.design.ScreenEdges.NONE -> tx(R.string.perso_screen_edges_none)
+    com.ultratv.tv.nativeapp.ui.design.ScreenEdges.SMALL -> tx(R.string.perso_screen_edges_small)
+    com.ultratv.tv.nativeapp.ui.design.ScreenEdges.MEDIUM -> tx(R.string.perso_screen_edges_medium)
+    com.ultratv.tv.nativeapp.ui.design.ScreenEdges.LARGE -> tx(R.string.perso_screen_edges_large)
+}
+
 fun DesignStrings.textSizeName(s: TextSize): String = when (s) {
     TextSize.NORMAL -> tx(R.string.perso_text_size_name_normal)
     TextSize.LARGE -> tx(R.string.perso_text_size_name_large)

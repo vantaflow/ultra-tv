@@ -1893,6 +1893,12 @@
   "DesignStrings/PersonalizationStringsKt.uiSizeName(NORMAL)": "Normal",
   "DesignStrings/PersonalizationStringsKt.uiSizeName(LARGE)": "Large",
   "DesignStrings/PersonalizationStringsKt.uiSizeName(XLARGE)": "Extra large",
+  "DesignStrings/PersonalizationStringsKt.getScreenEdgesHint()": "Margin for TVs that crop the picture edges (overscan). Full-screen video stays edge to edge.",
+  "DesignStrings/PersonalizationStringsKt.getScreenEdgesLabel()": "Screen edges",
+  "DesignStrings/PersonalizationStringsKt.screenEdgesName(LARGE)": "Large (7.5%)",
+  "DesignStrings/PersonalizationStringsKt.screenEdgesName(MEDIUM)": "Medium (5%)",
+  "DesignStrings/PersonalizationStringsKt.screenEdgesName(NONE)": "None",
+  "DesignStrings/PersonalizationStringsKt.screenEdgesName(SMALL)": "Small (2.5%)",
   "DesignStrings/DesignStringsB1Kt.getShowAdvanced()": "Show advanced settings",
   "DesignStrings/DesignStringsB1Kt.getShowAdvancedHint()": "Engine, decoding, buffer, quality, frame rate. A changed setting always stays visible."
 }

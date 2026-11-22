@@ -97,6 +97,9 @@ import com.ultratv.tv.nativeapp.i18n.showAdvanced
 import com.ultratv.tv.nativeapp.i18n.showAdvancedHint
 import com.ultratv.tv.nativeapp.i18n.uiSizeLabel
 import com.ultratv.tv.nativeapp.i18n.uiSizeName
+import com.ultratv.tv.nativeapp.i18n.screenEdgesHint
+import com.ultratv.tv.nativeapp.i18n.screenEdgesLabel
+import com.ultratv.tv.nativeapp.i18n.screenEdgesName
 import com.ultratv.tv.nativeapp.i18n.updateChannel
 import com.ultratv.tv.nativeapp.i18n.updateChannelHint
 import com.ultratv.tv.nativeapp.i18n.updateChannelPre
@@ -784,6 +787,9 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
     SettingsCard {
         PrefRow(D.accentColor, D.accentName(AccentChoice.parse(p.accent))) { choice = "accent" }
         PrefRow(D.uiSizeLabel, D.uiSizeName(com.ultratv.tv.nativeapp.ui.design.UiSize.parse(p.uiSize))) { choice = "uisize" }
+        // TV seulement : un téléphone ou une tablette ne coupe pas les bords de l'image.
+        if (!com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current)
+            PrefRow(D.screenEdgesLabel, D.screenEdgesName(com.ultratv.tv.nativeapp.ui.design.ScreenEdges.parse(p.screenEdges)), hint = D.screenEdgesHint) { choice = "edges" }
         PrefRow(D.textSizeLabel, D.textSizeName(TextSize.parse(p.textSize))) { choice = "text" }
         PrefRow(D.animations, D.animationName(com.ultratv.tv.nativeapp.ui.design.AnimationLevel.parse(p.animations))) { choice = "anim" }
         val layout = remember(p.homeOrder, p.homeHidden) { com.ultratv.tv.nativeapp.ui.home.HomeLayout.parse(p.homeOrder, p.homeHidden) }
@@ -795,6 +801,7 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         "open" -> ChoiceDialog(D.openOn, com.ultratv.tv.nativeapp.nav.StartScreen.entries.map { it to D.startScreenName(it) }, com.ultratv.tv.nativeapp.nav.StartScreen.parse(p.startScreen, p.autoPlayLastOnLaunch), { app.setStartScreen(it.key); choice = "" }, { choice = "" })
         "accent" -> AccentDialog(AccentChoice.parse(p.accent), { app.setAccent(it.key); choice = "" }, { choice = "" })
         "anim" -> ChoiceDialog(D.animations, com.ultratv.tv.nativeapp.ui.design.AnimationLevel.entries.map { it to D.animationName(it) }, com.ultratv.tv.nativeapp.ui.design.AnimationLevel.parse(p.animations), { app.setAnimations(it.key); choice = "" }, { choice = "" })
+        "edges" -> ChoiceDialog(D.screenEdgesLabel, com.ultratv.tv.nativeapp.ui.design.ScreenEdges.entries.map { it to D.screenEdgesName(it) }, com.ultratv.tv.nativeapp.ui.design.ScreenEdges.parse(p.screenEdges), { app.setScreenEdges(it.key); choice = "" }, { choice = "" })
         "uisize" -> ChoiceDialog(D.uiSizeLabel, com.ultratv.tv.nativeapp.ui.design.UiSize.entries.map { it to D.uiSizeName(it) }, com.ultratv.tv.nativeapp.ui.design.UiSize.parse(p.uiSize), { app.setUiSize(it.key); choice = "" }, { choice = "" })
         "text" -> ChoiceDialog(D.textSizeLabel, TextSize.entries.map { it to D.textSizeName(it) }, TextSize.parse(p.textSize), { app.setTextSize(it.key); choice = "" }, { choice = "" })
         "home" -> HomeRowsDialog(com.ultratv.tv.nativeapp.ui.home.HomeLayout.parse(p.homeOrder, p.homeHidden), onSave = { app.setHomeLayout(it) }, onDismiss = { choice = "" })

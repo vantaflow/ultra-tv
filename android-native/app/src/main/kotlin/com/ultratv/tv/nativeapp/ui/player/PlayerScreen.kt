@@ -56,6 +56,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.viewinterop.AndroidView
+import com.ultratv.tv.nativeapp.ui.common.bleedScreenEdges
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -1581,7 +1582,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             } else videoArea()
         } else {
         // takeVideoView : la vue vidéo peut venir de l'aperçu du Direct (changement de parent sans recharger le flux).
-        AndroidView(factory = { session.takeVideoView() }, modifier = Modifier.fillMaxSize())
+        // Bords de l'écran (overscan) : la vidéo reste bord à bord, les bandeaux du lecteur respectent la marge.
+        AndroidView(factory = { session.takeVideoView() }, modifier = Modifier.fillMaxSize().bleedScreenEdges())
 
         // Chargement : visuel de la chaîne avec anneau de progression.
         if (state.phase == Phase.LOADING) LoadingVisual(item?.poster, item?.title ?: title)

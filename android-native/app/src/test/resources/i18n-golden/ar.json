@@ -1893,6 +1893,12 @@
   "DesignStrings/PersonalizationStringsKt.uiSizeName(NORMAL)": "عادي",
   "DesignStrings/PersonalizationStringsKt.uiSizeName(LARGE)": "كبير",
   "DesignStrings/PersonalizationStringsKt.uiSizeName(XLARGE)": "كبير جدًا",
+  "DesignStrings/PersonalizationStringsKt.getScreenEdgesHint()": "هامش لأجهزة التلفاز التي تقص حواف الصورة (overscan). يبقى الفيديو بملء الشاشة من حافة إلى حافة.",
+  "DesignStrings/PersonalizationStringsKt.getScreenEdgesLabel()": "حواف الشاشة",
+  "DesignStrings/PersonalizationStringsKt.screenEdgesName(LARGE)": "كبير (7.5٪)",
+  "DesignStrings/PersonalizationStringsKt.screenEdgesName(MEDIUM)": "متوسط (5٪)",
+  "DesignStrings/PersonalizationStringsKt.screenEdgesName(NONE)": "بلا",
+  "DesignStrings/PersonalizationStringsKt.screenEdgesName(SMALL)": "صغير (2.5٪)",
   "DesignStrings/DesignStringsB1Kt.getShowAdvanced()": "إظهار الإعدادات المتقدمة",
   "DesignStrings/DesignStringsB1Kt.getShowAdvancedHint()": "المشغّل وفك الترميز والتخزين المؤقت والجودة ومعدل الإطارات. يبقى الإعداد المعدَّل ظاهرًا دائمًا."
 }

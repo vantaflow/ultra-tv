@@ -1958,6 +1958,12 @@
     <string name="mem_clean_all_hint">Caches, images et fichiers temporaires d\'un coup</string>
     <string name="mem_confirm_all_title">Tout nettoyer ?</string>
     <string name="mem_confirm_all_body">Vide le cache d\'images, les fichiers temporaires et le tampon de pause du direct. Vos sources, favoris, historique, réglages, enregistrements et téléchargements sont conservés.</string>
+    <string name="perso_screen_edges_label">Bords de l\'écran</string>
+    <string name="perso_screen_edges_hint">Marge pour les téléviseurs qui coupent les bords de l\'image (overscan). La vidéo plein écran reste bord à bord.</string>
+    <string name="perso_screen_edges_none">Aucun</string>
+    <string name="perso_screen_edges_small">Petit (2,5 %)</string>
+    <string name="perso_screen_edges_medium">Moyen (5 %)</string>
+    <string name="perso_screen_edges_large">Grand (7,5 %)</string>
     <string name="perso_ui_size_label">Taille de l\'interface</string>
     <string name="perso_ui_size_small">Petite</string>
     <string name="perso_ui_size_normal">Normale</string>

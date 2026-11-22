@@ -481,6 +481,7 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
             accent = com.ultratv.tv.nativeapp.ui.design.AccentChoice.parse(prefs.accent),
             textSize = com.ultratv.tv.nativeapp.ui.design.TextSize.parse(prefs.textSize),
             uiSize = com.ultratv.tv.nativeapp.ui.design.UiSize.parse(prefs.uiSize),
+            screenEdges = com.ultratv.tv.nativeapp.ui.design.ScreenEdges.parse(prefs.screenEdges),
         )
         com.ultratv.tv.nativeapp.ui.common.ProvideUiScale {
         UltraTvTheme {

@@ -19,6 +19,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.offset
 
 /**
  * Mise à l'échelle de l'interface selon la HAUTEUR réelle de l'écran.
@@ -65,11 +67,18 @@ fun ProvideUiScale(content: @Composable () -> Unit) {
     val base = LocalDensity.current
     // BoxWithConstraints : taille réelle de la fenêtre, fiable dès la première
     // composition (LocalWindowInfo.containerSize renvoie 0 ici).
+    val edges = if (tv) com.ultratv.tv.nativeapp.ui.design.Ux.screenEdges.fraction else 0f
+    // Marge des bords : couleur de fond du thème (pas de cadre sombre autour d'un thème clair).
+    val frame = if (edges > 0f) com.ultratv.tv.nativeapp.ui.design.Ux.Bg else androidx.compose.ui.graphics.Color(0xFF0A0A0C)
     androidx.compose.foundation.layout.BoxWithConstraints(
-        androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF0A0A0C)),
+        androidx.compose.ui.Modifier.fillMaxSize().background(frame),
     ) {
-        val wPx = constraints.maxWidth
-        val hPx = constraints.maxHeight
+        // Bords de l'écran (overscan, TV seulement) : l'interface est dessinée dans la zone intérieure, densité calculée sur
+        // SA hauteur — même maquette de 540 dp, simplement plus petite : aucun écran (rail, Guide, Réglages, dialogues,
+        // pavé de code) ne se tasse ni ne déborde. La vidéo plein écran ressort de la marge (voir [bleedScreenEdges]).
+        val inset = screenInsetPx(constraints.maxWidth, constraints.maxHeight, edges)
+        val wPx = constraints.maxWidth - 2 * inset.x
+        val hPx = constraints.maxHeight - 2 * inset.y
         // TV : maquette en pixels fixes, police comprise. La taille de police système (« Grand » sur certaines box)
         // agrandissait les textes dans des cadres de taille fixe : titres, boutons et libellés tronqués partout.
         // Taille du texte choisie dans Réglages › Affichage (Normal / Grand / Très grand) : facteur de police explicite,
@@ -84,14 +93,49 @@ fun ProvideUiScale(content: @Composable () -> Unit) {
             horizontal = (wDp * SAFE_AREA_FRACTION).dp,
             vertical = (hDp * SAFE_AREA_FRACTION).dp,
         ) else PaddingValues(0.dp)
-        CompositionLocalProvider(
-            LocalDensity provides scaled,
-            LocalSafeArea provides safe,
-            LocalUiWidthDp provides wDp,
-            // Mode tactile (téléphone / tablette) : tout ce qui n'est pas une TV. Jamais recalculé ailleurs.
-            com.ultratv.tv.nativeapp.ui.mobile.LocalTouch provides !tv,
-            com.ultratv.tv.nativeapp.ui.mobile.LocalUiHeightDp provides hDp,
-        ) { content() }
+        androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize().insetPx(inset)) {
+            CompositionLocalProvider(
+                LocalDensity provides scaled,
+                LocalSafeArea provides safe,
+                LocalUiWidthDp provides wDp,
+                LocalScreenInsetPx provides inset,
+                // Mode tactile (téléphone / tablette) : tout ce qui n'est pas une TV. Jamais recalculé ailleurs.
+                com.ultratv.tv.nativeapp.ui.mobile.LocalTouch provides !tv,
+                com.ultratv.tv.nativeapp.ui.mobile.LocalUiHeightDp provides hDp,
+            ) { content() }
+        }
+    }
+}
+
+/** Marge appliquée de chaque côté par [ProvideUiScale], en pixels (x = gauche/droite, y = haut/bas). */
+val LocalScreenInsetPx = compositionLocalOf { androidx.compose.ui.unit.IntOffset.Zero }
+
+/** Marge des bords de l'écran en pixels : [fraction] de la largeur à gauche/droite, de la hauteur en haut/bas. Pur, testé. */
+fun screenInsetPx(widthPx: Int, heightPx: Int, fraction: Float): androidx.compose.ui.unit.IntOffset =
+    if (fraction <= 0f || widthPx <= 0 || heightPx <= 0) androidx.compose.ui.unit.IntOffset.Zero
+    else androidx.compose.ui.unit.IntOffset(kotlin.math.round(widthPx * fraction).toInt(), kotlin.math.round(heightPx * fraction).toInt())
+
+/** Retrait de [inset] pixels de chaque côté (en pixels : indépendant de la densité de l'interface). */
+private fun androidx.compose.ui.Modifier.insetPx(inset: androidx.compose.ui.unit.IntOffset): androidx.compose.ui.Modifier =
+    if (inset == androidx.compose.ui.unit.IntOffset.Zero) this
+    else layout { m, c ->
+        val p = m.measure(c.offset(-2 * inset.x, -2 * inset.y))
+        layout(c.maxWidth, c.maxHeight) { p.place(inset.x, inset.y) }
+    }
+
+/**
+ * Vidéo plein écran bord à bord malgré la marge des bords de l'écran : l'élément ressort de [LocalScreenInsetPx] de chaque
+ * côté. Les bandeaux et commandes du lecteur, eux, restent dans la zone intérieure.
+ */
+@Composable
+fun androidx.compose.ui.Modifier.bleedScreenEdges(): androidx.compose.ui.Modifier {
+    val inset = LocalScreenInsetPx.current
+    return if (inset == androidx.compose.ui.unit.IntOffset.Zero) this
+    else layout { m, c ->
+        val w = if (c.hasBoundedWidth) c.maxWidth + 2 * inset.x else c.maxWidth
+        val h = if (c.hasBoundedHeight) c.maxHeight + 2 * inset.y else c.maxHeight
+        val p = m.measure(androidx.compose.ui.unit.Constraints.fixed(w, h))
+        layout(c.maxWidth, c.maxHeight) { p.place(-inset.x, -inset.y) }
     }
 }
 

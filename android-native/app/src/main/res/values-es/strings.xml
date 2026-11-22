@@ -1950,6 +1950,12 @@
     <string name="mem_clean_all_hint">Cachés, imágenes y archivos temporales de una vez</string>
     <string name="mem_confirm_all_title">¿Limpiar todo?</string>
     <string name="mem_confirm_all_body">Vacía la caché de imágenes, los archivos temporales y el búfer de pausa del directo. Se conservan sus fuentes, favoritos, historial, ajustes, grabaciones y descargas.</string>
+    <string name="perso_screen_edges_label">Bordes de la pantalla</string>
+    <string name="perso_screen_edges_hint">Margen para los televisores que recortan los bordes de la imagen (overscan). El vídeo a pantalla completa sigue de borde a borde.</string>
+    <string name="perso_screen_edges_none">Ninguno</string>
+    <string name="perso_screen_edges_small">Pequeño (2,5 %)</string>
+    <string name="perso_screen_edges_medium">Medio (5 %)</string>
+    <string name="perso_screen_edges_large">Grande (7,5 %)</string>
     <string name="perso_ui_size_label">Tamaño de la interfaz</string>
     <string name="perso_ui_size_small">Pequeña</string>
     <string name="perso_ui_size_normal">Normal</string>

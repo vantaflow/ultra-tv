@@ -1893,6 +1893,12 @@
   "DesignStrings/PersonalizationStringsKt.uiSizeName(NORMAL)": "Normale",
   "DesignStrings/PersonalizationStringsKt.uiSizeName(LARGE)": "Grande",
   "DesignStrings/PersonalizationStringsKt.uiSizeName(XLARGE)": "Très grande",
+  "DesignStrings/PersonalizationStringsKt.getScreenEdgesHint()": "Marge pour les téléviseurs qui coupent les bords de l'image (overscan). La vidéo plein écran reste bord à bord.",
+  "DesignStrings/PersonalizationStringsKt.getScreenEdgesLabel()": "Bords de l'écran",
+  "DesignStrings/PersonalizationStringsKt.screenEdgesName(LARGE)": "Grand (7,5 %)",
+  "DesignStrings/PersonalizationStringsKt.screenEdgesName(MEDIUM)": "Moyen (5 %)",
+  "DesignStrings/PersonalizationStringsKt.screenEdgesName(NONE)": "Aucun",
+  "DesignStrings/PersonalizationStringsKt.screenEdgesName(SMALL)": "Petit (2,5 %)",
   "DesignStrings/DesignStringsB1Kt.getShowAdvanced()": "Afficher les réglages avancés",
   "DesignStrings/DesignStringsB1Kt.getShowAdvancedHint()": "Moteur, décodage, tampon, qualité, fréquence d'image. Un réglage modifié reste toujours visible."
 }

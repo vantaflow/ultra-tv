@@ -2016,6 +2016,12 @@
     <string name="mem_clean_all_hint">ذاكرة التخزين المؤقت والصور والملفات المؤقتة دفعة واحدة</string>
     <string name="mem_confirm_all_title">تنظيف الكل؟</string>
     <string name="mem_confirm_all_body">يُفرغ ذاكرة الصور المؤقتة والملفات المؤقتة ومخزن إيقاف البث المباشر. تبقى مصادرك ومفضلاتك وسجلّك وإعداداتك وتسجيلاتك وتنزيلاتك كما هي.</string>
+    <string name="perso_screen_edges_label">حواف الشاشة</string>
+    <string name="perso_screen_edges_hint">هامش لأجهزة التلفاز التي تقص حواف الصورة (overscan). يبقى الفيديو بملء الشاشة من حافة إلى حافة.</string>
+    <string name="perso_screen_edges_none">بلا</string>
+    <string name="perso_screen_edges_small">صغير (2.5٪)</string>
+    <string name="perso_screen_edges_medium">متوسط (5٪)</string>
+    <string name="perso_screen_edges_large">كبير (7.5٪)</string>
     <string name="perso_ui_size_label">حجم الواجهة</string>
     <string name="perso_ui_size_small">صغير</string>
     <string name="perso_ui_size_normal">عادي</string>

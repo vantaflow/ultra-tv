@@ -123,6 +123,8 @@ object Ux {
     var textScale by androidx.compose.runtime.mutableFloatStateOf(1f)
     /** Taille de l'interface (Réglages › Affichage, voir [UiSize]) ; appliquée à la densité entière par ProvideUiScale. */
     var uiSize by mutableStateOf(UiSize.NORMAL)
+    /** Bords de l'écran (overscan TV, voir [ScreenEdges]) ; appliqués à la racine par ProvideUiScale. */
+    var screenEdges by mutableStateOf(ScreenEdges.DEFAULT)
 
     val Accent: Color get() = if (accentChoice == AccentChoice.DEFAULT) palette.accent else Color(accentChoice.argb)
     /** Texte / icône posé SUR l'accent (blanc ou encre selon la couleur, toujours ≥ 4,5:1). */

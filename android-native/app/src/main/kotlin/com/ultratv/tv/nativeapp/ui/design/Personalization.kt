@@ -128,6 +128,23 @@ enum class UiSize(val key: String, val touchScale: Float, val tvScale: Float) {
     }
 }
 
+/**
+ * Bords de l'écran (Réglages › Affichage, TV seulement) : marge de chaque côté pour les téléviseurs qui coupent les bords
+ * (overscan), barre latérale tronquée sur une Samsung 1080p. Toute l'interface est réduite pour tenir dans la zone
+ * intérieure (même maquette de 540 dp de haut, rien ne se chevauche) ; seule la vidéo plein écran reste bord à bord.
+ */
+enum class ScreenEdges(val key: String, val fraction: Float) {
+    NONE("none", 0f),
+    SMALL("small", 0.025f),
+    MEDIUM("medium", 0.05f),
+    LARGE("large", 0.075f);
+
+    companion object {
+        val DEFAULT = SMALL
+        fun parse(raw: String?): ScreenEdges = entries.firstOrNull { it.key == raw?.lowercase() } ?: DEFAULT
+    }
+}
+
 /** Taille du texte : facteur appliqué à toute l'interface (densité de police) et aux cadres qui contiennent du texte. */
 enum class TextSize(val key: String, val scale: Float) {
     NORMAL("normal", 1f),
