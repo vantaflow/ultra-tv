@@ -51,7 +51,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /** Actions de la rubrique. */
-enum class MemoryAction { IMAGES, TEMP, COMPACT, HISTORY, RESUME, TIMESHIFT }
+enum class MemoryAction { ALL, IMAGES, TEMP, COMPACT, HISTORY, RESUME, TIMESHIFT }
 
 data class MemoryUi(
     val usage: StorageUsage? = null,
@@ -88,6 +88,7 @@ class MemoryViewModel @Inject constructor(
         _state.update { it.copy(busy = action) }
         viewModelScope.launch {
             val r = when (action) {
+                MemoryAction.ALL -> manager.cleanAll()
                 MemoryAction.IMAGES -> manager.clearImageCache()
                 MemoryAction.TEMP -> manager.purgeTemp()
                 MemoryAction.COMPACT -> manager.compactDatabase()
@@ -163,6 +164,8 @@ fun MemoryPane(vm: MemoryViewModel = hiltViewModel()) {
     Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
         GroupLabel(S.groupActions)
         com.ultratv.tv.nativeapp.ui.design.SettingsCard {
+            // « Tout nettoyer » d'un coup : caches, images, temporaires (jamais sources, favoris, historique, réglages, enregistrements).
+            ActionRow(S.cleanAll, S.cleanAllHint, ui.busy == MemoryAction.ALL, S) { confirm = Pending(MemoryAction.ALL) }
             ActionRow(S.clearImages, S.clearImagesHint, ui.busy == MemoryAction.IMAGES, S) { confirm = Pending(MemoryAction.IMAGES) }
             ActionRow(S.clearTemp, S.clearTempHint, ui.busy == MemoryAction.TEMP, S) { confirm = Pending(MemoryAction.TEMP) }
             ActionRow(S.compact, S.compactHint, ui.busy == MemoryAction.COMPACT, S) { confirm = Pending(MemoryAction.COMPACT) }
@@ -202,6 +205,7 @@ fun MemoryPane(vm: MemoryViewModel = hiltViewModel()) {
     }
     confirm?.let { p ->
         val (title, body) = when (p.action) {
+            MemoryAction.ALL -> S.confirmAllTitle to S.confirmAllBody
             MemoryAction.IMAGES -> S.confirmImagesTitle to S.confirmImagesBody
             MemoryAction.TEMP -> S.confirmTempTitle to S.confirmTempBody
             MemoryAction.COMPACT -> S.confirmCompactTitle to S.confirmCompactBody
@@ -219,7 +223,7 @@ fun MemoryPane(vm: MemoryViewModel = hiltViewModel()) {
 private fun report(S: MemoryStrings, action: MemoryAction, r: ActionResult) {
     when (r) {
         is ActionResult.Done -> {
-            val bytesAction = action == MemoryAction.IMAGES || action == MemoryAction.TEMP || action == MemoryAction.COMPACT || action == MemoryAction.TIMESHIFT
+            val bytesAction = action == MemoryAction.ALL || action == MemoryAction.IMAGES || action == MemoryAction.TEMP || action == MemoryAction.COMPACT || action == MemoryAction.TIMESHIFT
             when {
                 bytesAction && r.freed > 0 -> Toaster.ok(S.freed(r.freed))
                 bytesAction -> Toaster.show(S.nothingToFree)

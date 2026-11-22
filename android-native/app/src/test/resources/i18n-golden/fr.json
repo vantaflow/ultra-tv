@@ -1876,5 +1876,9 @@
   "DesignStrings/DesignStringsB1Kt.getUpdateChannelStable()": "Stable",
   "DesignStrings/DesignStringsB1Kt.getUpdateChannelPre()": "Pré-version",
   "DesignStrings/DesignStringsB1Kt.getUpdateChannelHint()": "Pré-version propose aussi les versions de test dès leur publication.",
-  "DesignStrings/DesignStringsB1Kt.getUpdateChannelStay()": "Vous resterez sur la pré-version jusqu'à la prochaine version stable plus récente."
+  "DesignStrings/DesignStringsB1Kt.getUpdateChannelStay()": "Vous resterez sur la pré-version jusqu'à la prochaine version stable plus récente.",
+  "MemoryStrings.getCleanAll()": "Tout nettoyer",
+  "MemoryStrings.getCleanAllHint()": "Caches, images et fichiers temporaires d'un coup",
+  "MemoryStrings.getConfirmAllTitle()": "Tout nettoyer ?",
+  "MemoryStrings.getConfirmAllBody()": "Vide le cache d'images, les fichiers temporaires et le tampon de pause du direct. Vos sources, favoris, historique, réglages, enregistrements et téléchargements sont conservés."
 }

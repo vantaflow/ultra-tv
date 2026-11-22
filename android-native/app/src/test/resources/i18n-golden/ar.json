@@ -1876,5 +1876,9 @@
   "DesignStrings/DesignStringsB1Kt.getUpdateChannelStable()": "مستقر",
   "DesignStrings/DesignStringsB1Kt.getUpdateChannelPre()": "إصدار تجريبي",
   "DesignStrings/DesignStringsB1Kt.getUpdateChannelHint()": "الإصدار التجريبي يعرض أيضًا نسخ الاختبار فور نشرها.",
-  "DesignStrings/DesignStringsB1Kt.getUpdateChannelStay()": "ستبقى على الإصدار التجريبي حتى صدور إصدار مستقر أحدث."
+  "DesignStrings/DesignStringsB1Kt.getUpdateChannelStay()": "ستبقى على الإصدار التجريبي حتى صدور إصدار مستقر أحدث.",
+  "MemoryStrings.getCleanAll()": "تنظيف الكل",
+  "MemoryStrings.getCleanAllHint()": "ذاكرة التخزين المؤقت والصور والملفات المؤقتة دفعة واحدة",
+  "MemoryStrings.getConfirmAllTitle()": "تنظيف الكل؟",
+  "MemoryStrings.getConfirmAllBody()": "يُفرغ ذاكرة الصور المؤقتة والملفات المؤقتة ومخزن إيقاف البث المباشر. تبقى مصادرك ومفضلاتك وسجلّك وإعداداتك وتسجيلاتك وتنزيلاتك كما هي."
 }

@@ -1945,4 +1945,8 @@
     <string name="ds_update_channel_pre">Versión preliminar</string>
     <string name="ds_update_channel_hint">Versión preliminar también ofrece las versiones de prueba en cuanto se publican.</string>
     <string name="ds_update_channel_stay">Seguirá en la versión preliminar hasta la próxima versión estable más reciente.</string>
+    <string name="mem_clean_all">Limpiar todo</string>
+    <string name="mem_clean_all_hint">Cachés, imágenes y archivos temporales de una vez</string>
+    <string name="mem_confirm_all_title">¿Limpiar todo?</string>
+    <string name="mem_confirm_all_body">Vacía la caché de imágenes, los archivos temporales y el búfer de pausa del directo. Se conservan sus fuentes, favoritos, historial, ajustes, grabaciones y descargas.</string>
 </resources>

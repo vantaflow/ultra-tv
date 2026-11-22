@@ -1876,5 +1876,9 @@
   "DesignStrings/DesignStringsB1Kt.getUpdateChannelStable()": "Stable",
   "DesignStrings/DesignStringsB1Kt.getUpdateChannelPre()": "Pre-release",
   "DesignStrings/DesignStringsB1Kt.getUpdateChannelHint()": "Pre-release also offers test versions as soon as they are published.",
-  "DesignStrings/DesignStringsB1Kt.getUpdateChannelStay()": "You will stay on the pre-release until the next newer stable version."
+  "DesignStrings/DesignStringsB1Kt.getUpdateChannelStay()": "You will stay on the pre-release until the next newer stable version.",
+  "MemoryStrings.getCleanAll()": "Clean everything",
+  "MemoryStrings.getCleanAllHint()": "Caches, images and temporary files in one go",
+  "MemoryStrings.getConfirmAllTitle()": "Clean everything?",
+  "MemoryStrings.getConfirmAllBody()": "Empties the image cache, temporary files and the live pause buffer. Your sources, favourites, history, settings, recordings and downloads are kept."
 }

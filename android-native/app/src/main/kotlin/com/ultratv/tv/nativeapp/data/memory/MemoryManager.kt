@@ -29,6 +29,19 @@ data class RamState(val total: Long, val available: Long, val lowRamFlag: Boolea
 }
 
 /** Résultat d'une action : octets libérés, ou refus (synchro en cours, tampon utilisé, pas assez de place). */
+/** Résultat de « Tout nettoyer » à partir des nettoyages par module (règle pure, testée). */
+object CleanAll {
+    /**
+     * Place libérée = somme des nettoyages faits. Un module empêché (synchro en cours, pause du direct active) n'empêche
+     * pas les autres ; si aucun n'a pu se faire, le premier empêchement est rendu (message habituel).
+     */
+    fun combine(results: List<ActionResult>): ActionResult {
+        val done = results.filterIsInstance<ActionResult.Done>()
+        if (done.isNotEmpty()) return ActionResult.Done(done.sumOf { it.freed })
+        return results.firstOrNull() ?: ActionResult.Failed
+    }
+}
+
 sealed interface ActionResult {
     data class Done(val freed: Long, val count: Int = 0) : ActionResult
     data object BlockedBySync : ActionResult
@@ -111,6 +124,12 @@ class MemoryManager @Inject constructor(
             ActionResult.Done(freed)
         }.getOrDefault(ActionResult.Failed)
     }
+
+    /**
+     * « Tout nettoyer » : cache d'images, fichiers temporaires et tampon de pause du direct (s'il n'est pas en cours
+     * d'usage) — jamais les sources, favoris, historique, réglages, enregistrements ni téléchargements.
+     */
+    suspend fun cleanAll(): ActionResult = CleanAll.combine(listOf(clearImageCache(), purgeTemp(), clearTimeshift()))
 
     suspend fun clearTimeshift(): ActionResult = withContext(Dispatchers.IO) {
         if (TimeshiftRegistry.active) return@withContext ActionResult.TimeshiftInUse
