@@ -23,6 +23,9 @@ object KidsRules {
     /** Le contrôle parental est forcé : l'utilisateur ne peut pas l'éteindre. */
     fun forcesParentalControl(p: ProfileEntity?): Boolean = p?.isKids == true
 
+    /** Fiches fermées : profil Enfants = ses masquages + adultes ; autre profil = aucune (le masquage n'est qu'un tri). */
+    fun detailBlockedKeys(kids: Boolean, chosen: Set<String>, adult: Set<String>): Set<String> = if (kids) chosen + adult else emptySet()
+
     /** Clés des catégories à masquer pour un profil Enfants (adultes selon l'heuristique). */
     fun adultCategoryKeys(rows: List<CategoryNameRow>): Set<String> =
         rows.filter { AdultHeuristic.isAdult(it.name) }

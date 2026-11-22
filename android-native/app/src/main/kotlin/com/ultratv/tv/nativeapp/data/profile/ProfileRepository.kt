@@ -59,6 +59,17 @@ class ProfileRepository(
         }
     }
 
+    /**
+     * Catégories dont les FICHES sont fermées au profil courant (« Non disponible pour ce profil ») : seulement pour un profil
+     * Enfants (ses masquages + catégories adultes). Une catégorie masquée volontairement par un profil ordinaire n'empêche
+     * pas d'ouvrir un titre depuis Ma liste ou une reprise : seuls le verrou (code), le profil Enfants et l'adulte bloquent.
+     */
+    val detailBlockedCategoryKeys: Flow<Set<String>> = currentId.flatMapLatest { id ->
+        combine(dao.observeHidden(id), current, dao.observeCategoryNames()) { chosen, p, cats ->
+            KidsRules.detailBlockedKeys(KidsRules.forcesParentalControl(p), chosen.toSet(), KidsRules.adultCategoryKeys(cats))
+        }
+    }
+
     /** Sources visibles du profil courant (null = toutes). */
     val currentSources: Flow<List<String>?> = currentPrefs.map { it.sources }.distinctUntilChanged()
 

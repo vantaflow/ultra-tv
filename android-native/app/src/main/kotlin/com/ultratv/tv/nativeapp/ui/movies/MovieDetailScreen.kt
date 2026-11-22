@@ -218,7 +218,7 @@ class MovieDetailViewModel @Inject constructor(
             // Verrou lu avant l'affichage : une lecture impossible laisse la fiche verrouillée (jamais ouverte par défaut).
             val lk = uiAttempt("movie", "verrou") {
                 // Clés masquées illisibles dans le délai : on ne devine pas, la fiche reste verrouillée.
-                val hiddenKeys = kotlinx.coroutines.withTimeoutOrNull(3_000) { profiles.hiddenCategoryKeys.first() } ?: return@uiAttempt DetailLock.PIN
+                val hiddenKeys = kotlinx.coroutines.withTimeoutOrNull(3_000) { profiles.detailBlockedCategoryKeys.first() } ?: return@uiAttempt DetailLock.PIN
                 detailLockOf("MOVIE", movie.providerId, movie.categoryId, catalog.lockedCategoryIds(movie.providerId, "MOVIE"), hiddenKeys, unlocked)
             }.getOrDefault(if (unlocked) DetailLock.NONE else DetailLock.PIN)
             _lock.value = lk

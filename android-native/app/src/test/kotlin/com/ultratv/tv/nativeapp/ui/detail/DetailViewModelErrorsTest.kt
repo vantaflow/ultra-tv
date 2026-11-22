@@ -373,8 +373,24 @@ class DetailViewModelErrorsTest {
         assertEquals(DetailLock.NONE, vm.lock.value)
     }
 
+    private fun kidsProfile() = runBlocking {
+        val pid = w.profiles.current.first { it != null }!!.id
+        w.profiles.setKids(pid, true)
+        w.profiles.current.first { it?.isKids == true }
+    }
+
+    @Test fun film_masqueVolontairement_profilOrdinaire_ouvreQuandMeme() {
+        // Ma liste / reprise : une catégorie masquée par choix (profil ordinaire) n'empêche pas d'ouvrir la fiche.
+        addCategory("MOVIE", "c1", locked = false); addMovie(cat = "c1")
+        hideForProfile("MOVIE:$providerId:c1")
+        val vm = movieVm(); vm.load(10)
+        awaitUntil("détails chargés") { netCalls.get() >= 1 && !vm.infoLoading.value }
+        assertEquals(DetailLock.NONE, vm.lock.value)
+    }
+
     @Test fun film_masqueParLeProfil_cacheMemeApresUnlock() {
         addCategory("MOVIE", "c1", locked = true); addMovie(cat = "c1")
+        kidsProfile()
         hideForProfile("MOVIE:$providerId:c1")
         val vm = movieVm(); vm.load(10)
         awaitState(vm.lock, "lock") { it == DetailLock.HIDDEN }
@@ -403,6 +419,7 @@ class DetailViewModelErrorsTest {
 
     @Test fun serie_masqueParLeProfil() {
         addCategory("SERIES", "c2", locked = false); addSeries(cat = "c2")
+        kidsProfile()
         hideForProfile("SERIES:$providerId:c2")
         val vm = seriesVm(); vm.load(20)
         awaitState(vm.lock, "lock") { it == DetailLock.HIDDEN }
