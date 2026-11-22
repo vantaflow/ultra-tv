@@ -2015,4 +2015,9 @@
     <string name="mem_clean_all_hint">ذاكرة التخزين المؤقت والصور والملفات المؤقتة دفعة واحدة</string>
     <string name="mem_confirm_all_title">تنظيف الكل؟</string>
     <string name="mem_confirm_all_body">يُفرغ ذاكرة الصور المؤقتة والملفات المؤقتة ومخزن إيقاف البث المباشر. تبقى مصادرك ومفضلاتك وسجلّك وإعداداتك وتسجيلاتك وتنزيلاتك كما هي.</string>
+    <string name="perso_ui_size_label">حجم الواجهة</string>
+    <string name="perso_ui_size_small">صغير</string>
+    <string name="perso_ui_size_normal">عادي</string>
+    <string name="perso_ui_size_large">كبير</string>
+    <string name="perso_ui_size_xlarge">كبير جدًا</string>
 </resources>

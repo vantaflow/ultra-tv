@@ -109,6 +109,25 @@ enum class AccentChoice(val key: String, val argb: Long) {
     }
 }
 
+/**
+ * Taille de l'interface (Réglages › Affichage) : facteur appliqué à TOUTE l'interface (cadres, marges, images et texte),
+ * en plus de la taille du texte. « Normale » = rendu d'avant (les utilisateurs actuels ne voient aucun changement).
+ * Sur TV, la maquette est dessinée pour 540 dp de haut : l'écart est plus faible ([tvScale]) pour que les écrans à
+ * cadres fixes (Guide, fiches, lecteur) gardent leurs libellés entiers.
+ */
+enum class UiSize(val key: String, val touchScale: Float, val tvScale: Float) {
+    SMALL("small", 0.9f, 0.92f),
+    NORMAL("normal", 1f, 1f),
+    LARGE("large", 1.1f, 1.06f),
+    XLARGE("xlarge", 1.2f, 1.12f);
+
+    fun scale(tv: Boolean): Float = if (tv) tvScale else touchScale
+
+    companion object {
+        fun parse(raw: String?): UiSize = entries.firstOrNull { it.key == raw?.lowercase() } ?: NORMAL
+    }
+}
+
 /** Taille du texte : facteur appliqué à toute l'interface (densité de police) et aux cadres qui contiennent du texte. */
 enum class TextSize(val key: String, val scale: Float) {
     NORMAL("normal", 1f),

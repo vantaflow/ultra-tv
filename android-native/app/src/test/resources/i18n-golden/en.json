@@ -1880,5 +1880,10 @@
   "MemoryStrings.getCleanAll()": "Clean everything",
   "MemoryStrings.getCleanAllHint()": "Caches, images and temporary files in one go",
   "MemoryStrings.getConfirmAllTitle()": "Clean everything?",
-  "MemoryStrings.getConfirmAllBody()": "Empties the image cache, temporary files and the live pause buffer. Your sources, favourites, history, settings, recordings and downloads are kept."
+  "MemoryStrings.getConfirmAllBody()": "Empties the image cache, temporary files and the live pause buffer. Your sources, favourites, history, settings, recordings and downloads are kept.",
+  "DesignStrings/PersonalizationStringsKt.getUiSizeLabel()": "Interface size",
+  "DesignStrings/PersonalizationStringsKt.uiSizeName(SMALL)": "Small",
+  "DesignStrings/PersonalizationStringsKt.uiSizeName(NORMAL)": "Normal",
+  "DesignStrings/PersonalizationStringsKt.uiSizeName(LARGE)": "Large",
+  "DesignStrings/PersonalizationStringsKt.uiSizeName(XLARGE)": "Extra large"
 }

@@ -1949,4 +1949,9 @@
     <string name="mem_clean_all_hint">Cachés, imágenes y archivos temporales de una vez</string>
     <string name="mem_confirm_all_title">¿Limpiar todo?</string>
     <string name="mem_confirm_all_body">Vacía la caché de imágenes, los archivos temporales y el búfer de pausa del directo. Se conservan sus fuentes, favoritos, historial, ajustes, grabaciones y descargas.</string>
+    <string name="perso_ui_size_label">Tamaño de la interfaz</string>
+    <string name="perso_ui_size_small">Pequeña</string>
+    <string name="perso_ui_size_normal">Normal</string>
+    <string name="perso_ui_size_large">Grande</string>
+    <string name="perso_ui_size_xlarge">Muy grande</string>
 </resources>

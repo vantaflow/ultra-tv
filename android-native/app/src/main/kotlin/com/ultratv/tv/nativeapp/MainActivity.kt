@@ -480,6 +480,7 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
             dbgTheme?.let { com.ultratv.tv.nativeapp.data.prefs.AppTheme.parse(it) } ?: prefs.theme,
             accent = com.ultratv.tv.nativeapp.ui.design.AccentChoice.parse(prefs.accent),
             textSize = com.ultratv.tv.nativeapp.ui.design.TextSize.parse(prefs.textSize),
+            uiSize = com.ultratv.tv.nativeapp.ui.design.UiSize.parse(prefs.uiSize),
         )
         com.ultratv.tv.nativeapp.ui.common.ProvideUiScale {
         UltraTvTheme {

@@ -1880,5 +1880,10 @@
   "MemoryStrings.getCleanAll()": "Tout nettoyer",
   "MemoryStrings.getCleanAllHint()": "Caches, images et fichiers temporaires d'un coup",
   "MemoryStrings.getConfirmAllTitle()": "Tout nettoyer ?",
-  "MemoryStrings.getConfirmAllBody()": "Vide le cache d'images, les fichiers temporaires et le tampon de pause du direct. Vos sources, favoris, historique, réglages, enregistrements et téléchargements sont conservés."
+  "MemoryStrings.getConfirmAllBody()": "Vide le cache d'images, les fichiers temporaires et le tampon de pause du direct. Vos sources, favoris, historique, réglages, enregistrements et téléchargements sont conservés.",
+  "DesignStrings/PersonalizationStringsKt.getUiSizeLabel()": "Taille de l'interface",
+  "DesignStrings/PersonalizationStringsKt.uiSizeName(SMALL)": "Petite",
+  "DesignStrings/PersonalizationStringsKt.uiSizeName(NORMAL)": "Normale",
+  "DesignStrings/PersonalizationStringsKt.uiSizeName(LARGE)": "Grande",
+  "DesignStrings/PersonalizationStringsKt.uiSizeName(XLARGE)": "Très grande"
 }

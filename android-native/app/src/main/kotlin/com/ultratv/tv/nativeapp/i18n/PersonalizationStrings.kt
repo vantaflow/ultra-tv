@@ -66,6 +66,15 @@ fun DesignStrings.accentName(a: AccentChoice): String = when (a) {
     AccentChoice.FUCHSIA -> tx(R.string.perso_accent_name_fuchsia)
 }
 
+val DesignStrings.uiSizeLabel get() = tx(R.string.perso_ui_size_label)
+
+fun DesignStrings.uiSizeName(s: com.ultratv.tv.nativeapp.ui.design.UiSize): String = when (s) {
+    com.ultratv.tv.nativeapp.ui.design.UiSize.SMALL -> tx(R.string.perso_ui_size_small)
+    com.ultratv.tv.nativeapp.ui.design.UiSize.NORMAL -> tx(R.string.perso_ui_size_normal)
+    com.ultratv.tv.nativeapp.ui.design.UiSize.LARGE -> tx(R.string.perso_ui_size_large)
+    com.ultratv.tv.nativeapp.ui.design.UiSize.XLARGE -> tx(R.string.perso_ui_size_xlarge)
+}
+
 fun DesignStrings.textSizeName(s: TextSize): String = when (s) {
     TextSize.NORMAL -> tx(R.string.perso_text_size_name_normal)
     TextSize.LARGE -> tx(R.string.perso_text_size_name_large)

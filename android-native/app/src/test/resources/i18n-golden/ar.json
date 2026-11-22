@@ -1880,5 +1880,10 @@
   "MemoryStrings.getCleanAll()": "تنظيف الكل",
   "MemoryStrings.getCleanAllHint()": "ذاكرة التخزين المؤقت والصور والملفات المؤقتة دفعة واحدة",
   "MemoryStrings.getConfirmAllTitle()": "تنظيف الكل؟",
-  "MemoryStrings.getConfirmAllBody()": "يُفرغ ذاكرة الصور المؤقتة والملفات المؤقتة ومخزن إيقاف البث المباشر. تبقى مصادرك ومفضلاتك وسجلّك وإعداداتك وتسجيلاتك وتنزيلاتك كما هي."
+  "MemoryStrings.getConfirmAllBody()": "يُفرغ ذاكرة الصور المؤقتة والملفات المؤقتة ومخزن إيقاف البث المباشر. تبقى مصادرك ومفضلاتك وسجلّك وإعداداتك وتسجيلاتك وتنزيلاتك كما هي.",
+  "DesignStrings/PersonalizationStringsKt.getUiSizeLabel()": "حجم الواجهة",
+  "DesignStrings/PersonalizationStringsKt.uiSizeName(SMALL)": "صغير",
+  "DesignStrings/PersonalizationStringsKt.uiSizeName(NORMAL)": "عادي",
+  "DesignStrings/PersonalizationStringsKt.uiSizeName(LARGE)": "كبير",
+  "DesignStrings/PersonalizationStringsKt.uiSizeName(XLARGE)": "كبير جدًا"
 }

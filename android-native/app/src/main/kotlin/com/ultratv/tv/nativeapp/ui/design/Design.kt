@@ -121,6 +121,8 @@ object Ux {
     var accentChoice by mutableStateOf(AccentChoice.DEFAULT)
     /** Facteur de taille du texte (Réglages › Affichage) ; appliqué à la densité de police par ProvideUiScale. */
     var textScale by androidx.compose.runtime.mutableFloatStateOf(1f)
+    /** Taille de l'interface (Réglages › Affichage, voir [UiSize]) ; appliquée à la densité entière par ProvideUiScale. */
+    var uiSize by mutableStateOf(UiSize.NORMAL)
 
     val Accent: Color get() = if (accentChoice == AccentChoice.DEFAULT) palette.accent else Color(accentChoice.argb)
     /** Texte / icône posé SUR l'accent (blanc ou encre selon la couleur, toujours ≥ 4,5:1). */

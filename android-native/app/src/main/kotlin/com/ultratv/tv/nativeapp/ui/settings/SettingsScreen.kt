@@ -93,6 +93,8 @@ import com.ultratv.tv.nativeapp.i18n.startScreenHint
 import com.ultratv.tv.nativeapp.i18n.startScreenName
 import com.ultratv.tv.nativeapp.i18n.textSizeLabel
 import com.ultratv.tv.nativeapp.i18n.textSizeName
+import com.ultratv.tv.nativeapp.i18n.uiSizeLabel
+import com.ultratv.tv.nativeapp.i18n.uiSizeName
 import com.ultratv.tv.nativeapp.i18n.updateChannel
 import com.ultratv.tv.nativeapp.i18n.updateChannelHint
 import com.ultratv.tv.nativeapp.i18n.updateChannelPre
@@ -779,6 +781,7 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
     GroupLabel(D.personalization)
     SettingsCard {
         PrefRow(D.accentColor, D.accentName(AccentChoice.parse(p.accent))) { choice = "accent" }
+        PrefRow(D.uiSizeLabel, D.uiSizeName(com.ultratv.tv.nativeapp.ui.design.UiSize.parse(p.uiSize))) { choice = "uisize" }
         PrefRow(D.textSizeLabel, D.textSizeName(TextSize.parse(p.textSize))) { choice = "text" }
         PrefRow(D.animations, D.animationName(com.ultratv.tv.nativeapp.ui.design.AnimationLevel.parse(p.animations))) { choice = "anim" }
         val layout = remember(p.homeOrder, p.homeHidden) { com.ultratv.tv.nativeapp.ui.home.HomeLayout.parse(p.homeOrder, p.homeHidden) }
@@ -790,6 +793,7 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         "open" -> ChoiceDialog(D.openOn, com.ultratv.tv.nativeapp.nav.StartScreen.entries.map { it to D.startScreenName(it) }, com.ultratv.tv.nativeapp.nav.StartScreen.parse(p.startScreen, p.autoPlayLastOnLaunch), { app.setStartScreen(it.key); choice = "" }, { choice = "" })
         "accent" -> AccentDialog(AccentChoice.parse(p.accent), { app.setAccent(it.key); choice = "" }, { choice = "" })
         "anim" -> ChoiceDialog(D.animations, com.ultratv.tv.nativeapp.ui.design.AnimationLevel.entries.map { it to D.animationName(it) }, com.ultratv.tv.nativeapp.ui.design.AnimationLevel.parse(p.animations), { app.setAnimations(it.key); choice = "" }, { choice = "" })
+        "uisize" -> ChoiceDialog(D.uiSizeLabel, com.ultratv.tv.nativeapp.ui.design.UiSize.entries.map { it to D.uiSizeName(it) }, com.ultratv.tv.nativeapp.ui.design.UiSize.parse(p.uiSize), { app.setUiSize(it.key); choice = "" }, { choice = "" })
         "text" -> ChoiceDialog(D.textSizeLabel, TextSize.entries.map { it to D.textSizeName(it) }, TextSize.parse(p.textSize), { app.setTextSize(it.key); choice = "" }, { choice = "" })
         "home" -> HomeRowsDialog(com.ultratv.tv.nativeapp.ui.home.HomeLayout.parse(p.homeOrder, p.homeHidden), onSave = { app.setHomeLayout(it) }, onDismiss = { choice = "" })
         "shortcuts" -> ShortcutsDialog(

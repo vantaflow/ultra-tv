@@ -65,6 +65,7 @@ fun ApplyUxTheme(
     theme: AppTheme,
     accent: com.ultratv.tv.nativeapp.ui.design.AccentChoice = com.ultratv.tv.nativeapp.ui.design.AccentChoice.DEFAULT,
     textSize: com.ultratv.tv.nativeapp.ui.design.TextSize = com.ultratv.tv.nativeapp.ui.design.TextSize.NORMAL,
+    uiSize: com.ultratv.tv.nativeapp.ui.design.UiSize = com.ultratv.tv.nativeapp.ui.design.UiSize.NORMAL,
 ) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val tv = androidx.compose.runtime.remember(ctx) { com.ultratv.tv.nativeapp.ui.common.isTelevision(ctx) }
@@ -75,6 +76,7 @@ fun ApplyUxTheme(
     if (Ux.themeKind != theme) Ux.themeKind = theme
     if (Ux.accentChoice != accent) Ux.accentChoice = accent
     if (Ux.textScale != textSize.scale) Ux.textScale = textSize.scale
+    if (Ux.uiSize != uiSize) Ux.uiSize = uiSize
 }
 
 @Composable

@@ -38,6 +38,14 @@ const val SAFE_AREA_FRACTION = 0.05f
 fun uiDensityFor(heightPx: Int, systemDensity: Float): Float =
     if (heightPx <= 0) systemDensity else heightPx / REFERENCE_HEIGHT_DP
 
+/**
+ * Densité de l'interface : TV = hauteur normalisée à 540 dp × [ui], police au facteur de texte ; téléphone / tablette =
+ * densité système × [ui], police système × facteur de texte. [ui] = 1 et [textScale] = 1 : rendu d'avant, inchangé.
+ */
+fun scaledDensity(tv: Boolean, heightPx: Int, base: Density, textScale: Float, ui: Float): Density =
+    if (tv) Density(uiDensityFor(heightPx, base.density) * ui, textScale)
+    else if (textScale == 1f && ui == 1f) base else Density(base.density * ui, base.fontScale * textScale)
+
 fun isTelevision(ctx: Context): Boolean {
     val ui = ctx.getSystemService(Context.UI_MODE_SERVICE) as? UiModeManager
     return ui?.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION ||
@@ -67,8 +75,9 @@ fun ProvideUiScale(content: @Composable () -> Unit) {
         // Taille du texte choisie dans Réglages › Affichage (Normal / Grand / Très grand) : facteur de police explicite,
         // multiplié à celui du système hors TV. Les cadres qui contiennent du texte grandissent avec (voir `designT`).
         val textScale = com.ultratv.tv.nativeapp.ui.design.Ux.textScale
-        val scaled = if (tv) Density(uiDensityFor(hPx, base.density), textScale)
-        else if (textScale == 1f) base else Density(base.density, base.fontScale * textScale)
+        // Taille de l'interface (Petite / Normale / Grande / Très grande) : toute la densité, texte compris.
+        val ui = com.ultratv.tv.nativeapp.ui.design.Ux.uiSize.scale(tv)
+        val scaled = scaledDensity(tv, hPx, base, textScale, ui)
         val wDp = if (wPx > 0) wPx / scaled.density else 0f
         val hDp = if (hPx > 0) hPx / scaled.density else 0f
         val safe = if (tv) PaddingValues(
