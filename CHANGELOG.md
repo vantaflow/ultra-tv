@@ -17,6 +17,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ## [1.3.73] — 2026-11-22 (Android)
 
 ### Ajouté
+- Réglages › Affichage › Bords de l'écran : Aucun / Petit (2,5 %, par défaut) / Moyen (5 %) / Grand (7,5 %), pour les téléviseurs qui coupent les bords de l'image (barre latérale tronquée). Toute l'interface tient dans la zone visible ; la vidéo plein écran reste bord à bord.
 - Mise à jour : « Canal de mise à jour » dans Réglages › À propos. « Stable » (par défaut) garde le comportement d'avant ; « Pré-version » propose aussi les versions de test (-rcN), la plus récente des deux. Même appli, même signature : l'installation se fait par-dessus. En revenant à « Stable » depuis une pré-version, l'appli ne propose jamais une version plus ancienne : vous restez sur la pré-version jusqu'à la prochaine version stable plus récente (c'est indiqué sous le réglage). L'invite de mise à jour signale clairement une pré-version.
 - Réglages › Lecture : interrupteur « Afficher les réglages avancés » (moteur, décodage, tampon, qualité, fréquence d'image…). Masqués pour une nouvelle installation, affichés d'office pour les utilisateurs actuels ; un réglage avancé modifié reste toujours visible. Rien n'est supprimé.
 - Stockage : « Tout nettoyer » vide d'un coup le cache d'images, les fichiers temporaires et le tampon de pause du direct, après confirmation, puis affiche la place libérée. Sources, favoris, historique, réglages, enregistrements et téléchargements ne sont jamais touchés.
@@ -40,6 +41,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Télémétrie : les tests automatiques n'envoient plus rien vers le serveur ; côté serveur, toute adresse est réduite à une empreinte d'hôte et les identifiants, jetons, adresses MAC, IP et e-mails sont masqués.
 
 ### Corrigé
+- Télémétrie : plus aucun journal, plantage, blocage ni relevé anonyme n'est envoyé pendant les tests automatiques (interrupteur général coupé sous Robolectric) ; aucun changement sur un vrai appareil.
+- Lecteur VLC : l'arrêt du flux au changement de chaîne et la coupure de la piste vidéo au changement d'écran ne bloquent plus l'interface (blocages « l'application ne répond pas » sur certaines TV TCL) : ils passent par un fil dédié au moteur.
+- Interface plus réactive sur les box lentes : le nettoyage des journaux se fait en arrière-plan et le nettoyage des noms de chaînes est mémorisé (blocages relevés sur une Sharp Google TV).
+- Direct, Guide, catalogues : plus de plantage « clé déjà utilisée » quand une page de la liste arrive pendant l'affichage (Chromecast HD).
+- Direct : le titre du programme en cours tient sur une ligne (« … »), les cartes de chaîne ont toutes la même hauteur et les pastilles FR / HD / 4K ne touchent plus le bord haut.
+
 - Ajout de source sur Fire TV : le clavier système plein écran ne bloque plus la saisie ; « Suivant » passe au champ suivant et « Précédent » revient au champ d'avant sans refermer le clavier, au toucher comme à la télécommande.
 - Abonnement : l'écran affiche l'adresse du serveur saisie par l'utilisateur, plus celle déclarée par le panneau du fournisseur.
 - Fiches film et série : une catégorie masquée volontairement n'empêche plus d'ouvrir un titre depuis Ma liste ou une reprise ; seuls le verrou (code), le profil Enfants et l'adulte ferment la fiche.
