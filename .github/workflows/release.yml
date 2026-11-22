@@ -168,14 +168,18 @@ jobs:
           sha256sum *.apk $(ls *.dm 2>/dev/null) > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
-      # Notes de la release = section de la version dans le CHANGELOG : l'appli en tire le résumé des nouveautés
-      # affiché dans l'invite de mise à jour (UpdateNotes).
+      # Notes de la release = en-tête « Which file should I download? / Quel fichier télécharger ? »
+      # (.github/release-notes-header.md, {{VERSION}} = version des fichiers publiés) puis section de la version dans
+      # le CHANGELOG : l'appli en tire le résumé des nouveautés affiché dans l'invite de mise à jour (UpdateNotes),
+      # l'en-tête n'y change rien (ReleaseNotesHeaderTest).
       - name: Release notes from CHANGELOG
         working-directory: ${{ github.workspace }}
         run: |
           V="$(cat VERSION)"
-          awk -v v="$V" 'index($0, "## [" v "]") == 1 { on = 1; next } on && /^## \[/ { exit } on' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
-          echo "---- notes ($(wc -l < "$RUNNER_TEMP/notes.md") lignes)"; head -20 "$RUNNER_TEMP/notes.md"
+          FV="${GITHUB_REF_NAME#v}"
+          sed "s/{{VERSION}}/$FV/g" .github/release-notes-header.md > "$RUNNER_TEMP/notes.md"
+          awk -v v="$V" 'index($0, "## [" v "]") == 1 { on = 1; next } on && /^## \[/ { exit } on' CHANGELOG.md >> "$RUNNER_TEMP/notes.md"
+          echo "---- notes ($(wc -l < "$RUNNER_TEMP/notes.md") lignes)"; head -40 "$RUNNER_TEMP/notes.md"
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
