@@ -44,6 +44,8 @@
              « Unknown URL content://android.media.tv/… » à chaque écriture (NVIDIA Shield), et l'invite paraît absente. -->
         <provider android:authorities="android.media.tv" />
         <intent><action android:name="android.media.tv.action.REQUEST_CHANNEL_BROWSABLE" /></intent>
+        <!-- Launcher Kairo : vérification de sa signature (fournisseur « en cours / suivant ») et notifications. -->
+        <package android:name="com.vantaflow.kairo" />
     </queries>
 
     <!-- enableOnBackInvokedCallback=false : la touche Retour arrive comme un vrai événement clavier (durée de l'appui) ;
@@ -173,6 +175,13 @@
             android:authorities="com.ultratv.tv.nativeapp.search"
             android:exported="true"
             android:readPermission="android.permission.GLOBAL_SEARCH" />
+
+        <!-- Launcher Kairo : « en cours / suivant » en lecture seule. Pas de permission (clés différentes) : le paquet
+             appelant et l'empreinte de sa signature sont vérifiés à chaque requête (KairoAccess). -->
+        <provider
+            android:name="com.ultratv.tv.nativeapp.data.kairo.KairoNowProvider"
+            android:authorities="${applicationId}.kairo"
+            android:exported="true" />
 
         <receiver
             android:name="com.ultratv.tv.nativeapp.data.tv.TvInitializeReceiver"

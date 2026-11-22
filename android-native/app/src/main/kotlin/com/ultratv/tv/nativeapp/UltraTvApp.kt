@@ -51,6 +51,7 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
     @Inject lateinit var anonPing: dagger.Lazy<com.ultratv.tv.nativeapp.data.config.AnonPingReporter>
 
     @Inject lateinit var googleTv: dagger.Lazy<com.ultratv.tv.nativeapp.data.tv.GoogleTvSync>
+    @Inject lateinit var kairoNotifier: dagger.Lazy<com.ultratv.tv.nativeapp.data.kairo.KairoNotifier>
     @Inject lateinit var profileChannelHiding: dagger.Lazy<com.ultratv.tv.nativeapp.data.repo.ProfileChannelHiding>
     @Inject lateinit var profileSwitcher: dagger.Lazy<com.ultratv.tv.nativeapp.data.repo.ProfileSwitcher>
     @Inject lateinit var profileRepo: dagger.Lazy<com.ultratv.tv.nativeapp.data.profile.ProfileRepository>
@@ -238,6 +239,8 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
         // runCatching : sous Robolectric, l'application est recréée à chaque test et ce réveil différé tombait pendant le
         // test SUIVANT (environnement détruit) — exception attribuée à un autre test (UncaughtExceptionsBeforeTest).
         startTask("googleTv") { kotlinx.coroutines.delay(8_000); runCatching { googleTv.get().start(bgScope) } }
+        // Launcher Kairo : notifications « en cours / suivant » (sans effet si Kairo n'est pas installé).
+        startTask("kairo") { kotlinx.coroutines.delay(9_000); runCatching { kairoNotifier.get().start(bgScope) } }
 
         // Sources visibles par profil : la source active suit le profil courant.
         startTask("profileSources") { runCatching { profileSources.get().start(bgScope) } }
