@@ -94,4 +94,6 @@
 
 /* Choix du type de source : titres de groupes (IPTV / ma bibliothèque) et logos colorés. */
 .wz-group { margin: 0.5rem 0 -0.75rem; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
+.wz-theme { display: flex; flex-direction: column; gap: 0.75rem; }
+.wz-theme .wz-group { margin-bottom: 0; }
 .choice .wz-logo { border-radius: 1.125rem; }

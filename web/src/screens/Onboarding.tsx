@@ -23,6 +23,7 @@ import { listSources } from "@/db/sources";
 import { langsToSync } from "@/lib/syncPolicy";
 import { convertToXtream, missingRequired, nonStandardHttpStatus } from "@/lib/xtreamUrl";
 import { MAC_PREFIX } from "@/net/stalker";
+import { ThemePicker } from "@/ui/ThemePicker";
 
 type SourceKind = FormKind | "cloud";
 
@@ -217,6 +218,14 @@ export function Onboarding() {
               </button>
             ))}
           </div>
+          {/* Première source : thème et couleur proposés tout de suite (modifiables ensuite dans Réglages › Affichage). */}
+          {!adding && (
+            <section className="wz-theme" aria-label={t("set.appearance")}>
+              <h2 className="wz-group">{t("set.appearance")}</h2>
+              <p className="muted">{t("set.appearanceD")}</p>
+              <ThemePicker />
+            </section>
+          )}
         </main>
       )}
 

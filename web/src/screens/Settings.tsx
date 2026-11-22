@@ -11,7 +11,7 @@ import { mergeOrder, moveBy } from "@/lib/channelOrder";
 import { isManualStreamId, listManual, manualStreamId } from "@/db/manual";
 import { ManualChannelModal } from "./ManualChannelModal";
 import type { CategoryRow, ChannelRow, Kind, ManualChannelRow, Source } from "@/db/types";
-import { LANGS, useT, type Key, type Lang } from "@/i18n";
+import { LANGS, useT, type Lang } from "@/i18n";
 import { normText } from "@/lib/text";
 import { bridge, currentTransport, defaultProxy, getProxySetting, isElectron, setProxySetting } from "@/net/transport";
 import { guideErrorForSave } from "@/lib/guideAddress";
@@ -22,10 +22,9 @@ import { setCategoriesVisible } from "@/db/profileCategories";
 import { lockedCategoryIds, setCategoryLock } from "@/db/contentGate";
 import { isShown } from "@/lib/profileCategories";
 import { toggleSource, visibleSources } from "@/lib/profileSources";
-import { PROFILE_COLORS, dateTimeLabel, usePrefs, type Profile, type Theme } from "@/state/prefs";
+import { PROFILE_COLORS, dateTimeLabel, usePrefs, type Profile } from "@/state/prefs";
 import { askParentalCode } from "@/state/unlocks";
 import { hasParentalCode } from "@/lib/parental";
-import { ACCENT_DEFS } from "@/lib/themes";
 import { useActiveSource, useSources } from "@/state/sources";
 import { useSync } from "@/state/sync";
 import { useUi } from "@/state/ui";
@@ -45,6 +44,7 @@ import { SourceForm, type SourceKind } from "./SourceForm";
 import { isMediaType } from "@/net/mediaServer";
 import { TraktSettings } from "@/trakt/TraktUi";
 import { DnsSettings } from "./DnsSettings";
+import { ThemePicker } from "@/ui/ThemePicker";
 import { ParentalCodeRow, ScreenTimeButton } from "./ScreenTimeEditor";
 
 type Section = "sources" | "cloud" | "display" | "playback" | "sync" | "categories" | "language" | "profiles" | "about";
@@ -295,6 +295,8 @@ function DisplayPane() {
   return (
     <>
       <h2>{t("set.display")}</h2>
+      {/* Thème et couleur d'accent en tête : les testeurs ne les trouvaient pas au milieu de la rubrique. */}
+      <ThemePicker />
       <Pref label={t("set.animations")}>
         <Seg<"auto" | "off" | "subtle" | "normal"> label={t("set.animations")} value={p.animations} onChange={(animations) => p.set({ animations })} options={[{ v: "auto", label: t("set.themeAuto") }, { v: "off", label: t("set.animOff") }, { v: "subtle", label: t("set.animSubtle") }, { v: "normal", label: t("set.animNormal") }]} />
       </Pref>
@@ -307,16 +309,8 @@ function DisplayPane() {
       <Pref label={t("set.guideCol")}>
         <Seg<GuideCol> label={t("set.guideCol")} value={p.guideCol} onChange={(guideCol) => p.set({ guideCol })} options={[{ v: "narrow", label: t("set.colNarrow") }, { v: "normal", label: t("set.colNormal") }, { v: "wide", label: t("set.colWide") }]} />
       </Pref>
-      <Pref label={t("set.theme")}>
-        <Seg<Theme> label={t("set.theme")} value={p.theme} onChange={(theme) => p.set({ theme })} options={[{ v: "auto", label: t("set.themeAuto") }, { v: "dark", label: t("set.themeDark") }, { v: "light", label: t("set.themeLight") }, { v: "oled", label: t("set.themeOled") }]} />
-      </Pref>
       <Pref label={t("set.timeFormat")}>
         <Seg<TimeFormat> label={t("set.timeFormat")} value={p.timeFormat} onChange={(timeFormat) => p.set({ timeFormat })} options={[{ v: "auto", label: t("set.themeAuto") }, { v: "12", label: t("set.time12") }, { v: "24", label: t("set.time24") }]} />
-      </Pref>
-      <Pref label={t("set.accent")}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1.75rem)", gap: 10 }} role="radiogroup" aria-label={t("set.accent")}>
-          {ACCENT_DEFS.map((a) => { const name = t(`set.accent.${a.id}` as Key); return <button key={a.id} className="swatch" role="radio" aria-checked={p.accent === a.id} aria-label={name} title={name} style={{ background: a.hex }} onClick={() => p.set({ accent: a.id })} />; })}
-        </div>
       </Pref>
       <Pref label={t("set.uiLanguage")}>
         <Seg<Lang> label={t("set.uiLanguage")} value={p.lang} onChange={(lang) => p.set({ lang })} options={LANGS.map((l) => ({ v: l.code, label: l.label }))} />

@@ -935,5 +935,7 @@
   "gate.unlock": "Unlock",
   "gate.lockAria": "Lock with the parental code: {name}",
   "gate.needCode": "Set a parental code first (Settings › Profiles).",
-  "gate.lockHint": "Padlock: a locked category opens nowhere (lists, guide, search, details, resume) without the parental code, and never appears on Home."
+  "gate.lockHint": "Padlock: a locked category opens nowhere (lists, guide, search, details, resume) without the parental code, and never appears on Home.",
+  "set.appearance": "Appearance",
+  "set.appearanceD": "Theme and colour, which you can change at any time in Settings › Display."
 }

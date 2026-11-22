@@ -946,5 +946,7 @@
   "gate.unlock": "Déverrouiller",
   "gate.lockAria": "Verrouiller par le code parental : {name}",
   "gate.needCode": "Définissez d'abord un code parental (Réglages › Profils).",
-  "gate.lockHint": "Cadenas : une catégorie verrouillée ne s'ouvre nulle part (listes, guide, recherche, fiches, reprise) sans le code parental, et n'apparaît jamais à l'accueil."
+  "gate.lockHint": "Cadenas : une catégorie verrouillée ne s'ouvre nulle part (listes, guide, recherche, fiches, reprise) sans le code parental, et n'apparaît jamais à l'accueil.",
+  "set.appearance": "Apparence",
+  "set.appearanceD": "Thème et couleur, modifiables à tout moment dans Réglages › Affichage."
 }
