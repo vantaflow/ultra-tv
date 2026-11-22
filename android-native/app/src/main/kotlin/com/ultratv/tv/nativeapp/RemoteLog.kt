@@ -37,7 +37,7 @@ object RemoteLog {
     @Volatile var workerUrlOverride: String = ""
 
     private fun workerBase(): String? =
-        WorkerUrl.normalize(WorkerUrl.resolve(workerUrlOverride), allowCleartext = BuildConfig.DEBUG)?.takeUnless { blockedUnderTest(it) }
+        if (!TelemetrySwitch.sendingAllowed) null else WorkerUrl.normalize(WorkerUrl.resolve(workerUrlOverride), allowCleartext = BuildConfig.DEBUG)?.takeUnless { blockedUnderTest(it) }
 
     /**
      * Tests unitaires (Robolectric) : rien ne part vers un vrai serveur. Depuis l'envoi sans compte, chaque passage de la
@@ -152,6 +152,7 @@ object RemoteLog {
     }
 
     private fun flushPendingCrash() {
+        if (!TelemetrySwitch.sendingAllowed) return
         val ctx = contextInfo ?: return
         if (!telemetryEnabled) return
         val file = pendingCrashFile() ?: return
@@ -193,6 +194,7 @@ object RemoteLog {
      * sont échantillonnées ici (1 sur 10).
      */
     fun event(tag: String, message: String, level: String = "info") {
+        if (!TelemetrySwitch.sendingAllowed) return
         contextInfo ?: return
         if (!telemetryEnabled) return
         if (!queue.accept(level)) return
@@ -288,6 +290,7 @@ object RemoteLog {
      * synchronous POST with a 3 s budget.
      */
     fun crashSync(thread: Thread, error: Throwable) {
+        if (!TelemetrySwitch.sendingAllowed) return
         val ctx = contextInfo ?: return
         val sw = java.io.StringWriter()
         error.printStackTrace(java.io.PrintWriter(sw))

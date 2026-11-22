@@ -76,6 +76,7 @@ class AnonPingReporter @Inject constructor(
     private val installId: InstallIdStore,
 ) {
     suspend fun reportIfDue(nowMs: Long = System.currentTimeMillis()) {
+        if (!com.ultratv.tv.nativeapp.TelemetrySwitch.sendingAllowed) return // tests : rien ne part
         val p = prefs.flow.first()
         if (!p.telemetryEnabled || tokens.isPaired) return
         val sp = ctx.getSharedPreferences("anon_ping", Context.MODE_PRIVATE)

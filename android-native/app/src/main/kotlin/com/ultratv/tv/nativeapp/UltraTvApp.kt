@@ -300,10 +300,10 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
         // briefly (≤ 3 s) so the request actually leaves the device before the
         // process is replaced by the system death dialog. The previous handler
         // (if any) is invoked afterwards so the OS still gets to log + kill.
-        val previous = Thread.getDefaultUncaughtExceptionHandler()
-        Thread.setDefaultUncaughtExceptionHandler { t, e ->
-            RemoteLog.crashSync(t, e)
-            previous?.uncaughtException(t, e)
+        // Tests (Robolectric) : pas de gestionnaire distant (rien ne doit partir, et chaque test recréait l'application en
+        // empilant un gestionnaire de plus).
+        if (TelemetrySwitch.sendingAllowed) {
+            Thread.setDefaultUncaughtExceptionHandler(RemoteCrashHandler(Thread.getDefaultUncaughtExceptionHandler()))
         }
 
         // Initialise the Cast SDK eagerly so the first time the player asks
@@ -327,7 +327,7 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
         // Jamais appelé en production ; appelé par Robolectric à la fin de chaque test : les tâches de fond (différées
         // jusqu'à 8 s) ne doivent pas survivre à leur application.
         bgScope.cancel()
-        anrWatchdog.interrupt()
+        anrWatchdog?.interrupt()
         super.onTerminate()
     }
 
@@ -338,11 +338,19 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
      * the active thread dump. Beats getting silent "app closed" reports with
      * no logs (Android kills frozen UIs without going through our crash hook).
      */
-    /** Fil de surveillance des blocages : interrompu dans [onTerminate] (tests : une application par test). */
-    private val anrWatchdog: Thread
+    /** Gestionnaire de plantages : envoie la trace ([RemoteLog.crashSync]) puis rend la main au précédent. */
+    internal class RemoteCrashHandler(private val previous: Thread.UncaughtExceptionHandler?) : Thread.UncaughtExceptionHandler {
+        override fun uncaughtException(t: Thread, e: Throwable) {
+            RemoteLog.crashSync(t, e)
+            previous?.uncaughtException(t, e)
+        }
+    }
 
-    init {
-        anrWatchdog = Thread({
+    /** Fil de surveillance des blocages, interrompu dans [onTerminate] ; null sous Robolectric ([TelemetrySwitch]). */
+    private val anrWatchdog: Thread? = if (TelemetrySwitch.sendingAllowed) startAnrWatchdog() else null
+
+    private fun startAnrWatchdog(): Thread =
+        Thread({
             val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
             while (true) {
                 // Toutes les 5 s (et en veille longue si la télémétrie est coupée : le rapport n'irait nulle part) —
@@ -373,5 +381,4 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
                 }
             }
         }, "ultra-anr-watchdog").apply { isDaemon = true; start() }
-    }
 }

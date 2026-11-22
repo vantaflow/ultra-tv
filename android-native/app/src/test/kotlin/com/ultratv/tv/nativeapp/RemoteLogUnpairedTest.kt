@@ -29,6 +29,7 @@ class RemoteLogUnpairedTest {
     private val server = MockWebServer()
 
     @Before fun setUp() {
+        TelemetrySwitch.sendingAllowed = true // envoi vérifié vers le serveur local du test uniquement
         server.start()
         RemoteLog.workerUrlOverride = server.url("/").toString().trimEnd('/')
         RemoteLog.telemetryEnabled = true
@@ -36,6 +37,7 @@ class RemoteLogUnpairedTest {
     }
 
     @After fun tearDown() {
+        TelemetrySwitch.sendingAllowed = false
         RemoteLog.workerUrlOverride = ""
         server.shutdown()
     }
