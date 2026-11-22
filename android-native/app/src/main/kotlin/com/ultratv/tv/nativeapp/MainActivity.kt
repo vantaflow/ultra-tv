@@ -85,6 +85,8 @@ object StartupNav {
     val pending = MutableStateFlow<Pending?>(null)
     /** Route à ouvrir une fois l'application affichée (ex. « Regarder le direct » depuis le chargement). */
     val pendingRoute = MutableStateFlow<String?>(null)
+    /** Catégorie du direct demandée par lien (`ultratv://live?category=…`) : consommée une fois par l'écran Direct. */
+    val liveCategory = MutableStateFlow<String?>(null)
     /** Écran d'ouverture déjà décidé : avant, l'accueil affiché au démarrage aurait écrasé le « Dernier écran » mémorisé. */
     val startupDecided = MutableStateFlow(false)
     /** Débogage uniquement : rubrique de Réglages à ouvrir. */
@@ -261,7 +263,7 @@ class MainActivity : ComponentActivity() {
         // Recherche vocale : ACTION_SEARCH + requête ; sinon lien profond ultratv://… (VIEW).
         val voiceQuery = if (intent?.action == android.content.Intent.ACTION_SEARCH) intent.getStringExtra(android.app.SearchManager.QUERY)?.trim()?.takeIf { it.isNotEmpty() } else null
         val link = voiceQuery?.let { com.ultratv.tv.nativeapp.nav.DeepLink.Search(it) }
-            ?: com.ultratv.tv.nativeapp.nav.DeepLink.parse(intent?.data?.toString()) ?: return
+            ?: com.ultratv.tv.nativeapp.nav.DeepLink.resolve(intent?.data?.toString()) ?: return
         lifecycleScope.launch(Dispatchers.IO) { runCatching { deepLinks.get().handle(link) } }
     }
 
@@ -571,7 +573,8 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition, simpleHome: Boolean
     val pendingRoute by StartupNav.pendingRoute.collectAsState()
     LaunchedEffect(pendingRoute) {
         val r = pendingRoute ?: return@LaunchedEffect
-        nav.navigate(r)
+        // Rubrique ouverte par lien (Kairo) : pas d'empilement du même écran à chaque appel.
+        nav.navigate(r) { if (com.ultratv.tv.nativeapp.nav.DeepLink.isSectionRoute(r)) launchSingleTop = true }
         StartupNav.pendingRoute.value = null
     }
     val searchReq by StartupNav.searchRequest.collectAsState()

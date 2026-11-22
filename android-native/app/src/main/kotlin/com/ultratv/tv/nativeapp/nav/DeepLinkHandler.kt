@@ -39,6 +39,12 @@ class DeepLinkHandler @Inject constructor(
         }
         // Recherche vocale / globale : l'écran Recherche ouvre avec la requête déjà saisie.
         is DeepLink.Search -> { StartupNav.debugQuery.value = link.query; StartupNav.pendingRoute.value = Routes.SEARCH; true }
+        // Rubrique (launcher Kairo) : la catégorie du direct est appliquée par l'écran Direct s'il la trouve.
+        is DeepLink.OpenSection -> {
+            StartupNav.liveCategory.value = link.category
+            StartupNav.pendingRoute.value = link.route
+            true
+        }
     }
 
     private suspend fun playMovie(providerId: Long, remoteId: String): Boolean {
