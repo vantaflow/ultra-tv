@@ -275,6 +275,15 @@ class LiveViewModel @Inject constructor(
         viewModelScope.launch { allInvalidations.collect { allSource?.invalidate() } }
         viewModelScope.launch { visibleIds.debounce(120).collect { loadNowNext(it) } }
         viewModelScope.launch { while (true) { delay(60_000); loadNowNext(visibleIds.value) } }
+        // Lien `ultratv://live?category=…` (Kairo) : catégorie appliquée une fois les catégories connues, sinon ignorée.
+        viewModelScope.launch {
+            combine(com.ultratv.tv.nativeapp.StartupNav.liveCategory, categories) { req, cats -> req to cats }
+                .collect { (req, cats) ->
+                    if (req == null || cats.isEmpty()) return@collect
+                    requestedCategory(cats, req)?.let { _selected.value = it }
+                    com.ultratv.tv.nativeapp.StartupNav.liveCategory.value = null
+                }
+        }
     }
 
     fun toggleLock(channel: ChannelEntity) {
@@ -387,6 +396,10 @@ fun buildDirectCategories(
     val total = visible.sumOf { it.count }
     return listOf(DirectCategory(CATEGORY_FAVORITES, null, favCount), DirectCategory(CATEGORY_ALL, null, total)) + visible
 }
+
+/** Catégorie demandée par lien : seulement une catégorie visible (non masquée), non vide et non verrouillée. */
+fun requestedCategory(cats: List<DirectCategory>, requested: String): String? =
+    cats.firstOrNull { it.id == requested && it.id != CATEGORY_ALL && it.id != CATEGORY_FAVORITES && it.count > 0 && !it.locked }?.id
 
 /** Catégorie d'ouverture du Direct : dernière utilisée (si elle existe encore), sinon Favoris (s'il y en a), sinon la première non vide. */
 fun pickLanding(cats: List<DirectCategory>, last: String?): String {
