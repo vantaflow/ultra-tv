@@ -39,7 +39,7 @@ import kotlinx.coroutines.sync.withLock
 
 /**
  * Intégration Google TV / Android TV : « Continuer à regarder » (Watch Next) et chaîne de prévisualisation
- * « Favoris » de l'écran d'accueil. Elle observe la base (historique, favoris) : la lecture n'a rien à appeler,
+ * « Favoris », « Chaînes récentes » et « Nouveautés » de l'écran d'accueil. Elle observe la base (historique, favoris) : la lecture n'a rien à appeler,
  * la fin d'une lecture met l'historique à jour, donc Watch Next aussi. Sans effet hors appareil Android TV, ni sur un
  * appareil leanback dont le fournisseur TV ne répond pas (voir [TvProviderGate]).
  */
@@ -166,6 +166,15 @@ class GoogleTvSync @Inject constructor(
                 }
             }.debounce(3_000).collect { runCatching { syncFavoritesChannel(it) }.onFailure { e -> fail("favorites", "favorites channel", e) } }
         }
+        // Chaîne « Chaînes récentes » : dernières chaînes du direct du profil, distincte de « Favoris ».
+        track {
+            scope_.flatMapLatest { (prof, pid) ->
+                if (pid == null) flowOf(emptyList())
+                else combine(history.observeRecentByKind(prof, pid, "LIVE", RecentChannelsPlan.FETCH), profiles.hiddenCategoryKeys) { hist, hidden ->
+                    RecentChannelsPlan.select(orderedByRemote(pid, hist.map { it.remoteId }.distinct()), hidden)
+                }
+            }.debounce(3_000).collect { runCatching { syncRecentChannel(it) }.onFailure { e -> fail("recent", "recent channel", e) } }
+        }
         // Chaîne « Nouveautés » : suit la source active ET le profil (catégories masquées, profil enfant). Les tables film /
         // série bougent pendant toute la synchro du catalogue : on attend 5 s de calme (fin de synchro), puis la signature
         // évite toute réécriture inutile.
@@ -220,13 +229,14 @@ class GoogleTvSync @Inject constructor(
     }
 
     /** Nom de la chaîne dans la langue de l'appli (« système » : langue de l'appareil). */
-    private suspend fun newsChannelName(): String {
+    private suspend fun newsChannelName(): String = com.ultratv.tv.nativeapp.i18n.DesignStrings(appLang()).newsChannelName
+
+    private suspend fun appLang(): com.ultratv.tv.nativeapp.i18n.AppLang {
         val code = prefsStore.flow.first().language
-        val lang = com.ultratv.tv.nativeapp.i18n.AppLang.fromCode(code).let { l ->
+        return com.ultratv.tv.nativeapp.i18n.AppLang.fromCode(code).let { l ->
             if (l != com.ultratv.tv.nativeapp.i18n.AppLang.System) l
             else com.ultratv.tv.nativeapp.i18n.AppLang.entries.firstOrNull { it.code == java.util.Locale.getDefault().language } ?: com.ultratv.tv.nativeapp.i18n.AppLang.English
         }
-        return com.ultratv.tv.nativeapp.i18n.DesignStrings(lang).newsChannelName
     }
 
     /** Synchro ponctuelle (demande du système à l'initialisation des programmes). */
@@ -241,6 +251,10 @@ class GoogleTvSync @Inject constructor(
             val favs = favorites.observeForKind(prof, pid, "LIVE").first()
             syncFavoritesChannel(FavoritesChannelPlan.select(orderedByRemote(pid, favs.map { it.remoteId }), orderedByRemote(pid, WatchNextPlan.selectLive(hist).map { it.remoteId })))
         }.onFailure { fail("favorites", "favorites channel", it) }
+        runCatching {
+            val recent = history.observeRecentByKind(prof, pid, "LIVE", RecentChannelsPlan.FETCH).first()
+            syncRecentChannel(RecentChannelsPlan.select(orderedByRemote(pid, recent.map { it.remoteId }.distinct()), profiles.hiddenCategoryKeys.first()))
+        }.onFailure { fail("recent", "recent channel", it) }
         runCatching { syncNewsChannel(latestNow(pid)) }.onFailure { fail("news", "news channel", it) }
     }
 
@@ -354,6 +368,61 @@ class GoogleTvSync @Inject constructor(
         }
         prefs.edit().putString(K_SIGNATURE, signature).apply()
         report("favorites:programs", "favorites channel id=$channelId programs=${selected.size}")
+    }
+
+    // ---- Chaîne de prévisualisation « Chaînes récentes » -------------------------------------
+
+    private val recentLock = kotlinx.coroutines.sync.Mutex()
+
+    private suspend fun syncRecentChannel(selected: List<com.ultratv.tv.nativeapp.data.db.ChannelEntity>) = recentLock.withLock {
+        if (!providerAvailable()) return@withLock
+        val helper = PreviewChannelHelper(ctx)
+        var channelId = prefs.getLong(K_RECENT_CHANNEL, -1L)
+        if (ChannelPublishPlan.mustRecreate(channelId, channelExists(channelId))) {
+            report("recent:gone", "recent channel $channelId missing in provider: recreating", warn = true)
+            prefs.edit().remove(K_RECENT_CHANNEL).remove(K_RECENT_SIGNATURE).apply()
+            channelId = -1L
+        }
+        if (selected.isEmpty() && channelId < 0) { report("skip:recent", "recent channel skipped: no recent live"); return@withLock }
+        val name = com.ultratv.tv.nativeapp.i18n.DesignStrings(appLang()).recentChannelsName
+        if (channelId < 0) {
+            val logo = ContextCompat.getDrawable(ctx, com.ultratv.tv.nativeapp.R.mipmap.ic_launcher)!!.toBitmap(160, 160)
+            val channel = PreviewChannel.Builder()
+                .setDisplayName(name)
+                .setAppLinkIntentUri(Uri.parse(com.ultratv.tv.nativeapp.nav.DeepLink.section(com.ultratv.tv.nativeapp.nav.Routes.LIVE)))
+                .setLogo(logo)
+                .build()
+            channelId = publishChannel(helper, channel)
+            if (channelId < 0) { report("recent:publish", "recent channel publish refused by system (id=$channelId)", warn = true); return@withLock }
+            prefs.edit().putLong(K_RECENT_CHANNEL, channelId).putString(K_RECENT_NAME, name).remove(K_RECENT_SIGNATURE).apply()
+            report("recent:created", "recent channel created id=$channelId items=${selected.size}")
+        } else if (prefs.getString(K_RECENT_NAME, null) != name) {
+            runCatching {
+                val current = helper.getPreviewChannel(channelId)
+                if (current != null) helper.updatePreviewChannel(channelId, PreviewChannel.Builder(current).setDisplayName(name).build())
+            }
+            prefs.edit().putString(K_RECENT_NAME, name).apply()
+        }
+        val signature = RecentChannelsPlan.signature(selected)
+        if (prefs.getString(K_RECENT_SIGNATURE, null) == signature) return@withLock
+        ctx.contentResolver.delete(TvContractCompat.buildPreviewProgramsUriForChannel(channelId), null, null)
+        var failed = 0
+        selected.forEachIndexed { index, c ->
+            val program = PreviewProgram.Builder()
+                .setChannelId(channelId)
+                .setType(TvContractCompat.PreviewPrograms.TYPE_CHANNEL)
+                .setTitle(c.title)
+                .setPosterArtUri(Uri.parse(c.logo?.takeIf { it.isNotBlank() } ?: "android.resource://${ctx.packageName}/drawable/banner"))
+                .setPosterArtAspectRatio(TvContractCompat.PreviewPrograms.ASPECT_RATIO_16_9)
+                .setLive(true)
+                .setWeight(NewsChannelPlan.weight(index, selected.size))
+                .setInternalProviderId(RecentChannelsPlan.internalId(c))
+                .setIntentUri(Uri.parse(RecentChannelsPlan.deepLink(c)))
+                .build()
+            if (helper.publishPreviewProgram(program) < 0) failed++
+        }
+        if (failed == 0) prefs.edit().putString(K_RECENT_SIGNATURE, signature).apply()
+        report("recent:programs", "recent channel id=$channelId programs=${selected.size} failed=$failed", warn = failed > 0)
     }
 
     /**
@@ -490,6 +559,9 @@ class GoogleTvSync @Inject constructor(
         const val K_BROWSABLE_ASKED = "news_browsable_asked"
         const val K_BROWSABLE_NA_AT = "news_browsable_unavailable_reported_at"
         const val K_PROVIDER_NA_AT = "provider_unavailable_reported_at"
+        const val K_RECENT_CHANNEL = "recent_channel_id"
+        const val K_RECENT_SIGNATURE = "recent_signature"
+        const val K_RECENT_NAME = "recent_name"
         const val K_CHANNEL = "favorites_channel_id"
         const val K_SIGNATURE = "favorites_signature"
     }
