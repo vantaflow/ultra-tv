@@ -251,6 +251,10 @@ class GuideGridViewModel @Inject constructor(
 
     private val pid = providerRepo.observeProviders().map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }.distinctUntilChanged()
 
+    /** Premier jour proposé : jours passés jusqu'à la plus longue archive des chaînes de la source (plafond 7, #248). */
+    val firstDay: StateFlow<Int> = pid.map { id -> GuideDays.firstDay(id?.let { runCatching { channelDao.maxArchiveDays(it) }.getOrDefault(0) } ?: 0) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), -1)
+
     private val _windowStart = MutableStateFlow(guideWindowStart(System.currentTimeMillis(), 0))
     val windowStart: StateFlow<Long> = _windowStart.asStateFlow()
     fun setWindowStart(ms: Long) { _windowStart.value = ms }
@@ -355,6 +359,12 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
     val programmes by vm.programmes.collectAsState()
     val windowStart by vm.windowStart.collectAsState()
     var day by remember { mutableStateOf(0) }
+    val firstDay by vm.firstDay.collectAsState()
+    // Archive plus courte (autre source) : un jour qui n'est plus proposé ramène à aujourd'hui.
+    LaunchedEffect(firstDay) {
+        val v = GuideDays.valid(day, firstDay)
+        if (v != day) { day = v; vm.setWindowStart(guideWindowStart(System.currentTimeMillis(), v)) }
+    }
     // Horloge UNIQUE (30 s) : lue seulement au dessin (barres, ligne de l'heure) ou dans de petits textes dédiés.
     val clock = com.ultratv.tv.nativeapp.ui.common.rememberEpgClock()
     val shared = com.ultratv.tv.nativeapp.ui.player.engine.LocalSharedLive.current
@@ -389,7 +399,7 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
     }
 
     if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) GuideTouch(
-        channels = channels, programmes = programmes, windowStart = windowStart, day = day, D = D, vm = vm, guideLoad = guideLoad,
+        channels = channels, programmes = programmes, windowStart = windowStart, day = day, D = D, vm = vm, guideLoad = guideLoad, firstDay = firstDay,
         onDay = { d -> day = d; vm.setWindowStart(guideWindowStart(System.currentTimeMillis(), d)) },
         onShift = { dir -> vm.setWindowStart(windowStart + dir * 3 * SLOT_MS) },
         onSelect = { c, p -> actionTarget = c to p },
@@ -398,7 +408,7 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
     ) else GuideTvContent(
         channelCount = channels.itemCount, channelAt = { channels.getOrNull(it) }, peekAt = { channels.peekOrNull(it) },
         itemKey = com.ultratv.tv.nativeapp.ui.common.rememberSafeItemKey(channels) { it.id },
-        programmes = programmes, windowStart = windowStart, day = day, D = D, clock = clock,
+        programmes = programmes, windowStart = windowStart, day = day, firstDay = firstDay, D = D, clock = clock,
         groups = groups, group = group, guideLoad = guideLoad, nameColPx = nameColPx, groupName = groupName,
         onDay = { d -> day = d; vm.setWindowStart(guideWindowStart(System.currentTimeMillis(), d)) },
         onWindowStart = { ms -> vm.setWindowStart(ms) },
@@ -551,6 +561,8 @@ private fun dayName(D: com.ultratv.tv.nativeapp.i18n.DesignStrings, offset: Int)
     -1 -> D.yesterday
     0 -> D.today
     1 -> D.tomorrow
+    // Jours passés du rattrapage : jour abrégé + date (« Sam. 15 ») — il y a 7 jours, c'est le même jour de la semaine.
+    in Int.MIN_VALUE..-2 -> SimpleDateFormat("EEE d", D.locale).format(Date(System.currentTimeMillis() + offset * 86_400_000L)).replaceFirstChar { it.uppercase() }
     else -> SimpleDateFormat("EEEE", D.locale).format(Date(System.currentTimeMillis() + offset * 86_400_000L)).replaceFirstChar { it.uppercase() }
 }
 
@@ -645,6 +657,8 @@ internal fun GuideTvContent(
     channelCount: Int, channelAt: (Int) -> ChannelEntity?, peekAt: (Int) -> ChannelEntity?, itemKey: (Int) -> Any,
     programmes: Map<Long, List<EpgEntity>>, windowStart: Long, day: Int,
     D: com.ultratv.tv.nativeapp.i18n.DesignStrings, clock: androidx.compose.runtime.State<Long>,
+    /** Premier jour proposé (−1 = hier : aucune archive ; jusqu'à −7 selon l'archive des chaînes, #248). */
+    firstDay: Int = -1,
     groups: List<com.ultratv.tv.nativeapp.ui.live.DirectCategory>, group: String, guideLoad: GuideLoad, nameColPx: Int,
     groupName: (com.ultratv.tv.nativeapp.ui.live.DirectCategory) -> String,
     onDay: (Int) -> Unit, onWindowStart: (Long) -> Unit, onGroup: (String) -> Unit, onVisible: (List<Long>) -> Unit, onRetry: () -> Unit,
@@ -664,9 +678,9 @@ internal fun GuideTvContent(
         modifier.fillMaxSize().padding(start = 48.design, end = 56.design, top = 40.design, bottom = 12.design)
             // Au bord de la fenêtre, DROITE / GAUCHE font défiler le temps de 90 min au lieu de buter.
             .onPreviewKeyEvent { e ->
-                // ⏪ ⏩ : un jour en arrière / en avant (Hier … après-demain), sans quitter la grille.
+                // ⏪ ⏩ : un jour en arrière / en avant (premier jour d'archive ou hier … après-demain), sans quitter la grille.
                 if (e.type == KeyEventType.KeyDown && (e.key == Key.MediaRewind || e.key == Key.MediaFastForward)) {
-                    val d = (day + if (e.key == Key.MediaFastForward) 1 else -1).coerceIn(-1, 2)
+                    val d = GuideDays.step(day, e.key == Key.MediaFastForward, firstDay)
                     if (d != day) onDay(d)
                     return@onPreviewKeyEvent true
                 }
@@ -692,7 +706,18 @@ internal fun GuideTvContent(
 
         // Jours, puis catégories de chaînes (Favoris, Toutes, catégories réelles de la source avec leur nombre de chaînes).
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
-            for (d in -1..2) DayChip(dayName(D, d), selected = d == day) { onDay(d) }
+            if (firstDay >= -1) for (d in GuideDays.days(-1)) DayChip(dayName(D, d), selected = d == day) { onDay(d) }
+            else {
+                // Jours passés d'archive : rangée défilante, hier … après-demain visibles d'abord, les jours plus anciens à gauche.
+                val daysState = rememberLazyListState(initialFirstVisibleItemIndex = -1 - firstDay)
+                LaunchedEffect(day, firstDay) {
+                    val i = day - firstDay
+                    if (daysState.layoutInfo.visibleItemsInfo.none { it.index == i }) daysState.animateScrollToItem(i)
+                }
+                androidx.compose.foundation.lazy.LazyRow(Modifier.widthIn(max = 660.design), state = daysState, horizontalArrangement = Arrangement.spacedBy(10.design)) {
+                    items(GuideDays.days(firstDay).toList(), key = { it }, contentType = { "day" }) { d -> DayChip(dayName(D, d), selected = d == day) { onDay(d) } }
+                }
+            }
             // « Maintenant » : retour à aujourd'hui, fenêtre calée sur la demi-heure courante.
             DayChip(D.nowButton, selected = false) { onDay(0) }
             Box(Modifier.padding(horizontal = 8.design).width(2.design).height(32.design).background(Ux.Line))
@@ -795,7 +820,7 @@ private fun GuideTouch(
     channels: androidx.paging.compose.LazyPagingItems<ChannelEntity>, programmes: Map<Long, List<EpgEntity>>, windowStart: Long, day: Int,
     D: com.ultratv.tv.nativeapp.i18n.DesignStrings, vm: GuideGridViewModel, guideLoad: GuideLoad, onDay: (Int) -> Unit, onShift: (Int) -> Unit,
     onSelect: (ChannelEntity, EpgEntity) -> Unit, onRemind: (ChannelEntity, EpgEntity) -> Unit,
-    groupLabel: String, onGroup: () -> Unit,
+    groupLabel: String, onGroup: () -> Unit, firstDay: Int = -1,
 ) {
     val M = com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current
     val hScroll = androidx.compose.foundation.rememberScrollState()
@@ -813,7 +838,13 @@ private fun GuideTouch(
             com.ultratv.tv.nativeapp.ui.mobile.IconCircle(com.ultratv.tv.nativeapp.ui.design.Icons.Chevron, D.today.let { "−3 h" }, Ux.Surface, Ux.Text, { onShift(-1) })
             com.ultratv.tv.nativeapp.ui.mobile.IconCircle("M9 6l6 6-6 6", "+3 h", Ux.Surface, Ux.Text, { onShift(1) })
         }
-        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 20.dp)) {
+        // Jours passés d'archive (#248) : le jour choisi reste visible dans la rangée.
+        val dayRow = rememberLazyListState()
+        LaunchedEffect(day, firstDay) {
+            val i = 1 + day - firstDay
+            if (firstDay < -1 && dayRow.layoutInfo.visibleItemsInfo.none { it.index == i }) dayRow.scrollToItem((i - 1).coerceAtLeast(0))
+        }
+        androidx.compose.foundation.lazy.LazyRow(state = dayRow, horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 20.dp)) {
             item {
                 FocusSurface(onClick = onGroup, shape = RoundedCornerShape(20.dp), bg = Ux.Surface2, modifier = Modifier.height(40.dp).widthIn(max = 280.dp)) { _ ->
                     Box(Modifier.height(40.dp).padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
@@ -821,7 +852,7 @@ private fun GuideTouch(
                     }
                 }
             }
-            items((-1..2).toList()) { d ->
+            items(GuideDays.days(firstDay).toList()) { d ->
                 val sel = d == day
                 FocusSurface(onClick = { onDay(d) }, shape = RoundedCornerShape(20.dp), bg = if (sel) Ux.Cta else Ux.Surface, modifier = Modifier.height(40.dp)) { _ ->
                     Box(Modifier.height(40.dp).padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
