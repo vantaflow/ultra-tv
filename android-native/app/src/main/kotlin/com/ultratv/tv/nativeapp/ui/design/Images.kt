@@ -69,6 +69,8 @@ fun SlotImage(
     decodeSize: DpSize? = null,
 ) {
     val lowRam = LocalLowRam.current
+    // Synthèse des images introuvables de l'écran (null hors des écrans qui la fournissent) : lue une fois par image.
+    val failures = com.ultratv.tv.nativeapp.ui.common.LocalImageFailures.current
     // Fondu seulement au toucher : à la télécommande, chaque vignette chargée en défilement lançait une animation d'alpha.
     val fade = !lowRam && com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     var loaded by remember(url) { mutableStateOf(false) }
@@ -103,7 +105,7 @@ fun SlotImage(
                 alignment = Alignment.Center,
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
                 onSuccess = { loaded = true; failed = false },
-                onError = { loaded = false; failed = true; onFail?.invoke() },
+                onError = { loaded = false; failed = true; failures?.note(url); onFail?.invoke() },
             )
         }
     }
