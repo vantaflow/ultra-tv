@@ -159,7 +159,7 @@ class CatalogRepository @Inject constructor(
 
     /** Identifiants des catégories verrouillées (contrôle parental) de cette source pour ce type (MOVIE, SERIES). */
     suspend fun lockedCategoryIds(pid: Long, kind: String): Set<String> =
-        categoryDao.forProviderKind(pid, kind).filter { it.locked }.map { it.remoteId }.toSet()
+        categoryDao.lockedIds(pid, kind).toSet()
     suspend fun seriesByRemote(pid: Long, remoteId: String): SeriesEntity? = seriesDao.byRemoteId(pid, remoteId)
     suspend fun episodeById(id: Long): EpisodeEntity? = episodeDao.byId(id)
 

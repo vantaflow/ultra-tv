@@ -189,6 +189,10 @@ fun SimpleMovieDetailScreen(movieId: Long, onPlay: (url: String, title: String) 
     val info by vm.info.collectAsState()
     val movie = m
     val touch = LocalTouch.current
+    val loadState by vm.load.collectAsState()
+    val lock by vm.lock.collectAsState()
+    // Chargement / introuvable / erreur / verrou parental : jamais d'affiche, de synopsis ni de lecture d'un titre protégé.
+    com.ultratv.tv.nativeapp.ui.detail.DetailGuard(loadState, movie != null, lock, movie?.title.orEmpty(), onRetry = vm::retry, onUnlocked = vm::unlock, onBack = onBack) {
     Row(
         Modifier.fillMaxSize().background(Ux.Bg).then(if (touch) Modifier.padding(16.design) else Modifier.padding(start = 96.design, end = 96.design, top = 64.design, bottom = 44.design)),
         horizontalArrangement = Arrangement.spacedBy(72.design),
@@ -217,6 +221,7 @@ fun SimpleMovieDetailScreen(movieId: Long, onPlay: (url: String, title: String) 
             if (!touch) Row(horizontalArrangement = Arrangement.spacedBy(40.design)) { KeyHintBig("OK", S.keyWatch); KeyHintBig("↩", S.keyBack) }
         }
     }
+    }
 }
 
 // ── Série et épisodes ─────────────────────────────────────────────────────────────────────────────
@@ -231,6 +236,10 @@ fun SimpleSeriesDetailScreen(seriesId: Long, onPlayEpisode: (url: String, title:
     val watched by vm.watched.collectAsState()
     val traktSeen by vm.traktWatchedEpisodes.collectAsState()
     val series = s
+    val loadState by vm.load.collectAsState()
+    val lock by vm.lock.collectAsState()
+    // Chargement / introuvable / erreur / verrou parental : jamais d'épisodes ni de lecture d'un titre protégé.
+    com.ultratv.tv.nativeapp.ui.detail.DetailGuard(loadState, series != null, lock, series?.title.orEmpty(), onRetry = vm::retry, onUnlocked = vm::unlock, onBack = onBack) {
     SimpleFrame(title = series?.title ?: S.loading, onBack = onBack, hints = listOf("OK" to S.keyWatch, "↩" to S.keyBack)) {
         if (series == null) return@SimpleFrame
         val progress = remember(watched) { watched.associateBy { it.remoteId } }
@@ -275,6 +284,7 @@ fun SimpleSeriesDetailScreen(seriesId: Long, onPlayEpisode: (url: String, title:
                 }
             }
         }
+    }
     }
 }
 

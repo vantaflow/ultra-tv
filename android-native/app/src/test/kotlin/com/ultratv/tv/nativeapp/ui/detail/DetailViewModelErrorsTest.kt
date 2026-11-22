@@ -136,10 +136,10 @@ class DetailViewModelErrorsTest {
     private fun seriesVm() = SeriesDetailViewModel(w.catalog, PlaybackContext(), w.history, w.tmdb, w.trakt, w.ratings, w.fanart, w.tvMaze, w.seasons, w.profiles)
 
     private fun addMovie(id: Long = 10, cat: String? = null) = runBlocking {
-        db.movieDao().upsertAll(listOf(MovieEntity(id = id, providerId = providerId, remoteId = "55", name = "Orbite basse", poster = null, categoryId = cat, streamUrl = "http://h:8080/movie/jean/s3cret/55.mkv", container = "mkv", year = 2024, rating = null, plot = null)))
+        db.movieDao().upsertAll(listOf(MovieEntity(id = id, providerId = providerId, remoteId = if (id == 10L) "55" else "5$id", name = "Orbite basse", poster = null, categoryId = cat, streamUrl = "http://h:8080/movie/jean/s3cret/55.mkv", container = "mkv", year = 2024, rating = null, plot = null)))
     }
     private fun addSeries(id: Long = 20, cat: String? = null) = runBlocking {
-        db.seriesDao().upsertAll(listOf(SeriesEntity(id = id, providerId = providerId, remoteId = "77", name = "Les Gardiens du phare", poster = null, categoryId = cat, year = 2023, rating = null, plot = null)))
+        db.seriesDao().upsertAll(listOf(SeriesEntity(id = id, providerId = providerId, remoteId = if (id == 20L) "77" else "7$id", name = "Les Gardiens du phare", poster = null, categoryId = cat, year = 2023, rating = null, plot = null)))
     }
 
     private fun <T> awaitState(flow: kotlinx.coroutines.flow.Flow<T>, what: String, cond: (T) -> Boolean): T =
@@ -408,5 +408,21 @@ class DetailViewModelErrorsTest {
         awaitState(vm.lock, "lock") { it == DetailLock.HIDDEN }
         Thread.sleep(300)
         assertEquals(0, netCalls.get())
+    }
+
+    @Test fun film_autreTitre_redemandeLeCode() {
+        addCategory("MOVIE", "c1", locked = true); addMovie(10, cat = "c1"); addMovie(11, cat = "c1")
+        val vm = movieVm(); vm.load(10)
+        awaitState(vm.lock, "lock") { it == DetailLock.PIN }; vm.unlock()
+        vm.load(11)
+        awaitUntil("fiche 11 verrouillée") { vm.movie.value?.id == 11L && vm.lock.value == DetailLock.PIN }
+    }
+
+    @Test fun serie_autreSerie_redemandeLeCode() {
+        addCategory("SERIES", "c2", locked = true); addSeries(20, cat = "c2"); addSeries(21, cat = "c2")
+        val vm = seriesVm(); vm.load(20)
+        awaitState(vm.lock, "lock") { it == DetailLock.PIN }; vm.unlock()
+        vm.load(21)
+        awaitUntil("série 21 verrouillée") { vm.series.value?.id == 21L && vm.lock.value == DetailLock.PIN }
     }
 }

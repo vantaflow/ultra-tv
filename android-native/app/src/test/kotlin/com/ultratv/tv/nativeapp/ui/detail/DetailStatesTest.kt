@@ -148,6 +148,11 @@ class DetailStatesTest {
     private fun showLock(lock: DetailLock, lang: AppLang = AppLang.French, onUnlock: () -> Unit = {}, onBack: () -> Unit = {}) =
         rule.setDetail(tv = true, width = 1920, height = 1080, lang = lang) { LockedDetailPanel(lock, "Orbite basse", onUnlock, onBack) }
 
+    /**
+     * Le panneau verrouillé ne contient aucun nœud d'image ; la « fiche déverrouillée » est ici un hôte minimal (les écrans
+     * réels dépendent de Hilt). L'absence de requête d'image des vrais écrans est couverte par `DetailGuardTest` (le contenu
+     * n'est pas composé tant que verrouillé) et par les tests de ViewModel (aucune requête réseau).
+     */
     @Test fun verrouille_aucuneImage_codePuisFiche() {
         var lock by mutableStateOf(DetailLock.PIN)
         var asked = 0
@@ -182,7 +187,7 @@ class DetailStatesTest {
         rule.onNodeWithTag("dt-primary").assertIsFocused()
     }
 
-    @Test fun verrouille_retourRepasseParBack() {
+    @Test fun verrouille_boutonRetourAppelleOnBack() {
         var back = 0
         showLock(DetailLock.PIN, onBack = { back++ })
         settle()

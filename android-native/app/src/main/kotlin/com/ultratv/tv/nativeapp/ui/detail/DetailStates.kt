@@ -249,3 +249,20 @@ fun LockedDetailGate(lock: DetailLock, title: String, onUnlocked: () -> Unit, on
         )
     }
 }
+
+/**
+ * Garde commune des fiches du mode simple (film et série) : état de chargement / introuvable / erreur tant que le titre n'est
+ * pas prêt ([hasItem] faux ou [load] différent de Ready), panneau verrouillé tant que [lock] n'est pas NONE, sinon [content].
+ * Verrouillé : [content] n'est PAS composé (aucune affiche, aucun synopsis, aucune lecture).
+ */
+@Composable
+fun DetailGuard(
+    load: DetailLoad, hasItem: Boolean, lock: DetailLock, title: String,
+    onRetry: () -> Unit, onUnlocked: () -> Unit, onBack: () -> Unit, content: @Composable () -> Unit,
+) {
+    when {
+        !hasItem || load != DetailLoad.Ready -> DetailStatePanel(load, onRetry = onRetry, onBack = onBack)
+        lock != DetailLock.NONE -> LockedDetailGate(lock, title, onUnlocked = onUnlocked, onBack = onBack)
+        else -> content()
+    }
+}

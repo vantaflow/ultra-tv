@@ -850,6 +850,9 @@ interface CategoryDao {
     @Query("SELECT remoteId FROM category WHERE providerId = :pid AND kind = :kind")
     suspend fun remoteIds(pid: Long, kind: String): List<String>
 
+    @Query("SELECT remoteId FROM category WHERE providerId = :pid AND kind = :kind AND locked = 1")
+    suspend fun lockedIds(pid: Long, kind: String): List<String>
+
     @Query("SELECT remoteId FROM category WHERE providerId = :pid AND kind = :kind AND enabled = 0")
     suspend fun disabledIds(pid: Long, kind: String): List<String>
 

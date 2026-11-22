@@ -189,6 +189,8 @@ class MovieDetailViewModel @Inject constructor(
     fun load(id: Long) {
         // Retour du lecteur (même titre déjà affiché) : la fiche reste affichée pendant la relecture, sans silhouette ni focus perdu.
         val alreadyShown = id == lastId && _load.value == DetailLoad.Ready
+        // Autre titre : le déverrouillage de la visite précédente ne s'applique pas.
+        if (id != lastId) unlocked = false
         lastId = id
         noted.clear()
         if (!alreadyShown) _load.value = DetailLoad.Loading
@@ -215,7 +217,9 @@ class MovieDetailViewModel @Inject constructor(
             val movie = m ?: return@launch
             // Verrou lu avant l'affichage : une lecture impossible laisse la fiche verrouillée (jamais ouverte par défaut).
             val lk = uiAttempt("movie", "verrou") {
-                detailLockOf("MOVIE", movie.providerId, movie.categoryId, catalog.lockedCategoryIds(movie.providerId, "MOVIE"), profiles.hiddenCategoryKeys.first(), unlocked)
+                // Clés masquées illisibles dans le délai : on ne devine pas, la fiche reste verrouillée.
+                val hiddenKeys = kotlinx.coroutines.withTimeoutOrNull(3_000) { profiles.hiddenCategoryKeys.first() } ?: return@uiAttempt DetailLock.PIN
+                detailLockOf("MOVIE", movie.providerId, movie.categoryId, catalog.lockedCategoryIds(movie.providerId, "MOVIE"), hiddenKeys, unlocked)
             }.getOrDefault(if (unlocked) DetailLock.NONE else DetailLock.PIN)
             _lock.value = lk
             _load.value = DetailLoad.Ready
