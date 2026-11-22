@@ -62,10 +62,14 @@ class PlaybackSessionReconnectTest {
     @org.junit.After fun hidden() { com.ultratv.tv.nativeapp.ui.common.AppForeground.visible = false; scope.cancel() }
     private val created = mutableListOf<FakeEngine>()
 
-    private fun session(isLive: Boolean = true) = PlaybackSession(
-        ctx, scope, FrameLayout(ctx), { settings }, InMemoryChannelPlaybackMemory(), NetworkMonitor(ctx),
+    private val memo = LiveEngineMemo()
+    private val memory = InMemoryChannelPlaybackMemory()
+
+    private fun session(isLive: Boolean = true, choice: EngineChoice = EngineChoice.EXO) = PlaybackSession(
+        ctx, scope, FrameLayout(ctx), { settings.copy(engine = choice) }, memory, NetworkMonitor(ctx),
         isLive = isLive, autoFrameRate = false, userAgent = "test",
         engineFactory = { k, c -> FakeEngine(k, c).also { created += it } },
+        liveEngineMemo = memo,
     )
 
     private fun emit(e: EngineEvent) { created.last().bus.tryEmit(e); scope.runCurrent() }
@@ -182,5 +186,50 @@ class PlaybackSessionReconnectTest {
         emit(EngineEvent.Ended)
         scope.advanceTimeBy(600); scope.runCurrent()
         assertEquals(Phase.LOADING == s.state.value.phase || s.state.value.phase == Phase.PLAYING, true)
+    }
+
+    // Boucle gel / reconnexion relevée sur la box (1.3.73-rc7) : 3 pannes ExoPlayer rapprochées → VLC pour la chaîne,
+    // retenu pour la session (pas sur disque), et la chaîne rouverte plus tard repart directement sur VLC.
+    @Test
+    fun pannesExoRepetees_basculeSurVlcPourLaSession() {
+        val s = session(choice = EngineChoice.AUTO); s.start("http://a/1", "1:a"); scope.runCurrent()
+        emit(EngineEvent.FirstFrame)
+        emit(EngineEvent.Error(PlayErrorKind.NETWORK)); scope.advanceTimeBy(600); scope.runCurrent()
+        emit(EngineEvent.FirstFrame)
+        emit(EngineEvent.Error(PlayErrorKind.NETWORK)); scope.advanceTimeBy(1_100); scope.runCurrent()
+        assertEquals(listOf(EngineKind.EXO), created.map { it.kind })
+        assertEquals(3, created.single().loads.size)
+        emit(EngineEvent.FirstFrame)
+        emit(EngineEvent.Error(PlayErrorKind.NETWORK)); scope.advanceTimeBy(600); scope.runCurrent()
+        assertEquals(listOf(EngineKind.EXO, EngineKind.VLC), created.map { it.kind })
+        assertEquals(EngineKind.VLC, s.state.value.combo.engine)
+        assertEquals(true, memo.prefersVlc("1:a"))
+        emit(EngineEvent.FirstFrame); scope.advanceTimeBy(6_000); scope.runCurrent()
+        assertEquals(null, memory.combo("1:a"))          // jamais retenu durablement
+        // Zap ailleurs puis retour sur la chaîne : VLC d'emblée.
+        s.start("http://a/2", "1:b"); scope.runCurrent()
+        assertEquals(EngineKind.EXO, created.last().kind)
+        s.start("http://a/1", "1:a"); scope.runCurrent()
+        assertEquals(EngineKind.VLC, created.last().kind)
+    }
+
+    @Test
+    fun exoImpose_pannesRepetees_resteSurExo() {
+        val s = session(choice = EngineChoice.EXO); s.start("http://a/1", "1:a"); scope.runCurrent()
+        emit(EngineEvent.FirstFrame)
+        repeat(4) { emit(EngineEvent.Error(PlayErrorKind.NETWORK)); scope.advanceTimeBy(4_000); scope.runCurrent(); emit(EngineEvent.FirstFrame) }
+        assertEquals(listOf(EngineKind.EXO), created.map { it.kind })
+        assertEquals(5, created.single().loads.size)
+    }
+
+    // Reconnexions qui se succèdent malgré des images entre deux : le compteur ne repart plus à zéro (avant : « #1 »
+    // à chaque fois, sans fin) ; au plafond, écran d'erreur.
+    @Test
+    fun boucleDeReconnexions_plafonnee() {
+        val s = session(); s.start("http://a/1", "1:a"); scope.runCurrent()
+        emit(EngineEvent.FirstFrame)
+        repeat(9) { emit(EngineEvent.FirstFrame); emit(EngineEvent.Error(PlayErrorKind.NETWORK)); scope.advanceTimeBy(11_000); scope.runCurrent() }
+        assertEquals(Phase.ERROR, s.state.value.phase)
+        assertEquals(9, created.single().loads.size)
     }
 }

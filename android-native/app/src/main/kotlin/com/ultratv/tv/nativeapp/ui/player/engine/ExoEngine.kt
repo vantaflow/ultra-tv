@@ -44,6 +44,18 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
     /** Mesureur de débit du lecteur (diagnostic du flux : débit réellement reçu). */
     private var bandwidthMeter: androidx.media3.exoplayer.upstream.BandwidthMeter? = null
 
+    /** Octets reçus du réseau et sauts d'horodatage du flux : signaux fiables de la détection de gel du direct. */
+    private val bytesIn = java.util.concurrent.atomic.AtomicLong(0L)
+    private val jumps = java.util.concurrent.atomic.AtomicLong(0L)
+    private val transferCounter = object : androidx.media3.datasource.TransferListener {
+        override fun onTransferInitializing(source: androidx.media3.datasource.DataSource, dataSpec: androidx.media3.datasource.DataSpec, isNetwork: Boolean) {}
+        override fun onTransferStart(source: androidx.media3.datasource.DataSource, dataSpec: androidx.media3.datasource.DataSpec, isNetwork: Boolean) {}
+        override fun onBytesTransferred(source: androidx.media3.datasource.DataSource, dataSpec: androidx.media3.datasource.DataSpec, isNetwork: Boolean, bytesTransferred: Int) {
+            if (isNetwork) bytesIn.addAndGet(bytesTransferred.toLong())
+        }
+        override fun onTransferEnd(source: androidx.media3.datasource.DataSource, dataSpec: androidx.media3.datasource.DataSpec, isNetwork: Boolean) {}
+    }
+
     private val player: ExoPlayer
     // TextureView : le type de surface d'une PlayerView ne se règle qu'à l'inflation (attribut app:surface_type).
     private val playerView: PlayerView = (
@@ -105,10 +117,10 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
                         .connectTimeout(connectMs.toLong(), java.util.concurrent.TimeUnit.MILLISECONDS)
                         .readTimeout(readMs.toLong(), java.util.concurrent.TimeUnit.MILLISECONDS)
                         .build(),
-                ).setUserAgent(config.userAgent).setDefaultRequestProperties(config.headers)
+                ).setUserAgent(config.userAgent).setDefaultRequestProperties(config.headers).setTransferListener(transferCounter)
             } else {
                 DefaultHttpDataSource.Factory().setUserAgent(config.userAgent).setDefaultRequestProperties(config.headers).setAllowCrossProtocolRedirects(true)
-                    .setConnectTimeoutMs(connectMs).setReadTimeoutMs(readMs)
+                    .setConnectTimeoutMs(connectMs).setReadTimeoutMs(readMs).setTransferListener(transferCounter)
             }
         // En-têtes propres au flux protégé en cours (user-agent / referrer de la playlist), ajoutés à chaque requête.
         val dataSources = androidx.media3.datasource.ResolvingDataSource.Factory(
@@ -163,6 +175,13 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
                     eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, format: androidx.media3.common.Format,
                     decoderReuseEvaluation: androidx.media3.exoplayer.DecoderReuseEvaluation?,
                 ) { signalHdr(HdrOutput.contentKind(format.colorInfo?.colorTransfer, format.sampleMimeType)) }
+                // Horodatages du flux qui sautent (fournisseur qui relance son flux) : compté pour la détection de gel
+                // (ce n'en est pas un) et journalisé une ligne par saut, sans adresse. Voir [JumpTolerantAudioSink].
+                override fun onAudioSinkError(eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, audioSinkError: Exception) {
+                    val d = audioSinkError as? androidx.media3.exoplayer.audio.AudioSink.UnexpectedDiscontinuityException ?: return
+                    val n = jumps.incrementAndGet()
+                    android.util.Log.i("UltraPlay", TimestampJumpLog.line(d.expectedPresentationTimeUs, d.actualPresentationTimeUs, n, config.isLive))
+                }
             })
             setVideoFrameMetadataListener { presentationTimeUs, _, format, mediaFormat ->
                 // Cadence réelle (AFR) : horodatages des images rendues, tant qu'aucune mesure n'est prête.
@@ -398,6 +417,8 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
     }
 
     override fun loadProgress(): Long = runCatching { player.bufferedPosition }.getOrDefault(-1L)
+    override fun bytesReceived(): Long = bytesIn.get()
+    override fun timestampJumps(): Long = jumps.get()
     /** Variantes vidéo du flux (HLS / DASH) : (hauteur, kb/s), sans doublon, formats lisibles seulement. */
     private fun videoVariants(): List<com.ultratv.tv.nativeapp.ui.player.StreamDiagnostic.Variant> = runCatching {
         player.currentTracks.groups.filter { it.type == C.TRACK_TYPE_VIDEO }.flatMap { g ->
@@ -506,6 +527,10 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
  */
 @UnstableApi
 private class AudioOnlyFfmpegRenderersFactory(ctx: android.content.Context) : DefaultRenderersFactory(ctx) {
+    /** Sortie audio de Media3, avec le recul de position des flux aux horodatages qui repartent en arrière (voir [JumpTolerantAudioSink]). */
+    override fun buildAudioSink(context: android.content.Context, enableFloatOutput: Boolean, enableAudioOutputPlaybackParams: Boolean): androidx.media3.exoplayer.audio.AudioSink? =
+        super.buildAudioSink(context, enableFloatOutput, enableAudioOutputPlaybackParams)?.let { JumpTolerantAudioSink(it) }
+
     override fun buildVideoRenderers(
         context: android.content.Context,
         extensionRendererMode: Int,

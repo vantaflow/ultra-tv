@@ -4,6 +4,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Direct : une chaîne dont le fournisseur relance le flux (horodatages qui repartent en arrière) tournait en boucle entre passages répétés, image figée et reconnexions. Le lecteur suit maintenant le retour en arrière et continue de lire. Une position immobile n'est plus prise pour un gel tant que les images ou les données arrivent encore.
+- Direct : les reconnexions ne repartent plus à zéro au bout de 30 s. Les délais s'allongent sur 2 minutes, avec un plafond de 8 reconnexions en 2 minutes ou 16 en 10 minutes, puis l'écran d'erreur s'affiche. Après 3 pannes d'ExoPlayer en 2 minutes sur une même chaîne, la lecture passe sur VLC pour cette chaîne jusqu'à la fermeture de l'appli, sauf si ExoPlayer est imposé dans les réglages, si le flux est protégé ou s'il vient d'un portail Stalker.
+
 ## [1.3.72] — 2026-11-21 (Android)
 
 ### Modifié

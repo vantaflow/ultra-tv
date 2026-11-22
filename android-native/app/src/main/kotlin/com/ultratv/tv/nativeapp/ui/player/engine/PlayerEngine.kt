@@ -142,6 +142,10 @@ interface PlayerEngine {
     fun loadProgress(): Long = -1L
     /** Images vidéo sorties du décodeur (rendues, sautées ou perdues) depuis l'ouverture ; -1 si le moteur ne l'expose pas. */
     fun renderedFrames(): Long = -1L
+    /** Octets du flux reçus du réseau depuis la création du moteur ; -1 si le moteur ne l'expose pas (détection de gel). */
+    fun bytesReceived(): Long = -1L
+    /** Sauts d'horodatage du flux signalés par la sortie audio depuis la création du moteur (0 si non exposé). */
+    fun timestampJumps(): Long = 0L
     /** Signalisation couleur brute de la vidéo (type, codecs, transfert, espace, plage) pour le journal ; jamais d'adresse. */
     fun colorDebug(): String? = null
 
