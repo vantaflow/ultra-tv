@@ -969,5 +969,6 @@
   "set.levelD": "Essentiel masque les réglages techniques, Expert les montre tous. Un réglage que vous avez modifié reste toujours visible.",
   "set.levelEssential": "Essentiel",
   "set.levelStandard": "Standard",
-  "set.levelExpert": "Expert"
+  "set.levelExpert": "Expert",
+  "rail.source": "Source"
 }

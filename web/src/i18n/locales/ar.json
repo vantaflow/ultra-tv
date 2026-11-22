@@ -1002,5 +1002,6 @@
   "set.levelD": "يُخفي «الأساسي» الإعدادات التقنية ويعرضها «الخبير» كلها. يبقى الإعداد الذي غيّرته ظاهرًا دائمًا.",
   "set.levelEssential": "أساسي",
   "set.levelStandard": "قياسي",
-  "set.levelExpert": "خبير"
+  "set.levelExpert": "خبير",
+  "rail.source": "المصدر"
 }

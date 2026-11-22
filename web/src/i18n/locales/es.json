@@ -969,5 +969,6 @@
   "set.levelD": "Esencial oculta los ajustes técnicos y Experto los muestra todos. Un ajuste que hayas cambiado siempre sigue visible.",
   "set.levelEssential": "Esencial",
   "set.levelStandard": "Estándar",
-  "set.levelExpert": "Experto"
+  "set.levelExpert": "Experto",
+  "rail.source": "Fuente"
 }

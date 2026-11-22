@@ -37,6 +37,12 @@ export function toggleSource(allNames: readonly string[], current: readonly stri
   return base;
 }
 
+/** Sélecteur de source du rail : les sources visibles du profil, seulement s'il y en a plusieurs (sinon liste vide). */
+export function railSourceChoices<T extends NamedSource>(list: readonly T[], names: readonly string[] | undefined): T[] {
+  const v = visibleSources(list, names);
+  return v.length > 1 ? v : [];
+}
+
 /** Pastille courte d'une source (mode « Toutes les sources ») : son nom tronqué à 8 caractères. */
 export function sourceBadge(name: string): string {
   const n = name.trim() || "?";

@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/db/db";
 import { useFavorites } from "@/hooks/data";
 import { useActiveSource, useSources } from "@/state/sources";
 import { isLibrarySource } from "@/lib/mediaWizard";
+import { railSourceChoices, sourceBadge } from "@/lib/profileSources";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useT, type Key } from "@/i18n";
 import { usePrefs } from "@/state/prefs";
@@ -84,7 +85,13 @@ export function Rail() {
   const phaseKey = syncPhaseKey(progress);
   const syncLabel = phaseKey ? t(phaseKey) : t("rail.syncing");
   const me = profiles.find((p) => p.id === profileId) ?? profiles[0]!;
-  const favCount = useFavorites(useActiveSource()).length;
+  const activeSource = useActiveSource();
+  const favCount = useFavorites(activeSource).length;
+  // Sélecteur de source rapide : seulement quand le profil voit plusieurs sources.
+  const allSources = useSources((st) => st.list);
+  const choices = railSourceChoices(allSources, me.sources);
+  const [srcOpen, setSrcOpen] = useState(false);
+  const srcBtn = useRef<HTMLButtonElement>(null);
   const recCount = useLiveQuery(() => db.recordings.where("state").equals("recording").count().catch(() => 0), []) ?? 0;
   const isActive = (m: string) => (m === "/" ? loc.pathname === "/" : loc.pathname.startsWith(m));
 
@@ -123,6 +130,16 @@ export function Rail() {
         <span className="rail-tx rail-long">{t("nav.search")}</span>
         <kbd className="rail-kbd" aria-hidden="true">/</kbd>
       </NavLink>
+      {choices.length > 0 && activeSource && (
+        <button ref={srcBtn} type="button" className="rail-source" aria-haspopup="menu" aria-expanded={srcOpen} onClick={() => setSrcOpen((o) => !o)}
+          title={`${t("rail.source")} : ${activeSource.name}`} aria-label={`${t("rail.source")} : ${activeSource.name}`}>
+          <Icon name="source" size={20} />
+          <span className="rail-tx rail-short ellipsis">{sourceBadge(activeSource.name)}</span>
+          <span className="rail-tx rail-long ellipsis">{activeSource.name}</span>
+          <span className="rail-tx rail-long rail-source-chev" aria-hidden="true">▾</span>
+        </button>
+      )}
+      {srcOpen && <SourceMenu anchor={srcBtn.current} choices={choices} activeId={activeSource?.id} onPick={(id) => { set({ activeSourceId: id }); setSrcOpen(false); }} onClose={() => setSrcOpen(false)} />}
       <nav aria-label={t("a11y.mainNav")}>
         <div className="rail-group" role="presentation"><span>{t("nav.groupWatch")}</span></div>
         {watch.map(link)}
@@ -149,5 +166,33 @@ export function Rail() {
         </button>
       </div>
     </nav>
+  );
+}
+
+/** Liste des sources du profil, ouverte depuis le rail (Échap ou clic à côté pour fermer). */
+function SourceMenu({ anchor, choices, activeId, onPick, onClose }: { anchor: HTMLElement | null; choices: { id?: number; name: string }[]; activeId?: number; onPick: (id: number) => void; onClose: () => void }) {
+  const t = useT();
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    ref.current?.querySelector<HTMLElement>("[aria-checked=true], button")?.focus();
+    const k = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } };
+    window.addEventListener("keydown", k, true);
+    return () => window.removeEventListener("keydown", k, true);
+  }, [onClose]);
+  const r = anchor?.getBoundingClientRect();
+  const rtl = document.documentElement.dir === "rtl";
+  const style = r ? { top: r.top, ...(rtl ? { right: window.innerWidth - r.left + 8 } : { left: r.right + 8 }) } : undefined;
+  return (
+    <div className="scrim clear" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div ref={ref} className="ctx-menu" role="menu" aria-label={t("rail.source")} style={style}>
+        <div className="ctx-title">{t("rail.source")}</div>
+        {choices.map((s) => (
+          <button key={s.id} role="menuitemradio" aria-checked={s.id === activeId} onClick={() => onPick(s.id!)}>
+            <span className="ctx-check" aria-hidden="true">{s.id === activeId && <Icon name="check" size={14} />}</span>
+            <span className="ellipsis">{s.name || "—"}</span>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
