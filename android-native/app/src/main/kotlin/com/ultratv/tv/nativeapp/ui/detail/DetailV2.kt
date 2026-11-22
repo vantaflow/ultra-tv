@@ -32,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -214,7 +215,7 @@ fun V2CastRow(
         Row(rowModifier, horizontalArrangement = Arrangement.spacedBy(16.design)) {
             for (p in people) FocusSurface(
                 onClick = { onOpenPerson(p.name) }, shape = RoundedCornerShape(20.design), bg = Color.Transparent, focusedBg = Ux.Button,
-                focusedScale = 1f, ringWidth = 0.dp, modifier = Modifier.width(cellPx.design),
+                focusedScale = 1f, ringWidth = 0.dp, modifier = Modifier.width(cellPx.design).testTag("dt-cast-${p.name}"),
             ) { _ ->
                 Column(Modifier.fillMaxWidth().padding(vertical = 6.design), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.design)) {
                     AvatarImage(p.photo, p.name, Modifier.size(avatarPx.design))
@@ -265,7 +266,7 @@ fun MovieDetailTv(
                     .focusGroup().onFocusChanged { if (it.hasFocus) scope.launch { scroll.animateScrollTo(0, tween(160)) } },
             ) {
                 Column(Modifier.width(880.design), verticalArrangement = Arrangement.spacedBy(18.design)) {
-                    V2BackButton(m.backDescription, onBack)
+                    V2BackButton(m.backDescription, onBack, Modifier.testTag("dt-back"))
                     Spacer(Modifier.height(26.design))
                     if (m.skeleton) Skeleton(Modifier.width(420.design).height(34.design))
                     else if (m.chips.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(10.design)) { m.chips.forEach { V2Chip(it) } }
@@ -287,10 +288,10 @@ fun MovieDetailTv(
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(12.design), verticalArrangement = Arrangement.spacedBy(12.design), itemVerticalAlignment = Alignment.CenterVertically) {
                         V2Pill(
                             m.primaryLabel, onPrimary, primary = true, heightPx = 64, fontPx = 21, hPadPx = 32, iconPath = Icons.Play, iconFill = true,
-                            modifier = Modifier.focusRequester(playRequester).onFocusChanged { onPlayFocusChanged(it.isFocused) },
+                            modifier = Modifier.testTag("dt-primary").focusRequester(playRequester).onFocusChanged { onPlayFocusChanged(it.isFocused) },
                         )
-                        if (m.fromStartLabel != null) V2Pill(m.fromStartLabel, onFromStart)
-                        if (onTrailer != null) V2Pill(m.trailerLabel, onTrailer)
+                        if (m.fromStartLabel != null) V2Pill(m.fromStartLabel, onFromStart, Modifier.testTag("dt-from-start"))
+                        if (onTrailer != null) V2Pill(m.trailerLabel, onTrailer, Modifier.testTag("dt-trailer"))
                         favorite()
                         actionsExtra()
                     }

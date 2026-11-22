@@ -42,6 +42,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
@@ -333,7 +334,7 @@ private fun FavChannelCard(card: ChannelCardUi, onClick: () -> Unit) {
 @Composable
 fun MobileBackButton(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val M = LocalMobileStrings.current
-    Box(modifier.size(48.dp).clip(CircleShape).clickable(onClickLabel = M.a11yBack, onClick = onBack).semantics { contentDescription = M.a11yBack }, contentAlignment = Alignment.Center) {
+    Box(modifier.testTag("dt-back").size(48.dp).clip(CircleShape).clickable(onClickLabel = M.a11yBack, onClick = onBack).semantics { contentDescription = M.a11yBack }, contentAlignment = Alignment.Center) {
         Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0xB30A0A0C)), contentAlignment = Alignment.Center) {
             DIcon(MobileIcons.Back, 20.dp, Color(0xFFF5F5F7), strokeWidth = 2.4f)
         }

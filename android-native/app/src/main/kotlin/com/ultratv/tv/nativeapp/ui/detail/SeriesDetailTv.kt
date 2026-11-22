@@ -32,6 +32,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
@@ -217,7 +218,7 @@ fun SeriesDetailTvContent(
             Modifier.width(780.design).fillMaxHeight().padding(start = 72.design, top = 56.design, bottom = 48.design).focusGroup(),
             verticalArrangement = Arrangement.spacedBy(22.design),
         ) {
-            V2BackButton(M.a11yBack, onBack)
+            V2BackButton(M.a11yBack, onBack, Modifier.testTag("dt-back"))
             Spacer(Modifier.height(18.design))
             TitleLogo(data.logo, T.tidy(series.title), maxWidth = 620.design, maxHeight = 170.design) {
                 Text(T.tidy(series.title), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 64.spx, lineHeight = 64.spx, letterSpacing = (-1).sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -242,11 +243,11 @@ fun SeriesDetailTvContent(
                 V2Pill(
                     if (data.resuming) D.resumeEpisode(data.target.season, data.target.episode) else D.playEpisodeLabel(data.target.season, data.target.episode),
                     onPlayTarget, primary = true, heightPx = 62, fontPx = 20, hPadPx = 28, iconPath = Icons.Play, iconFill = true,
-                    modifier = Modifier.focusRequester(playRequester).onFocusChanged { playFocused = it.isFocused },
+                    modifier = Modifier.testTag("dt-primary").focusRequester(playRequester).onFocusChanged { playFocused = it.isFocused },
                 )
             }
             Row(rowExit, horizontalArrangement = Arrangement.spacedBy(12.design), verticalAlignment = Alignment.CenterVertically) {
-                if (trailerKey != null) V2Pill(D.trailerLabel, { trailerOpen = true }, heightPx = 62, fontPx = 19, hPadPx = 26, modifier = Modifier.focusRequester(firstBtn).onFocusChanged { if (data.target == null) playFocused = it.isFocused })
+                if (trailerKey != null) V2Pill(D.trailerLabel, { trailerOpen = true }, heightPx = 62, fontPx = 19, hPadPx = 26, modifier = Modifier.testTag("dt-trailer").focusRequester(firstBtn).onFocusChanged { if (data.target == null) playFocused = it.isFocused })
                 favorite()
                 trakt()
             }
@@ -283,7 +284,7 @@ fun SeriesDetailTvContent(
                 // Ordre vertical de la colonne : onglets → « Télécharger la saison » → épisodes (Haut remonte dans le même ordre).
                 val toFirst = Modifier.focusProperties { down = firstEp; up = seasonEntry }
                 // « Aller à l'épisode » retiré (sans utilité réelle, la liste se parcourt directement) : seul « Télécharger la saison ».
-                V2Pill(downloadLabel, onDownloadSeason, heightPx = 52, fontPx = 18, hPadPx = 22, iconPath = com.ultratv.tv.nativeapp.ui.downloads.DownloadIcons.Download, modifier = toFirst.focusRequester(barReq))
+                V2Pill(downloadLabel, onDownloadSeason, heightPx = 52, fontPx = 18, hPadPx = 22, iconPath = com.ultratv.tv.nativeapp.ui.downloads.DownloadIcons.Download, modifier = toFirst.testTag("dt-download").focusRequester(barReq))
             }
             if (shown.isNotEmpty()) Text(D.longPressDownload, color = Ux.Text3, fontFamily = Manrope, fontSize = 17.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             when {
@@ -304,7 +305,7 @@ fun SeriesDetailTvContent(
                         EpisodeCard(
                             ep, cleanEpisodeTitle(ep.title, series.name, series.title), series.backdrop ?: series.poster, data.progress[ep.remoteId], D,
                             seen = com.ultratv.tv.nativeapp.data.trakt.TraktLibrary.episodeKey(ep.season, ep.episode) in data.traktSeen,
-                            modifier = Modifier
+                            modifier = Modifier.testTag("dt-episode-${ep.season}-${ep.episode}")
                                 .then(if (i == entryIdx) Modifier.focusRequester(entry) else Modifier)
                                 .then(if (i == firstVisIdx) Modifier.focusRequester(firstEp) else Modifier)
                                 // Haut depuis le premier épisode : l'onglet de la saison active (et non la barre d'actions, à droite).
@@ -380,7 +381,7 @@ private fun SeasonTabs(
             FocusSurface(
                 onClick = { onSeason(n); onEnterEpisodes() }, shape = RoundedCornerShape(26.design),
                 bg = if (sel) Ux.Cta else Ux.Card, focusedBg = if (sel) Ux.Cta else Ux.Button, ringWidth = 4.design, focusedScale = 1f,
-                modifier = Modifier.height(52.designT)
+                modifier = Modifier.height(52.designT).testTag("dt-season-$n")
                     .then(if (sel) Modifier.focusRequester(seasonEntry) else Modifier)
                     .focusRequester(reqs[idx])
                     .onPreviewKeyEvent { ev ->

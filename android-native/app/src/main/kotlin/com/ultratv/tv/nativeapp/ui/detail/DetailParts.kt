@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Brush
@@ -70,7 +71,7 @@ private const val BACKDROP_H = 720
 fun DetailBackdrop(backdrop: String?, poster: String?, title: String) {
     val ctx = LocalContext.current
     var portrait by remember(backdrop) { mutableStateOf(backdrop.isNullOrBlank()) }
-    Box(Modifier.fillMaxSize().background(Ux.Tone)) {
+    Box(Modifier.fillMaxSize().background(Ux.Tone).testTag("dt-backdrop")) {
         if (!backdrop.isNullOrBlank() && !portrait) {
             val request = remember(backdrop) {
                 ImageRequest.Builder(ctx).data(backdrop).size(BACKDROP_W, BACKDROP_H).scale(coil3.size.Scale.FILL).crossfade(false).build()
@@ -83,7 +84,7 @@ fun DetailBackdrop(backdrop: String?, poster: String?, title: String) {
         }
         if (portrait) {
             val art = poster ?: backdrop
-            PosterImage(art, title, Modifier.align(Alignment.CenterEnd).padding(end = 150.design).height(660.design).aspectRatio(2f / 3f), radius = 22, decodeSize = DpSize(220.dp, 330.dp))
+            PosterImage(art, title, Modifier.align(Alignment.CenterEnd).padding(end = 150.design).testTag("dt-backdrop-poster").height(660.design).aspectRatio(2f / 3f), radius = 22, decodeSize = DpSize(220.dp, 330.dp))
         }
     }
 }

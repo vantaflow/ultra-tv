@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
@@ -300,7 +301,7 @@ fun MovieDetailScreen(
                 val simKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(similar) { it.id }
                 items(similar.size, key = { simKeys[it] }, contentType = { "similar" }) { si ->
                     val sm = similar[si]
-                    com.ultratv.tv.nativeapp.ui.design.VodCard(T.tidy(sm.title), sm.poster, Modifier.width(170.design), year = sm.year) { onOpenMovie(sm.id) }
+                    com.ultratv.tv.nativeapp.ui.design.VodCard(T.tidy(sm.title), sm.poster, Modifier.width(170.design).testTag("dt-similar-${sm.id}"), year = sm.year) { onOpenMovie(sm.id) }
                 }
             }
         }
