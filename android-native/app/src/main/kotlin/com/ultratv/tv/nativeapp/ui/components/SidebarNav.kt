@@ -64,6 +64,7 @@ import com.ultratv.tv.nativeapp.ui.design.LogoMark
 import com.ultratv.tv.nativeapp.ui.design.Sora
 import com.ultratv.tv.nativeapp.ui.design.Ux
 import com.ultratv.tv.nativeapp.ui.design.spx
+import com.ultratv.tv.nativeapp.i18n.railSwitchSource
 
 /** Groupes du rail (maquette « Menu latéral ») : contenus, listes de l'utilisateur, puis compte et réglages en bas. */
 internal enum class RailGroup { WATCH, MINE, FOOT }
@@ -333,6 +334,34 @@ fun SidebarNav(navController: NavController, menu: RailMenuState = remember { Ra
                 }
                 }
                 SyncPill(syncVm.pill, showLabels, labelAlphaState, D.syncing)
+                // Changer de source sans passer par les Réglages (deux sources ou plus) : la source active est affichée.
+                val sourceVm: SourceSwitchViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+                val sources by sourceVm.choices.collectAsState()
+                var pickingSource by remember { mutableStateOf(false) }
+                if (pickingSource) SourcePickerDialog(sources, onPick = { id -> pickingSource = false; sourceVm.select(id) }, onDismiss = { pickingSource = false })
+                if (SourceSwitch.shown(sources)) {
+                    Spacer(Modifier.height(16.design))
+                    FocusSurface(
+                        onClick = { pickingSource = true },
+                        shape = RoundedCornerShape(16.design), bg = Color.Transparent, focusedScale = 1.04f, ringWidth = 5.design,
+                        modifier = Modifier.height(56.design).fillMaxWidth().testTag("rail-source"),
+                    ) { focused ->
+                        Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                            Spacer(Modifier.width(16.design))
+                            Box(Modifier.size(32.design), contentAlignment = Alignment.Center) {
+                                DIcon(Icons.Monitor, 28.design, when { focused -> Ux.TextOnLight; expanded -> Ux.Text; else -> Ux.Text3 })
+                            }
+                            if (showLabels) {
+                                Spacer(Modifier.width(16.design))
+                                Column(Modifier.graphicsLayer { alpha = labelAlphaState.value }) {
+                                    Text(sources.firstOrNull { it.active }?.name.orEmpty(), fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx,
+                                        color = if (focused) Ux.TextOnLight else Ux.Text, maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                                    Text(D.railSwitchSource, fontFamily = Manrope, fontSize = 18.spx, color = if (focused) Ux.OnFocus2 else Ux.Text3, maxLines = 1, softWrap = false)
+                                }
+                            }
+                        }
+                    }
+                }
                 Spacer(Modifier.height(40.design))
                 val profileVm: com.ultratv.tv.nativeapp.ui.profile.ProfileViewModel = androidx.hilt.navigation.compose.hiltViewModel()
                 val prof by profileVm.current.collectAsState()

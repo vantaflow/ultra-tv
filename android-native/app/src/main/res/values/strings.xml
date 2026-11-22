@@ -1984,4 +1984,6 @@
     <string name="cat_lock">Lock this category with the parental code</string>
     <string name="cat_unlock">Unlock this category</string>
     <string name="cat_lock_need_pin">Set a parental code first (Settings › Parental control): without it, a locked category is not protected</string>
+    <string name="rail_switch_source">Switch source</string>
+    <string name="source_picker_title">Choose the source</string>
 </resources>

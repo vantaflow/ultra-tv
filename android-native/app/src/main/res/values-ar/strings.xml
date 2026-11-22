@@ -2027,4 +2027,6 @@
     <string name="cat_lock">قفل هذه الفئة برمز الرقابة الأبوية</string>
     <string name="cat_unlock">إلغاء قفل هذه الفئة</string>
     <string name="cat_lock_need_pin">عيّن رمز الرقابة الأبوية أولاً (الإعدادات › الرقابة الأبوية): بدونه لا تكون الفئة المقفلة محمية</string>
+    <string name="rail_switch_source">تغيير المصدر</string>
+    <string name="source_picker_title">اختيار المصدر</string>
 </resources>

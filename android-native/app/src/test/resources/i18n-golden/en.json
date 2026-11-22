@@ -840,6 +840,8 @@
   "DesignStrings/RobustnessStringsKt.getCatLockCol()": "Code",
   "DesignStrings/RobustnessStringsKt.getCatLockNeedPin()": "Set a parental code first (Settings \u203a Parental control): without it, a locked category is not protected",
   "DesignStrings/RobustnessStringsKt.getCatUnlock()": "Unlock this category",
+  "DesignStrings/RobustnessStringsKt.getRailSwitchSource()": "Switch source",
+  "DesignStrings/RobustnessStringsKt.getSourcePickerTitle()": "Choose the source",
   "DesignStrings/PersonStringsKt.getPersonBadgeMovie()": "MOVIE",
   "DesignStrings/PersonStringsKt.getPersonBadgeSeries()": "SERIES",
   "DesignStrings/PersonStringsKt.getPersonReadLess()": "Show less",

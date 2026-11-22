@@ -1969,4 +1969,6 @@
     <string name="cat_lock">Verrouiller cette catégorie par le code parental</string>
     <string name="cat_unlock">Déverrouiller cette catégorie</string>
     <string name="cat_lock_need_pin">Définissez d’abord un code parental (Réglages › Contrôle parental) : sans lui, une catégorie verrouillée n’est pas protégée</string>
+    <string name="rail_switch_source">Changer de source</string>
+    <string name="source_picker_title">Choisir la source</string>
 </resources>

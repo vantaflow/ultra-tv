@@ -840,6 +840,8 @@
   "DesignStrings/RobustnessStringsKt.getCatLockCol()": "C\u00f3digo",
   "DesignStrings/RobustnessStringsKt.getCatLockNeedPin()": "Define primero un c\u00f3digo parental (Ajustes \u203a Control parental): sin \u00e9l, una categor\u00eda bloqueada no est\u00e1 protegida",
   "DesignStrings/RobustnessStringsKt.getCatUnlock()": "Desbloquear esta categor\u00eda",
+  "DesignStrings/RobustnessStringsKt.getRailSwitchSource()": "Cambiar de fuente",
+  "DesignStrings/RobustnessStringsKt.getSourcePickerTitle()": "Elegir la fuente",
   "DesignStrings/PersonStringsKt.getPersonBadgeMovie()": "PELÍCULA",
   "DesignStrings/PersonStringsKt.getPersonBadgeSeries()": "SERIE",
   "DesignStrings/PersonStringsKt.getPersonReadLess()": "Mostrar menos",

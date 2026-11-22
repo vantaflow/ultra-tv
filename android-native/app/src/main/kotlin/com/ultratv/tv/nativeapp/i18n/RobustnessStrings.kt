@@ -12,3 +12,7 @@ val DesignStrings.catLock get() = tx(R.string.cat_lock)
 val DesignStrings.catUnlock get() = tx(R.string.cat_unlock)
 /** Verrouiller sans code parental défini ne protège rien : on le dit. */
 val DesignStrings.catLockNeedPin get() = tx(R.string.cat_lock_need_pin)
+/** Entrée du menu latéral : changer de source (deux sources ou plus). */
+val DesignStrings.railSwitchSource get() = tx(R.string.rail_switch_source)
+/** Titre de la fenêtre de choix de la source. */
+val DesignStrings.sourcePickerTitle get() = tx(R.string.source_picker_title)
