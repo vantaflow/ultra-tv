@@ -32,6 +32,8 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -96,11 +98,62 @@ class HomeViewModel @Inject constructor(
     private val tvMaze: com.ultratv.tv.nativeapp.data.extmeta.TvMazeRepository,
     private val profileRepo: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
     private val categoryDao: com.ultratv.tv.nativeapp.data.db.CategoryDao,
+    private val lockedStore: com.ultratv.tv.nativeapp.data.prefs.LockedChannelsStore,
+    private val channelDao: com.ultratv.tv.nativeapp.data.db.ChannelDao,
+    private val movieDao: com.ultratv.tv.nativeapp.data.db.MovieDao,
+    private val seriesDao: com.ultratv.tv.nativeapp.data.db.SeriesDao,
 ) : ViewModel() {
 
-    /** Garde les éléments dont la catégorie n'est pas masquée pour le PROFIL COURANT (catégories par profil). */
-    private fun <T> kotlinx.coroutines.flow.Flow<List<T>>.visibleFor(pid: Long, kind: String, cat: (T) -> String?): kotlinx.coroutines.flow.Flow<List<T>> =
-        combine(hiddenStore.hidden) { l, h -> if (h.isEmpty()) l else l.filter { x -> cat(x)?.let { hiddenStore.keyFor(kind, pid, it) !in h } ?: true } }
+    /**
+     * Garde les éléments que l'accueil peut montrer au PROFIL COURANT (voir [HomeGuard]) : ni catégorie masquée, verrouillée,
+     * désactivée ou adulte, ni titre adulte.
+     */
+    private fun <T> kotlinx.coroutines.flow.Flow<List<T>>.visibleFor(pid: Long, kind: String, title: (T) -> String?, cat: (T) -> String?): kotlinx.coroutines.flow.Flow<List<T>> =
+        combine(guard) { l, g -> l.filter { x -> g.allows(kind, pid, cat(x), title(x)) } }
+
+    /** Chaînes que l'accueil peut montrer : ni verrouillées, ni d'une catégorie masquée, verrouillée ou adulte. */
+    private fun kotlinx.coroutines.flow.Flow<List<ChannelEntity>>.visibleChannels(): kotlinx.coroutines.flow.Flow<List<ChannelEntity>> =
+        combine(guard) { l, g -> l.filter(g::allowsChannel) }
+
+    /** Historique (reprises, chaînes récentes) : catégorie relue dans le catalogue local, puis même règle que les rangées. */
+    private suspend fun guardHistory(list: List<WatchHistoryEntity>, g: HomeGuard): List<WatchHistoryEntity> {
+        if (list.isEmpty()) return list
+        val cats = HashMap<String, String?>()
+        for ((pidKind, rows) in list.groupBy { it.providerId to it.kind }) {
+            val (p, kind) = pidKind
+            val rids = rows.map { if (it.kind == "EPISODE") it.parentRemoteId ?: it.remoteId else it.remoteId }.distinct().take(900)
+            val found = runCatching {
+                when (kind) {
+                    "LIVE" -> channelDao.categoriesByRemote(p, rids)
+                    "MOVIE" -> movieDao.categoriesByRemote(p, rids)
+                    "EPISODE" -> seriesDao.categoriesByRemote(p, rids)
+                    else -> emptyList()
+                }
+            }.getOrDefault(emptyList())
+            for (f in found) cats["$p:$kind:${f.remoteId}"] = f.categoryId
+        }
+        return list.filter { h ->
+            val rid = if (h.kind == "EPISODE") h.parentRemoteId ?: h.remoteId else h.remoteId
+            val catKind = when (h.kind) { "LIVE" -> "LIVE"; "MOVIE" -> "MOVIE"; else -> "SERIES" }
+            (h.kind != "LIVE" || "${h.providerId}:${h.remoteId}" !in g.lockedChannels) &&
+                g.allows(catKind, h.providerId, cats["${h.providerId}:${h.kind}:$rid"], h.title)
+        }
+    }
+
+    /** Cartes Trakt (Top 10, watchlist, recommandations…) : catégorie relue par identifiant local, même règle. */
+    private suspend fun guardTrakt(rows: com.ultratv.tv.nativeapp.data.trakt.TraktRows, pid: Long?, g: HomeGuard): com.ultratv.tv.nativeapp.data.trakt.TraktRows {
+        if (pid == null || rows.isEmpty) return rows
+        val all = rows.watchlist + rows.recommendations + rows.trending + rows.popular + rows.recent + rows.lists.flatMap { it.cards } + rows.upNext.map { it.card }
+        val movieCats = runCatching { all.filter { !it.isShow }.map { it.id }.distinct().chunked(900).flatMap { movieDao.categoriesById(it) }.associate { it.id to it.categoryId } }.getOrDefault(emptyMap())
+        val seriesCats = runCatching { all.filter { it.isShow }.map { it.id }.distinct().chunked(900).flatMap { seriesDao.categoriesById(it) }.associate { it.id to it.categoryId } }.getOrDefault(emptyMap())
+        fun ok(c: com.ultratv.tv.nativeapp.data.trakt.TraktCard) =
+            if (c.isShow) g.allows("SERIES", pid, seriesCats[c.id], c.title) else g.allows("MOVIE", pid, movieCats[c.id], c.title)
+        fun List<com.ultratv.tv.nativeapp.data.trakt.TraktCard>.ok() = filter(::ok)
+        return rows.copy(
+            watchlist = rows.watchlist.ok(), recommendations = rows.recommendations.ok(), trending = rows.trending.ok(), popular = rows.popular.ok(),
+            lists = rows.lists.map { it.copy(cards = it.cards.ok()) }, upNext = rows.upNext.filter { ok(it.card) }, recent = rows.recent.ok(),
+        )
+    }
 
     val providers: StateFlow<List<ProviderEntity>> = provider.observeProviders()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -119,6 +172,21 @@ class HomeViewModel @Inject constructor(
     private val syncing: Flow<Boolean> = bus.status.map { it != null }.distinctUntilChanged()
 
     private val pid: Flow<Long?> = providers.map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }.distinctUntilChanged()
+
+    /**
+     * Ce que l'accueil ne montre jamais pour la source active et le profil actif (voir [HomeGuard]) : TV comme téléphone et
+     * tablette (même [rows]). Suit les catégories (verrou, désactivation), les masquages du profil et les chaînes verrouillées.
+     */
+    private val guard: Flow<HomeGuard> = pid.flatMapLatest { id ->
+        if (id == null) flowOf(HomeGuard.NONE)
+        else combine(
+            hiddenStore.hidden,
+            categoryDao.observeForProviderKind(id, "LIVE"),
+            categoryDao.observeForProviderKind(id, "MOVIE"),
+            categoryDao.observeForProviderKind(id, "SERIES"),
+            lockedStore.locked,
+        ) { hidden, live, movies, series, locked -> HomeGuard.of(hidden, live + movies + series, locked) }
+    }.distinctUntilChanged().shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
 
     /** Serveurs multimédias / NAS visibles pour le profil courant, dans l'ordre des sources ; vide = aucune rangée de serveur. */
     private val libraryProviders: Flow<List<ProviderEntity>> = combine(providers, profileRepo.currentSources) { ps, names ->
@@ -140,13 +208,15 @@ class HomeViewModel @Inject constructor(
                 catalog.seriesByRemote(h.providerId, h.parentRemoteId)?.let { s -> h.copy(poster = s.poster ?: s.backdrop) } ?: h
             else h
         } }
+        .combine(guard) { l, g -> l to g }.mapLatest { (l, g) -> guardHistory(l, g) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /**
      * Rangées Trakt (watchlist, recommandations) : UNIQUEMENT les éléments présents dans la source active, dans l'ordre
      * de Trakt. Vides si le compte n'est pas lié à Trakt, si l'appareil n'est pas appairé ou si rien n'est disponible.
      */
-    val trakt: StateFlow<com.ultratv.tv.nativeapp.data.trakt.TraktRows> = traktMatcher.rows(pid)
+    val trakt: StateFlow<com.ultratv.tv.nativeapp.data.trakt.TraktRows> = combine(traktMatcher.rows(pid), pid, guard) { r, id, g -> Triple(r, id, g) }
+        .mapLatest { (r, id, g) -> guardTrakt(r, id, g) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), com.ultratv.tv.nativeapp.data.trakt.TraktRows.EMPTY)
 
     init {
@@ -166,21 +236,21 @@ class HomeViewModel @Inject constructor(
 
     /** Derniers films / séries ajoutés par le fournisseur. */
     val latestMovies: StateFlow<List<com.ultratv.tv.nativeapp.ui.catalog.PosterItem>> = pid
-        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.latestMovies(id, 40).atMostEvery(1_000).snapshotWhile(syncing).visibleFor(id, "MOVIE") { it.categoryId }.map { it.take(15) } }
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.latestMovies(id, 40).atMostEvery(1_000).snapshotWhile(syncing).visibleFor(id, "MOVIE", { it.title }) { it.categoryId }.map { it.take(15) } }
         .map { l -> l.map { com.ultratv.tv.nativeapp.ui.catalog.PosterItem(it.id, it.title, it.poster, it.year, it.rating) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val latestSeries: StateFlow<List<com.ultratv.tv.nativeapp.ui.catalog.PosterItem>> = pid
-        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.latestSeries(id, 40).atMostEvery(1_000).snapshotWhile(syncing).visibleFor(id, "SERIES") { it.categoryId }.map { it.take(15) } }
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.latestSeries(id, 40).atMostEvery(1_000).snapshotWhile(syncing).visibleFor(id, "SERIES", { it.title }) { it.categoryId }.map { it.take(15) } }
         .map { l -> l.map { com.ultratv.tv.nativeapp.ui.catalog.PosterItem(it.id, it.title, it.poster, it.year, it.rating) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** « Films / séries les mieux notés » : note du fournisseur (ou de TMDB une fois la fiche ouverte). */
     val topMovies: StateFlow<List<com.ultratv.tv.nativeapp.ui.catalog.PosterItem>> = pid
-        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.topRatedMovies(id, 40).atMostEvery(1_000).snapshotWhile(syncing).visibleFor(id, "MOVIE") { it.categoryId }.map { it.take(15) } }
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.topRatedMovies(id, 40).atMostEvery(1_000).snapshotWhile(syncing).visibleFor(id, "MOVIE", { it.title }) { it.categoryId }.map { it.take(15) } }
         .map { l -> l.map { com.ultratv.tv.nativeapp.ui.catalog.PosterItem(it.id, it.title, it.poster, it.year, it.rating) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val topSeries: StateFlow<List<com.ultratv.tv.nativeapp.ui.catalog.PosterItem>> = pid
-        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.topRatedSeries(id, 40).atMostEvery(1_000).snapshotWhile(syncing).visibleFor(id, "SERIES") { it.categoryId }.map { it.take(15) } }
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.topRatedSeries(id, 40).atMostEvery(1_000).snapshotWhile(syncing).visibleFor(id, "SERIES", { it.title }) { it.categoryId }.map { it.take(15) } }
         .map { l -> l.map { com.ultratv.tv.nativeapp.ui.catalog.PosterItem(it.id, it.title, it.poster, it.year, it.rating) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -190,6 +260,7 @@ class HomeViewModel @Inject constructor(
             if (id == null) flowOf(null)
             else history.recentByKind(id, "MOVIE", 1).map { it.firstOrNull()?.remoteId }.distinctUntilChanged()
                 .map { rid -> if (rid == null) null else runCatching { catalog.similarMovies(id, rid, 15) }.getOrNull() }
+                .combine(guard) { r, g -> r?.let { it.first to it.second.filter { m -> g.allows("MOVIE", m.providerId, m.categoryId, m.title) } } }
         }
         .map { r -> if (r == null) "" to emptyList() else r.first to r.second.map { com.ultratv.tv.nativeapp.ui.catalog.PosterItem(it.id, it.title, it.poster, it.year, it.rating) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "" to emptyList())
@@ -198,6 +269,7 @@ class HomeViewModel @Inject constructor(
     val recentChannels: StateFlow<List<WatchHistoryEntity>> = pid
         .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else history.recentByKind(id, "LIVE", 12) }
         .map { l -> l.filter { it.streamUrl.isNotBlank() } }
+        .combine(guard) { l, g -> l to g }.mapLatest { (l, g) -> guardHistory(l, g) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /**
@@ -217,8 +289,8 @@ class HomeViewModel @Inject constructor(
         else combine(
             // Lot large puis filtré par profil : un profil qui masque beaucoup de catégories gardait sinon un bandeau vide
             // (« Chargement du catalogue… » sans fin).
-            catalog.heroSeriesList(id, HERO_POOL * 40).atMostEvery(1_000).snapshotWhile(syncing).visibleFor(id, "SERIES") { it.categoryId }.map { it.take(HERO_POOL) },
-            catalog.heroMovieList(id, HERO_CANDIDATES * 20).atMostEvery(1_000).snapshotWhile(syncing).visibleFor(id, "MOVIE") { it.categoryId }.map { it.take(HERO_CANDIDATES) },
+            catalog.heroSeriesList(id, HERO_POOL * 40).atMostEvery(1_000).snapshotWhile(syncing).visibleFor(id, "SERIES", { it.title }) { it.categoryId }.map { it.take(HERO_POOL) },
+            catalog.heroMovieList(id, HERO_CANDIDATES * 20).atMostEvery(1_000).snapshotWhile(syncing).visibleFor(id, "MOVIE", { it.title }) { it.categoryId }.map { it.take(HERO_CANDIDATES) },
         ) { ss, ms -> ss to ms }
             .flatMapLatest { (ss, ms) -> heroFlow(ss, ms, pool) }
     }.distinctUntilChanged().flowOn(kotlinx.coroutines.Dispatchers.Default) // méta formatée hors fil principal
@@ -303,6 +375,7 @@ class HomeViewModel @Inject constructor(
 
     private suspend fun resolveNewEpisodes(pid: Long, rids: List<String>): List<NewEpisodeCardUi> {
         if (rids.isEmpty()) return emptyList()
+        val g = guard.first()
         val now = System.currentTimeMillis()
         val gate = kotlinx.coroutines.sync.Semaphore(2)
         val shows = kotlinx.coroutines.coroutineScope {
@@ -312,6 +385,7 @@ class HomeViewModel @Inject constructor(
                         com.ultratv.tv.nativeapp.ui.common.InputClock.awaitQuiet(BACKGROUND_QUIET_MS, BACKGROUND_QUIET_MAX_MS)
                         runCatching {
                             val s = catalog.seriesByRemote(pid, rid) ?: return@runCatching null
+                            if (!g.allows("SERIES", pid, s.categoryId, s.title)) return@runCatching null
                             val tmdbId = tmdb.forSeries(s)?.tmdbId ?: return@runCatching null
                             val ids = tmdb.externalIds(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV, tmdbId) ?: return@runCatching null
                             s to tvMaze.show(ids, now)
@@ -347,13 +421,13 @@ class HomeViewModel @Inject constructor(
 
     /** Favorites en premier ; sans favori, des chaînes avec logo. [favorite] dit lequel des deux. */
     val favoriteChannels: StateFlow<List<ChannelEntity>> = pid
-        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.favoriteChannels(id, 40).atMostEvery(1_000).snapshotWhile(syncing).visibleFor(id, "LIVE") { it.categoryId }.map { it.take(12) } }
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.favoriteChannels(id, 40).atMostEvery(1_000).snapshotWhile(syncing).visibleChannels().map { it.take(12) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     // Chaînes de repli observées SEULEMENT quand il n'y a aucun favori (avant : toujours abonnées).
     val channels: StateFlow<List<ChannelEntity>> = combine(pid, favoriteChannels) { id, fav -> id to fav }
         .flatMapLatest { (id, fav) ->
-            if (fav.isNotEmpty() || id == null) flowOf(fav) else catalog.channelsWithLogo(id, 40).atMostEvery(1_000).snapshotWhile(syncing).visibleFor(id, "LIVE") { it.categoryId }.map { it.take(12) }
+            if (fav.isNotEmpty() || id == null) flowOf(fav) else catalog.channelsWithLogo(id, 40).atMostEvery(1_000).snapshotWhile(syncing).visibleChannels().map { it.take(12) }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -389,10 +463,11 @@ class HomeViewModel @Inject constructor(
             if (ps.isEmpty()) flowOf(emptyList()) else combine(ps.map { p ->
                 combine(catalog.latestMovies(p.id, 30).atMostEvery(1_000), catalog.latestSeries(p.id, 30).atMostEvery(1_000)) { m, s ->
                     val hidden = (categoryDao.forProviderKind(p.id, "MOVIE") + categoryDao.forProviderKind(p.id, "SERIES"))
-                        .filter { !com.ultratv.tv.nativeapp.data.profile.ProfileSourcesRules.libraryVisible(names, p.name, it.name) }.map { it.remoteId }.toSet()
-                    fun <T> List<T>.vis(cat: (T) -> String?) = if (hidden.isEmpty()) this else filter { cat(it) !in hidden }
-                    val mc = m.vis { it.categoryId }.take(10).map { catalogPosterOf(com.ultratv.tv.nativeapp.ui.catalog.PosterItem(it.id, it.title, it.poster, it.year, it.rating), isShow = false) }
-                    val sc = s.vis { it.categoryId }.take(10).map { catalogPosterOf(com.ultratv.tv.nativeapp.ui.catalog.PosterItem(it.id, it.title, it.poster, it.year, it.rating), isShow = true) }
+                        // Bibliothèque masquée pour le profil, verrouillée par code ou adulte par son nom : jamais sur l'accueil.
+                        .filter { !com.ultratv.tv.nativeapp.data.profile.ProfileSourcesRules.libraryVisible(names, p.name, it.name) || it.locked || com.ultratv.tv.nativeapp.data.profile.AdultHeuristic.isAdult(it.name) }.map { it.remoteId }.toSet()
+                    fun <T> List<T>.vis(cat: (T) -> String?) = filter { cat(it) !in hidden }
+                    val mc = m.vis { it.categoryId }.filter { !com.ultratv.tv.nativeapp.data.profile.AdultHeuristic.isAdult(it.title) }.take(10).map { catalogPosterOf(com.ultratv.tv.nativeapp.ui.catalog.PosterItem(it.id, it.title, it.poster, it.year, it.rating), isShow = false) }
+                    val sc = s.vis { it.categoryId }.filter { !com.ultratv.tv.nativeapp.data.profile.AdultHeuristic.isAdult(it.title) }.take(10).map { catalogPosterOf(com.ultratv.tv.nativeapp.ui.catalog.PosterItem(it.id, it.title, it.poster, it.year, it.rating), isShow = true) }
                     LibraryShelfUi(p.id, p.name, interleaveCards(mc, sc, 20))
                 }
             }) { composeLibraryShelves(it.toList()) }

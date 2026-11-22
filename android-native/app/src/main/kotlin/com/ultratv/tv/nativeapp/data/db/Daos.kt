@@ -222,6 +222,10 @@ interface ChannelDao {
     @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid AND categoryId = :cat")
     suspend fun countInCategory(pid: Long, cat: String): Int
 
+    /** Catégories de chaînes par identifiant distant (rangée « Chaînes récentes » de l'accueil, voir HomeGuard). */
+    @Query("SELECT id AS id, remoteId AS remoteId, categoryId AS categoryId FROM channel WHERE providerId = :pid AND remoteId IN (:rids)")
+    suspend fun categoriesByRemote(pid: Long, rids: List<String>): List<TitleCategory>
+
     @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid")
     fun observeCount(pid: Long): Flow<Int>
 
@@ -508,6 +512,13 @@ interface MovieDao {
     @Query("SELECT COUNT(*) FROM movie WHERE providerId = :pid AND categoryId = :cat")
     suspend fun countInCategory(pid: Long, cat: String): Int
 
+    /** Catégories de films par identifiant local / distant (rangées de l'accueil, voir HomeGuard). */
+    @Query("SELECT id AS id, remoteId AS remoteId, categoryId AS categoryId FROM movie WHERE id IN (:ids)")
+    suspend fun categoriesById(ids: List<Long>): List<TitleCategory>
+
+    @Query("SELECT id AS id, remoteId AS remoteId, categoryId AS categoryId FROM movie WHERE providerId = :pid AND remoteId IN (:rids)")
+    suspend fun categoriesByRemote(pid: Long, rids: List<String>): List<TitleCategory>
+
     /** Derniers ajoutés d'une bibliothèque (rangée courte de « Mes bibliothèques »). */
     @Query("SELECT * FROM movie WHERE providerId = :pid AND categoryId = :cat ORDER BY addedKey DESC LIMIT :limit")
     suspend fun latestInCategory(pid: Long, cat: String, limit: Int): List<MovieEntity>
@@ -681,6 +692,13 @@ interface SeriesDao {
     /** Nombre de séries d'une catégorie (« Mes bibliothèques » : dossiers d'un partage NAS). */
     @Query("SELECT COUNT(*) FROM series WHERE providerId = :pid AND categoryId = :cat")
     suspend fun countInCategory(pid: Long, cat: String): Int
+
+    /** Catégories de séries par identifiant local / distant (rangées de l'accueil, voir HomeGuard). */
+    @Query("SELECT id AS id, remoteId AS remoteId, categoryId AS categoryId FROM series WHERE id IN (:ids)")
+    suspend fun categoriesById(ids: List<Long>): List<TitleCategory>
+
+    @Query("SELECT id AS id, remoteId AS remoteId, categoryId AS categoryId FROM series WHERE providerId = :pid AND remoteId IN (:rids)")
+    suspend fun categoriesByRemote(pid: Long, rids: List<String>): List<TitleCategory>
 
     /** Derniers ajoutées d'une bibliothèque (rangée courte de « Mes bibliothèques »). */
     @Query("SELECT * FROM series WHERE providerId = :pid AND categoryId = :cat ORDER BY addedKey DESC LIMIT :limit")
@@ -1098,6 +1116,9 @@ data class LangCount(val lang: String, val n: Int)
 
 /** Projection légère d'un film / d'une série (rapprochement Trakt). `title` = titre déjà nettoyé. */
 data class CatalogLite(val id: Long, val title: String, val poster: String?, val year: Int?, val rating: Double?)
+
+/** Identifiants et catégorie d'un titre ou d'une chaîne (filtre de l'accueil). */
+data class TitleCategory(val id: Long, val remoteId: String, val categoryId: String?)
 
 data class EnabledCount(val kind: String, val enabled: Boolean, val n: Int)
 
