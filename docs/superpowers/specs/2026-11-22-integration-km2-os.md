@@ -21,7 +21,10 @@ Relevé le 2026-11-22 sur `UltraTV-1.3.72-arm64-v8a.apk` de la release GitHub v1
   certificat actuel `702f82…a75d`. Le système accepte aussi les mises à jour signées par une clé plus récente de la même
   chaîne : une rotation future ne casserait pas les mises à jour, mais toute liste d'empreintes figée devrait être
   complétée. Aucune rotation n'est prévue ; si elle devait arriver, Kairo et KM2 OS seraient prévenus avant.
-- Applis à intégrer : l'APK `arm64-v8a` de la release (la KM2 Plus est 64 bits), jamais l'APK `debug`.
+- Appli à intégrer : l'APK `armeabi-v7a` de la release (`UltraTV-<version>-armeabi-v7a.apk`), jamais l'APK `debug`.
+  La box 192.168.0.41 a un espace utilisateur 32 bits (`ro.product.cpu.abilist` = `armeabi-v7a,armeabi`, relevé le
+  2026-11-22) : l'APK `arm64-v8a` y échoue avec `INSTALL_FAILED_NO_MATCHING_ABIS`. Si le firmware passe en 64 bits,
+  prendre l'APK `arm64-v8a`.
 
 ## 2. Points d'entrée pour Kairo
 
