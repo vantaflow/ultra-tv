@@ -2,6 +2,12 @@ package com.ultratv.tv.nativeapp.ui.detail
 
 import android.os.SystemClock
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -135,5 +141,86 @@ class DetailStatesTest {
         show(DetailLoad.NotFound, lang = AppLang.Arabic)
         settle()
         rule.onNode(hasText("هذا العنوان لم يعد متاحًا")).assertExists()
+    }
+
+    // --- Contenu verrouillé par le contrôle parental ---
+
+    private fun showLock(lock: DetailLock, lang: AppLang = AppLang.French, onUnlock: () -> Unit = {}, onBack: () -> Unit = {}) =
+        rule.setDetail(tv = true, width = 1920, height = 1080, lang = lang) { LockedDetailPanel(lock, "Orbite basse", onUnlock, onBack) }
+
+    @Test fun verrouille_aucuneImage_codePuisFiche() {
+        var lock by mutableStateOf(DetailLock.PIN)
+        var asked = 0
+        val primary = androidx.compose.ui.focus.FocusRequester()
+        rule.setDetail(tv = true, width = 1920, height = 1080) {
+            if (lock != DetailLock.NONE) LockedDetailPanel(lock, "Orbite basse", onUnlock = { asked++; lock = DetailLock.NONE }, onBack = {})
+            else {
+                // Fiche déverrouillée (représentée par son bouton principal) : le focus initial va au principal.
+                androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
+                    androidx.compose.foundation.layout.Box(
+                        androidx.compose.ui.Modifier.testTag("dt-backdrop").size(10.dp)
+                    )
+                    androidx.compose.foundation.layout.Box(
+                        androidx.compose.ui.Modifier.testTag("dt-primary").size(40.dp).focusRequester(primary).focusable()
+                    )
+                    com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus(primary, hasFocus = { false })
+                }
+            }
+        }
+        settle()
+        // Verrouillé : ni fond, ni affiche, ni synopsis ; le titre en texte, le message de verrou et « Déverrouiller » (focus).
+        rule.onAllNodes(hasTestTag("dt-backdrop")).assertCountEquals(0)
+        rule.onAllNodes(hasTestTag("dt-backdrop-poster")).assertCountEquals(0)
+        rule.onNode(hasText("Orbite basse")).assertExists()
+        rule.onNode(hasText(stringsOf(AppLang.French).parentalLockedTitle)).assertExists()
+        rule.onNodeWithTag("dt-lock-unlock").assertIsFocused()
+        rule.onAllNodes(hasTestTag("dt-primary")).assertCountEquals(0)
+        press(Key.DirectionCenter)
+        assertEquals(1, asked)
+        settle()
+        rule.onAllNodes(hasTestTag("dt-lock")).assertCountEquals(0)
+        rule.onNodeWithTag("dt-primary").assertIsFocused()
+    }
+
+    @Test fun verrouille_retourRepasseParBack() {
+        var back = 0
+        showLock(DetailLock.PIN, onBack = { back++ })
+        settle()
+        press(Key.DirectionRight)
+        rule.onNodeWithTag("dt-lock-back").assertIsFocused()
+        press(Key.DirectionCenter)
+        assertEquals(1, back)
+    }
+
+    @Test fun codeAnnule_lefocusRevientSurDeverrouiller() {
+        var key by mutableStateOf(0)
+        rule.setDetail(tv = true, width = 1920, height = 1080) { LockedDetailPanel(DetailLock.PIN, "Orbite basse", {}, {}, refocusKey = key) }
+        settle()
+        press(Key.DirectionRight)
+        rule.onNodeWithTag("dt-lock-back").assertIsFocused()
+        // Fenêtre de code annulée : la demande de refocus ramène sur « Déverrouiller » même après une touche.
+        key++
+        settle()
+        rule.onNodeWithTag("dt-lock-unlock").assertIsFocused()
+    }
+
+    @Test fun masqueProfil_retourSeulement() {
+        var back = 0
+        showLock(DetailLock.HIDDEN, onBack = { back++ })
+        settle()
+        rule.onNode(hasText("Non disponible pour ce profil")).assertExists()
+        rule.onAllNodes(hasTestTag("dt-lock-unlock")).assertCountEquals(0)
+        rule.onAllNodes(hasTestTag("dt-backdrop")).assertCountEquals(0)
+        rule.onNodeWithTag("dt-lock-back").assertIsFocused()
+        press(Key.DirectionCenter)
+        assertEquals(1, back)
+    }
+
+    @Test fun verrouille_arabe_textesTraduits() {
+        showLock(DetailLock.PIN, lang = AppLang.Arabic)
+        settle()
+        rule.onNode(hasText(stringsOf(AppLang.Arabic).parentalLockedTitle)).assertExists()
+        rule.onNode(hasText(stringsOf(AppLang.Arabic).parentalUnlock)).assertExists()
+        rule.onNodeWithTag("dt-lock-unlock").assertIsFocused()
     }
 }

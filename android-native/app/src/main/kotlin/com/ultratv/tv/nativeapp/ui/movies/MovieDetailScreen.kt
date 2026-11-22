@@ -54,6 +54,10 @@ import com.ultratv.tv.nativeapp.ui.common.UiLog
 import com.ultratv.tv.nativeapp.ui.common.rememberImageFailureTally
 import com.ultratv.tv.nativeapp.ui.common.uiAttempt
 import com.ultratv.tv.nativeapp.ui.detail.DetailLoad
+import com.ultratv.tv.nativeapp.ui.detail.DetailLock
+import com.ultratv.tv.nativeapp.ui.detail.LockedDetailGate
+import com.ultratv.tv.nativeapp.ui.detail.detailLockOf
+import kotlinx.coroutines.flow.first
 import com.ultratv.tv.nativeapp.ui.detail.DetailStatePanel
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
@@ -98,6 +102,7 @@ class MovieDetailViewModel @Inject constructor(
     private val trakt: com.ultratv.tv.nativeapp.data.trakt.TraktLibraryRepository,
     private val ratingsClient: com.ultratv.tv.nativeapp.data.tmdb.RatingsClient,
     private val fanart: com.ultratv.tv.nativeapp.data.extmeta.FanartRepository,
+    private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
 ) : ViewModel() {
 
     /** Logo et fond Fanart.tv (par identifiant TMDB) ; null tant qu'inconnus, hors appairage ou sans clé côté Worker. */
@@ -148,6 +153,22 @@ class MovieDetailViewModel @Inject constructor(
     private var lastId = 0L
     private var loadJob: kotlinx.coroutines.Job? = null
 
+    /** Contrôle parental : tant que ce n'est pas [DetailLock.NONE], rien n'est chargé ni affiché (ni fond, ni affiche, ni synopsis). */
+    private val _lock = MutableStateFlow(DetailLock.NONE)
+    val lock: StateFlow<DetailLock> = _lock.asStateFlow()
+    /** Déverrouillage valable pour la visite (cette instance) : gardé en mémoire, jamais persisté. */
+    private var unlocked = false
+
+    /** Code accepté : la fiche se charge. Sans effet sur une catégorie masquée par le profil. */
+    fun unlock() {
+        if (_lock.value != DetailLock.PIN) return
+        unlocked = true
+        _lock.value = DetailLock.NONE
+        val movie = _m.value ?: return
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch { loadRest(movie) }
+    }
+
     /** Sources complémentaires déjà signalées pendant cette visite (une ligne de journal par source, jamais une par appel). */
     private val noted = java.util.Collections.synchronizedSet(HashSet<String>())
 
@@ -192,25 +213,36 @@ class MovieDetailViewModel @Inject constructor(
                 }
             }
             val movie = m ?: return@launch
+            // Verrou lu avant l'affichage : une lecture impossible laisse la fiche verrouillée (jamais ouverte par défaut).
+            val lk = uiAttempt("movie", "verrou") {
+                detailLockOf("MOVIE", movie.providerId, movie.categoryId, catalog.lockedCategoryIds(movie.providerId, "MOVIE"), profiles.hiddenCategoryKeys.first(), unlocked)
+            }.getOrDefault(if (unlocked) DetailLock.NONE else DetailLock.PIN)
+            _lock.value = lk
             _load.value = DetailLoad.Ready
-            launch {
-                _resume.value = uiAttempt("movie", "reprise") { history.resumePositionMs(movie.providerId, "MOVIE", movie.remoteId) }.getOrDefault(0L)
-                _similar.value = uiAttempt("movie", "similaires") { catalog.similarMovies(movie.providerId, movie.remoteId, 12)?.second }.getOrNull().orEmpty()
-            }
-            // Détails (get_vod_info) en paresseux : cache Room d'abord, réseau seulement si périmé.
-            _infoLoading.value = true
-            val source = uiAttempt("movie", "details-source") { catalog.vodInfo(movie) }.getOrNull()
-            _info.value = source
-            _infoLoading.value = false
-            // Fiche enrichie TMDB (désactivée si l'appareil n'est pas appairé) : comble ce que la source ne fournit pas.
-            val t = enrich("tmdb") { tmdb.forMovie(movie, source?.tmdbId) }
-            if (t?.tmdbId != null) {
-                _info.value = com.ultratv.tv.nativeapp.data.tmdb.mergeVodInfo(source, movie, t)
-                _m.value = com.ultratv.tv.nativeapp.data.tmdb.mergeMovie(movie, t)
-                _photos.value = enrich("tmdb") { tmdb.castPhotos(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, t.tmdbId) } ?: emptyMap()
-                _ratings.value = enrich("notes") { ratingsClient.forTmdb(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, t.tmdbId) }
-                _fanart.value = enrich("logo") { fanart.movie(t.tmdbId, tmdb.langCode()) }
-            }
+            if (lk != DetailLock.NONE) return@launch
+            loadRest(movie)
+        }
+    }
+
+    /** Résumé, titres proches, détails de la source, puis compléments TMDB / notes / Fanart : seulement fiche non protégée. */
+    private suspend fun loadRest(movie: MovieEntity): Unit = kotlinx.coroutines.coroutineScope {
+        launch {
+            _resume.value = uiAttempt("movie", "reprise") { history.resumePositionMs(movie.providerId, "MOVIE", movie.remoteId) }.getOrDefault(0L)
+            _similar.value = uiAttempt("movie", "similaires") { catalog.similarMovies(movie.providerId, movie.remoteId, 12)?.second }.getOrNull().orEmpty()
+        }
+        // Détails (get_vod_info) en paresseux : cache Room d'abord, réseau seulement si périmé.
+        _infoLoading.value = true
+        val source = uiAttempt("movie", "details-source") { catalog.vodInfo(movie) }.getOrNull()
+        _info.value = source
+        _infoLoading.value = false
+        // Fiche enrichie TMDB (désactivée si l'appareil n'est pas appairé) : comble ce que la source ne fournit pas.
+        val t = enrich("tmdb") { tmdb.forMovie(movie, source?.tmdbId) }
+        if (t?.tmdbId != null) {
+            _info.value = com.ultratv.tv.nativeapp.data.tmdb.mergeVodInfo(source, movie, t)
+            _m.value = com.ultratv.tv.nativeapp.data.tmdb.mergeMovie(movie, t)
+            _photos.value = enrich("tmdb") { tmdb.castPhotos(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, t.tmdbId) } ?: emptyMap()
+            _ratings.value = enrich("notes") { ratingsClient.forTmdb(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, t.tmdbId) }
+            _fanart.value = enrich("logo") { fanart.movie(t.tmdbId, tmdb.langCode()) }
         }
     }
 
@@ -262,6 +294,12 @@ private fun MovieDetailBody(
     // Chargement, titre retiré de la source, lecture locale en échec : un état dessiné avec son action (jamais « Chargement… » sans fin).
     if (movie == null || loadState != DetailLoad.Ready) {
         DetailStatePanel(loadState, onRetry = vm::retry, onBack = onBack)
+        return
+    }
+    // Contrôle parental : catégorie verrouillée (code) ou masquée par le profil : ni fond, ni affiche, ni synopsis, ni requête d'image.
+    val lock by vm.lock.collectAsState()
+    if (lock != DetailLock.NONE) {
+        LockedDetailGate(lock, com.ultratv.tv.nativeapp.data.repo.TitleCleaner.tidy(movie.title), onUnlocked = vm::unlock, onBack = onBack)
         return
     }
     // Lecture en ligne pendant un téléchargement : avertit si l'abonnement n'a qu'une connexion (rien si le film est téléchargé).

@@ -110,6 +110,12 @@ private fun SeriesDetailBody(
         com.ultratv.tv.nativeapp.ui.detail.DetailStatePanel(loadState, onRetry = vm::retry, onBack = onBack)
         return
     }
+    // Contrôle parental : catégorie verrouillée (code) ou masquée par le profil : ni fond, ni affiche, ni synopsis, ni requête d'image.
+    val lock by vm.lock.collectAsState()
+    if (lock != com.ultratv.tv.nativeapp.ui.detail.DetailLock.NONE) {
+        com.ultratv.tv.nativeapp.ui.detail.LockedDetailGate(lock, com.ultratv.tv.nativeapp.data.repo.TitleCleaner.tidy(series.title), onUnlocked = vm::unlock, onBack = onBack)
+        return
+    }
     val seasons = remember(eps) { com.ultratv.tv.nativeapp.ui.detail.seasonsOf(eps) }
     val progress = remember(watched) { watched.associateBy { it.remoteId } }
     // Épisode à reprendre : le dernier regardé non terminé, sinon le suivant du dernier terminé, sinon le tout premier.

@@ -1936,4 +1936,5 @@
     <string name="syncerr_local_network">Esta dirección está en una red local — conecta el dispositivo a la misma red y desactiva la VPN</string>
     <string name="dt_not_found">Este título ya no está disponible</string>
     <string name="dt_episodes_error">No se pudieron cargar los episodios</string>
+    <string name="dt_hidden_profile">No disponible para este perfil</string>
 </resources>

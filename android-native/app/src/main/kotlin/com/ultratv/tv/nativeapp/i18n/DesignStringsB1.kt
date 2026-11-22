@@ -139,3 +139,5 @@ val DesignStrings.errNoPicture get() = tx(R.string.ds_err_no_picture)
 // Fiches film / série : titre retiré de la source depuis l'accueil, épisodes impossibles à charger.
 val DesignStrings.detailNotFound get() = tx(R.string.dt_not_found)
 val DesignStrings.episodesLoadError get() = tx(R.string.dt_episodes_error)
+// Fiches : contenu d'une catégorie masquée par le profil (profil Enfants, catégorie masquée) : aucun code ne la rouvre.
+val DesignStrings.detailHiddenForProfile get() = tx(R.string.dt_hidden_profile)

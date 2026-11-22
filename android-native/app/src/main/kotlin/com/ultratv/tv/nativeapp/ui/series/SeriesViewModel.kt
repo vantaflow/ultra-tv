@@ -13,6 +13,9 @@ import com.ultratv.tv.nativeapp.data.net.SyncErrorKind
 import com.ultratv.tv.nativeapp.ui.common.UiLog
 import com.ultratv.tv.nativeapp.ui.common.uiAttempt
 import com.ultratv.tv.nativeapp.ui.detail.DetailLoad
+import com.ultratv.tv.nativeapp.ui.detail.DetailLock
+import com.ultratv.tv.nativeapp.ui.detail.detailLockOf
+import kotlinx.coroutines.flow.first
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -45,6 +48,7 @@ class SeriesDetailViewModel @Inject constructor(
     private val fanart: com.ultratv.tv.nativeapp.data.extmeta.FanartRepository,
     private val tvMaze: com.ultratv.tv.nativeapp.data.extmeta.TvMazeRepository,
     private val tmdbSeasons: com.ultratv.tv.nativeapp.data.tmdb.TmdbSeasonRepository,
+    private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
 ) : ViewModel() {
 
     /** Logo officiel (Fanart.tv, par identifiant TheTVDB) ; null tant qu'inconnu ou absent. */
@@ -155,6 +159,22 @@ class SeriesDetailViewModel @Inject constructor(
     private val _episodesError = MutableStateFlow<SyncErrorKind?>(null)
     val episodesError: StateFlow<SyncErrorKind?> = _episodesError.asStateFlow()
 
+    /** Contrôle parental : tant que ce n'est pas [DetailLock.NONE], ni épisodes, ni métadonnées, ni image ne sont chargés ni affichés. */
+    private val _lock = MutableStateFlow(DetailLock.NONE)
+    val lock: StateFlow<DetailLock> = _lock.asStateFlow()
+    /** Déverrouillage valable pour la visite (cette instance) : gardé en mémoire, jamais persisté. */
+    private var unlocked = false
+
+    /** Code accepté : la fiche se charge. Sans effet sur une catégorie masquée par le profil. */
+    fun unlock() {
+        if (_lock.value != DetailLock.PIN) return
+        unlocked = true
+        _lock.value = DetailLock.NONE
+        val s0 = _series.value ?: return
+        loadJob?.cancel(); episodesJob?.cancel(); collectorJob?.cancel()
+        loadJob = viewModelScope.launch { loadRest(lastId, s0) }
+    }
+
     private var lastId = 0L
     private var loadJob: kotlinx.coroutines.Job? = null
     private var episodesJob: kotlinx.coroutines.Job? = null
@@ -218,31 +238,42 @@ class SeriesDetailViewModel @Inject constructor(
                 _load.value = DetailLoad.NotFound
                 return@launch
             }
+            // Verrou lu avant l'affichage : une lecture impossible laisse la fiche verrouillée (jamais ouverte par défaut).
+            val lk = uiAttempt("series", "verrou") {
+                detailLockOf("SERIES", s0.providerId, s0.categoryId, catalog.lockedCategoryIds(s0.providerId, "SERIES"), profiles.hiddenCategoryKeys.first(), unlocked)
+            }.getOrDefault(if (unlocked) DetailLock.NONE else DetailLock.PIN)
+            _lock.value = lk
             _load.value = DetailLoad.Ready
-            // Épisodes de la base : observés seulement quand la série existe ; une exception Room est journalisée, pas fatale.
-            collectorJob = launch {
-                try {
-                    catalog.episodes(id).collect { _rawEpisodes.value = it }
-                } catch (e: kotlin.coroutines.cancellation.CancellationException) {
-                    throw e
-                } catch (t: Throwable) {
-                    UiLog.failure("series", "episodes-base", t)
-                }
+            if (lk != DetailLock.NONE) return@launch
+            loadRest(id, s0)
+        }
+    }
+
+    /** Épisodes, métadonnées et compléments : seulement fiche non protégée. */
+    private suspend fun loadRest(id: Long, s0: SeriesEntity): Unit = kotlinx.coroutines.coroutineScope {
+        // Épisodes de la base : observés seulement quand la série existe ; une exception Room est journalisée, pas fatale.
+        collectorJob = launch {
+            try {
+                catalog.episodes(id).collect { _rawEpisodes.value = it }
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                UiLog.failure("series", "episodes-base", t)
             }
-            _loading.value = true
-            fetchEpisodes(id)
-            // loadEpisodes complète plot / genre / année / distribution
-            val s = uiAttempt("series", "relecture") { catalog.seriesById(id) }.getOrNull() ?: s0
-            _series.value = s
-            _loading.value = false
-            // Fiche enrichie TMDB (désactivée si l'appareil n'est pas appairé) : comble ce que la source ne fournit pas.
-            enrich("tmdb") { tmdb.forSeries(s) }?.let {
-                _series.value = com.ultratv.tv.nativeapp.data.tmdb.mergeSeries(s, it)
-                it.trailerKey?.let { k -> _trailer.value = com.ultratv.tv.nativeapp.data.tmdb.TmdbTrailer.webUrl(k) }
-                it.tmdbId?.let { tid -> _ratings.value = enrich("notes") { ratingsClient.forTmdb(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV, tid) } }
-                it.tmdbId?.let { tid -> loadExtras(tid) }
-                _tmdbId.value = it.tmdbId
-            }
+        }
+        _loading.value = true
+        fetchEpisodes(id)
+        // loadEpisodes complète plot / genre / année / distribution
+        val s = uiAttempt("series", "relecture") { catalog.seriesById(id) }.getOrNull() ?: s0
+        _series.value = s
+        _loading.value = false
+        // Fiche enrichie TMDB (désactivée si l'appareil n'est pas appairé) : comble ce que la source ne fournit pas.
+        enrich("tmdb") { tmdb.forSeries(s) }?.let {
+            _series.value = com.ultratv.tv.nativeapp.data.tmdb.mergeSeries(s, it)
+            it.trailerKey?.let { k -> _trailer.value = com.ultratv.tv.nativeapp.data.tmdb.TmdbTrailer.webUrl(k) }
+            it.tmdbId?.let { tid -> _ratings.value = enrich("notes") { ratingsClient.forTmdb(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV, tid) } }
+            it.tmdbId?.let { tid -> loadExtras(tid) }
+            _tmdbId.value = it.tmdbId
         }
     }
 

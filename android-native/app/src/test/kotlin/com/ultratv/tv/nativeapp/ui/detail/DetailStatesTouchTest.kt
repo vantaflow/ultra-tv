@@ -115,4 +115,29 @@ class DetailStatesTouchTest {
         val U = com.ultratv.tv.nativeapp.ui.design.Ux
         assertTrue(ratio(U.Text, U.Bg) >= 4.5)
     }
+
+    private fun checkLock(w: Int, h: Int, lang: AppLang = AppLang.French) {
+        var unlock = 0; var back = 0
+        rule.setDetail(tv = false, width = w, height = h, fontScale = 1.3f, lang = lang) { LockedDetailPanel(DetailLock.PIN, "Orbite basse", { unlock++ }, { back++ }) }
+        rule.onAllNodes(hasTestTag("dt-backdrop")).assertCountEquals(0)
+        rule.onNode(hasText(stringsOf(lang).parentalLockedTitle)).assertExists()
+        checkInside("${w}x$h verrou", w, h, listOf("dt-lock-unlock", "dt-lock-back"))
+        rule.onNodeWithTag("dt-lock-unlock").performClick()
+        rule.onNodeWithTag("dt-lock-back").performClick()
+        assertEquals(1, unlock); assertEquals(1, back)
+    }
+
+    @Test fun verrouille_tactile_police13_telephone320() = checkLock(320, 568)
+    @Test fun verrouille_tactile_police13_tabletteVerticale() = checkLock(800, 1280)
+    @Test fun verrouille_tactile_police13_tabletteHorizontale() = checkLock(1280, 800)
+    @Test fun verrouille_tactile_et_arabe() = checkLock(390, 844, AppLang.Arabic)
+
+    @Test fun masqueProfil_tactile_retourSeulement() {
+        var back = 0
+        rule.setDetail(tv = false, width = 390, height = 844, fontScale = 1.3f) { LockedDetailPanel(DetailLock.HIDDEN, "Orbite basse", {}, { back++ }) }
+        rule.onNode(hasText("Non disponible pour ce profil")).assertExists()
+        rule.onAllNodes(hasTestTag("dt-lock-unlock")).assertCountEquals(0)
+        rule.onNodeWithTag("dt-lock-back").performClick()
+        assertEquals(1, back)
+    }
 }

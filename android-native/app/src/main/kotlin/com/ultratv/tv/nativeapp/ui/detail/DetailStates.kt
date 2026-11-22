@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.data.net.SyncErrorKind
+import com.ultratv.tv.nativeapp.i18n.detailHiddenForProfile
 import com.ultratv.tv.nativeapp.i18n.detailNotFound
 import com.ultratv.tv.nativeapp.i18n.episodesLoadError
 import com.ultratv.tv.nativeapp.ui.common.InputClock
@@ -159,6 +160,92 @@ fun EpisodesEmptyState(loading: Boolean, error: SyncErrorKind?, onRetry: () -> U
         PillButton(
             D.retry, onRetry, Modifier.testTag("dt-episodes-retry").then(if (touch) Modifier.fillMaxWidth() else Modifier),
             heightPx = if (touch) 96 else 52, fontPx = if (touch) 30 else 18, bg = Ux.Cta, ringWidth = 4.design,
+        )
+    }
+}
+
+/**
+ * Fiche d'un titre protégé par le contrôle parental ([DetailLock.PIN] ou [DetailLock.HIDDEN]) : AUCUN fond, aucune affiche,
+ * aucun synopsis ni bande-annonce (le titre seul, en texte). [DetailLock.PIN] : « Contenu verrouillé » + « Déverrouiller »
+ * (l'écran ouvre la fenêtre de code) + Retour ; [DetailLock.HIDDEN] : « Non disponible pour ce profil » + Retour seulement
+ * (aucun code ne rouvre une catégorie masquée). Rien n'est journalisé (ce n'est pas une erreur).
+ *
+ * Télécommande : focus initial sur la première action, UNE fois, jamais après une touche pressée depuis l'ouverture ;
+ * [refocusKey] augmenté (code annulé) ramène le focus sur « Déverrouiller ». `testTag` : `dt-lock`, `dt-lock-title`,
+ * `dt-lock-unlock`, `dt-lock-back`.
+ */
+@Composable
+fun LockedDetailPanel(lock: DetailLock, title: String, onUnlock: () -> Unit, onBack: () -> Unit, modifier: Modifier = Modifier, refocusKey: Int = 0) {
+    val touch = LocalTouch.current
+    val S = LocalStrings.current
+    val D = LocalDs.current
+    val M = LocalMobileStrings.current
+    val pin = lock == DetailLock.PIN
+    val first = remember { FocusRequester() }
+    var focused by remember { mutableStateOf(false) }
+    val openedAt = remember { SystemClock.uptimeMillis() }
+    if (!touch) {
+        // Focus initial : une fois, sans jamais passer devant une touche pressée par l'utilisateur.
+        LaunchedEffect(Unit) {
+            repeat(STATE_FOCUS_ATTEMPTS) {
+                if (focused || InputClock.lastKeyMs > openedAt) return@LaunchedEffect
+                if (runCatching { first.requestFocus() }.getOrDefault(false)) return@LaunchedEffect
+                delay(50)
+            }
+        }
+        // Fenêtre de code annulée : le focus revient sur la première action (demande explicite de l'utilisateur, pas un focus à retardement).
+        LaunchedEffect(refocusKey) {
+            if (refocusKey == 0) return@LaunchedEffect
+            repeat(STATE_FOCUS_ATTEMPTS) {
+                if (runCatching { first.requestFocus() }.getOrDefault(false)) return@LaunchedEffect
+                delay(50)
+            }
+        }
+    }
+    val firstMod = Modifier.focusRequester(first).onFocusChanged { focused = it.isFocused }
+    Box(modifier.fillMaxSize().background(Ux.Bg).testTag("dt-lock")) {
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = if (touch) 24.dp else 72.design, vertical = if (touch) 24.dp else 56.design),
+            verticalArrangement = Arrangement.spacedBy(if (touch) 16.dp else 28.design, Alignment.CenterVertically),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
+                fontSize = if (touch) 22.sp else 48.spx, lineHeight = if (touch) 28.sp else 60.spx,
+                modifier = Modifier.testTag("dt-lock-title").then(if (touch) Modifier.fillMaxWidth() else Modifier.widthIn(max = 1100.design)),
+            )
+            Text(
+                if (pin) S.parentalLockedTitle else D.detailHiddenForProfile, color = Ux.Text3, fontFamily = Manrope, textAlign = TextAlign.Center,
+                fontSize = if (touch) 16.sp else 28.spx,
+                modifier = if (touch) Modifier.fillMaxWidth() else Modifier.widthIn(max = 1100.design),
+            )
+            if (touch) Column(Modifier.fillMaxWidth().widthIn(max = 420.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (pin) PillButton(S.parentalUnlock, onUnlock, Modifier.fillMaxWidth().testTag("dt-lock-unlock"), heightPx = 96, fontPx = 30, bg = Ux.Cta)
+                PillButton(M.a11yBack, onBack, Modifier.fillMaxWidth().testTag("dt-lock-back"), heightPx = 96, fontPx = 30)
+            } else Row(horizontalArrangement = Arrangement.spacedBy(20.design), verticalAlignment = Alignment.CenterVertically) {
+                if (pin) {
+                    PillButton(S.parentalUnlock, onUnlock, firstMod.testTag("dt-lock-unlock"), heightPx = 64, fontPx = 22, bg = Ux.Cta, ringWidth = 4.design)
+                    PillButton(M.a11yBack, onBack, Modifier.testTag("dt-lock-back"), heightPx = 64, fontPx = 22, ringWidth = 4.design)
+                } else PillButton(M.a11yBack, onBack, firstMod.testTag("dt-lock-back"), heightPx = 64, fontPx = 22, ringWidth = 4.design)
+            }
+        }
+    }
+}
+
+/**
+ * [LockedDetailPanel] + fenêtre de code (`PinPromptDialog`, qui laisse passer sans code s'il n'y en a aucun de défini) :
+ * « Déverrouiller » ouvre la fenêtre ; code accepté → [onUnlocked] ; code annulé → le panneau reste, focus sur « Déverrouiller ».
+ */
+@Composable
+fun LockedDetailGate(lock: DetailLock, title: String, onUnlocked: () -> Unit, onBack: () -> Unit) {
+    var asking by remember { mutableStateOf(false) }
+    var refocus by remember { mutableStateOf(0) }
+    Box(Modifier.fillMaxSize()) {
+        LockedDetailPanel(lock, title, onUnlock = { asking = true }, onBack = onBack, refocusKey = refocus)
+        if (asking && lock == DetailLock.PIN) com.ultratv.tv.nativeapp.ui.parental.PinPromptDialog(
+            title = title,
+            onUnlocked = { asking = false; onUnlocked() },
+            onCancel = { asking = false; refocus++ },
         )
     }
 }

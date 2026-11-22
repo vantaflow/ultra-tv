@@ -72,3 +72,25 @@ sealed interface DetailLoad {
     data object NotFound : DetailLoad
     data class Failed(val kind: SyncErrorKind) : DetailLoad
 }
+
+/**
+ * Protection d'une fiche par le contrôle parental : [NONE] (fiche normale), [PIN] (catégorie verrouillée : code demandé,
+ * déverrouillage valable pour la visite), [HIDDEN] (catégorie masquée par le profil, par exemple profil Enfants : « Non
+ * disponible pour ce profil », jamais de code).
+ */
+enum class DetailLock { NONE, PIN, HIDDEN }
+
+/**
+ * Règle pure : [HIDDEN] si `"$kind:$providerId:$categoryId"` est dans [profileHiddenKeys] (prioritaire sur le verrou) ; sinon
+ * [PIN] si la catégorie est dans [lockedCategoryIds] et que la visite n'est pas déjà [unlocked] ; sinon [NONE]. Titre sans
+ * catégorie : [NONE].
+ */
+fun detailLockOf(
+    kind: String, providerId: Long, categoryId: String?, lockedCategoryIds: Set<String>,
+    profileHiddenKeys: Set<String>, unlocked: Boolean,
+): DetailLock = when {
+    categoryId == null -> DetailLock.NONE
+    "$kind:$providerId:$categoryId" in profileHiddenKeys -> DetailLock.HIDDEN
+    categoryId in lockedCategoryIds && !unlocked -> DetailLock.PIN
+    else -> DetailLock.NONE
+}

@@ -1866,5 +1866,6 @@
   "ProfileStrings.getSearchAllSources()": "Rechercher dans toutes les sources",
   "ProfileStrings.getSearchAllSourcesHint()": "R\u00e9sultats de toutes les sources visibles, avec la source indiqu\u00e9e sur chacun",
   "DesignStrings/DesignStringsB1Kt.getDetailNotFound()": "Ce titre n'est plus disponible",
-  "DesignStrings/DesignStringsB1Kt.getEpisodesLoadError()": "Impossible de charger les épisodes"
+  "DesignStrings/DesignStringsB1Kt.getEpisodesLoadError()": "Impossible de charger les épisodes",
+  "DesignStrings/DesignStringsB1Kt.getDetailHiddenForProfile()": "Non disponible pour ce profil"
 }

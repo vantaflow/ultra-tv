@@ -84,6 +84,7 @@ class DetailViewModelErrorsTest {
     private class Wiring(
         val catalog: CatalogRepository, val history: HistoryRepository, val tmdb: TmdbRepository, val trakt: TraktLibraryRepository,
         val ratings: RatingsClient, val fanart: FanartRepository, val tvMaze: TvMazeRepository, val seasons: TmdbSeasonRepository,
+        val profiles: ProfileRepository,
     )
 
     private lateinit var w: Wiring
@@ -119,7 +120,7 @@ class DetailViewModelErrorsTest {
         w = Wiring(
             catalog, HistoryRepository(db.watchHistoryDao(), profiles, db.seriesDao()), tmdb, trakt,
             RatingsClient(ok, DeviceTokenStore(ctx.getSharedPreferences("t", Context.MODE_PRIVATE), FakeCipher()), prefs),
-            FanartRepository(ext), TvMazeRepository(ext), TmdbSeasonRepository(tmdbApi, tmdb, ctx),
+            FanartRepository(ext), TvMazeRepository(ext), TmdbSeasonRepository(tmdbApi, tmdb, ctx), profiles,
         )
         providerId = runBlocking {
             // DAO brut : mot de passe en clair en base (le Keystore Android n'existe pas sur la JVM de test).
@@ -131,14 +132,14 @@ class DetailViewModelErrorsTest {
         Dispatchers.resetMain(); UiLog.sink = null; Locale.setDefault(savedLocale); runCatching { db.close() }
     }
 
-    private fun movieVm() = MovieDetailViewModel(w.catalog, PlaybackContext(), w.history, w.tmdb, w.trakt, w.ratings, w.fanart)
-    private fun seriesVm() = SeriesDetailViewModel(w.catalog, PlaybackContext(), w.history, w.tmdb, w.trakt, w.ratings, w.fanart, w.tvMaze, w.seasons)
+    private fun movieVm() = MovieDetailViewModel(w.catalog, PlaybackContext(), w.history, w.tmdb, w.trakt, w.ratings, w.fanart, w.profiles)
+    private fun seriesVm() = SeriesDetailViewModel(w.catalog, PlaybackContext(), w.history, w.tmdb, w.trakt, w.ratings, w.fanart, w.tvMaze, w.seasons, w.profiles)
 
-    private fun addMovie(id: Long = 10) = runBlocking {
-        db.movieDao().upsertAll(listOf(MovieEntity(id = id, providerId = providerId, remoteId = "55", name = "Orbite basse", poster = null, categoryId = null, streamUrl = "http://h:8080/movie/jean/s3cret/55.mkv", container = "mkv", year = 2024, rating = null, plot = null)))
+    private fun addMovie(id: Long = 10, cat: String? = null) = runBlocking {
+        db.movieDao().upsertAll(listOf(MovieEntity(id = id, providerId = providerId, remoteId = "55", name = "Orbite basse", poster = null, categoryId = cat, streamUrl = "http://h:8080/movie/jean/s3cret/55.mkv", container = "mkv", year = 2024, rating = null, plot = null)))
     }
-    private fun addSeries(id: Long = 20) = runBlocking {
-        db.seriesDao().upsertAll(listOf(SeriesEntity(id = id, providerId = providerId, remoteId = "77", name = "Les Gardiens du phare", poster = null, categoryId = null, year = 2023, rating = null, plot = null)))
+    private fun addSeries(id: Long = 20, cat: String? = null) = runBlocking {
+        db.seriesDao().upsertAll(listOf(SeriesEntity(id = id, providerId = providerId, remoteId = "77", name = "Les Gardiens du phare", poster = null, categoryId = cat, year = 2023, rating = null, plot = null)))
     }
 
     private fun <T> awaitState(flow: kotlinx.coroutines.flow.Flow<T>, what: String, cond: (T) -> Boolean): T =
@@ -323,5 +324,89 @@ class DetailViewModelErrorsTest {
         awaitUntil("fiche prête") { vm.load.value == DetailLoad.Ready }
         awaitUntil("épisodes terminés") { !vm.loading.value }
         assertEquals(DetailLoad.Ready, vm.load.value)
+    }
+
+    // --- Contenu verrouillé par le contrôle parental ---
+
+    private fun addCategory(kind: String, remoteId: String, locked: Boolean) = runBlocking {
+        db.categoryDao().upsertAll(listOf(com.ultratv.tv.nativeapp.data.db.CategoryEntity(providerId = providerId, kind = kind, remoteId = remoteId, name = "Cat $remoteId", locked = locked)))
+    }
+
+    private fun hideForProfile(key: String) = runBlocking {
+        val pid = w.profiles.current.first { it != null }!!.id
+        db.profileDao().hide(com.ultratv.tv.nativeapp.data.profile.ProfileHiddenCategoryEntity(pid, key))
+    }
+
+    @Test fun film_categorieVerrouillee_rienChargeNiJournalise_puisDeverrouillage() {
+        addCategory("MOVIE", "c1", locked = true); addMovie(cat = "c1")
+        val vm = movieVm()
+        vm.load(10)
+        awaitState(vm.lock, "lock") { it == DetailLock.PIN }
+        awaitUntil("fiche prête") { vm.load.value == DetailLoad.Ready }
+        Thread.sleep(400)
+        // Verrouillé : aucune requête (détails, TMDB, images), aucune ligne de journal.
+        assertEquals(0, netCalls.get())
+        assertTrue(lines.toString(), lines.isEmpty())
+        assertNull(vm.info.value)
+        assertTrue(vm.similar.value.isEmpty())
+        vm.unlock()
+        assertEquals(DetailLock.NONE, vm.lock.value)
+        awaitUntil("détails chargés") { netCalls.get() >= 1 && !vm.infoLoading.value }
+        // Retour du lecteur : la visite reste déverrouillée.
+        vm.load(10)
+        awaitUntil("fiche relue") { vm.load.value == DetailLoad.Ready }
+        Thread.sleep(200)
+        assertEquals(DetailLock.NONE, vm.lock.value)
+    }
+
+    @Test fun film_nouvelleVisite_redemandeLeCode() {
+        addCategory("MOVIE", "c1", locked = true); addMovie(cat = "c1")
+        val a = movieVm(); a.load(10); awaitState(a.lock, "lock") { it == DetailLock.PIN }; a.unlock()
+        val b = movieVm(); b.load(10)
+        assertEquals(DetailLock.PIN, awaitState(b.lock, "lock") { it != DetailLock.NONE })
+    }
+
+    @Test fun film_categorieLibre_pasDeVerrou() {
+        addCategory("MOVIE", "c1", locked = false); addMovie(cat = "c1")
+        val vm = movieVm(); vm.load(10)
+        awaitUntil("détails chargés") { netCalls.get() >= 1 && !vm.infoLoading.value }
+        assertEquals(DetailLock.NONE, vm.lock.value)
+    }
+
+    @Test fun film_masqueParLeProfil_cacheMemeApresUnlock() {
+        addCategory("MOVIE", "c1", locked = true); addMovie(cat = "c1")
+        hideForProfile("MOVIE:$providerId:c1")
+        val vm = movieVm(); vm.load(10)
+        awaitState(vm.lock, "lock") { it == DetailLock.HIDDEN }
+        vm.unlock()
+        Thread.sleep(300)
+        assertEquals(DetailLock.HIDDEN, vm.lock.value)
+        assertEquals(0, netCalls.get())
+        assertTrue(lines.toString(), lines.isEmpty())
+    }
+
+    @Test fun serie_categorieVerrouillee_aucunEpisodeChargeAvantLeCode() {
+        addCategory("SERIES", "c2", locked = true); addSeries(cat = "c2")
+        netBody = """{"info":{},"episodes":{"1":[{"id":"9001","episode_num":1,"title":"Pilote","container_extension":"mkv","season":1,"info":{}}]}}"""
+        val vm = seriesVm()
+        vm.load(20)
+        awaitState(vm.lock, "lock") { it == DetailLock.PIN }
+        awaitUntil("fiche prête") { vm.load.value == DetailLoad.Ready }
+        Thread.sleep(400)
+        assertEquals(0, netCalls.get())
+        assertTrue(lines.toString(), lines.isEmpty())
+        assertTrue(vm.episodes.value.isEmpty())
+        vm.unlock()
+        assertEquals(DetailLock.NONE, vm.lock.value)
+        assertEquals(1, awaitState(vm.episodes, "episodes") { it.isNotEmpty() }.size)
+    }
+
+    @Test fun serie_masqueParLeProfil() {
+        addCategory("SERIES", "c2", locked = false); addSeries(cat = "c2")
+        hideForProfile("SERIES:$providerId:c2")
+        val vm = seriesVm(); vm.load(20)
+        awaitState(vm.lock, "lock") { it == DetailLock.HIDDEN }
+        Thread.sleep(300)
+        assertEquals(0, netCalls.get())
     }
 }

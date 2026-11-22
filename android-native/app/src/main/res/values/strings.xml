@@ -1959,4 +1959,5 @@
     <string name="syncerr_local_network">This address is on a local network — connect this device to the same network and turn off any VPN</string>
     <string name="dt_not_found">This title is no longer available</string>
     <string name="dt_episodes_error">Episodes could not be loaded</string>
+    <string name="dt_hidden_profile">Not available for this profile</string>
 </resources>

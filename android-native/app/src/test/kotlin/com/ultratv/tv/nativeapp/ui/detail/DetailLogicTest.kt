@@ -79,4 +79,21 @@ class DetailLogicTest {
         assertEquals(1f, progressFraction(1_000_000, 990_000), 0f)
         assertTrue(isDone(1_000_000, 990_000)); assertTrue(!isDone(0, 5))
     }
+
+    @Test fun verrou_reglesPures() {
+        val locked = setOf("7"); val hidden = setOf("MOVIE:1:9")
+        // Catégorie inconnue (titre sans catégorie) : jamais verrouillé.
+        assertEquals(DetailLock.NONE, detailLockOf("MOVIE", 1, null, locked, hidden, false))
+        // Catégorie ordinaire : libre.
+        assertEquals(DetailLock.NONE, detailLockOf("MOVIE", 1, "3", locked, hidden, false))
+        // Catégorie verrouillée : code demandé, sauf déverrouillage de la visite.
+        assertEquals(DetailLock.PIN, detailLockOf("MOVIE", 1, "7", locked, hidden, false))
+        assertEquals(DetailLock.NONE, detailLockOf("MOVIE", 1, "7", locked, hidden, true))
+        // Masquée par le profil : prioritaire sur le verrou, et le code ne la rouvre pas.
+        assertEquals(DetailLock.HIDDEN, detailLockOf("MOVIE", 1, "9", locked, hidden, false))
+        assertEquals(DetailLock.HIDDEN, detailLockOf("MOVIE", 1, "9", setOf("9"), hidden, true))
+        // La clé est « type:source:catégorie » : une autre source ou un autre type n'est pas masqué.
+        assertEquals(DetailLock.NONE, detailLockOf("MOVIE", 2, "9", locked, hidden, false))
+        assertEquals(DetailLock.NONE, detailLockOf("SERIES", 1, "9", locked, hidden, false))
+    }
 }
