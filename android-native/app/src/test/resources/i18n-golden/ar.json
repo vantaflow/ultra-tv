@@ -1885,5 +1885,7 @@
   "DesignStrings/PersonalizationStringsKt.uiSizeName(SMALL)": "صغير",
   "DesignStrings/PersonalizationStringsKt.uiSizeName(NORMAL)": "عادي",
   "DesignStrings/PersonalizationStringsKt.uiSizeName(LARGE)": "كبير",
-  "DesignStrings/PersonalizationStringsKt.uiSizeName(XLARGE)": "كبير جدًا"
+  "DesignStrings/PersonalizationStringsKt.uiSizeName(XLARGE)": "كبير جدًا",
+  "DesignStrings/DesignStringsB1Kt.getShowAdvanced()": "إظهار الإعدادات المتقدمة",
+  "DesignStrings/DesignStringsB1Kt.getShowAdvancedHint()": "المشغّل وفك الترميز والتخزين المؤقت والجودة ومعدل الإطارات. يبقى الإعداد المعدَّل ظاهرًا دائمًا."
 }

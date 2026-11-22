@@ -150,3 +150,7 @@ val DesignStrings.updateChannelStable get() = tx(R.string.ds_update_channel_stab
 val DesignStrings.updateChannelPre get() = tx(R.string.ds_update_channel_pre)
 val DesignStrings.updateChannelHint get() = tx(R.string.ds_update_channel_hint)
 val DesignStrings.updateChannelStay get() = tx(R.string.ds_update_channel_stay)
+
+// Réglages › Lecture : interrupteur des réglages avancés.
+val DesignStrings.showAdvanced get() = tx(R.string.ds_show_advanced)
+val DesignStrings.showAdvancedHint get() = tx(R.string.ds_show_advanced_hint)

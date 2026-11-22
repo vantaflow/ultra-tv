@@ -218,6 +218,8 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
         // Mirror the telemetry toggle from DataStore into RemoteLog's volatile
         // flag so disabling it from Settings takes effect immediately for
         // every subsequent event/crash POST.
+        // Réglages avancés : masqués pour une installation neuve, affichés pour un utilisateur existant (décidé une fois).
+        startTask("advanced-init") { prefsStore.get().initShowAdvanced() }
         startTask("prefs") {
             prefsStore.get().flow.collect { p ->
                 RemoteLog.telemetryEnabled = p.telemetryEnabled

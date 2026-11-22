@@ -2020,4 +2020,6 @@
     <string name="perso_ui_size_normal">عادي</string>
     <string name="perso_ui_size_large">كبير</string>
     <string name="perso_ui_size_xlarge">كبير جدًا</string>
+    <string name="ds_show_advanced">إظهار الإعدادات المتقدمة</string>
+    <string name="ds_show_advanced_hint">المشغّل وفك الترميز والتخزين المؤقت والجودة ومعدل الإطارات. يبقى الإعداد المعدَّل ظاهرًا دائمًا.</string>
 </resources>

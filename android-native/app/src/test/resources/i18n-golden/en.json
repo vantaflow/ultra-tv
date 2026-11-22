@@ -1885,5 +1885,7 @@
   "DesignStrings/PersonalizationStringsKt.uiSizeName(SMALL)": "Small",
   "DesignStrings/PersonalizationStringsKt.uiSizeName(NORMAL)": "Normal",
   "DesignStrings/PersonalizationStringsKt.uiSizeName(LARGE)": "Large",
-  "DesignStrings/PersonalizationStringsKt.uiSizeName(XLARGE)": "Extra large"
+  "DesignStrings/PersonalizationStringsKt.uiSizeName(XLARGE)": "Extra large",
+  "DesignStrings/DesignStringsB1Kt.getShowAdvanced()": "Show advanced settings",
+  "DesignStrings/DesignStringsB1Kt.getShowAdvancedHint()": "Engine, decoding, buffer, quality, frame rate. A changed setting always stays visible."
 }

@@ -67,6 +67,8 @@ data class UserPrefs(
     /** Suppresses the onboarding wizard. Flipped to `true` when the user
      *  dismisses or completes it. */
     val hasSeenOnboarding: Boolean = false,
+    /** Réglages avancés affichés (voir AdvancedSettings) : faux pour une installation neuve, vrai pour un utilisateur existant. */
+    val showAdvanced: Boolean = false,
     /** UI language code: "system", "en", "fr", "es", "ar". */
     val language: String = "system",
     /** Fuseau horaire de l'horloge et du guide : "" = celui du système, sinon un identifiant (« GMT », « Africa/Casablanca »…). */
@@ -201,6 +203,7 @@ class UserPreferencesStore @Inject constructor(
         val lastSyncAt = longPreferencesKey("last_sync_at_ms")
         val workerBase = stringPreferencesKey("worker_base_url")
         val seenOnboarding = booleanPreferencesKey("has_seen_onboarding")
+        val showAdvanced = booleanPreferencesKey("show_advanced")
         val language = stringPreferencesKey("language")
         val timeZone = stringPreferencesKey("time_zone")
         val timeFormat = stringPreferencesKey("time_format")
@@ -277,6 +280,7 @@ class UserPreferencesStore @Inject constructor(
             lastSyncAtMs = p[Keys.lastSyncAt] ?: 0L,
             workerBaseUrl = p[Keys.workerBase] ?: "",
             hasSeenOnboarding = p[Keys.seenOnboarding] ?: false,
+            showAdvanced = p[Keys.showAdvanced] ?: com.ultratv.tv.nativeapp.ui.settings.AdvancedSettings.initialShow(p[Keys.seenOnboarding] ?: false),
             language = p[Keys.language] ?: "system",
             timeZone = p[Keys.timeZone] ?: "",
             timeFormat = com.ultratv.tv.nativeapp.ui.common.TimeFormatPref.parse(p[Keys.timeFormat]).key,
@@ -329,6 +333,9 @@ class UserPreferencesStore @Inject constructor(
     suspend fun setLastSyncAt(ms: Long) = update { it[Keys.lastSyncAt] = ms }
     suspend fun setWorkerBase(url: String) = update { it[Keys.workerBase] = url.trim() }
     suspend fun markOnboardingSeen() = update { it[Keys.seenOnboarding] = true }
+    suspend fun setShowAdvanced(v: Boolean) = update { it[Keys.showAdvanced] = v }
+    /** Fige au premier démarrage le choix initial des réglages avancés (avant que l'assistant ne soit passé). */
+    suspend fun initShowAdvanced() = update { if (it[Keys.showAdvanced] == null) it[Keys.showAdvanced] = com.ultratv.tv.nativeapp.ui.settings.AdvancedSettings.initialShow(it[Keys.seenOnboarding] ?: false) }
     /** Langue de l'interface : celle du PROFIL (partagée entre appareils) ; la valeur de l'appareil sert aux profils sans choix. */
     suspend fun setLanguage(code: String) {
         update { it[Keys.language] = code }

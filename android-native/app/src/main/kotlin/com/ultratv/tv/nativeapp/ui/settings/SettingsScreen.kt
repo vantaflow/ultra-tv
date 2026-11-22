@@ -93,6 +93,8 @@ import com.ultratv.tv.nativeapp.i18n.startScreenHint
 import com.ultratv.tv.nativeapp.i18n.startScreenName
 import com.ultratv.tv.nativeapp.i18n.textSizeLabel
 import com.ultratv.tv.nativeapp.i18n.textSizeName
+import com.ultratv.tv.nativeapp.i18n.showAdvanced
+import com.ultratv.tv.nativeapp.i18n.showAdvancedHint
 import com.ultratv.tv.nativeapp.i18n.uiSizeLabel
 import com.ultratv.tv.nativeapp.i18n.uiSizeName
 import com.ultratv.tv.nativeapp.i18n.updateChannel
@@ -852,21 +854,24 @@ private fun PlaybackPane(panes: SettingsPanesViewModel, app: AppViewModel) {
         if (p.playerEngine != "auto" || p.decoderMode != "auto" || p.bufferPreset != "auto" || p.maxHeight != "auto") PillButton(D.backToAuto, { panes.backToAuto() }, bg = Ux.Surface2)
     }
     SettingsCard {
-        PrefRow(D.playerRow, engineLabel) { choice = "engine" }
-        PrefRow(D.decodingRow, decLabel) { choice = "dec" }
-        PrefRow(D.bufferRow, bufLabel) { choice = "buf" }
-        PrefRow(D.maxQuality, maxHeightLabel(D, p.maxHeight, ad.auto.maxVideoHeight)) { choice = "mh" }
-        PrefRow(D.playbackQuality, if (p.videoQuality == "max") D.qualityMax else D.auto, hint = D.playbackQualityHint) { choice = "vq" }
-        PrefRow(D.preferredQuality, qualityLabel(D, p.preferredQuality), hint = D.preferredQualityHint) { choice = "pq" }
+        // Réglages avancés (AdvancedSettings) : masqués sauf interrupteur ou valeur modifiée ; rien n'est supprimé.
+        fun adv(r: AdvancedRow) = AdvancedSettings.visible(p, r)
+        if (adv(AdvancedRow.ENGINE)) PrefRow(D.playerRow, engineLabel) { choice = "engine" }
+        if (adv(AdvancedRow.DECODER)) PrefRow(D.decodingRow, decLabel) { choice = "dec" }
+        if (adv(AdvancedRow.BUFFER)) PrefRow(D.bufferRow, bufLabel) { choice = "buf" }
+        if (adv(AdvancedRow.MAX_HEIGHT)) PrefRow(D.maxQuality, maxHeightLabel(D, p.maxHeight, ad.auto.maxVideoHeight)) { choice = "mh" }
+        if (adv(AdvancedRow.VIDEO_QUALITY)) PrefRow(D.playbackQuality, if (p.videoQuality == "max") D.qualityMax else D.auto, hint = D.playbackQualityHint) { choice = "vq" }
+        if (adv(AdvancedRow.PREFERRED_QUALITY)) PrefRow(D.preferredQuality, qualityLabel(D, p.preferredQuality), hint = D.preferredQualityHint) { choice = "pq" }
         PrefRow(D.externalPlayer, if (p.defaultPlayer == DefaultPlayer.EXTERNAL) D.on else D.none) { choice = "ext" }
         SwitchPrefRow(D.autoNext, p.autoPlayNextEpisode) { app.setAutoPlayNext(it) }
         SwitchPrefRow(D.resumePlayback, p.resumePlayback) { app.setResumePlayback(it) }
-        SwitchPrefRow(D.autoFps, p.autoFrameRate) { app.setAutoFrameRate(it) }
-        SwitchPrefRow(D.tunneledPlayback, p.tunneledPlayback, hint = D.tunneledPlaybackHint) { app.setTunneledPlayback(it) }
+        if (adv(AdvancedRow.AUTO_FPS)) SwitchPrefRow(D.autoFps, p.autoFrameRate) { app.setAutoFrameRate(it) }
+        if (adv(AdvancedRow.TUNNELED)) SwitchPrefRow(D.tunneledPlayback, p.tunneledPlayback, hint = D.tunneledPlaybackHint) { app.setTunneledPlayback(it) }
         if (!com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) SwitchPrefRow(D.zapVertical, p.zapVertical, hint = D.zapVerticalHint) { app.setZapVertical(it) }
-        SwitchPrefRow(D.compatVideo, com.ultratv.tv.nativeapp.ui.player.engine.useTextureView(p.videoSurface, com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current), hint = D.compatVideoHint) {
+        if (adv(AdvancedRow.VIDEO_SURFACE)) SwitchPrefRow(D.compatVideo, com.ultratv.tv.nativeapp.ui.player.engine.useTextureView(p.videoSurface, com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current), hint = D.compatVideoHint) {
             app.setVideoSurface(if (it) "texture" else "surface")
         }
+        SwitchPrefRow(D.showAdvanced, p.showAdvanced, hint = D.showAdvancedHint) { app.setShowAdvanced(it) }
         // Aperçu vidéo du Direct (TV seulement : sans effet sur téléphone / tablette).
         if (!com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) com.ultratv.tv.nativeapp.ui.live.LivePreviewSettingsRows()
     }

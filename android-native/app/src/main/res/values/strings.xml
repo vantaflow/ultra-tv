@@ -1977,4 +1977,6 @@
     <string name="perso_ui_size_normal">Normal</string>
     <string name="perso_ui_size_large">Large</string>
     <string name="perso_ui_size_xlarge">Extra large</string>
+    <string name="ds_show_advanced">Show advanced settings</string>
+    <string name="ds_show_advanced_hint">Engine, decoding, buffer, quality, frame rate. A changed setting always stays visible.</string>
 </resources>

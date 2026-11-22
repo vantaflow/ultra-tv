@@ -1885,5 +1885,7 @@
   "DesignStrings/PersonalizationStringsKt.uiSizeName(SMALL)": "Petite",
   "DesignStrings/PersonalizationStringsKt.uiSizeName(NORMAL)": "Normale",
   "DesignStrings/PersonalizationStringsKt.uiSizeName(LARGE)": "Grande",
-  "DesignStrings/PersonalizationStringsKt.uiSizeName(XLARGE)": "Très grande"
+  "DesignStrings/PersonalizationStringsKt.uiSizeName(XLARGE)": "Très grande",
+  "DesignStrings/DesignStringsB1Kt.getShowAdvanced()": "Afficher les réglages avancés",
+  "DesignStrings/DesignStringsB1Kt.getShowAdvancedHint()": "Moteur, décodage, tampon, qualité, fréquence d'image. Un réglage modifié reste toujours visible."
 }
