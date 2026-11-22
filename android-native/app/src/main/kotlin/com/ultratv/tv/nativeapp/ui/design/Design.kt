@@ -156,9 +156,6 @@ val Manrope = FontFamily(
 /** Taille de texte de la maquette (px) en sp de l'interface normalisée. */
 val Int.spx: TextUnit get() = (this / 2f).sp
 
-/** Liseré sombre (`#0A0C10`) qui sépare l'anneau blanc d'un élément blanc posé sur une image. */
-private val RingInkOnImage = Color(0xFF0A0C10)
-
 /**
  * Surface focalisable : fond [bg] au repos ; au focus fond blanc, texte noir, échelle 1,06 et
  * anneau accent de 6 px (maquette). Pas d'ombre floue ni d'animation : rendu statique, peu
