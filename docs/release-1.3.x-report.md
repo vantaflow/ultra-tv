@@ -136,3 +136,22 @@ Totaux : non 47, oui 75, partiel 1, réécrit 3 (sur 126).
 | 2168d4d6 | Synchro : une partie refusée (films vides) n'arrête plus les séries ni le guide | a | oui | synchro C1 / C2 / I1-I4 (feat/robustesse-remarques) | feat/robustesse-remarques |
 | a1869fca | Synchro et Stalker : changement durable accepté, replis par catégorie gardés, délais courts limités au zapping | a | oui | synchro C1 / C2 / I1-I4 (feat/robustesse-remarques) | feat/robustesse-remarques |
 | b02fbbd4 | Accueil : aucune rangée ne montre de contenu masqué, verrouillé ou adulte, selon le profil actif | a | réécrit | accueil sans contenu masqué / verrouillé / adulte selon le profil : garde posée sur le HomeViewModel de la 1.3.72 (sans le paramètre TV de la refonte) | feat/robustesse-remarques |
+
+## Commits propres à la ligne stable
+
+| Commit | Objet |
+|---|---|
+| Design : retrait d'une constante d'anneau sur image | reste du report de ca5067fb (pièce de la refonte devenue sans usage) |
+| Mise à jour : canal Stable / Pré-version | U1 — Réglages › À propos ; étiquette de publication `BuildConfig.RELEASE_TAG` (GITHUB_REF_NAME) pour distinguer une rc de la stable du même numéro ; jamais de version plus ancienne ; invite qui signale la pré-version |
+| Stockage : « Tout nettoyer » | S2 — images + temporaires + tampon de pause du direct (si libre) ; sources, favoris, historique, réglages, enregistrements et téléchargements jamais touchés |
+| Affichage : taille de l'interface | S3 — Petite / Normale / Grande / Très grande sur toute la densité ; « Taille du texte » conservée ; écart réduit sur TV (0,92 à 1,12) |
+| Lecture : réglages avancés | S1 — moteur, décodage, tampon, qualité max, qualité de lecture, qualité préférée, fréquence d'image, tunnel, surface vidéo |
+| Version 1.3.73 (Android) | VERSION + CHANGELOG |
+
+## Correctifs réécrits pour l'interface 1.3.72
+
+- 8bbd6b62 (clés de liste en double) : `withUniqueKeys()` posé sur les rangées Reprendre / affiches / Top 10 de l'accueil actuel, clés uniques sur les pastilles de catégories du catalogue (deux endroits) et sur la rangée Sport (fonction `SportHomeRow` extraite, même rendu) ; aucune mémoire de rangée ni marge de la refonte.
+- 8337209b (Réglages en arabe) : `towardContent` / `screenEntryTarget` gardés, `EdgeMarginSpec` / `RowEdgeMargin` / `edgeMarginFor` (refonte) retirés au conflit.
+- b02fbbd4 (accueil sans contenu masqué / verrouillé / adulte selon le profil) : `HomeGuard` posé sur le `HomeViewModel` de la 1.3.72, sans le paramètre d'appareil TV de la refonte.
+- 668a647f : seule la partie journal (UiLog, uiAttempt, synthèse des images) est reportée ; l'anneau blanc sur image reste dans la refonte.
+- 43f7a239 : texte « Ma liste » de l'image à la une (refonte) retiré au conflit.
