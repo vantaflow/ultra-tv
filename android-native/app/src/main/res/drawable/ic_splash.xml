@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ultra TV — icône de l'écran de démarrage (core-splashscreen), vectorielle pour rester nette à toutes les densités
+     et toutes les versions (sous Android 8, @mipmap/ic_launcher est un PNG 192 px agrandi → flou sur tablette).
+     Mêmes chemins que drawable/ic_launcher_foreground.xml (viewport 108). Règle « sans fond d'icône » : 288dp, contenu
+     dans le cercle central de 192dp (= 72 unités du viewport) ; le dessin occupe ~45 unités, il y tient largement.
+     Le fond est windowSplashScreenBackground (@color/ic_launcher_background). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group android:translateX="21" android:translateY="21" android:scaleX="0.12890625" android:scaleY="0.12890625">
+        <path
+            android:pathData="M136,120H376A40,40 0 0 1 416,160V296A40,40 0 0 1 376,336H136A40,40 0 0 1 96,296V160A40,40 0 0 1 136,120Z"
+            android:strokeColor="#F5F5F7"
+            android:strokeWidth="28"
+            android:fillColor="#00000000"/>
+        <path
+            android:pathData="M224,188v80l70,-40z"
+            android:fillColor="#D91E2B"/>
+        <path
+            android:pathData="M196,392h120"
+            android:strokeColor="#F5F5F7"
+            android:strokeWidth="28"
+            android:strokeLineCap="round"/>
+    </group>
+</vector>

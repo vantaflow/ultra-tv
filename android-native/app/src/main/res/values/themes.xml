@@ -12,7 +12,8 @@
     <!-- Thème de lancement (SplashScreen API) : fond immédiat, puis bascule sur Theme.UltraTv. -->
     <style name="Theme.UltraTv.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/ic_launcher_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <!-- Vecteur dédié : net à toutes les densités, y compris sous Android 8 (le mipmap y est un PNG 192 px). -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash</item>
         <item name="postSplashScreenTheme">@style/Theme.UltraTv</item>
     </style>
 </resources>
