@@ -13,6 +13,15 @@ export function parseSettingsLevel(v: unknown): SettingsLevel {
   return (SETTINGS_LEVELS as readonly unknown[]).includes(v) ? (v as SettingsLevel) : DEFAULT_SETTINGS_LEVEL;
 }
 
+/**
+ * Niveau au démarrage. Choix enregistré : toujours conservé. Jamais choisi : Expert si l'appli avait déjà des préférences
+ * enregistrées (utilisateur existant : rien ne disparaît à la mise à jour), Standard pour une installation neuve.
+ */
+export function initialSettingsLevel(stored: unknown, hasSavedPrefs: boolean): SettingsLevel {
+  if ((SETTINGS_LEVELS as readonly unknown[]).includes(stored)) return stored as SettingsLevel;
+  return hasSavedPrefs ? "expert" : DEFAULT_SETTINGS_LEVEL;
+}
+
 export function levelShows(level: SettingsLevel, tier: SettingTier, modified = false): boolean {
   if (modified || tier === "basic") return true;
   if (tier === "tech") return level !== "essential";

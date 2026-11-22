@@ -5,7 +5,7 @@ import type { DnsSettings } from "@/net/dns";
 import { clockText, parseTimeFormat, type TimeFormat } from "@/lib/clock";
 import { parseStartScreen, type StartScreen } from "@/lib/startScreen";
 import { DEFAULT_UI_SCALE, parseUiScale } from "@/lib/uiScale";
-import { DEFAULT_SETTINGS_LEVEL, parseSettingsLevel, type SettingsLevel } from "@/lib/settingsLevel";
+import { DEFAULT_SETTINGS_LEVEL, initialSettingsLevel, type SettingsLevel } from "@/lib/settingsLevel";
 import { DEFAULT_ACCENT, parseAccent, parseTheme, themeAttr, type AccentId, type ThemeId } from "@/lib/themes";
 
 export type Theme = ThemeId;
@@ -114,7 +114,8 @@ function load(): Prefs {
       v.timeFormat = parseTimeFormat(v.timeFormat);
       v.startScreen = parseStartScreen(v.startScreen);
       v.uiScale = parseUiScale(v.uiScale);
-      v.settingsLevel = parseSettingsLevel(v.settingsLevel);
+      // Préférences déjà enregistrées (utilisateur existant) sans niveau choisi : Expert, rien ne disparaît à la mise à jour.
+      v.settingsLevel = initialSettingsLevel((JSON.parse(raw) as { settingsLevel?: unknown }).settingsLevel, true);
       return v;
     }
   } catch { /* stockage indisponible */ }
