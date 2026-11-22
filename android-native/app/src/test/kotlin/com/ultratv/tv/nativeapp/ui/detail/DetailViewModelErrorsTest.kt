@@ -58,6 +58,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import androidx.lifecycle.viewModelScope
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -128,12 +129,21 @@ class DetailViewModelErrorsTest {
         }
     }
 
+    /** ViewModels du test : leurs tâches (réseau, base) sont annulées AVANT de rendre Dispatchers.Main, sinon une reprise
+     *  tardive sur un fil d'E/S lit Main pendant sa remise à zéro (« Dispatchers.Main is used concurrently with setting it »,
+     *  échec intermittent quand toute la suite tourne). */
+    private val vms = CopyOnWriteArrayList<androidx.lifecycle.ViewModel>()
+
     @After fun tearDown() {
-        Dispatchers.resetMain(); UiLog.sink = null; Locale.setDefault(savedLocale); runCatching { db.close() }
+        vms.forEach { it.viewModelScope.coroutineContext[kotlinx.coroutines.Job]?.cancel() }
+        vms.forEach { vm -> runBlocking { kotlinx.coroutines.withTimeoutOrNull(2_000) { vm.viewModelScope.coroutineContext[kotlinx.coroutines.Job]?.children?.forEach { it.join() } } } }
+        var reset = false
+        repeat(20) { if (!reset) reset = runCatching { Dispatchers.resetMain() }.isSuccess.also { ok -> if (!ok) Thread.sleep(50) } }
+        UiLog.sink = null; Locale.setDefault(savedLocale); runCatching { db.close() }
     }
 
-    private fun movieVm() = MovieDetailViewModel(w.catalog, PlaybackContext(), w.history, w.tmdb, w.trakt, w.ratings, w.fanart, w.profiles)
-    private fun seriesVm() = SeriesDetailViewModel(w.catalog, PlaybackContext(), w.history, w.tmdb, w.trakt, w.ratings, w.fanart, w.tvMaze, w.seasons, w.profiles)
+    private fun movieVm() = MovieDetailViewModel(w.catalog, PlaybackContext(), w.history, w.tmdb, w.trakt, w.ratings, w.fanart, w.profiles).also { vms += it }
+    private fun seriesVm() = SeriesDetailViewModel(w.catalog, PlaybackContext(), w.history, w.tmdb, w.trakt, w.ratings, w.fanart, w.tvMaze, w.seasons, w.profiles).also { vms += it }
 
     private fun addMovie(id: Long = 10, cat: String? = null) = runBlocking {
         db.movieDao().upsertAll(listOf(MovieEntity(id = id, providerId = providerId, remoteId = if (id == 10L) "55" else "5$id", name = "Orbite basse", poster = null, categoryId = cat, streamUrl = "http://h:8080/movie/jean/s3cret/55.mkv", container = "mkv", year = 2024, rating = null, plot = null)))
