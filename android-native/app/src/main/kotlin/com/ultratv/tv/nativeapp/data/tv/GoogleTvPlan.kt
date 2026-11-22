@@ -24,6 +24,18 @@ object WatchNextPlan {
 
     fun internalId(h: WatchHistoryEntity) = "${h.kind}:${h.providerId}:${h.remoteId}"
 
+    /** Où chercher l'image paysage : le film lui-même, ou la série d'un épisode. Chaîne du direct : aucune. */
+    data class LandscapeKey(val kind: NewsChannelPlan.Kind, val remoteId: String)
+
+    fun landscapeKey(h: WatchHistoryEntity): LandscapeKey? = when (h.kind) {
+        "MOVIE" -> LandscapeKey(NewsChannelPlan.Kind.MOVIE, h.remoteId)
+        "EPISODE" -> (h.parentRemoteId ?: return null).let { LandscapeKey(NewsChannelPlan.Kind.SERIES, it) }
+        else -> null
+    }
+
+    /** Film ou épisode : fond du titre en 16:9 s'il existe, sinon l'affiche en 2:3 (comme avant). */
+    fun art(h: WatchHistoryEntity, landscape: String?): NewsChannelPlan.Art = NewsChannelPlan.art(h.poster, landscape)
+
     fun deepLink(h: WatchHistoryEntity) = when (h.kind) {
         "LIVE" -> DeepLink.live(h.providerId, h.remoteId)
         "EPISODE" -> DeepLink.episode(h.providerId, h.remoteId)
@@ -71,12 +83,41 @@ object FavoritesChannelPlan {
 object NewsChannelPlan {
     const val MAX = 20
     /** Nombre de lignes lues par type (même source que les rangées de l'accueil, avec de la marge pour les sans-affiche). */
-    const val FETCH = 30
+    const val FETCH = 60
 
     enum class Kind { MOVIE, SERIES }
 
     /** Élément candidat, indépendant de Room (testable sans Android). */
-    data class Item(val kind: Kind, val providerId: Long, val remoteId: String, val title: String, val poster: String?, val addedKey: Long)
+    data class Item(
+        val kind: Kind, val providerId: Long, val remoteId: String, val title: String, val poster: String?, val addedKey: Long,
+        /** Fond du titre (image paysage), s'il existe. */
+        val landscape: String? = null,
+        val categoryId: String? = null,
+    )
+
+    /** Image publiée et son format (constantes TvContractCompat.PreviewPrograms.ASPECT_RATIO_*). */
+    data class Art(val uri: String, val aspectRatio: Int)
+
+    private const val RATIO_16_9 = androidx.tvprovider.media.tv.TvContractCompat.PreviewPrograms.ASPECT_RATIO_16_9
+    private const val RATIO_2_3 = androidx.tvprovider.media.tv.TvContractCompat.PreviewPrograms.ASPECT_RATIO_2_3
+
+    /** Fond du titre en 16:9 quand il existe, sinon l'affiche en 2:3. */
+    fun art(poster: String?, landscape: String?): Art =
+        landscape?.takeIf { it.isNotBlank() }?.let { Art(it, RATIO_16_9) } ?: Art(poster.orEmpty(), RATIO_2_3)
+
+    fun art(i: Item): Art = art(i.poster, i.landscape)
+
+    private fun hasImage(i: Item) = !i.poster.isNullOrBlank() || !i.landscape.isNullOrBlank()
+
+    /**
+     * Ce que le profil actif peut voir : ni catégorie masquée (clé `KIND:source:catégorie`, catégories adultes comprises
+     * pour un profil enfant), ni catégorie verrouillée ; profil enfant : aucun titre qui ressemble à un titre adulte.
+     */
+    fun visible(items: List<Item>, hiddenKeys: Set<String>, lockedCategoryKeys: Set<String>, kids: Boolean): List<Item> = items.filter { i ->
+        val key = i.categoryId?.let { "${i.kind.name}:${i.providerId}:$it" }
+        (key == null || (key !in hiddenKeys && key !in lockedCategoryKeys)) &&
+            !(kids && com.ultratv.tv.nativeapp.data.profile.AdultHeuristic.isAdult(i.title))
+    }
 
     fun internalId(i: Item) = "NEWS:${i.kind.name}:${i.providerId}:${i.remoteId}"
 
@@ -87,12 +128,12 @@ object NewsChannelPlan {
 
     /**
      * Films et séries entrelacés (un film, une série, un film…), chacun dans l'ordre addedKey décroissant (l'ordre de
-     * l'accueil) ; un type épuisé laisse la place à l'autre. Sans affiche ou sans titre : écartés (un programme
-     * d'aperçu exige une image). Sans doublon, au plus [MAX].
+     * l'accueil) ; un type épuisé laisse la place à l'autre. Sans image (ni affiche ni fond) ou sans titre : écartés
+     * (un programme d'aperçu exige une image). Sans doublon, au plus [MAX].
      */
     fun select(movies: List<Item>, series: List<Item>): List<Item> {
         // Un même film rangé dans plusieurs catégories (4K, Bluray…) : une seule tuile, la plus récente.
-        fun clean(l: List<Item>) = l.filter { it.title.isNotBlank() && !it.poster.isNullOrBlank() }.sortedByDescending { it.addedKey }
+        fun clean(l: List<Item>) = l.filter { it.title.isNotBlank() && hasImage(it) }.sortedByDescending { it.addedKey }
             .distinctBy { it.title.trim().lowercase() }
         val m = clean(movies)
         val s = clean(series)
@@ -124,7 +165,7 @@ object NewsChannelPlan {
 
     /** Empreinte de la sélection (ordre, titres, affiches) : on ne touche à la chaîne que si elle a changé. */
     fun signature(selected: List<Item>): String =
-        selected.joinToString("|") { "${internalId(it)}:${it.title}:${it.poster.orEmpty()}" }.hashCode().toString()
+        selected.joinToString("|") { "${internalId(it)}:${it.title}:${it.poster.orEmpty()}:${it.landscape.orEmpty()}" }.hashCode().toString()
 }
 
 /** Règles pures de publication des chaînes d'accueil (testables sans Android). */
