@@ -114,7 +114,10 @@ object RemoteLog {
      *  Defaults to true so the dashboard keeps catching crashes out of the box. */
     @Volatile var telemetryEnabled: Boolean = true
 
-    private fun sanitize(input: String): String = LogSanitizer.sanitize(input)
+    /** Nettoyage des identifiants (remplaçable par les tests pour vérifier sur quel fil il tourne). */
+    @Volatile internal var sanitizer: (String) -> String = { LogSanitizer.sanitize(it) }
+
+    private fun sanitize(input: String): String = sanitizer(input)
 
     /** [macOf] évalué au premier envoi (thread d'arrière-plan) : ANDROID_ID + SHA-256 ne coûtent rien au démarrage. */
     class ContextInfo(
@@ -198,9 +201,12 @@ object RemoteLog {
         contextInfo ?: return
         if (!telemetryEnabled) return
         if (!queue.accept(level)) return
+        // Texte brut borné comme le fait LogSanitizer (2 × 4 000) : le nettoyage (six expressions régulières sur jusqu'à
+        // 8 000 caractères) se fait à l'envoi, en arrière-plan — event() est appelé surtout depuis le fil principal (ANR
+        // MatcherNative.findImpl). Le résultat envoyé est identique.
         val line = LogQueue.Line(
             ts = System.currentTimeMillis(), level = level, tag = tag,
-            message = sanitize(message).take(LogQueue.MAX_MESSAGE), sampled = !queue.isImportant(level),
+            message = message.take(RAW_MESSAGE_MAX), sampled = !queue.isImportant(level),
         )
         synchronized(queueLock) {
             if (queue.add(line, line.ts)) scope.launch { flushQueue() } else rescheduleLocked(line.ts)
@@ -226,6 +232,7 @@ object RemoteLog {
         // Tri fait ici, hors thread principal : savoir si l'appareil est appairé demande de déchiffrer le jeton (Keystore).
         val isPaired = paired()
         val taken = drained.filter { TelemetryRoute.keeps(isPaired, queue.isImportant(it.level)) }
+            .map { LogQueue.Line(it.ts, it.level, it.tag, sanitize(it.message).take(LogQueue.MAX_MESSAGE), it.sampled) }
         if (taken.isEmpty()) return
         val failed = mutableListOf<LogQueue.Line>()
         for (chunk in LogQueue.chunks(taken)) {
@@ -326,6 +333,9 @@ object RemoteLog {
     }
 
     private val JSON = "application/json".toMediaType()
+
+    /** Longueur brute gardée en file avant nettoyage : celle que LogSanitizer lit (2 × sa limite par défaut). */
+    private const val RAW_MESSAGE_MAX = 8_000
 
     /** Taille d'un rapport de plantage différé : sous la limite de corps du Worker (48 Ko), échappement JSON compris. */
     private const val CRASH_REPORT_MAX_CHARS = 30_000

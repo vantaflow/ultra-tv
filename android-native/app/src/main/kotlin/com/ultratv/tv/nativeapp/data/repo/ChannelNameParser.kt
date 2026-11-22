@@ -51,7 +51,15 @@ object ChannelNameParser {
     private val bracketPrefix = Regex("""^\s*(?:\[([^\]]{1,12})]|\(([A-Za-z]{2,4})\))\s*""")
     private val token = Regex("""(?<![\p{L}\p{N}])(8K|4K|UHD|FHD|FULLHD|HD|SD|LQ|HEVC|H265|H\.265|HDR10\+|HDR10PLUS|HDR|HDR10|RAW|BACKUP|VIP|2160P|3840P|4320P|7680P|1080P|1080I|720P|576P|480P|50FPS|60FPS|25FPS|30FPS)(?![\p{L}\p{N}])""", RegexOption.IGNORE_CASE)
 
-    fun parse(raw: String): Parsed {
+    private val memo = NameMemo<String, Parsed>(4096)
+
+    /**
+     * Résultat mémorisé par nom (voir [NameMemo]) : appelé pendant la composition (lecteur), au zapping, et six fois par
+     * ChannelEntity construite avec ses valeurs par défaut.
+     */
+    fun parse(raw: String): Parsed = memo.getOrPut(raw) { parseUncached(raw) }
+
+    internal fun parseUncached(raw: String): Parsed {
         val n = Normalizer.normalize(raw, Normalizer.Form.NFKC).trim()
         // ── Séparateur ──
         val alnum = n.count { it.isLetterOrDigit() }

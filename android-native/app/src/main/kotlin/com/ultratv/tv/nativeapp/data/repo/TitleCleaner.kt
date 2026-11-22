@@ -90,7 +90,13 @@ object TitleCleaner {
     }
     private val EPISODE_TAG = Regex("""S\d{1,2}E\d{1,3}""", RegexOption.IGNORE_CASE)
 
-    fun clean(raw: String, live: Boolean = false): Cleaned {
+    private data class Key(val raw: String, val live: Boolean)
+    private val memo = NameMemo<Key, Cleaned>(4096)
+
+    /** Résultat mémorisé par nom (voir [NameMemo]) : appelé pendant la composition, au zapping et aux clics. */
+    fun clean(raw: String, live: Boolean = false): Cleaned = memo.getOrPut(Key(raw, live)) { cleanUncached(raw, live) }
+
+    internal fun cleanUncached(raw: String, live: Boolean): Cleaned {
         var s = raw.trim()
         if (s.isEmpty()) return Cleaned(raw, null, null)
         // Lignes d'événements « a | b | c | NL: CHAÎNE » : seul le dernier segment est le nom.
