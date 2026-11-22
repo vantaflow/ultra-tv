@@ -1933,6 +1933,7 @@
     <string name="syncerr_invalid_response">El servidor respondió con algo que no es una lista — comprueba la dirección</string>
     <string name="syncerr_account_expired">Suscripción caducada — renuévala con tu proveedor</string>
     <string name="syncerr_empty_list">El proveedor devolvió una lista vacía — se conserva tu catálogo</string>
+    <string name="syncerr_reduced_list">El proveedor devolvió una lista mucho más corta — se conserva tu catálogo mientras no se confirme</string>
     <string name="syncerr_local_network">Esta dirección está en una red local — conecta el dispositivo a la misma red y desactiva la VPN</string>
     <string name="dt_not_found">Este título ya no está disponible</string>
     <string name="dt_episodes_error">No se pudieron cargar los episodios</string>

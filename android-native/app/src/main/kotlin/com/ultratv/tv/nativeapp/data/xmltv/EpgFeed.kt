@@ -69,7 +69,7 @@ internal object EpgErrors {
             SyncErrorKind.UNAUTHORIZED, SyncErrorKind.PROVIDER_BLOCKED, SyncErrorKind.ACCOUNT_EXPIRED -> EpgFailReason.AUTH
             SyncErrorKind.NOT_FOUND -> EpgFailReason.NOT_FOUND
             SyncErrorKind.INVALID_RESPONSE -> EpgFailReason.BAD_FORMAT
-            SyncErrorKind.EMPTY_LIST -> EpgFailReason.EMPTY
+            SyncErrorKind.EMPTY_LIST, SyncErrorKind.REDUCED_LIST -> EpgFailReason.EMPTY
             SyncErrorKind.OTHER -> EpgFailReason.OTHER
         }
     }

@@ -73,17 +73,39 @@ class StalkerClientTest {
      * met 9 s à répondre : create_link échoue au délai de lecture (8 s) au lieu d'attendre ; la liste des genres, elle,
      * attend sa réponse (synchro inchangée).
      */
-    @Test fun lienDeLecture_delaisCourts_listesDuCatalogueInchangees() = runBlocking {
-        assertEquals(Triple(5_000, 8_000, 10_000), client().shortTimeoutsMs)
-        routes["itv/create_link"] = { json("""{"js":{"cmd":"ffmpeg http://127.0.0.1/s/1.ts"}}""").setHeadersDelay(9, java.util.concurrent.TimeUnit.SECONDS) }
-        routes["itv/get_genres"] = { json("""{"js":[{"id":"1","title":"Infos"}]}""").setHeadersDelay(9, java.util.concurrent.TimeUnit.SECONDS) }
+    @Test fun lienDeLecture_delaisCourtsAuZapping_listesDuCatalogueInchangees() = runBlocking {
+        assertEquals(Triple(5_000, 11_000, 12_000), client().shortTimeoutsMs)
+        routes["itv/create_link"] = { json("""{"js":{"cmd":"ffmpeg http://127.0.0.1/s/1.ts"}}""").setHeadersDelay(13, java.util.concurrent.TimeUnit.SECONDS) }
+        routes["itv/get_genres"] = { json("""{"js":[{"id":"1","title":"Infos"}]}""").setHeadersDelay(13, java.util.concurrent.TimeUnit.SECONDS) }
         val c = client()
+        c.genres(provider())   // session ouverte (poignée de main hors délai court)
         val t0 = System.nanoTime()
-        val failure = runCatching { c.createLink(provider(), "itv", "ch1") }.exceptionOrNull()
+        val failure = runCatching { kotlinx.coroutines.withContext(StalkerClient.ShortCalls) { c.createLink(provider(), "itv", "ch1") } }.exceptionOrNull()
         val ms = (System.nanoTime() - t0) / 1_000_000
         assertTrue("create_link doit échouer sur délai, obtenu : $failure", failure is java.io.InterruptedIOException)
-        assertTrue("échec en moins de 9 s (délai de lecture 8 s), mesuré $ms ms", ms < 9_000)
-        assertEquals(1, c.genres(provider()).size)
+        assertTrue("échec en moins de 13 s (délai de lecture 11 s), mesuré $ms ms", ms < 13_000)
+    }
+
+    /** I4 : enregistrement programmé, téléchargement, différé (hors zapping) : un portail lent (9 s) reste lisible. */
+    @Test fun lienDeLecture_horsZapping_attendUnPortailLent() = runBlocking {
+        routes["itv/create_link"] = { json("""{"js":{"cmd":"ffmpeg http://127.0.0.1/s/1.ts"}}""").setHeadersDelay(9, java.util.concurrent.TimeUnit.SECONDS) }
+        assertEquals("http://127.0.0.1/s/1.ts", client().createLink(provider(), "itv", "ch1"))
+    }
+
+    /** I4 : un zap lent (délai court dépassé à la poignée de main) ne fait pas oublier le point d'entrée mémorisé du portail. */
+    @Test fun zapLent_neFaitPasOublierLePointDEntree() = runBlocking {
+        val store = StalkerEndpointStore.inMemory()
+        val api = client(store).probe(StalkerClient.Account(portal(), mac))
+        server.dispatcher.let { d ->
+            server.dispatcher = object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse =
+                    if (request.requestUrl!!.queryParameter("action") == "handshake" && request.requestUrl!!.encodedPath.endsWith("load.php")) MockResponse().setHeadersDelay(13, java.util.concurrent.TimeUnit.SECONDS).setBody("{}")
+                    else d.dispatch(request)
+            }
+        }
+        val failure = runCatching { kotlinx.coroutines.withContext(StalkerClient.ShortCalls) { client(store).createLink(provider(), "itv", "ch1") } }.exceptionOrNull()
+        assertTrue("le zap échoue, obtenu : $failure", failure != null)
+        assertEquals("point d'entrée gardé", api, store.get(portal()))
     }
 
     @Test fun sonde_trouveLoadPhp_memoriseEtEnvoieLesEnTetesMag() = runBlocking {

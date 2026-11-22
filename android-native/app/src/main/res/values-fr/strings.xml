@@ -1941,6 +1941,7 @@
     <string name="syncerr_invalid_response">Le serveur a répondu autre chose qu\'une liste — vérifiez l\'adresse</string>
     <string name="syncerr_account_expired">Abonnement expiré — renouvelez-le auprès de votre fournisseur</string>
     <string name="syncerr_empty_list">Le fournisseur a renvoyé une liste vide — votre catalogue est conservé</string>
+    <string name="syncerr_reduced_list">Le fournisseur a renvoyé une liste bien plus courte — votre catalogue est conservé tant qu’elle ne se confirme pas</string>
     <string name="syncerr_local_network">Cette adresse est sur un réseau local — connectez l\'appareil au même réseau et désactivez le VPN</string>
     <string name="dt_not_found">Ce titre n\'est plus disponible</string>
     <string name="dt_episodes_error">Impossible de charger les épisodes</string>

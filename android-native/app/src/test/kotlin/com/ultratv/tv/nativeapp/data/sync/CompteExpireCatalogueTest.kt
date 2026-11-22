@@ -127,7 +127,7 @@ class CompteExpireCatalogueTest {
 
     private class Rig(val db: UltraDb, val repo: ProviderRepository, val bus: SyncStatusBus, val pid: Long)
 
-    private fun rig(kind: String = "XTREAM"): Rig {
+    private fun rig(kind: String = "XTREAM", memory: com.ultratv.tv.nativeapp.data.repo.SyncGuardMemory = com.ultratv.tv.nativeapp.data.repo.SyncGuardMemory.inMemory()): Rig {
         val db = Room.inMemoryDatabaseBuilder(ctx, UltraDb::class.java).allowMainThreadQueries()
             .addCallback(com.ultratv.tv.nativeapp.data.db.DefaultProfileCallback()).build().also { dbs += it }
         val ok = OkHttpClient.Builder().build()
@@ -142,7 +142,7 @@ class CompteExpireCatalogueTest {
             syncStatus = bus, xmltv = XmltvParser(ok), epgDao = db.epgDao(), db = db, prefs = prefs,
             adaptive = AdaptiveProfile(ctx, NetworkMonitor(ctx)), limits = ProviderLimitsStore(ctx), langDisabled = LangDisabledStore(ctx),
             hiddenChannels = com.ultratv.tv.nativeapp.data.prefs.HiddenChannelsStore(ctx),
-            stalker = StalkerClient(ok, StalkerEndpointStore.inMemory()),
+            stalker = StalkerClient(ok, StalkerEndpointStore.inMemory()), guardMemory = memory,
         )
         val base = server.url("/").toString().trimEnd('/')
         val url = if (kind == "M3U") "$base/liste.m3u" else base
@@ -234,8 +234,34 @@ class CompteExpireCatalogueTest {
         runBlocking { r.repo.syncAll(r.pid, force = true) }
         assertEquals(1_200, r.shape()[0])
         mode = Mode.FEW   // 3 chaînes sur 1 200 (< 2 %)
-        assertEquals(SyncErrorKind.EMPTY_LIST, r.syncFails())
+        assertEquals(SyncErrorKind.REDUCED_LIST, r.syncFails())
         assertEquals(1_200, r.shape()[0])
+    }
+
+    /** I1 : changement volontaire et durable (1 200 → 3, même résultat pendant plus de 24 h) : finit par être accepté. */
+    @Test fun xtream_liste_reduite_stable_24h_finit_par_etre_acceptee() {
+        liveCount = 1_200
+        var now = 1_000_000_000L
+        val r = rig(memory = com.ultratv.tv.nativeapp.data.repo.SyncGuardMemory.inMemory { now })
+        runBlocking { r.repo.syncAll(r.pid, force = true) }
+        mode = Mode.FEW
+        assertEquals(SyncErrorKind.REDUCED_LIST, r.syncFails())
+        now += 6 * 3_600_000L
+        r.syncFails()
+        assertEquals("toujours refusée avant 24 h", 1_200, r.shape()[0])
+        now += 19 * 3_600_000L
+        runBlocking { r.repo.syncAll(r.pid, force = true) }
+        assertEquals("acceptée au 3e refus identique après 24 h", 3, r.shape()[0])
+    }
+
+    /** I1 : une liste VIDE n'est jamais acceptée ainsi (compte expiré qui répond `[]` pendant des jours). */
+    @Test fun xtream_liste_vide_jamais_acceptee_meme_apres_des_jours() {
+        var now = 1_000_000_000L
+        val r = rig(memory = com.ultratv.tv.nativeapp.data.repo.SyncGuardMemory.inMemory { now })
+        runBlocking { r.repo.syncAll(r.pid, force = true) }
+        mode = Mode.EMPTY
+        repeat(5) { r.syncFails(); now += 12 * 3_600_000L }
+        assertEquals(full, r.shape())
     }
 
     @Test fun xtream_petite_source_qui_diminue_fortement_reste_acceptee() {

@@ -39,6 +39,7 @@ enum class SyncErrorKind {
     LOCAL_NETWORK,      // adresse du réseau local (192.168.x, 10.x, 172.16-31.x) injoignable : autre réseau ou VPN actif
     ACCOUNT_EXPIRED,    // le fournisseur répond, mais l'abonnement est expiré (Xtream `user_info.status` = Expired)
     EMPTY_LIST,         // liste vide (ou presque) alors que la base contient un catalogue : rien n'est effacé
+    REDUCED_LIST,       // liste fortement réduite (40 au lieu de 3 000) : refusée tant qu'elle n'est pas stable, rien n'est effacé
     OTHER,
 }
 
@@ -51,7 +52,7 @@ object NetErrors {
             when (cur) {
                 is HttpStatusException -> return fromHttp(cur.code)
                 is AccountRefusedException -> return if (cur.expired) SyncErrorKind.ACCOUNT_EXPIRED else SyncErrorKind.UNAUTHORIZED
-                is EmptyCatalogException -> return SyncErrorKind.EMPTY_LIST
+                is EmptyCatalogException -> return if (cur.received > 0) SyncErrorKind.REDUCED_LIST else SyncErrorKind.EMPTY_LIST
                 is UnknownHostException -> return SyncErrorKind.HOST_NOT_FOUND
                 is SocketTimeoutException -> return SyncErrorKind.TIMEOUT
                 is ConnectException, is NoRouteToHostException -> return SyncErrorKind.UNREACHABLE

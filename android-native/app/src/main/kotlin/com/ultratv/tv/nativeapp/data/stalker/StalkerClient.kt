@@ -85,14 +85,15 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
         .build()
 
     /**
-     * Petits appels de LECTURE (poignée de main, profil et `do_auth` déclenchés par eux, create_link, set_played, présence,
-     * programme court) : connexion 5 s, lecture 8 s, appel complet 10 s. Un portail muet ne bloque plus « Chargement » des
-     * minutes. Les listes du catalogue (synchro) gardent le client ci-dessus, sans délai global.
+     * Petits appels du LECTEUR (poignée de main, profil et `do_auth` déclenchés par eux, create_link au zapping, set_played,
+     * présence, programme court) : connexion 5 s, lecture 11 s, appel complet 12 s (le plafond de 12 s du lecteur borne
+     * l'attente). Un portail muet ne bloque plus « Chargement » des minutes. Enregistrements, téléchargements, différé et
+     * listes du catalogue gardent le client ci-dessus : un portail lent (9 s) reste lisible sans surveillance.
      */
     private val okShort: OkHttpClient = ok.newBuilder()
         .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
-        .readTimeout(8, java.util.concurrent.TimeUnit.SECONDS)
-        .callTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(11, java.util.concurrent.TimeUnit.SECONDS)
+        .callTimeout(12, java.util.concurrent.TimeUnit.SECONDS)
         .build()
 
     /** Marque de contexte : les requêtes faites dessous (session comprise) passent par [okShort]. */
@@ -210,8 +211,9 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
             com.ultratv.tv.nativeapp.UtvLog.w("StalkerProbe", "profile refused on every endpoint candidates=${candidates.size} conflict=$conflict")
             return finishOpen(a, it, known)
         }
-        // Le point d'entrée mémorisé ne répond plus : il sera sondé de nouveau la prochaine fois.
-        if (known != null) endpoints.forget(a.portal)
+        // Le point d'entrée mémorisé ne répond plus : il sera sondé de nouveau la prochaine fois. Pas sur un délai court
+        // dépassé (zap sur un portail lent) : le point d'entrée n'est pas en cause, seul le client long décide de l'oublier.
+        if (known != null && kotlinx.coroutines.currentCoroutineContext()[ShortCallsKey] == null) endpoints.forget(a.portal)
         throw last ?: denied()
     }
 
@@ -531,9 +533,9 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
      * Lien de lecture à durée de vie courte (`create_link`), demandé au moment de jouer. Le préfixe de lecteur
      * (« ffmpeg », « auto ») est retiré. Échec du portail : la commande elle-même si elle est déjà une adresse jouable.
      */
-    suspend fun createLink(p: ProviderEntity, type: String, cmd: String, series: Int? = null, chId: String? = null): String = withContext(ShortCalls) {
+    // Délais courts seulement au zapping : l'appelant du lecteur se place sous [ShortCalls] (voir StreamUrls.openForZap).
+    suspend fun createLink(p: ProviderEntity, type: String, cmd: String, series: Int? = null, chId: String? = null): String =
         createLinkShort(p, type, cmd, series, chId)
-    }
 
     private suspend fun createLinkShort(p: ProviderEntity, type: String, cmd: String, series: Int?, chId: String?): String {
         if (type != "series") return createLinkAs(p, if (type == "vod") "vod" else "itv", cmd, series, chId)

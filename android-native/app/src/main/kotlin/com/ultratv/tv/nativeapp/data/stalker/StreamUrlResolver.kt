@@ -105,6 +105,14 @@ object StreamUrls {
         return EntryPointAccessors.fromApplication(context.applicationContext, StreamUrlEntryPoint::class.java).streamUrlResolver().open(url)
     }
 
+    /**
+     * [open] pour le LECTEUR et l'aperçu (lancement, zap, reconnexion) : petits appels Stalker en délais courts (le plafond
+     * du lecteur borne l'attente). Enregistrements, téléchargements et différé appellent [open] / le résolveur directement :
+     * délais normaux, un portail lent reste lisible.
+     */
+    suspend fun openForZap(context: android.content.Context, url: String): StreamOpen =
+        kotlinx.coroutines.withContext(StalkerClient.ShortCalls) { open(context, url) }
+
 }
 
 /** En-têtes et User-Agent d'un flux ouvert, appliqués à une requête OkHttp (téléchargement, enregistrement, relais de différé). */

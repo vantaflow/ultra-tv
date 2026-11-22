@@ -723,7 +723,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             ctx = context, scope = scope, container = container,
             settings = { vm.resolved(latestPrefs) }, memory = vm.memory, network = vm.network,
             isLive = isLive, autoFrameRate = p.autoFrameRate, userAgent = "UltraTV/1.0 (Android TV)",
-            opener = { u -> com.ultratv.tv.nativeapp.data.stalker.StreamUrls.open(context, u) },
+            opener = { u -> com.ultratv.tv.nativeapp.data.stalker.StreamUrls.openForZap(context, u) },
             presence = { u -> com.ultratv.tv.nativeapp.data.stalker.StreamUrls.presence(context, u) },   // stalker:// : lien + en-têtes MAG à chaque ouverture
             textureView = com.ultratv.tv.nativeapp.ui.player.engine.useTextureView(p.videoSurface, touchUi),
             videoSurfacePref = { latestPrefs.videoSurface },
