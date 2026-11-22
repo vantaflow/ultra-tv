@@ -26,6 +26,13 @@ class EpgSearchPureTest {
         assertNull(EpgSearch.likePattern("  "))
         assertEquals("%100%", EpgSearch.likePattern("100%_"))   // ponctuation et jokers du texte saisi ignorés
     }
+    @Test fun arabe_graphiesDifferentes_memeProgramme() {
+        // #247 : hamza, ة/ه, ى/ي et voyelles pliés des deux côtés ; lettres ambiguës en joker dans le motif SQL.
+        assertEquals("%_خب_ر%", EpgSearch.likePattern("أخبار"))
+        val rows = listOf(row(1, "نشرة الأخبار", now - H, now + H), row(2, "مُسَلْسَل", now, now + H))
+        assertEquals(listOf("نشرة الأخبار"), EpgSearch.select(rows, "نشره الاخبار", now).map { it.title })
+        assertEquals(listOf("مُسَلْسَل"), EpgSearch.select(rows, "مسلسل", now).map { it.title })
+    }
     @Test fun select_accentsEtCasse() {
         val out = EpgSearch.select(listOf(row(1, "Les DESSINS animés", now - H, now + H), row(2, "Le Journal", now - H, now + H)), "dessins", now)
         assertEquals(listOf("Les DESSINS animés"), out.map { it.title })

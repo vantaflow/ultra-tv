@@ -1700,6 +1700,7 @@
     <string name="ds_search_best">أفضل نتيجة</string>
     <string name="ds_search_see_all">عرض الكل</string>
     <string name="ds_search_keyboard">لوحة المفاتيح</string>
+    <string name="ds_search_system_keyboard">لوحة مفاتيح النظام</string>
     <string name="ds_search_no_exact">لا يوجد عنوان يحتوي على «%1$s».</string>
     <string name="ds_search_did_you_mean">هل تقصد</string>
     <string name="ds_search_close_titles">عناوين مشابهة</string>

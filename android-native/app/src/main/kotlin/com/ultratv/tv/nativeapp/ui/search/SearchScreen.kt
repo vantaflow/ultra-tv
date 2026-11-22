@@ -33,12 +33,15 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.focus.onFocusChanged
+import com.ultratv.tv.nativeapp.ui.common.leaveOnVerticalDpad
 import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.key
@@ -276,9 +279,20 @@ class SearchViewModel @Inject constructor(
     }
 
     fun append(c: Char) { setQuery(query.value + c) }
+    /** Texte reçu d'un coup (télécommande, clavier) : toutes écritures (#247). */
+    fun appendText(s: String) { if (s.isNotEmpty()) setQuery(query.value + s) }
     fun backspace() { setQuery(query.value.dropLast(1)) }
     fun clear() { setQuery("") }
     fun clearHistory() { viewModelScope.launch { history.clear() } }
+
+    /** Disposition mémorisée de la grille TV (latin / arabe) ; le choix en cours prime sur l'enregistré (#247). */
+    private val _keyLayout = MutableStateFlow<String?>(null)
+    val keyLayout: StateFlow<String?> = combine(_keyLayout, history.keyboardLayout) { chosen, saved -> chosen ?: saved }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    fun setKeyLayout(l: KeyLayout) {
+        _keyLayout.value = l.name
+        viewModelScope.launch { runCatching { history.setKeyboardLayout(l.name) } }
+    }
 
     private fun build(h: Hits, sort: SearchSort): SearchView {
         val r = h.r
@@ -300,7 +314,6 @@ class SearchViewModel @Inject constructor(
     }
 }
 
-private const val KEYS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 private const val CHEVRON = "M9 6l6 6-6 6"
 
 /** « En cours » ou « Mar. 21:30 » (jour abrégé + heure, langue de l'application). */
@@ -396,23 +409,35 @@ private fun SearchScreenContent(
         SearchTouch(q, view, recent, searching, effTab, sort, voiceAvailable, { runCatching { voiceLauncher.launch(voiceIntent) } }, vm, playChannel, openMovie, openSeries)
         return
     }
-    // Clavier physique / télécommande à clavier : les caractères tapés vont dans la recherche, où que soit le focus.
+    // Saisie par le clavier du système (Gboard, appli télécommande du téléphone) : vrai champ de texte, toutes écritures (#247).
+    var systemInput by remember { androidx.compose.runtime.mutableStateOf(false) }
+    // Clavier physique / télécommande à clavier : les caractères tapés vont dans la recherche, où que soit le focus
+    // (sauf pendant la saisie système : le champ reçoit alors tout lui-même).
     val typing = Modifier.onPreviewKeyEvent { e ->
+        if (systemInput) return@onPreviewKeyEvent false
+        val native = e.nativeKeyEvent
+        // Texte injecté d'un coup (ACTION_MULTIPLE, KEYCODE_UNKNOWN) : arabe compris, jamais ignoré.
+        if (native.action == android.view.KeyEvent.ACTION_MULTIPLE && native.keyCode == android.view.KeyEvent.KEYCODE_UNKNOWN) {
+            @Suppress("DEPRECATION") val text = SearchKeyboard.accept(native.characters.orEmpty())
+            if (text.isNotEmpty()) vm.appendText(text)
+            return@onPreviewKeyEvent text.isNotEmpty()
+        }
         if (e.type != androidx.compose.ui.input.key.KeyEventType.KeyDown) return@onPreviewKeyEvent false
         val cp = e.utf16CodePoint
         when {
             e.key == androidx.compose.ui.input.key.Key.Backspace -> { vm.backspace(); true }
-            cp > 0 && (Character.isLetterOrDigit(cp) || cp == ' '.code) -> { vm.append(cp.toChar().lowercaseChar()); true }
+            cp > 0 && (Character.isLetterOrDigit(cp) || cp == ' '.code) -> { vm.appendText(SearchKeyboard.accept(String(Character.toChars(cp)))); true }
             else -> false
         }
     }
     // Onglet d'un type : le clavier se replie pour laisser la place à la grille ; Retour le rouvre (onglet « Tout »).
     val keyboardShown = q.isBlank() || effTab == SearchTab.ALL
     androidx.activity.compose.BackHandler(enabled = !keyboardShown) { vm.setTab(SearchTab.ALL) }
+    LaunchedEffect(keyboardShown) { if (!keyboardShown) systemInput = false }
 
     Row(Modifier.fillMaxSize().background(Ux.Bg).then(typing)) {
         if (keyboardShown) {
-            KeyboardColumn(q, view, voiceAvailable, { runCatching { voiceLauncher.launch(voiceIntent) } }, vm)
+            KeyboardColumn(q, view, voiceAvailable, { runCatching { voiceLauncher.launch(voiceIntent) } }, vm, systemInput) { systemInput = it }
             Box(Modifier.width(1.design).fillMaxHeight().background(Ux.Surface))
         }
         Box(Modifier.weight(1f).fillMaxHeight()) {
@@ -450,11 +475,27 @@ private fun Message(text: String) {
     }
 }
 
-/** Colonne de gauche : titre, champ, clavier 6 colonnes, touches utilitaires. */
+/** Colonne de gauche : titre, champ, clavier 6 colonnes (latin ou arabe), touches utilitaires. */
 @Composable
-private fun KeyboardColumn(q: String, view: SearchView, voiceAvailable: Boolean, onVoice: () -> Unit, vm: SearchViewModel) {
+private fun KeyboardColumn(
+    q: String, view: SearchView, voiceAvailable: Boolean, onVoice: () -> Unit, vm: SearchViewModel,
+    systemInput: Boolean, onSystemInput: (Boolean) -> Unit,
+) {
     val S = LocalStrings.current
     val D = LocalDs.current
+    val stored by vm.keyLayout.collectAsState()
+    val layout = SearchKeyboard.initial(stored, D.lang == com.ultratv.tv.nativeapp.i18n.AppLang.Arabic)
+    val systemKey = remember { androidx.compose.ui.focus.FocusRequester() }
+    // Fin de la saisie système par Retour ou « Rechercher » : le focus revient sur sa touche (jamais perdu hors de la
+    // grille). Focus parti ailleurs (Haut / Bas) : il y reste.
+    var restore by remember { androidx.compose.runtime.mutableStateOf(false) }
+    val close = { back: Boolean -> if (back) restore = true; onSystemInput(false) }
+    LaunchedEffect(systemInput) {
+        if (systemInput) restore = false
+        else if (restore) { restore = false; runCatching { systemKey.requestFocus() } }
+    }
+    // Retour pendant la saisie système : le clavier du système se ferme d'abord (il garde la touche), puis on revient à la grille.
+    androidx.activity.compose.BackHandler(enabled = systemInput) { close(true) }
     Column(
         Modifier.width(600.design).fillMaxHeight().padding(start = 72.design, end = 48.design, top = 54.design, bottom = 40.design),
         verticalArrangement = Arrangement.spacedBy(24.design),
@@ -465,29 +506,81 @@ private fun KeyboardColumn(q: String, view: SearchView, voiceAvailable: Boolean,
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.design),
         ) {
             DIcon(Icons.Search, 30.design, Ux.Text3, strokeWidth = 2.2f)
-            Text(
+            if (systemInput) SystemSearchField(q, S.searchPlaceholder, { vm.setQuery(it) }, close, Modifier.weight(1f))
+            else Text(
                 q.ifEmpty { S.searchPlaceholder }, color = if (q.isEmpty()) Ux.Muted else Ux.Text,
                 fontFamily = Manrope, fontWeight = if (q.isEmpty()) FontWeight.SemiBold else FontWeight.Bold, fontSize = if (q.isEmpty()) 26.spx else 32.spx,
                 maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+                style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content),
             )
             if (q.isNotBlank() && view.total > 0) Text("${view.total}", color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 20.spx, maxLines = 1)
         }
-        Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
-            KEYS.toList().chunked(6).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(10.design)) {
-                    row.forEach { ch -> Key(ch.toString(), Modifier.weight(1f), onClick = { vm.append(ch.lowercaseChar()) }) }
-                    repeat(6 - row.size) { Spacer(Modifier.weight(1f)) }
+        // Grille arabe disposée de droite à gauche, quelle que soit la langue de l'appli.
+        val dir = if (layout == KeyLayout.ARABIC) androidx.compose.ui.unit.LayoutDirection.Rtl else androidx.compose.ui.platform.LocalLayoutDirection.current
+        androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides dir) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
+                SearchKeyboard.rows(layout).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.design)) {
+                        row.forEach { ch -> Key(ch.toString(), Modifier.weight(1f), onClick = { vm.append(SearchKeyboard.typed(ch)) }) }
+                        repeat(SearchKeyboard.COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
                 }
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.design)) {
-            if (voiceAvailable) Key(D.keyVoice, Modifier.weight(1f), small = true, onClick = onVoice)
-            Key(D.keySpace, Modifier.weight(1f), small = true, onClick = { vm.append(' ') })
-            Key(D.keyDelete, Modifier.weight(1f), small = true, onClick = { vm.backspace() })
-            Key(S.searchClear, Modifier.weight(1f), small = true, onClick = { vm.clear() })
+        Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.design)) {
+                if (voiceAvailable) Key(D.keyVoice, Modifier.weight(1f), small = true, onClick = onVoice)
+                Key(D.keySpace, Modifier.weight(1f), small = true, onClick = { vm.append(' ') })
+                Key(D.keyDelete, Modifier.weight(1f), small = true, onClick = { vm.backspace() })
+                Key(S.searchClear, Modifier.weight(1f), small = true, onClick = { vm.clear() })
+            }
+            // Bascule latin ⇄ arabe (mémorisée) et clavier du système (Gboard, saisie depuis l'appli télécommande du téléphone).
+            Row(horizontalArrangement = Arrangement.spacedBy(10.design)) {
+                Key(SearchKeyboard.toggleLabel(layout), Modifier.weight(1f), small = true, onClick = { vm.setKeyLayout(SearchKeyboard.toggle(layout)) })
+                Key(D.searchSystemKeyboard, Modifier.weight(3f).focusRequester(systemKey), small = true, onClick = { onSystemInput(true) })
+            }
         }
         Text(D.searchInputHint, color = Ux.Text3, fontFamily = Manrope, fontSize = 19.spx, lineHeight = 28.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
+}
+
+/**
+ * Champ de saisie du clavier du système : prend le focus et ouvre le clavier (Gboard…) dès qu'il apparaît ; reçoit tout
+ * texte Unicode, y compris celui envoyé par l'appli télécommande du téléphone (connexion de saisie active).
+ * « Rechercher » du clavier, ou le focus qui le quitte (Haut / Bas), le referme.
+ */
+@Composable
+private fun SystemSearchField(q: String, hint: String, onChange: (String) -> Unit, onClose: (restoreFocus: Boolean) -> Unit, modifier: Modifier) {
+    val requester = remember { androidx.compose.ui.focus.FocusRequester() }
+    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    var value by remember { androidx.compose.runtime.mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(q, androidx.compose.ui.text.TextRange(q.length))) }
+    // Saisie modifiée ailleurs (voix, effacer) : reprise, curseur à la fin.
+    LaunchedEffect(q) { if (value.text != q) value = androidx.compose.ui.text.input.TextFieldValue(q, androidx.compose.ui.text.TextRange(q.length)) }
+    // Le champ reçoit d'abord un « pas de focus » (avant requestFocus) : ne le refermer qu'après l'avoir eu.
+    var hadFocus by remember { androidx.compose.runtime.mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        for (i in 0 until 10) { if (runCatching { requester.requestFocus() }.isSuccess) break; delay(50) }
+        keyboard?.show()
+    }
+    val style = androidx.compose.ui.text.TextStyle(
+        color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 32.spx,
+        textDirection = androidx.compose.ui.text.style.TextDirection.Content,
+    )
+    androidx.compose.foundation.text.BasicTextField(
+        value = value,
+        onValueChange = { v -> value = v; if (v.text != q) onChange(v.text) },
+        singleLine = true, textStyle = style, cursorBrush = androidx.compose.ui.graphics.SolidColor(Ux.Accent),
+        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
+        keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { keyboard?.hide(); onClose(true) }, onDone = { keyboard?.hide(); onClose(true) }),
+        modifier = modifier.focusRequester(requester).leaveOnVerticalDpad()
+            .onFocusChanged { if (it.isFocused) hadFocus = true else if (hadFocus) onClose(false) },
+        decorationBox = { inner ->
+            Box(contentAlignment = Alignment.CenterStart) {
+                if (value.text.isEmpty()) Text(hint, color = Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 26.spx, maxLines = 1)
+                inner()
+            }
+        },
+    )
 }
 
 @Composable

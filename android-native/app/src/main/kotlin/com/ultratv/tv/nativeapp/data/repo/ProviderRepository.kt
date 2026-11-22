@@ -362,11 +362,13 @@ class ProviderRepository @Inject constructor(
         val resolver = com.ultratv.tv.nativeapp.data.xmltv.ExtraEpg.Resolver(targets)
         var total = 0
         val cleared = HashSet<Long>()
-        xmltv.withExternal(url, resolver::resolve, onBytes = { b, t -> report(b, t, null) }) { seq ->
+        val plan = archivePlan(p.id)
+        xmltv.withExternal(url, resolver::resolve, window = plan.window, onBytes = { b, t -> report(b, t, null) }) { seq ->
             var run = 0
             com.ultratv.tv.nativeapp.data.sync.SyncThread.background {
-                seq.forEachBatchAhead(INSERT_BATCH) { batch ->
-                    writeEpgBatch(batch, cleared)
+                seq.forEachBatchAhead(INSERT_BATCH) { raw ->
+                    val batch = plan.apply(raw)
+                    if (batch.isNotEmpty()) writeEpgBatch(batch, cleared)
                     run += batch.size
                     total = maxOf(total, run)
                     report(null, null, total)
@@ -411,16 +413,17 @@ class ProviderRepository @Inject constructor(
         if (map.isEmpty()) return 0
         var total = 0
         val cleared = HashSet<Long>()
-        xmltv.withProgrammes(p, map, onBytes = { b, t -> report(b, t, null) }) { seq ->
+        val plan = archivePlan(p.id)
+        xmltv.withProgrammes(p, map, window = plan.window, onBytes = { b, t -> report(b, t, null) }) { seq ->
             // Reprise après une erreur : le flux repart du début ; les lignes déjà écrites sont remplacées (index unique).
             var run = 0
             com.ultratv.tv.nativeapp.data.sync.SyncThread.background {
                 seq.forEachBatchAhead(INSERT_BATCH) { raw ->
-                    val batch = if (siblings.isEmpty() && shifted.isEmpty()) raw else raw.flatMap { e ->
+                    val batch = plan.apply(if (siblings.isEmpty() && shifted.isEmpty()) raw else raw.flatMap { e ->
                         listOf(e) + siblings[e.channelId].orEmpty().map { id -> e.copy(id = 0, channelId = id) } +
                             shifted[e.channelId].orEmpty().map { (id, h) -> e.copy(id = 0, channelId = id, startMs = e.startMs + h * 3_600_000L, endMs = e.endMs + h * 3_600_000L) }
-                    }
-                    writeEpgBatch(batch, cleared)
+                    })
+                    if (batch.isNotEmpty()) writeEpgBatch(batch, cleared)
                     run += batch.size
                     total = maxOf(total, run)
                     report(null, null, total)
@@ -442,14 +445,16 @@ class ProviderRepository @Inject constructor(
         val cleared = HashSet<Long>()
         var firstError: Throwable? = null
         var okCount = 0
+        val plan = archivePlan(p.id)
         for (url in limits.epgUrls(p.id)) {
             try {
                 var base = total
-                xmltv.withExternal(url, resolve, onBytes = { b, t -> report(b, t, null) }) { seq ->
+                xmltv.withExternal(url, resolve, window = plan.window, onBytes = { b, t -> report(b, t, null) }) { seq ->
                     var run = 0
                     com.ultratv.tv.nativeapp.data.sync.SyncThread.background {
-                        seq.forEachBatchAhead(INSERT_BATCH) { batch ->
-                            writeEpgBatch(batch, cleared)
+                        seq.forEachBatchAhead(INSERT_BATCH) { raw ->
+                            val batch = plan.apply(raw)
+                            if (batch.isNotEmpty()) writeEpgBatch(batch, cleared)
                             run += batch.size
                             total = maxOf(total, base + run)
                             report(null, null, total)
@@ -1436,9 +1441,20 @@ class ProviderRepository @Inject constructor(
         }
     }
 
-    /** Programmes terminés depuis plus de 3 h supprimés (le guide ne retenait jamais rien : la base grossissait). */
+    /**
+     * Programmes terminés depuis plus de 3 h supprimés (le guide ne retenait jamais rien : la base grossissait), sauf ceux
+     * des chaînes avec archive, dans leur archive (rattrapage des jours passés, #248).
+     */
     private suspend fun purgePastEpg() {
-        runCatching { epgDao.deletePast(System.currentTimeMillis() - 3 * 3_600_000L) }
+        val now = System.currentTimeMillis()
+        runCatching { epgDao.deletePast(now - EpgRetention.PAST_KEEP_MS, now) }
+    }
+
+    /** Plan d'import du guide : fenêtre normale, élargie au passé pour les seules chaînes avec archive (#248). */
+    private suspend fun archivePlan(pid: Long): EpgRetention.Plan {
+        val now = System.currentTimeMillis()
+        val days = runCatching { channelDao.archiveDays(pid) }.getOrDefault(emptyList()).associate { it.id to it.catchupDays }
+        return EpgRetention.Plan(now, XmltvParser.defaultWindow(now), days)
     }
 
     /** Langues détectées dans les catégories du serveur (3 requêtes légères, aucun contenu téléchargé). */

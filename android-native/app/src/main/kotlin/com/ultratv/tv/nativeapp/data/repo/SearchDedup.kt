@@ -18,9 +18,9 @@ object SearchDedup {
     private val combining = Regex("\\p{Mn}+")
     private val punctuation = Regex("[^\\p{L}\\p{N}]+")
 
-    /** Minuscules, sans accents, ponctuation → espaces. */
+    /** Minuscules, sans accents, ponctuation → espaces ; arabe plié comme la recherche ([ArabicFold]). */
     fun fold(s: String): String =
-        Normalizer.normalize(s, Normalizer.Form.NFD).replace(combining, "").lowercase(Locale.ROOT)
+        Normalizer.normalize(ArabicFold.fold(s), Normalizer.Form.NFD).replace(combining, "").lowercase(Locale.ROOT)
             .replace(punctuation, " ").trim()
 
     /** Titre canonique + année (nulle si inconnue). */

@@ -1663,6 +1663,7 @@
     <string name="ds_search_best">TOP RESULT</string>
     <string name="ds_search_see_all">See all</string>
     <string name="ds_search_keyboard">Keyboard</string>
+    <string name="ds_search_system_keyboard">System keyboard</string>
     <string name="ds_search_no_exact">No title contains “%1$s”.</string>
     <string name="ds_search_did_you_mean">Did you mean</string>
     <string name="ds_search_close_titles">CLOSE MATCHES</string>

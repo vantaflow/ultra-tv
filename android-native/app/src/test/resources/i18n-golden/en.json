@@ -1787,6 +1787,7 @@
   "DesignStrings.getSearchBest()": "TOP RESULT",
   "DesignStrings.getSearchSeeAll()": "See all",
   "DesignStrings.getSearchKeyboard()": "Keyboard",
+  "DesignStrings.getSearchSystemKeyboard()": "System keyboard",
   "DesignStrings.getSearchDidYouMean()": "Did you mean",
   "DesignStrings.getSearchCloseTitles()": "CLOSE MATCHES",
   "DesignStrings.getSearchRecentlyAdded()": "RECENTLY ADDED",

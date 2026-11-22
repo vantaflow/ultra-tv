@@ -501,7 +501,25 @@ interface ChannelDao {
         AND c.providerId = :pid AND c.junk = 0 AND c.isSeparator = 0 AND ${Hid.C} LIMIT :limit
     """)
     suspend fun searchFts(pid: Long, match: String, limit: Int): List<ChannelEntity>
+
+    /** Recherche en arabe (#247) : candidats par motif LIKE sur le nom brut (voir ArabicFold), filtrés ensuite en mémoire. */
+    @Query("""
+        SELECT c.* FROM channel c WHERE c.providerId = :pid AND c.junk = 0 AND c.isSeparator = 0 AND ${Hid.C}
+        AND c.name LIKE :pattern ESCAPE '\' LIMIT :limit
+    """)
+    suspend fun nameLike(pid: Long, pattern: String, limit: Int): List<ChannelEntity>
+
+    /** Plus longue archive (jours de rattrapage) des chaînes de la source ; 0 si aucune (#248). */
+    @Query("SELECT COALESCE(MAX(catchupDays), 0) FROM channel WHERE providerId = :pid")
+    suspend fun maxArchiveDays(pid: Long): Int
+
+    /** Chaînes avec archive et leur durée (jours) : programmes passés gardés pour elles seules (#248). */
+    @Query("SELECT id, catchupDays FROM channel WHERE providerId = :pid AND catchupDays > 0")
+    suspend fun archiveDays(pid: Long): List<ChannelArchive>
 }
+
+/** Durée d'archive d'une chaîne (jours de rattrapage). */
+data class ChannelArchive(val id: Long, val catchupDays: Int)
 
 @Dao
 interface MovieDao {
@@ -666,6 +684,10 @@ interface MovieDao {
     @Query("SELECT * FROM movie WHERE providerId = :pid AND title LIKE :prefix ESCAPE '\\' LIMIT :limit")
     suspend fun titlePrefix(pid: Long, prefix: String, limit: Int): List<MovieEntity>
 
+    /** Recherche en arabe (#247) : candidats par motif LIKE sur le nom brut (voir ArabicFold), filtrés ensuite en mémoire. */
+    @Query("SELECT * FROM movie WHERE providerId = :pid AND name LIKE :pattern ESCAPE '\\' LIMIT :limit")
+    suspend fun nameLike(pid: Long, pattern: String, limit: Int): List<MovieEntity>
+
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(items: List<MovieEntity>)
@@ -826,6 +848,10 @@ interface SeriesDao {
      */
     @Query("SELECT * FROM series WHERE providerId = :pid AND title LIKE :prefix ESCAPE '\\' LIMIT :limit")
     suspend fun titlePrefix(pid: Long, prefix: String, limit: Int): List<SeriesEntity>
+
+    /** Recherche en arabe (#247) : candidats par motif LIKE sur le nom brut (voir ArabicFold), filtrés ensuite en mémoire. */
+    @Query("SELECT * FROM series WHERE providerId = :pid AND name LIKE :pattern ESCAPE '\\' LIMIT :limit")
+    suspend fun nameLike(pid: Long, pattern: String, limit: Int): List<SeriesEntity>
 
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -1096,9 +1122,15 @@ interface EpgDao {
     @Query("SELECT e.endMs FROM epg e WHERE e.channelId IN (SELECT id FROM channel WHERE providerId = :pid) ORDER BY e.endMs DESC LIMIT 1")
     suspend fun lastEndForProvider(pid: Long): Long?
 
-    /** Programmes terminés avant [cutoffMs] : le guide ne grossit plus sans fin. */
-    @Query("DELETE FROM epg WHERE endMs < :cutoffMs")
-    suspend fun deletePast(cutoffMs: Long): Int
+    /**
+     * Programmes terminés avant [cutoffMs] : le guide ne grossit plus sans fin. Sauf ceux d'une chaîne avec archive encore
+     * dans son archive (plafond 7 jours), lisibles en rattrapage depuis les jours passés du guide (#248).
+     */
+    @Query("""
+        DELETE FROM epg WHERE endMs < :cutoffMs AND endMs < :nowMs - ${com.ultratv.tv.nativeapp.data.repo.EpgRetention.DAY_MS} *
+        COALESCE((SELECT MAX(0, MIN(c.catchupDays, ${com.ultratv.tv.nativeapp.data.repo.EpgRetention.MAX_ARCHIVE_DAYS})) FROM channel c WHERE c.id = epg.channelId), 0)
+    """)
+    suspend fun deletePast(cutoffMs: Long, nowMs: Long): Int
 
     @Query("SELECT * FROM epg WHERE channelId IN (:channelIds) AND endMs >= :nowMs AND startMs <= :windowEndMs ORDER BY startMs")
     suspend fun rangeForChannels(channelIds: List<Long>, nowMs: Long, windowEndMs: Long): List<EpgEntity>
