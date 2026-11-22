@@ -948,5 +948,7 @@
   "gate.needCode": "Define primero un código parental (Ajustes › Perfiles).",
   "gate.lockHint": "Candado: una categoría bloqueada no se abre en ningún sitio (listas, guía, búsqueda, fichas, reanudar) sin el código parental y nunca aparece en Inicio.",
   "set.appearance": "Apariencia",
-  "set.appearanceD": "Tema y color, que puedes cambiar en cualquier momento en Ajustes › Pantalla."
+  "set.appearanceD": "Tema y color, que puedes cambiar en cualquier momento en Ajustes › Pantalla.",
+  "set.uiScale": "Tamaño de la interfaz",
+  "set.uiScaleD": "Texto y elementos, del 90 % al 150 %; el diseño se adapta."
 }

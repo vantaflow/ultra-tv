@@ -3,7 +3,7 @@
 // Aucune API Node n'est exposee ; chaque appel passe par IPC et le main valide
 // l'expediteur (origine app://ultratv ou serveur de dev).
 
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer, webFrame } = require("electron");
 
 // Lecture synchrone UNE fois au chargement : le renderer a besoin de proxyBase
 // des le premier rendu.
@@ -30,6 +30,8 @@ contextBridge.exposeInMainWorld("ultratv", {
   encrypt: (plain) => ipcRenderer.invoke("ut:encrypt", plain),
   decrypt: (cipher) => ipcRenderer.invoke("ut:decrypt", cipher),
   toggleFullscreen: () => ipcRenderer.invoke("ut:fullscreen:toggle"),
+  // Taille de l'interface (Réglages › Affichage) : zoom de la page, borné à 50–200 %.
+  setZoomFactor: (factor) => { const f = Number(factor); if (Number.isFinite(f) && f >= 0.5 && f <= 2) webFrame.setZoomFactor(f); },
   setFullscreen: (value) => ipcRenderer.invoke("ut:fullscreen:set", !!value),
   isFullscreen: () => ipcRenderer.invoke("ut:fullscreen:get"),
   onFullscreenChange: (cb) => subscribe("ut:fullscreen:changed", cb),

@@ -4,6 +4,7 @@ import { detectLang, LANGS, type Lang } from "@/i18n/lang";
 import type { DnsSettings } from "@/net/dns";
 import { clockText, parseTimeFormat, type TimeFormat } from "@/lib/clock";
 import { parseStartScreen, type StartScreen } from "@/lib/startScreen";
+import { DEFAULT_UI_SCALE, parseUiScale } from "@/lib/uiScale";
 import { DEFAULT_ACCENT, parseAccent, parseTheme, themeAttr, type AccentId, type ThemeId } from "@/lib/themes";
 
 export type Theme = ThemeId;
@@ -79,6 +80,8 @@ export interface Prefs {
   startScreen: StartScreen;
   /** Dernière rubrique ouverte, pour « Dernier écran ». */
   lastScreen: string;
+  /** Taille de l'interface (zoom de la fenêtre, application de bureau) : 0,9 à 1,5 ; local à l'appareil. */
+  uiScale: number;
 }
 
 export const PROFILE_COLORS = ["#D91E2B", "#0EA5E9", "#F59E0B", "#7C3AED", "#10B981"];
@@ -90,7 +93,7 @@ const defaults = (): Prefs => ({
   autoPreview: true, autoplayNext: true, preferMp4: true, liveFormat: "m3u8", syncOn: "launch",
   volume: 1, muted: false, fit: "contain", subsSize: "normal", subsStyle: "outline", animations: "auto", liveCat: {}, channelLogos: true, guideCol: "normal",
   dns: { mode: "system", dohPreset: "cloudflare", dohUrl: "", primary: "", secondary: "" },
-  sportSection: false, sportLeagues: {}, sportNoSpoiler: {}, optimizeImages: true, railCollapsed: false, startScreen: "home", lastScreen: "/",
+  sportSection: false, sportLeagues: {}, sportNoSpoiler: {}, optimizeImages: true, railCollapsed: false, startScreen: "home", lastScreen: "/", uiScale: DEFAULT_UI_SCALE,
 });
 
 function load(): Prefs {
@@ -107,6 +110,7 @@ function load(): Prefs {
       v.theme = parseTheme(v.theme);
       v.timeFormat = parseTimeFormat(v.timeFormat);
       v.startScreen = parseStartScreen(v.startScreen);
+      v.uiScale = parseUiScale(v.uiScale);
       return v;
     }
   } catch { /* stockage indisponible */ }

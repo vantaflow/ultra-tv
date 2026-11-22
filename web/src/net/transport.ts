@@ -30,6 +30,8 @@ export interface UltraTvBridge {
   encrypt(plain: string): Promise<string>;
   decrypt(cipher: string): Promise<string>;
   toggleFullscreen?(): Promise<void> | void;
+  /** Zoom de toute la fenêtre (webFrame) : taille de l'interface, les mises en page s'adaptent comme au zoom du navigateur. */
+  setZoomFactor?(factor: number): void;
   setFullscreen?(on: boolean): Promise<void> | void;
   isFullscreen?(): Promise<boolean> | boolean;
   onFullscreenChange?(cb: (on: boolean) => void): (() => void) | void;

@@ -50,7 +50,9 @@ import { rememberablePath, startPath } from "@/lib/startScreen";
 setOpenGate(makeOpenGate());
 
 function Effects() {
-  const { theme, accent, lang, syncOn, animations, channelLogos, guideCol } = usePrefs();
+  const { theme, accent, lang, syncOn, animations, channelLogos, guideCol, uiScale } = usePrefs();
+  // Taille de l'interface : zoom de la fenêtre (application de bureau seulement ; ailleurs, le zoom du navigateur).
+  useEffect(() => { bridge()?.setZoomFactor?.(uiScale); }, [uiScale]);
   const nav = useNavigate();
   const loc = useLocation();
   const { ready, list } = useSources();

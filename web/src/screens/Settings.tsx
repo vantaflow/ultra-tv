@@ -45,6 +45,8 @@ import { isMediaType } from "@/net/mediaServer";
 import { TraktSettings } from "@/trakt/TraktUi";
 import { DnsSettings } from "./DnsSettings";
 import { ThemePicker } from "@/ui/ThemePicker";
+import { UI_SCALES, parseUiScale, uiScaleLabel } from "@/lib/uiScale";
+import { localeOf } from "@/i18n/lang";
 import { ParentalCodeRow, ScreenTimeButton } from "./ScreenTimeEditor";
 
 type Section = "sources" | "cloud" | "display" | "playback" | "sync" | "categories" | "language" | "profiles" | "about";
@@ -297,6 +299,11 @@ function DisplayPane() {
       <h2>{t("set.display")}</h2>
       {/* Thème et couleur d'accent en tête : les testeurs ne les trouvaient pas au milieu de la rubrique. */}
       <ThemePicker />
+      {bridge()?.setZoomFactor && (
+        <Pref label={t("set.uiScale")} desc={t("set.uiScaleD")}>
+          <Seg<string> label={t("set.uiScale")} value={String(p.uiScale)} onChange={(v) => p.set({ uiScale: parseUiScale(v) })} options={UI_SCALES.map((s) => ({ v: String(s), label: uiScaleLabel(s, localeOf(p.lang)) }))} />
+        </Pref>
+      )}
       <Pref label={t("set.animations")}>
         <Seg<"auto" | "off" | "subtle" | "normal"> label={t("set.animations")} value={p.animations} onChange={(animations) => p.set({ animations })} options={[{ v: "auto", label: t("set.themeAuto") }, { v: "off", label: t("set.animOff") }, { v: "subtle", label: t("set.animSubtle") }, { v: "normal", label: t("set.animNormal") }]} />
       </Pref>
