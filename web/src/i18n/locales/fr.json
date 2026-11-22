@@ -950,5 +950,19 @@
   "set.appearance": "Apparence",
   "set.appearanceD": "Thème et couleur, modifiables à tout moment dans Réglages › Affichage.",
   "set.uiScale": "Taille de l'interface",
-  "set.uiScaleD": "Texte et éléments, de 90 % à 150 % ; la mise en page s'adapte."
+  "set.uiScaleD": "Texte et éléments, de 90 % à 150 % ; la mise en page s'adapte.",
+  "grp.groups": "Mes groupes",
+  "grp.new": "Nouveau groupe",
+  "grp.newEllipsis": "Nouveau groupe…",
+  "grp.name": "Nom du groupe",
+  "grp.rename": "Renommer le groupe",
+  "grp.delete": "Supprimer le groupe",
+  "grp.deleteSure": "Supprimer le groupe « {name} » ? Les chaînes restent dans leurs catégories.",
+  "grp.addTo": "Ajouter à un groupe",
+  "grp.removeFrom": "Retirer de « {name} »",
+  "grp.added": "Ajoutée à « {name} »",
+  "grp.removed": "Retirée de « {name} »",
+  "grp.empty": "Ce groupe est vide : clic droit sur une chaîne (ou bouton « Groupes ») pour l'y ajouter.",
+  "grp.button": "Groupes",
+  "grp.menu": "Actions sur la chaîne"
 }

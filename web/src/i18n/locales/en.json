@@ -939,5 +939,19 @@
   "set.appearance": "Appearance",
   "set.appearanceD": "Theme and colour, which you can change at any time in Settings › Display.",
   "set.uiScale": "Interface size",
-  "set.uiScaleD": "Text and elements, from 90% to 150%; the layout adapts."
+  "set.uiScaleD": "Text and elements, from 90% to 150%; the layout adapts.",
+  "grp.groups": "My groups",
+  "grp.new": "New group",
+  "grp.newEllipsis": "New group…",
+  "grp.name": "Group name",
+  "grp.rename": "Rename group",
+  "grp.delete": "Delete group",
+  "grp.deleteSure": "Delete the group “{name}”? The channels stay in their categories.",
+  "grp.addTo": "Add to a group",
+  "grp.removeFrom": "Remove from “{name}”",
+  "grp.added": "Added to “{name}”",
+  "grp.removed": "Removed from “{name}”",
+  "grp.empty": "This group is empty: right-click a channel (or use “Groups”) to add it.",
+  "grp.button": "Groups",
+  "grp.menu": "Channel actions"
 }

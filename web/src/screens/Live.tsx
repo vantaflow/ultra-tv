@@ -5,7 +5,10 @@ import { db } from "@/db/db";
 import { getOrder, resetOrder, saveOrder } from "@/db/channelOrder";
 import { channelsCol, notInHidden, searchByWords, toggleFavorite } from "@/db/queries";
 import type { ChannelRow, Source } from "@/db/types";
-import { useBlockedCats, useCatOpener, useCategories, useCodeCats, useFavorites } from "@/hooks/data";
+import { useBlockedCats, useCatOpener, useCategories, useChannelGroups, useCodeCats, useFavorites } from "@/hooks/data";
+import { addGroup, deleteChannelGroup, groupChannels, renameChannelGroup, removeFromChannelGroup } from "@/db/channelGroups";
+import { groupIdOf, groupScope, isGroupScope } from "@/lib/channelGroups";
+import { ChannelMenu, GroupNameModal, type MenuAt } from "@/ui/ChannelGroupUi";
 import { useNowNext } from "@/hooks/epg";
 import { useElementSize, useDebounced } from "@/hooks/misc";
 import { usePagedQuery } from "@/hooks/paged";
@@ -36,11 +39,11 @@ export function Live() {
   return <LiveInner source={source} />;
 }
 
-function ChanRow({ c, num, source, sel, playing, onPick, extra, extraCls = "", onMenu }: { c: ChannelRow; num: number; source: Source; sel: boolean; playing: boolean; onPick: () => void; extra?: object; extraCls?: string; onMenu?: () => void }) {
+function ChanRow({ c, num, source, sel, playing, onPick, extra, extraCls = "", onMenu }: { c: ChannelRow; num: number; source: Source; sel: boolean; playing: boolean; onPick: () => void; extra?: object; extraCls?: string; onMenu?: (x: number, y: number) => void }) {
   const nn = useNowNext(source, c.epg, c.streamId, false);
   if (c.sep) return <div className="sep-row" role="presentation"><span className="bar" /><span className="ellipsis">{c.display}</span><span className="rule" /></div>;
   return (
-    <button className={`chan-row${sel ? " sel" : ""}${playing ? " playing" : ""}${extraCls}`} onClick={onPick} onDoubleClick={() => usePlayer.getState().setMode("full")} onContextMenu={onMenu ? (e) => { e.preventDefault(); onMenu(); } : undefined} role="option" aria-selected={sel} {...extra}>
+    <button className={`chan-row${sel ? " sel" : ""}${playing ? " playing" : ""}${extraCls}`} onClick={onPick} onDoubleClick={() => usePlayer.getState().setMode("full")} onContextMenu={onMenu ? (e) => { e.preventDefault(); onMenu(e.clientX, e.clientY); } : undefined} role="option" aria-selected={sel} {...extra}>
       <span className="num mono">{num}</span>
       <span className="logo"><Img src={c.logo} contain /></span>
       <span className="grow" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -66,7 +69,10 @@ function LiveInner({ source }: { source: Source }) {
   const cv = useChannelView(source);
   // Catégorie mémorisée masquée par le profil courant : retour à « Tout ».
   const rawCat = prefs.liveCat[String(source.id)] ?? "";
-  const cat = hid.has(rawCat) ? "" : rawCat;
+  // Groupes personnels du profil (Favoris, puis les groupes, puis « Tout ») ; un groupe supprimé ramène à « Tout ».
+  const groups = useChannelGroups(source);
+  const group = isGroupScope(rawCat) ? groups.find((g) => g.id === groupIdOf(rawCat)) ?? null : null;
+  const cat = hid.has(rawCat) || (isGroupScope(rawCat) && !group) ? "" : rawCat;
   // « Tout » : sans les chaînes des catégories masquées par le profil courant.
   const colOf = useCallback((c: string | null) => {
     const col = channelsCol(source.cid, c);
@@ -84,7 +90,7 @@ function LiveInner({ source }: { source: Source }) {
   // Ordre personnel (déplacement manuel) : une catégorie du fournisseur ou les favoris ; pas la liste « Tout ».
   const profile = prefs.profileId;
   const sid = source.id!;
-  const scope = cat === FAV ? FAVORITES_SCOPE : cat !== "" ? cat : null;
+  const scope = cat === FAV ? FAVORITES_SCOPE : cat !== "" && !isGroupScope(cat) ? cat : null;
   const order = useLiveQuery(async () => (scope ? await getOrder(profile, sid, scope) : null), [scope, profile, sid]);
   const [mv, setMv] = useState<(MoveSession & { rows: Map<number, ChannelRow>; natural: number[] }) | null>(null);
   const filtering = dq.trim().length > 0;
@@ -96,10 +102,15 @@ function LiveInner({ source }: { source: Source }) {
   }, [scope, favs, source.cid, cat, colOf, cv]);
 
   // Mode tableau (favoris, filtre texte, liste réordonnée) ou mode paginé (catalogue entier / catégorie).
-  const arrayMode = cat === FAV || filtering || (!!scope && !!order) || !!mv;
+  const arrayMode = cat === FAV || !!group || filtering || (!!scope && !!order) || !!mv;
   const arr = useLiveQuery(async () => {
     if (!arrayMode) return [] as ChannelRow[];
     const nq = normText(dq);
+    // Groupe personnel : ses chaînes dans l'ordre du groupe (sans celles des catégories écartées ni les chaînes masquées).
+    if (group) {
+      const rows = (await groupChannels(profile, sid, source.cid, cat)).filter((c) => !hid.has(c.catExt) && (!cv.keep || cv.keep(c)));
+      return nq ? rows.filter((r) => r.norm.includes(nq)) : rows;
+    }
     if (scope && (cat === FAV || order)) {
       const merged = mergeOrder(await loadNatural(), order, (c) => c.streamId);
       return nq ? merged.filter((r) => r.norm.includes(nq)) : merged;
@@ -107,7 +118,7 @@ function LiveInner({ source }: { source: Source }) {
     // Toutes les chaînes : index par mot (au plus 3000, remis dans l'ordre du fournisseur) ; une catégorie : balayage borné par l'index.
     if (nq && !cat) return (await searchByWords(db.channels, source.cid, nq, 3000, (c) => !c.sep && (!nh || nh(c)) && (!cv.keep || cv.keep(c)))).sort((a, b) => a.ord - b.ord);
     return colOf(cat || null).filter((c) => !c.sep && c.norm.includes(nq)).limit(3000).toArray();
-  }, [arrayMode, cat, dq, source.cid, order, scope, loadNatural, colOf, nh, cv]);
+  }, [arrayMode, cat, dq, source.cid, order, scope, loadNatural, colOf, nh, cv, group, hid, profile, sid]);
   const view = useMemo(() => (mv ? mv.ids.map((i) => mv.rows.get(i)).filter((r): r is ChannelRow => !!r) : arr ?? []), [mv, arr]);
   const paged = usePagedQuery<ChannelRow>(() => (arrayMode ? null : colOf(cat || null)), [source.cid, source.lastSyncAt, cat, arrayMode, colOf], 120);
   const rows: Rows<ChannelRow> = useMemo(() => (arrayMode ? arrayRows(view) : paged), [arrayMode, view, paged]);
@@ -207,12 +218,31 @@ function LiveInner({ source }: { source: Source }) {
     else if (e.key === "Enter" && selected) { e.preventDefault(); if (playing === selected.streamId) usePlayer.getState().setMode("full"); else play(selected); }
   };
 
-  const catLabel = cat === FAV ? t("common.favorites") : cat === "" ? t("common.all") : cats?.find((c) => c.extId === cat)?.label ?? "";
-  const extra = useMemo(() => [{ id: FAV, label: t("common.favorites"), n: favs.length }, { id: "", label: t("common.all"), n: source.counts.live }], [favs.length, source.counts.live, t]);
+  const catLabel = cat === FAV ? t("common.favorites") : cat === "" ? t("common.all") : group ? group.name : cats?.find((c) => c.extId === cat)?.label ?? "";
+  const extra = useMemo(() => [
+    { id: FAV, label: t("common.favorites"), n: favs.length },
+    ...groups.map((g) => ({ id: groupScope(g.id), label: g.name, n: g.ids.length })),
+    { id: "", label: t("common.all"), n: source.counts.live },
+  ], [favs.length, source.counts.live, t, groups]);
+  // Menu d'une chaîne (clic droit ou bouton « Groupes ») et fenêtres de nom de groupe.
+  const [menu, setMenu] = useState<MenuAt | null>(null);
+  const [naming, setNaming] = useState<"new" | "rename" | null>(null);
+  const removeGroup = async () => {
+    if (!group || !confirm(t("grp.deleteSure", { name: group.name }))) return;
+    await deleteChannelGroup(profile, sid, group.id);
+    setCat("");
+  };
+  const groupTools = (
+    <div className="grp-tools">
+      <button className="btn sm" onClick={() => setNaming("new")}><Icon name="plus" size={14} />{t("grp.new")}</button>
+      {group && <button className="btn sm" onClick={() => setNaming("rename")}>{t("grp.rename")}</button>}
+      {group && <button className="btn sm danger" onClick={() => void removeGroup()} aria-label={t("grp.delete")} title={t("grp.delete")}><Icon name="trash" size={14} /></button>}
+    </div>
+  );
   // Catégorie verrouillée : le code parental est demandé avant de l'ouvrir (déverrouillée pour la session).
   const codeCats = useCodeCats(source, "live");
   const openCat = useCatOpener(source, "live");
-  const pickCat = (c: string) => { void (async () => { if (c !== FAV && c !== "" && codeCats.has(c) && !(await openCat(c, cats?.find((x) => x.extId === c)?.label ?? ""))) return; setCat(c); setPop(false); })(); };
+  const pickCat = (c: string) => { void (async () => { if (c !== FAV && c !== "" && !isGroupScope(c) && codeCats.has(c) && !(await openCat(c, cats?.find((x) => x.extId === c)?.label ?? ""))) return; setCat(c); setPop(false); })(); };
   const sections = useLiveQuery(async () => (arrayMode ? 0 : await colOf(cat || null).filter((c) => !!c.sep).count()), [source.cid, cat, arrayMode, colOf]) ?? 0;
 
   if (source.state === "syncing" && !source.cid) return <StateCard icon="refresh" title={t("sync.title")} body={t("sync.lead")} />;
@@ -221,7 +251,7 @@ function LiveInner({ source }: { source: Source }) {
     <div ref={root} className={`split${wide ? " wide" : ""}`}>
       {wide && (
         <section className="col" aria-label={t("common.categories")} style={{ paddingTop: "1.5rem" }}>
-          <div className="col-head" style={{ paddingTop: 0 }}><h1 style={{ fontSize: "1.25rem" }}>{t("nav.live")}</h1></div>
+          <div className="col-head" style={{ paddingTop: 0 }}><h1 style={{ fontSize: "1.25rem" }}>{t("nav.live")}</h1>{groupTools}</div>
           <CategoryList cats={cats ?? []} value={cat} onPick={pickCat} extra={extra} locked={codeCats} />
         </section>
       )}
@@ -231,11 +261,13 @@ function LiveInner({ source }: { source: Source }) {
             {!wide && <h1>{t("nav.live")}</h1>}
             {wide && <h1 className="ellipsis" style={{ fontSize: "1.5rem" }}>{catLabel}</h1>}
           </div>
+          {!wide && groupTools}
           {!wide && (
             <HScroll wheel follow={cat} className="chips scroll" role="tablist" aria-label={t("common.categories")}>
               <button className="chip" role="tab" aria-selected={cat === FAV} onClick={() => pickCat(FAV)}>{t("common.favorites")}</button>
+              {groups.map((g) => <button key={g.id} className="chip" role="tab" aria-selected={cat === groupScope(g.id)} onClick={() => pickCat(groupScope(g.id))}>{g.name}</button>)}
               <button className="chip" role="tab" aria-selected={cat === ""} onClick={() => pickCat("")}>{t("common.all")}</button>
-              {cat !== "" && cat !== FAV && <button className="chip" role="tab" aria-selected>{catLabel}</button>}
+              {cat !== "" && cat !== FAV && !group && <button className="chip" role="tab" aria-selected>{catLabel}</button>}
               <button className="chip" onClick={() => setPop(true)}>{t("common.categories")} ▾</button>
             </HScroll>
           )}
@@ -256,10 +288,10 @@ function LiveInner({ source }: { source: Source }) {
             <button className="btn" onClick={() => void endMove(false)}>{t("cor.cancel")}</button>
           </div>
         )}
-        {count === 0 ? <div className="state-card"><p>{t("live.noChannels")}</p></div> : (
+        {count === 0 ? <div className="state-card"><p>{group && !filtering ? t("grp.empty") : t("live.noChannels")}</p></div> : (
           <VList
             ref={list} rows={rows} rowH={66} label={t("nav.live")} onKeyDown={onKey}
-            render={(c) => c ? <ChanRow c={c} num={cv.num(c)} source={source} sel={c.id === selId} playing={c.streamId === playing} onPick={() => pick(c)} extra={c.sep ? undefined : dnd.props(c.streamId)} extraCls={dnd.cls(c.streamId)} onMenu={scope && !c.sep && !mv ? () => { setSelId(c.id!); void beginMove(c); } : undefined} /> : <div className="skeleton" style={{ height: 58 }} />}
+            render={(c) => c ? <ChanRow c={c} num={cv.num(c)} source={source} sel={c.id === selId} playing={c.streamId === playing} onPick={() => pick(c)} extra={c.sep ? undefined : dnd.props(c.streamId)} extraCls={dnd.cls(c.streamId)} onMenu={!c.sep && !mv ? (x, y) => { setSelId(c.id!); setMenu({ x, y, c }); } : undefined} /> : <div className="skeleton" style={{ height: 58 }} />}
           />
         )}
       </section>
@@ -288,6 +320,8 @@ function LiveInner({ source }: { source: Source }) {
                 const on = await toggleFavorite({ profile: prefs.profileId, sourceId: source.id!, kind: "live", refId: selected.streamId, name: selected.display, image: selected.logo });
                 useUi.getState().toast(t(on ? "toast.favAdded" : "toast.favRemoved"));
               }} aria-pressed={isFav}><Icon name="heart" size={18} fill={isFav} />{t(isFav ? "common.removeFav" : "common.addFav")}</button>
+              {!mv && <button className="btn" aria-haspopup="menu" onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setMenu({ x: r.left, y: r.bottom + 4, c: selected }); }}><Icon name="plus" size={18} />{t("grp.button")}</button>}
+              {group && !mv && <button className="btn" onClick={async () => { await removeFromChannelGroup(profile, sid, group.id, [selected.streamId]); useUi.getState().toast(t("grp.removed", { name: group.name })); }}>{t("grp.removeFrom", { name: group.name })}</button>}
               {canReorder && !mv && <button className="btn" onClick={() => void beginMove()} title="M"><Icon name="list" size={18} />{t("cor.move")}</button>}
               {scope && !mv && order && <button className="btn" onClick={() => void resetNow()}>{t("cor.reset")}</button>}
             </div>
@@ -295,6 +329,10 @@ function LiveInner({ source }: { source: Source }) {
           </>
         )}
       </section>
+      {menu && <ChannelMenu at={menu} profile={profile} sourceId={sid} groups={groups} onClose={() => setMenu(null)}
+        onMove={scope && !filtering ? () => { const ch = menu.c; void beginMove(ch); } : undefined} />}
+      {naming === "new" && <GroupNameModal title={t("grp.new")} onClose={() => setNaming(null)} onSubmit={async (name) => { const id = await addGroup(profile, sid, name); if (id) setCat(groupScope(id)); }} />}
+      {naming === "rename" && group && <GroupNameModal title={t("grp.rename")} initial={group.name} onClose={() => setNaming(null)} onSubmit={(name) => renameChannelGroup(profile, sid, group.id, name).then(() => undefined)} />}
       {pop && (
         <div className="scrim" onMouseDown={(e) => { if (e.target === e.currentTarget) setPop(false); }}>
           <div className="modal" style={{ height: "min(36rem, 80vh)", padding: "1.25rem 0.5rem 1rem" }} role="dialog" aria-label={t("common.categories")}>

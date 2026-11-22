@@ -5,6 +5,8 @@ import { db } from "./db";
 import { hiddenChannelIds } from "./profileChannels";
 import { channelsCol, favoritesOf } from "./queries";
 import type { ChannelOrderRow, ChannelRow } from "./types";
+import { groupChannels } from "./channelGroups";
+import { isGroupScope } from "@/lib/channelGroups";
 
 /** Abonné aux changements faits par l'utilisateur (le service cloud y branche la publication) ; jamais appelé par l'application d'un ordre reçu. */
 let onChanged: ((sourceId: number) => void) | null = null;
@@ -51,6 +53,8 @@ export async function orderedList(profile: string, sourceId: number, cid: number
   // Chaînes masquées par le profil [profile] : écartées (Set en mémoire, aucune lecture par ligne).
   const hid = await hiddenChannelIds(profile, sourceId);
   const keep = (c: ChannelRow) => !c.sep && !hid.has(c.streamId);
+  // Groupe personnel : ses chaînes, dans l'ordre du groupe.
+  if (isGroupScope(scope)) return (await groupChannels(profile, sourceId, cid, scope)).filter(keep);
   if (scope === FAVORITES_SCOPE) {
     const favs = await favoritesOf(profile, sourceId, "live");
     const rows = (await Promise.all(favs.map((f) => db.channels.where("[sourceId+streamId]").equals([cid, f.refId]).first()))).filter((r): r is ChannelRow => !!r && keep(r));

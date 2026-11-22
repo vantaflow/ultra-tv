@@ -4,7 +4,9 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { db } from "@/db/db";
 import { channelsCol, programsFor } from "@/db/queries";
 import type { ChannelRow, ProgramRow, Source } from "@/db/types";
-import { useBlockedCats, useCatOpener, useCategories, useCodeCats, useFavorites } from "@/hooks/data";
+import { useBlockedCats, useCatOpener, useCategories, useChannelGroups, useCodeCats, useFavorites } from "@/hooks/data";
+import { groupChannels } from "@/db/channelGroups";
+import { groupIdOf, groupScope, isGroupScope } from "@/lib/channelGroups";
 import { useNow } from "@/hooks/misc";
 import { useT } from "@/i18n";
 import { usePlayer } from "@/player/store";
@@ -167,14 +169,18 @@ function Inner({ source }: { source: Source }) {
 
   // Catégorie par défaut : favoris s'il y en a, sinon première catégorie du direct.
   // Catégorie choisie puis masquée par le profil courant : retour à « Tout ».
-  const effCat = cat != null && hid.has(cat) ? "" : cat ?? (favs.length ? "__fav" : "");
+  // Groupes personnels du profil : proposés après les favoris ; un groupe supprimé ramène à « Tout ».
+  const groups = useChannelGroups(source);
+  const group = isGroupScope(cat) ? groups.find((g) => g.id === groupIdOf(cat)) ?? null : null;
+  const effCat = cat != null && (hid.has(cat) || (isGroupScope(cat) && !group)) ? "" : cat ?? (favs.length ? "__fav" : "");
   const chansQ = useLiveQuery(async () => {
     if (!source.cid) return [];
     // Tri par numéro de chaîne croissant partout (Tout, catégories, Favoris), puis plafond d'affichage.
+    if (group && effCat === cat) return sortGuideChannels((await groupChannels(prefs.profileId, source.id!, source.cid, effCat)).filter((c) => !!c.epg && !hid.has(c.catExt) && (!cv.keep || cv.keep(c))));
     if (effCat === "__fav") return sortGuideChannels((await Promise.all(favs.map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c && !!c.epg && !hid.has(c.catExt) && (!cv.keep || cv.keep(c))));
     // « Tout » : sans les chaînes des catégories masquées par le profil courant.
     return sortGuideChannels(await channelsCol(source.cid, effCat || null).filter((c) => !c.sep && !!c.epg && (!!effCat || !hid.has(c.catExt)) && (!cv.keep || cv.keep(c))).toArray()).slice(0, GUIDE_MAX_CHANNELS);
-  }, [source.cid, effCat, favs.length, hid, cv]);
+  }, [source.cid, effCat, favs.length, hid, cv, group, prefs.profileId, source.id, cat]);
   const chans = chansQ ?? NO_CHANS;
 
   const v = useVirtualizer({ count: chans.length, getScrollElement: () => scroller.current, estimateSize: () => 72, overscan: 6 });
@@ -182,7 +188,7 @@ function Inner({ source }: { source: Source }) {
   const visibleIds = useMemo(() => [...new Set(items.map((it) => chans[it.index]?.epg).filter((e): e is string => !!e))], [items, chans]);
   const progs = useVisibleProgs(source.cid, visibleIds, from, to, loading);
   const onPick = useCallback((p: ProgramRow, c: ChannelRow, e: React.MouseEvent) => { e.stopPropagation(); setPick({ prog: p, chan: c, x: e.clientX, y: e.clientY }); }, []);
-  const label = effCat === "__fav" ? t("common.favorites") : effCat === "" ? t("guide.withEpg") : cats?.find((c) => c.extId === effCat)?.label ?? t("guide.withEpg");
+  const label = effCat === "__fav" ? t("common.favorites") : effCat === "" ? t("guide.withEpg") : group && effCat === cat ? group.name : cats?.find((c) => c.extId === effCat)?.label ?? t("guide.withEpg");
   const nowX = ((now - from) / 60000) * PX_MIN;
   const days = [t("guide.today"), t("guide.tomorrow"), new Date(Date.now() + 2 * 86400_000).toLocaleDateString(prefs.lang, { weekday: "long" })];
 
@@ -235,6 +241,7 @@ function Inner({ source }: { source: Source }) {
         <span className="eyebrow g-catlabel">{t("common.categories")}</span>
         <HScroll wheel follow={effCat} className="chips scroll g-cats" role="tablist" aria-label={t("common.categories")}>
           <button className="chip" role="tab" aria-selected={effCat === "__fav"} onClick={() => setCat("__fav")}>{t("common.favorites")}<span className="n">{favs.length}</span></button>
+          {groups.map((g) => <button key={g.id} className="chip" role="tab" aria-selected={effCat === groupScope(g.id)} onClick={() => setCat(groupScope(g.id))}>{g.name}<span className="n">{g.ids.length}</span></button>)}
           <button className="chip" role="tab" aria-selected={effCat === ""} onClick={() => setCat("")}>{t("common.all")}</button>
           {(cats ?? []).map((c) => <button key={c.extId} className="chip" role="tab" aria-selected={effCat === c.extId} onClick={() => pickCat(c.extId)}>{c.label}{codeCats.has(c.extId) && <Icon name="lock" size={12} />}<span className="n">{c.count}</span></button>)}
         </HScroll>

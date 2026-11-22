@@ -950,5 +950,19 @@
   "set.appearance": "Apariencia",
   "set.appearanceD": "Tema y color, que puedes cambiar en cualquier momento en Ajustes › Pantalla.",
   "set.uiScale": "Tamaño de la interfaz",
-  "set.uiScaleD": "Texto y elementos, del 90 % al 150 %; el diseño se adapta."
+  "set.uiScaleD": "Texto y elementos, del 90 % al 150 %; el diseño se adapta.",
+  "grp.groups": "Mis grupos",
+  "grp.new": "Nuevo grupo",
+  "grp.newEllipsis": "Nuevo grupo…",
+  "grp.name": "Nombre del grupo",
+  "grp.rename": "Cambiar el nombre del grupo",
+  "grp.delete": "Eliminar el grupo",
+  "grp.deleteSure": "¿Eliminar el grupo «{name}»? Los canales siguen en sus categorías.",
+  "grp.addTo": "Añadir a un grupo",
+  "grp.removeFrom": "Quitar de «{name}»",
+  "grp.added": "Añadido a «{name}»",
+  "grp.removed": "Quitado de «{name}»",
+  "grp.empty": "Este grupo está vacío: haz clic derecho en un canal (o usa «Grupos») para añadirlo.",
+  "grp.button": "Grupos",
+  "grp.menu": "Acciones del canal"
 }

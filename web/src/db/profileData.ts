@@ -1,5 +1,6 @@
-// Données liées à l'identifiant local d'un profil : favoris, historique, ordre des chaînes, catégories masquées.
+// Données liées à l'identifiant local d'un profil : favoris, historique, ordre des chaînes, catégories masquées, groupes de chaînes.
 import { db } from "./db";
+import { deleteProfileGroups } from "./channelGroups";
 
 /** Supprime les données d'un profil (suppression manuelle ou profil supprimé sur un autre appareil). */
 export async function deleteProfileData(profile: string): Promise<void> {
@@ -9,4 +10,5 @@ export async function deleteProfileData(profile: string): Promise<void> {
   await db.profileHidden.where("[profile+sourceId]").between([profile, -Infinity], [profile, Infinity]).delete();
   await db.profileHiddenChannels.where("[profile+sourceId]").between([profile, -Infinity], [profile, Infinity]).delete();
   await db.profileCatOrder.where("[profile+sourceId]").between([profile, -Infinity], [profile, Infinity]).delete();
+  await deleteProfileGroups(profile);
 }

@@ -3,6 +3,8 @@ import { useCallback, useMemo } from "react";
 import { favoritesOf, visibleCategories } from "@/db/queries";
 import { blockedCategoryIds, categoryNeedsCode, codeCategoryIds, ensureCategoryAccess, unlistedCategoryIds } from "@/db/contentGate";
 import type { GateContext } from "@/lib/contentGate";
+import type { ChannelGroup } from "@/lib/channelGroups";
+import { listGroups } from "@/db/channelGroups";
 import { askParentalCode, useUnlocks } from "@/state/unlocks";
 import type { CategoryRow, FavoriteRow, Kind, Source } from "@/db/types";
 import { OTHER_LANG } from "@/sync/core";
@@ -51,6 +53,13 @@ export function useNeedsCode(source: Source | undefined, kind: Kind, catExt: str
   const r = useLiveQuery(async () => ({ catExt, need: source?.id ? await categoryNeedsCode(profile, { id: source.id, cid: source.cid }, kind, catExt) : false }), [source?.id, source?.cid, kind, catExt, profile, kids, v]);
   return r && r.catExt === catExt ? r.need : undefined;
 }
+
+/** Groupes de chaînes personnels du profil courant pour cette source. */
+export function useChannelGroups(source: Source | undefined): ChannelGroup[] {
+  const profile = usePrefs((s) => s.profileId);
+  return useLiveQuery(() => (source?.id != null ? listGroups(profile, source.id) : NO_GROUPS), [source?.id, profile]) ?? NO_GROUPS;
+}
+const NO_GROUPS: ChannelGroup[] = [];
 
 /** Catégories affichées avec un cadenas (code parental exigé pour les ouvrir). */
 export function useCodeCats(source: Source | undefined, kind: Kind): ReadonlySet<string> {
