@@ -15,7 +15,7 @@ import { db, getSetting, setSetting } from "@/db/db";
 import type { ChannelRow } from "@/db/types";
 import { histKey } from "@/db/queries";
 import { useNowNext } from "@/hooks/epg";
-import { useCategories, useFavorites, useBlockedCats } from "@/hooks/data";
+import { useBlockedCats, useCatOpener, useCategories, useCodeCats, useFavorites } from "@/hooks/data";
 import { translate, useT } from "@/i18n";
 import { fmtClock, fmtDuration } from "@/lib/text";
 import { COMMIT_MS, fmtDelta, press as scrubPressState, release as scrubRelease, type ScrubState } from "@/lib/seekScrub";
@@ -1937,19 +1937,23 @@ function ChannelsPanel({ cid, cat, onZap }: { cid: number; cat: string | null; o
   const profile = usePrefs((s) => s.profileId);
   const cats = useCategories(source, "live");
   const hid = useBlockedCats(source, "live");
+  // Catégorie verrouillée : code parental demandé avant de l'ouvrir dans le panneau des chaînes.
+  const codeCats = useCodeCats(source, "live");
+  const openCat = useCatOpener(source, "live");
   // Chaînes masquées par le profil courant : filtrées (Set en mémoire) ; numéros affichés propres au profil.
   const view = useChannelView(source);
   useEffect(() => {
     if (tab === "fav") {
-      void orderedList(profile, (source?.id ?? 0), cid, FAVORITES_SCOPE).then((r) => setRows(r ?? []));
+      void orderedList(profile, (source?.id ?? 0), cid, FAVORITES_SCOPE).then((r) => setRows((r ?? []).filter((c) => !hid.has(c.catExt))));
       return;
     }
     // Toute la catégorie (plafond large) : la chaîne regardée peut être loin du début (ex. n° 10965). Ordre personnel appliqué s'il existe.
     void (async () => {
       const own = effCat ? await orderedList(profile, (source?.id ?? 0), cid, effCat) : null;
-      setRows(own ?? (await channelsCol(cid, effCat).filter((c) => !c.sep && (!view.keep || view.keep(c))).limit(5000).toArray()));
+      // Catégories écartées (masquées, verrouillées sans code saisi, adultes pour un profil Enfants) : jamais listées.
+      setRows((own ?? (await channelsCol(cid, effCat).filter((c) => !c.sep && (!view.keep || view.keep(c))).limit(5000).toArray())).filter((c) => !hid.has(c.catExt)));
     })();
-  }, [cid, effCat, tab, favs, profile, source?.id, view]);
+  }, [cid, effCat, tab, favs, profile, source?.id, view, hid]);
   // Liste virtualisée : seules les lignes visibles existent dans le DOM (jusqu'à 5000 chaînes).
   const arr = useMemo(() => arrayRows(rows), [rows]);
   const pick = useCallback((c: ChannelRow) => {
@@ -1987,7 +1991,7 @@ function ChannelsPanel({ cid, cat, onZap }: { cid: number; cat: string | null; o
           <div className="pch-cats" role="group" aria-label={t("common.categories")}>
             <button className={`cat${effCat == null ? " on" : ""}`} onClick={() => { centered.current = true; setCatSel(null); }}><span className="ellipsis">{t("common.allCategories")}</span></button>
             {(cats ?? []).map((c) => (
-              <button key={c.extId} className={`cat${effCat === c.extId ? " on" : ""}`} onClick={() => { centered.current = true; setCatSel(c.extId); }}>
+              <button key={c.extId} className={`cat${effCat === c.extId ? " on" : ""}`} onClick={() => { void (async () => { if (codeCats.has(c.extId) && !(await openCat(c.extId, c.label))) return; centered.current = true; setCatSel(c.extId); })(); }}>
                 <span className="ellipsis">{c.label}</span><span className="n">{c.count}</span>
               </button>
             ))}

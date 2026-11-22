@@ -5,7 +5,8 @@ import { db } from "@/db/db";
 import { historyOf, moviesCol, notInHidden, searchByWords, seriesCol, type VodSort } from "@/db/queries";
 import { filterActive, matchesFilter, NO_FILTER, PERIODS, RATINGS, type VodFilter } from "@/lib/vodFilter";
 import type { CategoryRow, MovieRow, SeriesRow, Source } from "@/db/types";
-import { useCategories, useFavorites, useBlockedCats } from "@/hooks/data";
+import { useBlockedCats, useCatOpener, useCategories, useCodeCats, useFavorites } from "@/hooks/data";
+import { homeAllowedHistory } from "@/db/homeGate";
 import { useDebounced } from "@/hooks/misc";
 import { usePagedQuery } from "@/hooks/paged";
 import { useT } from "@/i18n";
@@ -81,6 +82,11 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
   const rows: Rows<Item> = useMemo(() => (arrayMode ? arrayRows(arr ?? []) : paged), [arrayMode, arr, paged]);
 
   const idOf = (r: Item) => (kind === "movie" ? (r as MovieRow).streamId : (r as SeriesRow).seriesId);
+  // Catégorie verrouillée : cadenas, code parental demandé avant de l'ouvrir ; ses titres n'apparaissent dans aucune rangée.
+  const codeCats = useCodeCats(source, kind);
+  const openCat = useCatOpener(source, kind);
+  const pickCat = (c: string) => { void (async () => { if (c !== "" && codeCats.has(c) && !(await openCat(c, cats?.find((x) => x.extId === c)?.label ?? ""))) return; prefs.set({ liveCat: { ...prefs.liveCat, [key]: c } }); setPop(false); })(); };
+  const rowCats = useMemo(() => (cats ?? []).filter((c) => !hid.has(c.extId)), [cats, hid]);
   const chips = (cats ?? []).slice(0, 7);
   const catLabel = cat === "" ? "" : cats?.find((c) => c.extId === cat)?.label ?? "";
   const title = t(kind === "movie" ? "nav.movies" : "nav.series");
@@ -108,8 +114,8 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
           </div>
         </div>
         <HScroll wheel follow={cat} className="chips scroll" role="tablist" aria-label={t("common.categories")}>
-          <button className="chip" role="tab" aria-selected={cat === ""} onClick={() => prefs.set({ liveCat: { ...prefs.liveCat, [key]: "" } })}>{t("common.all")}</button>
-          {chips.map((c) => <button key={c.extId} className="chip" role="tab" aria-selected={cat === c.extId} onClick={() => prefs.set({ liveCat: { ...prefs.liveCat, [key]: c.extId } })}>{c.label}</button>)}
+          <button className="chip" role="tab" aria-selected={cat === ""} onClick={() => pickCat("")}>{t("common.all")}</button>
+          {chips.map((c) => <button key={c.extId} className="chip" role="tab" aria-selected={cat === c.extId} onClick={() => pickCat(c.extId)}>{c.label}{codeCats.has(c.extId) && <Icon name="lock" size={12} />}</button>)}
           {cat !== "" && !chips.some((c) => c.extId === cat) && <button className="chip" role="tab" aria-selected>{catLabel}</button>}
           <button className="chip" onClick={() => setPop(true)}>{t("common.allCategories")} ▾</button>
         </HScroll>
@@ -120,8 +126,8 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
             options={PERIODS.map((p) => ({ v: p, label: t(`vod.period.${p}`) }))} />
         </div>
       </div>
-      {cat === "" && !arrayMode && !narrowed && (cats?.length ?? 0) > 0 ? (
-        <CategoryRows source={source} kind={kind} cats={cats!} favSet={favSet} sort={eSort} head={<VodTop source={source} kind={kind} onOpen={(id) => nav(`/${kind === "movie" ? "movie" : "serie"}/${id}`)} />}
+      {cat === "" && !arrayMode && !narrowed && rowCats.length > 0 ? (
+        <CategoryRows source={source} kind={kind} cats={rowCats} favSet={favSet} sort={eSort} head={<VodTop source={source} kind={kind} onOpen={(id) => nav(`/${kind === "movie" ? "movie" : "serie"}/${id}`)} />}
           onSeeAll={(id) => prefs.set({ liveCat: { ...prefs.liveCat, [key]: id } })}
           onOpen={(id) => nav(`/${kind === "movie" ? "movie" : "serie"}/${id}`)} />
       ) : rows.count === 0 ? <div className="state-card"><p>{t("vod.empty")}</p></div> : (
@@ -142,8 +148,8 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
           <div className="modal" style={{ height: "min(36rem, 80vh)", padding: "1.25rem 0.5rem 1rem" }} role="dialog" aria-label={t("common.categories")}>
             <h3 style={{ padding: "0 1rem" }}>{t("common.categories")}</h3>
             <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-              <CategoryList cats={cats ?? []} value={cat} extra={[{ id: "", label: t("common.all"), n: total }]}
-                onPick={(c) => { prefs.set({ liveCat: { ...prefs.liveCat, [key]: c } }); setPop(false); }} />
+              <CategoryList cats={cats ?? []} value={cat} extra={[{ id: "", label: t("common.all"), n: total }]} locked={codeCats}
+                onPick={pickCat} />
             </div>
           </div>
         </div>
@@ -254,16 +260,22 @@ function CategoryRowView({ source, kind, cat, favSet, sort, onSeeAll, onOpen }: 
   );
 }
 
+const NONE: ReadonlySet<string> = new Set();
+
 /** En-tête de la vue « Tout » : « À la une » (le mieux noté avec affiche) puis « Reprendre » (historique du même type). */
 function VodTop({ source, kind, onOpen }: { source: Source; kind: "movie" | "series"; onOpen: (id: number) => void }) {
   const t = useT();
   const { profileId } = usePrefs();
-  const hid = useBlockedCats(source, kind);
+  // Vitrine (« À la une », « Reprendre ») : mêmes exclusions que l'accueil (masquées, verrouillées, adultes).
+  const hid = useBlockedCats(source, kind, "home");
   const best = useLiveQuery(async () => {
     const table = (kind === "movie" ? db.movies : db.series) as unknown as import("dexie").Table<Item, number>;
     return table.where("[sourceId+rating]").between([source.cid, 0.01], [source.cid, 10], true, true).reverse().filter((m) => !!m.poster && !hid.has(m.catExt)).first();
   }, [source.cid, kind, hid]);
-  const hist = useLiveQuery(async () => (await historyOf(profileId, source.id!)).filter((h) => (kind === "movie" ? h.kind === "movie" : h.kind === "series") && h.dur > 0 && h.pos / h.dur < 0.95).slice(0, 12), [profileId, source.id, kind]) ?? [];
+  const hist = useLiveQuery(async () => {
+    const list = (await historyOf(profileId, source.id!)).filter((h) => (kind === "movie" ? h.kind === "movie" : h.kind === "series") && h.dur > 0 && h.pos / h.dur < 0.95);
+    return (await homeAllowedHistory(source.cid, list, kind === "movie" ? hid : NONE, kind === "series" ? hid : NONE)).slice(0, 12);
+  }, [profileId, source.id, source.cid, kind, hid]) ?? [];
   const id = best ? (kind === "movie" ? (best as MovieRow).streamId : (best as SeriesRow).seriesId) : 0;
   const backdrop = best && kind === "series" ? (best as SeriesRow).backdrop : null;
   const plot = best && kind === "series" ? (best as SeriesRow).plot : null;

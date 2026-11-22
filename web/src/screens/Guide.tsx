@@ -4,7 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { db } from "@/db/db";
 import { channelsCol, programsFor } from "@/db/queries";
 import type { ChannelRow, ProgramRow, Source } from "@/db/types";
-import { useCategories, useFavorites, useBlockedCats } from "@/hooks/data";
+import { useBlockedCats, useCatOpener, useCategories, useCodeCats, useFavorites } from "@/hooks/data";
 import { useNow } from "@/hooks/misc";
 import { useT } from "@/i18n";
 import { usePlayer } from "@/player/store";
@@ -142,6 +142,10 @@ function Inner({ source }: { source: Source }) {
   const prefs = usePrefs();
   const cats = useCategories(source, "live");
   const hid = useBlockedCats(source, "live");
+  // Catégorie verrouillée : cadenas sur la puce, code parental demandé avant de l'ouvrir.
+  const codeCats = useCodeCats(source, "live");
+  const openCat = useCatOpener(source, "live");
+  const pickCat = (c: string) => { void (async () => { if (codeCats.has(c) && !(await openCat(c, cats?.find((x) => x.extId === c)?.label ?? ""))) return; setCat(c); })(); };
   // Chaînes masquées par le profil courant : absentes de la grille ; numéros affichés propres au profil.
   const cv = useChannelView(source);
   const favs = useFavorites(source, "live");
@@ -167,7 +171,7 @@ function Inner({ source }: { source: Source }) {
   const chansQ = useLiveQuery(async () => {
     if (!source.cid) return [];
     // Tri par numéro de chaîne croissant partout (Tout, catégories, Favoris), puis plafond d'affichage.
-    if (effCat === "__fav") return sortGuideChannels((await Promise.all(favs.map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c && !!c.epg && (!cv.keep || cv.keep(c))));
+    if (effCat === "__fav") return sortGuideChannels((await Promise.all(favs.map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c && !!c.epg && !hid.has(c.catExt) && (!cv.keep || cv.keep(c))));
     // « Tout » : sans les chaînes des catégories masquées par le profil courant.
     return sortGuideChannels(await channelsCol(source.cid, effCat || null).filter((c) => !c.sep && !!c.epg && (!!effCat || !hid.has(c.catExt)) && (!cv.keep || cv.keep(c))).toArray()).slice(0, GUIDE_MAX_CHANNELS);
   }, [source.cid, effCat, favs.length, hid, cv]);
@@ -232,7 +236,7 @@ function Inner({ source }: { source: Source }) {
         <HScroll wheel follow={effCat} className="chips scroll g-cats" role="tablist" aria-label={t("common.categories")}>
           <button className="chip" role="tab" aria-selected={effCat === "__fav"} onClick={() => setCat("__fav")}>{t("common.favorites")}<span className="n">{favs.length}</span></button>
           <button className="chip" role="tab" aria-selected={effCat === ""} onClick={() => setCat("")}>{t("common.all")}</button>
-          {(cats ?? []).map((c) => <button key={c.extId} className="chip" role="tab" aria-selected={effCat === c.extId} onClick={() => setCat(c.extId)}>{c.label}<span className="n">{c.count}</span></button>)}
+          {(cats ?? []).map((c) => <button key={c.extId} className="chip" role="tab" aria-selected={effCat === c.extId} onClick={() => pickCat(c.extId)}>{c.label}{codeCats.has(c.extId) && <Icon name="lock" size={12} />}<span className="n">{c.count}</span></button>)}
         </HScroll>
       </div>
       <GuideBanner state={load} onRetry={reload} />

@@ -941,5 +941,10 @@
   "gate.enter": "Saisissez le code parental pour ouvrir « {name} »",
   "gate.noCode": "Aucun code parental n'est défini : définissez-en un dans Réglages › Profils.",
   "set.kidsProfile": "Profil Enfants",
-  "set.kidsProfileD": "Les catégories adultes sont masquées partout et jamais montrées à l'accueil."
+  "set.kidsProfileD": "Les catégories adultes sont masquées partout et jamais montrées à l'accueil.",
+  "gate.locked": "Verrouillée par le code parental",
+  "gate.unlock": "Déverrouiller",
+  "gate.lockAria": "Verrouiller par le code parental : {name}",
+  "gate.needCode": "Définissez d'abord un code parental (Réglages › Profils).",
+  "gate.lockHint": "Cadenas : une catégorie verrouillée ne s'ouvre nulle part (listes, guide, recherche, fiches, reprise) sans le code parental, et n'apparaît jamais à l'accueil."
 }

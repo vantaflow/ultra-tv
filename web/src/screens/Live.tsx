@@ -5,7 +5,7 @@ import { db } from "@/db/db";
 import { getOrder, resetOrder, saveOrder } from "@/db/channelOrder";
 import { channelsCol, notInHidden, searchByWords, toggleFavorite } from "@/db/queries";
 import type { ChannelRow, Source } from "@/db/types";
-import { useCategories, useFavorites, useBlockedCats } from "@/hooks/data";
+import { useBlockedCats, useCatOpener, useCategories, useCodeCats, useFavorites } from "@/hooks/data";
 import { useNowNext } from "@/hooks/epg";
 import { useElementSize, useDebounced } from "@/hooks/misc";
 import { usePagedQuery } from "@/hooks/paged";
@@ -209,7 +209,10 @@ function LiveInner({ source }: { source: Source }) {
 
   const catLabel = cat === FAV ? t("common.favorites") : cat === "" ? t("common.all") : cats?.find((c) => c.extId === cat)?.label ?? "";
   const extra = useMemo(() => [{ id: FAV, label: t("common.favorites"), n: favs.length }, { id: "", label: t("common.all"), n: source.counts.live }], [favs.length, source.counts.live, t]);
-  const pickCat = (c: string) => { setCat(c); setPop(false); };
+  // Catégorie verrouillée : le code parental est demandé avant de l'ouvrir (déverrouillée pour la session).
+  const codeCats = useCodeCats(source, "live");
+  const openCat = useCatOpener(source, "live");
+  const pickCat = (c: string) => { void (async () => { if (c !== FAV && c !== "" && codeCats.has(c) && !(await openCat(c, cats?.find((x) => x.extId === c)?.label ?? ""))) return; setCat(c); setPop(false); })(); };
   const sections = useLiveQuery(async () => (arrayMode ? 0 : await colOf(cat || null).filter((c) => !!c.sep).count()), [source.cid, cat, arrayMode, colOf]) ?? 0;
 
   if (source.state === "syncing" && !source.cid) return <StateCard icon="refresh" title={t("sync.title")} body={t("sync.lead")} />;
@@ -219,7 +222,7 @@ function LiveInner({ source }: { source: Source }) {
       {wide && (
         <section className="col" aria-label={t("common.categories")} style={{ paddingTop: "1.5rem" }}>
           <div className="col-head" style={{ paddingTop: 0 }}><h1 style={{ fontSize: "1.25rem" }}>{t("nav.live")}</h1></div>
-          <CategoryList cats={cats ?? []} value={cat} onPick={pickCat} extra={extra} />
+          <CategoryList cats={cats ?? []} value={cat} onPick={pickCat} extra={extra} locked={codeCats} />
         </section>
       )}
       <section className="col" aria-label={t("nav.live")}>
@@ -297,7 +300,7 @@ function LiveInner({ source }: { source: Source }) {
           <div className="modal" style={{ height: "min(36rem, 80vh)", padding: "1.25rem 0.5rem 1rem" }} role="dialog" aria-label={t("common.categories")}>
             <h3 style={{ padding: "0 1rem" }}>{t("common.categories")}</h3>
             <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-              <CategoryList cats={cats ?? []} value={cat} onPick={pickCat} extra={extra} />
+              <CategoryList cats={cats ?? []} value={cat} onPick={pickCat} extra={extra} locked={codeCats} />
             </div>
           </div>
         </div>

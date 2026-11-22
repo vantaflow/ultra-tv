@@ -941,5 +941,10 @@
   "gate.enter": "Introduce el código parental para abrir «{name}»",
   "gate.noCode": "No hay ningún código parental: define uno en Ajustes › Perfiles.",
   "set.kidsProfile": "Perfil infantil",
-  "set.kidsProfileD": "Las categorías para adultos se ocultan en todas partes y nunca aparecen en Inicio."
+  "set.kidsProfileD": "Las categorías para adultos se ocultan en todas partes y nunca aparecen en Inicio.",
+  "gate.locked": "Bloqueada con el código parental",
+  "gate.unlock": "Desbloquear",
+  "gate.lockAria": "Bloquear con el código parental: {name}",
+  "gate.needCode": "Define primero un código parental (Ajustes › Perfiles).",
+  "gate.lockHint": "Candado: una categoría bloqueada no se abre en ningún sitio (listas, guía, búsqueda, fichas, reanudar) sin el código parental y nunca aparece en Inicio."
 }

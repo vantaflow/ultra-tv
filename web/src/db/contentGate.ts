@@ -60,6 +60,12 @@ export async function codeCategoryIds(profile: string, source: SourceRef, kind: 
   return new Set([...g.locked].filter((id) => needsCode(id, g)));
 }
 
+/** La catégorie exige-t-elle le code (verrouillée, ou adulte pour un profil Enfants) et n'a-t-elle pas été déverrouillée ? */
+export async function categoryNeedsCode(profile: string, source: SourceRef, kind: Kind, catExt: string | null | undefined): Promise<boolean> {
+  if (catExt == null || source.id == null) return false;
+  return needsCode(catExt, await gateInput(profile, source, kind));
+}
+
 /**
  * Accès à une catégorie (fiche, lecture, ouverture dans une liste). Libre : vrai tout de suite. Code exigé : la fenêtre du code est
  * ouverte ; code accepté = catégorie déverrouillée pour la session. [ask] : demande du code (injectée pour les tests).

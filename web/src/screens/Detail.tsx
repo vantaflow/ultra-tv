@@ -1,10 +1,10 @@
 import { useLiveQuery } from "dexie-react-hooks";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { db } from "@/db/db";
 import { histKey, toggleFavorite } from "@/db/queries";
 import type { HistoryRow, MovieRow, SeriesRow, Source } from "@/db/types";
-import { useFavorites } from "@/hooks/data";
+import { useCatOpener, useFavorites, useNeedsCode } from "@/hooks/data";
 import { useT } from "@/i18n";
 import { fmtClock, fmtDuration, firstString, toNum } from "@/lib/text";
 import { cleanEpisodeTitle, presentable } from "@/lib/titleCleaner";
@@ -123,10 +123,31 @@ function Cast({ names, label }: { names: string[]; label: string }) {
 }
 const splitNames = (s: string | undefined | null) => (presentable(s) ?? "").split(/[,;/]/).map((x) => x.trim()).filter(Boolean);
 
+/**
+ * Fiche d'un titre d'une catégorie verrouillée (ou adulte pour un profil Enfants) : rien n'est chargé ni affiché avant le code
+ * parental (demandé à l'ouverture ; « Déverrouiller » pour le redemander).
+ */
+function DetailGate({ source, kind, catExt, label, children }: { source: Source; kind: "movie" | "series"; catExt: string | null | undefined; label: string; children: React.ReactNode }) {
+  const t = useT();
+  const nav = useNavigate();
+  const need = useNeedsCode(source, kind, catExt);
+  const open = useCatOpener(source, kind);
+  const asked = useRef<string | null>(null);
+  useEffect(() => {
+    if (need && asked.current !== catExt) { asked.current = catExt ?? null; void open(catExt, label); }
+  }, [need, catExt, label, open]);
+  if (catExt === undefined || need === undefined) return <div className="detail" />;
+  if (need) return <StateCard icon="lock" title={t("gate.title")} body={t("gate.locked")} actions={<><button className="btn primary" onClick={() => void open(catExt, label)}>{t("gate.unlock")}</button><button className="btn" onClick={() => nav(-1)}>{t("common.back")}</button></>} />;
+  return <>{children}</>;
+}
+
 export function MovieDetail() {
   const source = useActiveSource();
+  const { id } = useParams();
+  const sid = toNum(id);
+  const row = useLiveQuery(() => (source ? db.movies.where("[sourceId+streamId]").equals([source.cid, sid]).first().then((r) => r ?? null) : null), [source?.cid, sid]);
   if (!source) return <NoSource />;
-  return <MovieInner source={source} />;
+  return <DetailGate source={source} kind="movie" catExt={row === undefined ? undefined : row?.catExt ?? null} label={row?.title ?? ""}><MovieInner source={source} /></DetailGate>;
 }
 
 function MovieInner({ source }: { source: Source }) {
@@ -221,8 +242,11 @@ function AirLine({ show }: { show: TvShow | null }) {
 
 export function SeriesDetail() {
   const source = useActiveSource();
+  const { id } = useParams();
+  const sid = toNum(id);
+  const row = useLiveQuery(() => (source ? db.series.where("[sourceId+seriesId]").equals([source.cid, sid]).first().then((r) => r ?? null) : null), [source?.cid, sid]);
   if (!source) return <NoSource />;
-  return <SeriesInner source={source} />;
+  return <DetailGate source={source} kind="series" catExt={row === undefined ? undefined : row?.catExt ?? null} label={row?.title ?? ""}><SeriesInner source={source} /></DetailGate>;
 }
 
 function SeriesInner({ source }: { source: Source }) {

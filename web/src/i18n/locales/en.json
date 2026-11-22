@@ -930,5 +930,10 @@
   "gate.enter": "Enter the parental code to open “{name}”",
   "gate.noCode": "No parental code is set: set one in Settings › Profiles.",
   "set.kidsProfile": "Kids profile",
-  "set.kidsProfileD": "Adult categories are hidden everywhere and never shown on Home."
+  "set.kidsProfileD": "Adult categories are hidden everywhere and never shown on Home.",
+  "gate.locked": "Locked with the parental code",
+  "gate.unlock": "Unlock",
+  "gate.lockAria": "Lock with the parental code: {name}",
+  "gate.needCode": "Set a parental code first (Settings › Profiles).",
+  "gate.lockHint": "Padlock: a locked category opens nowhere (lists, guide, search, details, resume) without the parental code, and never appears on Home."
 }

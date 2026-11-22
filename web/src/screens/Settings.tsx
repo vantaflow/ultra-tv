@@ -19,6 +19,7 @@ import { EXTRA_EPG_KEY } from "@/sync/epg";
 import type { TimeFormat } from "@/lib/clock";
 import { deleteProfileData } from "@/db/profileData";
 import { setCategoriesVisible } from "@/db/profileCategories";
+import { lockedCategoryIds, setCategoryLock } from "@/db/contentGate";
 import { isShown } from "@/lib/profileCategories";
 import { toggleSource, visibleSources } from "@/lib/profileSources";
 import { PROFILE_COLORS, dateTimeLabel, usePrefs, type Profile, type Theme } from "@/state/prefs";
@@ -445,6 +446,16 @@ function CategoriesPane() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sameKind, nq, ordKey]);
   const [chanCat, setChanCat] = useState<CategoryRow | null>(null);
+  // Verrou par code parental (local à l'appareil, commun à tous les profils). Poser un verrou exige un code défini ; le retirer
+  // exige le code (s'il existe encore).
+  const locks = useLiveQuery(async () => (source?.id != null ? lockedCategoryIds(source.id, kind) : new Set<string>()), [source?.id, kind]) ?? new Set<string>();
+  const toggleLock = async (c: CategoryRow) => {
+    if (source?.id == null) return;
+    const on = !locks.has(c.extId);
+    if (on && !hasParentalCode()) { useUi.getState().toast(t("gate.needCode")); return; }
+    if (!on && hasParentalCode() && !(await askParentalCode(c.label))) return;
+    await setCategoryLock(source.id, kind, c.extId, on);
+  };
   // Ajout d'une chaîne manuelle (catégorie proposée : celle de la liste ouverte, sinon « Mes chaînes »).
   const [addManual, setAddManual] = useState(false);
   if (!source) return null;
@@ -462,6 +473,7 @@ function CategoriesPane() {
       <h2>{t("set.categories")}</h2>
       <p className="lead">{t("set.catsNote")}</p>
       <p className="muted">{t("set.chProfileHint")}</p>
+      <p className="muted">{t("gate.lockHint")}</p>
       <div className="chips" role="tablist">
         {(["live", "movie", "series"] as const).map((k) => <button key={k} className="chip" role="tab" aria-selected={kind === k} onClick={() => setKind(k)}>{t(k === "live" ? "nav.live" : k === "movie" ? "nav.movies" : "nav.series")} <span className="n">{counts[k]}</span></button>)}
       </div>
@@ -484,6 +496,7 @@ function CategoriesPane() {
                 <button className="btn sm" disabled={!canMove} aria-label={`${t("cor.up")} : ${c.label}`} onClick={() => void move(c, -1)}>▲</button>
                 <button className="btn sm" disabled={!canMove} aria-label={`${t("cor.down")} : ${c.label}`} onClick={() => void move(c, 1)}>▼</button>
                 {kind === "live" && <button className="btn sm" aria-label={`${t("set.catsChannels")} : ${c.label}`} onClick={() => setChanCat(c)}>{t("set.catsChannels")}</button>}
+                <button className={`btn sm${locks.has(c.extId) ? " primary" : ""}`} aria-pressed={locks.has(c.extId)} aria-label={t("gate.lockAria", { name: c.label })} title={t(locks.has(c.extId) ? "gate.locked" : "gate.lockAria", { name: c.label })} onClick={() => void toggleLock(c)}><Icon name="lock" size={14} /></button>
               </span>
               <span><Switch on={shownOf(c)} label={c.label} onChange={(v) => void setMany([c], v ? 1 : 0)} /></span>
             </div>

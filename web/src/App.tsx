@@ -12,6 +12,9 @@ import { Toasts } from "@/ui/common";
 import { SyncPill } from "@/ui/SyncPill";
 import { ScreenTimeGate } from "@/ui/ScreenTimeGate";
 import { ParentalPrompt } from "@/ui/ParentalPrompt";
+import { setOpenGate } from "@/player/store";
+import { makeOpenGate } from "@/player/gate";
+
 import { startScreenTime } from "@/state/screenTime";
 import { resolveTheme, resolveThemeAttr, usePrefs } from "@/state/prefs";
 import { accentVars } from "@/lib/themes";
@@ -42,6 +45,9 @@ import { cloudAvailable } from "@/cloud/client";
 import { guideColRem } from "@/lib/guideCol";
 import { useTraktPrewarm, useTraktResumeImport, useTraktSync } from "@/trakt/hooks";
 import { rememberablePath, startPath } from "@/lib/startScreen";
+
+// Porte du code parental du lecteur : aucune catégorie verrouillée ne se lance sans code (voir player/gate).
+setOpenGate(makeOpenGate());
 
 function Effects() {
   const { theme, accent, lang, syncOn, animations, channelLogos, guideCol } = usePrefs();

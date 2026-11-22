@@ -7,8 +7,9 @@ import { VList, arrayRows } from "./Virtual";
 
 export interface CatEntry { id: string; label: string; n?: number; badge?: string | null }
 
-export function CategoryList({ cats, value, onPick, extra = [], searchable = true }: {
-  cats: CategoryRow[]; value: string; onPick: (id: string) => void; extra?: CatEntry[]; searchable?: boolean;
+/** [locked] : catégories affichées avec un cadenas (code parental exigé à l'ouverture). */
+export function CategoryList({ cats, value, onPick, extra = [], searchable = true, locked }: {
+  cats: CategoryRow[]; value: string; onPick: (id: string) => void; extra?: CatEntry[]; searchable?: boolean; locked?: ReadonlySet<string>;
 }) {
   const t = useT();
   const [q, setQ] = useState("");
@@ -33,7 +34,7 @@ export function CategoryList({ cats, value, onPick, extra = [], searchable = tru
         label={t("common.categories")}
         render={(c) => c && (
           <button className={`cat-item${value === c.id ? " on" : ""}`} onClick={() => onPick(c.id)} role="option" aria-selected={value === c.id}>
-            <span className="ellipsis">{c.badge && <span className="cbadge" style={{ marginInlineEnd: 8 }}>{c.badge}</span>}{c.label}</span>
+            <span className="ellipsis">{c.badge && <span className="cbadge" style={{ marginInlineEnd: 8 }}>{c.badge}</span>}{c.label}{locked?.has(c.id) && <span className="cat-lock" aria-label={t("gate.locked")} title={t("gate.locked")}><Icon name="lock" size={14} /></span>}</span>
             {c.n != null && <span className="n mono">{c.n}</span>}
           </button>
         )}
