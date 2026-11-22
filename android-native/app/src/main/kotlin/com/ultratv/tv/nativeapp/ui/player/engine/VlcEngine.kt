@@ -34,6 +34,9 @@ class VlcEngine(private val ctx: Context, override val config: EngineConfig) : P
     private val networkCachingMs = if (config.isLive) maxOf(config.buffer.startMs, 2_000).coerceAtMost(maxOf(config.buffer.minMs, 2_000)) else config.buffer.vlcNetworkCachingMs
     @Volatile private var released = false
 
+    /** Appels natifs bloquants (stop, piste vidéo, libération) hors du fil principal, dans l'ordre : voir [VlcCommandQueue]. */
+    private val commands = VlcCommandQueue("vlc-engine")
+
     init {
         val b = config.buffer
         val opts = arrayListOf(
@@ -104,29 +107,36 @@ class VlcEngine(private val ctx: Context, override val config: EngineConfig) : P
         if (released) return
         firstFrame = false
         audioManual = false; textManual = false; textOffDone = false; lastAutoAudio = null; lastAutoText = null
-        // Flux précédent arrêté AVANT d'ouvrir le suivant (connexion unique du fournisseur).
-        if (mp.media != null) runCatching { mp.stop() }
-        val media = Media(libVlc, Uri.parse(url)).apply {
-            when (config.decoder) {
-                DecoderMode.HARDWARE -> setHWDecoderEnabled(true, true)
-                DecoderMode.SOFTWARE -> setHWDecoderEnabled(false, false)
-                DecoderMode.AUTO -> setHWDecoderEnabled(true, false)
+        val height = maxHeight
+        val bitrate = maxBitrateBps
+        // Sur le fil du moteur : stop() attend la sortie vidéo de LibVLC (ANR nativeStop au zapping sur le fil principal).
+        commands.post {
+            if (released) return@post
+            // Flux précédent arrêté AVANT d'ouvrir le suivant (connexion unique du fournisseur).
+            if (mp.media != null) runCatching { mp.stop() }
+            val media = Media(libVlc, Uri.parse(url)).apply {
+                when (config.decoder) {
+                    DecoderMode.HARDWARE -> setHWDecoderEnabled(true, true)
+                    DecoderMode.SOFTWARE -> setHWDecoderEnabled(false, false)
+                    DecoderMode.AUTO -> setHWDecoderEnabled(true, false)
+                }
+                addOption(":network-caching=$networkCachingMs")
+                addOption(":live-caching=${config.buffer.vlcLiveCachingMs}")
+                addOption(":file-caching=${config.buffer.vlcFileCachingMs}")
+                if (height != Int.MAX_VALUE) addOption(":preferred-resolution=${height.coerceAtLeast(240)}")
+                bitrate?.let { addOption(":adaptive-maxbitrate=$it") }
+                if (startPositionMs > 5_000) addOption(":start-time=${startPositionMs / 1000}")
             }
-            addOption(":network-caching=$networkCachingMs")
-            addOption(":live-caching=${config.buffer.vlcLiveCachingMs}")
-            addOption(":file-caching=${config.buffer.vlcFileCachingMs}")
-            if (maxHeight != Int.MAX_VALUE) addOption(":preferred-resolution=${maxHeight.coerceAtLeast(240)}")
-            maxBitrateBps?.let { addOption(":adaptive-maxbitrate=$it") }
-            if (startPositionMs > 5_000) addOption(":start-time=${startPositionMs / 1000}")
+            mp.media = media
+            media.release()
+            if (!released) mp.play()
         }
-        mp.media = media
-        media.release()
-        mp.play()
     }
 
-    override fun play() { mp.play() }
-    override fun pause() { mp.pause() }
-    override fun seekTo(ms: Long) { mp.time = ms }
+    // Même fil que load() : jamais appliqués à l'ancien média pendant qu'un zapping est en cours.
+    override fun play() { commands.post { if (!released) mp.play() } }
+    override fun pause() { commands.post { if (!released) mp.pause() } }
+    override fun seekTo(ms: Long) { commands.post { if (!released) mp.time = ms } }
     // Lus par les boucles du lecteur (500 ms, 10 s) : jamais sur un MediaPlayer natif déjà libéré (plantage natif).
     override val isPlaying get() = !released && mp.isPlaying
     override val positionMs get() = if (released) 0L else mp.time.coerceAtLeast(0)
@@ -142,8 +152,8 @@ class VlcEngine(private val ctx: Context, override val config: EngineConfig) : P
     }
     override fun audioTracks(): List<TrackInfo> = if (released) emptyList() else vlcTracks(mp.audioTracks, mp.audioTrack)
     override fun subtitleTracks(): List<TrackInfo> = if (released) emptyList() else vlcTracks(mp.spuTracks, mp.spuTrack)
-    override fun selectAudio(id: String) { audioManual = true; mp.audioTrack = id.toInt() }
-    override fun selectSubtitle(id: String?) { textManual = true; mp.spuTrack = id?.toInt() ?: -1 }
+    override fun selectAudio(id: String) { audioManual = true; val t = id.toInt(); commands.post { if (!released) mp.audioTrack = t } }
+    override fun selectSubtitle(id: String?) { textManual = true; val t = id?.toInt() ?: -1; commands.post { if (!released) mp.spuTrack = t } }
 
     override fun setAspect(mode: AspectMode) {
         mp.setAspectRatio(null)
@@ -167,15 +177,21 @@ class VlcEngine(private val ctx: Context, override val config: EngineConfig) : P
     override fun onVideoDetaching() {
         if (released || videoCut) return
         videoCut = true
-        runCatching { mp.setVideoTrackEnabled(false) }
+        // setVideoTrack attend la sortie vidéo (ANR nativeSetVideoTrack) : fil du moteur. Attente bornée pour couper, en temps
+        // normal, avant la destruction de la surface, sans jamais bloquer le fil principal plus de 300 ms.
+        commands.postAndWait(VIDEO_CUT_WAIT_MS) { if (!released) mp.setVideoTrackEnabled(false) }
     }
     override fun onVideoReattached() {
         if (released) return
         // Surface détruite sans préavis (vue retirée avant l'appel) : on coupe quand même pour recréer la sortie vidéo.
-        if (!videoCut) runCatching { mp.setVideoTrackEnabled(false) }
+        val cutFirst = !videoCut
         videoCut = false
-        runCatching { mp.setVideoTrackEnabled(true) }
-        runCatching { mp.updateVideoSurfaces() }
+        commands.post {
+            if (released) return@post
+            if (cutFirst) runCatching { mp.setVideoTrackEnabled(false) }
+            runCatching { mp.setVideoTrackEnabled(true) }
+            runCatching { mp.updateVideoSurfaces() }
+        }
     }
     override val hasVideo get() = !released && mp.videoTracksCount > 0
     private var maxHeight = Int.MAX_VALUE
@@ -209,12 +225,17 @@ class VlcEngine(private val ctx: Context, override val config: EngineConfig) : P
         // Arrêt / détachement / libération NATIFS hors du fil principal : avec l'affichage direct MediaCodec (gardé en
         // 1.2.48), mp.stop() et detachViews() attendent le fil de sortie vidéo de LibVLC, parfois plusieurs secondes —
         // le fil principal bloqué, l'écran suivant restait sur « chargement » et la relance de l'appli ne répondait plus.
-        // C'est la pratique de VLC lui-même (libération dans un fil dédié).
-        Thread({
+        // C'est la pratique de VLC lui-même (libération dans un fil dédié). Sur le fil du moteur, APRÈS les commandes en
+        // attente (un load en cours ne touche jamais un lecteur libéré), puis le fil s'arrête.
+        commands.close {
             runCatching { mp.stop() }
             runCatching { mp.detachViews() }
             runCatching { mp.release() }
             runCatching { libVlc.release() }
-        }, "vlc-release").apply { isDaemon = true }.start()
+        }
+    }
+
+    private companion object {
+        const val VIDEO_CUT_WAIT_MS = 300L
     }
 }
