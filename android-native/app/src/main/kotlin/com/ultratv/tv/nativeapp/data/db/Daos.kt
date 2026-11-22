@@ -218,6 +218,10 @@ interface ChannelDao {
     @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid AND remoteId NOT LIKE 'custom:%'")
     suspend fun countProvided(pid: Long): Int
 
+    /** Chaînes d'une catégorie (une catégorie absente de la liste du serveur n'est retirée que si plus rien n'y renvoie). */
+    @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid AND categoryId = :cat")
+    suspend fun countInCategory(pid: Long, cat: String): Int
+
     @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid")
     fun observeCount(pid: Long): Flow<Int>
 
@@ -891,6 +895,9 @@ interface CategoryDao {
 
     @Query("DELETE FROM category WHERE providerId = :pid AND kind = :kind")
     suspend fun deleteForProviderKind(pid: Long, kind: String)
+
+    @Query("DELETE FROM category WHERE providerId = :pid AND kind = :kind AND remoteId IN (:ids)")
+    suspend fun deleteRemoteIds(pid: Long, kind: String, ids: List<String>)
 }
 
 @Dao

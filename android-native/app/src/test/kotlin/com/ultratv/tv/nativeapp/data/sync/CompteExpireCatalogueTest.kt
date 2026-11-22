@@ -56,8 +56,9 @@ class CompteExpireCatalogueTest {
     /** Ce que le faux panneau répond à chaque action de `player_api.php` (et à la playlist M3U). */
     @Volatile private var mode = Mode.FULL
     @Volatile private var liveCount = 6
+    private val guideHits = java.util.concurrent.atomic.AtomicInteger()
 
-    private enum class Mode { FULL, AUTH0, EXPIRED, BANNED, EMPTY, EMPTY_CATS_ONLY, ONE_CAT_EMPTY, FEW }
+    private enum class Mode { FULL, AUTH0, EXPIRED, BANNED, EMPTY, EMPTY_CATS_ONLY, ONE_CAT_EMPTY, FEW, DEMO, PARTIAL_CATS, VOD_EMPTY }
 
     @Before fun start() {
         server = MockWebServer()
@@ -79,6 +80,7 @@ class CompteExpireCatalogueTest {
     private fun respond(r: RecordedRequest): MockResponse {
         val url = r.requestUrl!!
         if (url.encodedPath.endsWith(".m3u")) return m3u()
+        if (url.encodedPath.endsWith("xmltv.php")) { guideHits.incrementAndGet(); return MockResponse().setResponseCode(404) }
         val action = url.queryParameter("action")
         val auth0 = """{"user_info":{"auth":0}}"""
         val expired = """{"user_info":{"username":"u","auth":1,"status":"Expired","exp_date":"1600000000"},"server_info":{"url":"local"}}"""
@@ -92,16 +94,23 @@ class CompteExpireCatalogueTest {
         }
         return when (action) {
             null -> json("""{"user_info":{"username":"u","auth":1,"status":"Active","max_connections":"1"},"server_info":{"url":"local","timezone":"UTC"}}""")
-            "get_live_categories" -> json(if (mode == Mode.EMPTY_CATS_ONLY) "[]" else cats("L", 3))
+            "get_live_categories" -> json(
+                when (mode) {
+                    Mode.EMPTY_CATS_ONLY -> "[]"
+                    Mode.DEMO -> """[{"category_id":"X","category_name":"Abonnement expire"}]"""
+                    Mode.PARTIAL_CATS -> cats("L", 1)
+                    else -> cats("L", 3)
+                },
+            )
             "get_vod_categories" -> json(if (mode == Mode.EMPTY_CATS_ONLY) "[]" else cats("V", 2))
             "get_series_categories" -> json(if (mode == Mode.EMPTY_CATS_ONLY) "[]" else cats("S", 2))
-            "get_live_streams" -> json(
+            "get_live_streams" -> if (mode == Mode.DEMO) json((1..3).joinToString(",", "[", "]") { """{"num":$it,"name":"Demo $it","stream_id":${900 + it},"category_id":"X"}""" }) else json(
                 (1..(if (mode == Mode.FEW) 3 else liveCount))
                     .filter { mode != Mode.ONE_CAT_EMPTY || 1 + it % 3 != 1 }
                     .joinToString(",", "[", "]") { """{"num":$it,"name":"Chaine $it","stream_id":${100 + it},"category_id":"L${1 + it % 3}"}""" },
             )
-            "get_vod_streams" -> json((1..4).joinToString(",", "[", "]") { """{"num":$it,"name":"Film $it","stream_id":${200 + it},"category_id":"V${1 + it % 2}","container_extension":"mp4"}""" })
-            "get_series" -> json((1..3).joinToString(",", "[", "]") { """{"num":$it,"name":"Serie $it","series_id":${300 + it},"category_id":"S${1 + it % 2}"}""" })
+            "get_vod_streams" -> if (mode == Mode.VOD_EMPTY) json("[]") else json((1..4).joinToString(",", "[", "]") { """{"num":$it,"name":"Film $it","stream_id":${200 + it},"category_id":"V${1 + it % 2}","container_extension":"mp4"}""" })
+            "get_series" -> json((1..(if (mode == Mode.VOD_EMPTY) 5 else 3)).joinToString(",", "[", "]") { """{"num":$it,"name":"Serie $it","series_id":${300 + it},"category_id":"S${1 + it % 2}"}""" })
             else -> MockResponse().setResponseCode(404)
         }
     }
@@ -248,6 +257,36 @@ class CompteExpireCatalogueTest {
         mode = Mode.EXPIRED
         r.syncFails()
         assertEquals("page HTML d'erreur : chaînes gardées", 6, r.shape()[0])
+    }
+
+    private fun Rig.liveCats() = runBlocking { db.categoryDao().forProviderKind(pid, "LIVE") }.sortedBy { it.remoteId }
+
+    /** C1 : liste de démonstration (1 catégorie, 3 chaînes) d'un compte expiré : chaînes ET catégories gardées, réglages compris. */
+    @Test fun xtream_liste_de_demonstration_garde_les_categories_masquees_et_verrouillees() {
+        liveCount = 1_200
+        val r = rig()
+        runBlocking { r.repo.syncAll(r.pid, force = true) }
+        val l3 = r.liveCats().first { it.remoteId == "L3" }
+        runBlocking {
+            r.db.categoryDao().setEnabled(r.pid, "LIVE", listOf("L2"), false)
+            r.db.categoryDao().setLocked(l3.id, true)
+        }
+        val avant = r.liveCats().map { Triple(it.remoteId, it.enabled, it.locked) }
+        val chaines = r.shape()[0]
+        mode = Mode.DEMO
+        r.syncFails()
+        assertEquals("catégories, masquage et verrou intacts", avant, r.liveCats().map { Triple(it.remoteId, it.enabled, it.locked) })
+        assertEquals("chaînes gardées", chaines, r.shape()[0])
+    }
+
+    /** C1 : le panneau ne renvoie qu'une partie des catégories mais toutes les chaînes : aucune chaîne orpheline. */
+    @Test fun xtream_categories_partielles_gardent_celles_encore_utilisees() {
+        val r = rig()
+        runBlocking { r.repo.syncAll(r.pid, force = true) }
+        mode = Mode.PARTIAL_CATS
+        runBlocking { r.repo.syncAll(r.pid, force = true) }
+        assertEquals(6, r.shape()[0])
+        assertEquals(listOf("L1", "L2", "L3"), r.liveCats().map { it.remoteId })
     }
 
     @Test fun suppression_explicite_de_la_source_vide_tout() {

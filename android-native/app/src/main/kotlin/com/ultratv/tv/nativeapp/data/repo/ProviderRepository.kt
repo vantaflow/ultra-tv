@@ -2,6 +2,7 @@ package com.ultratv.tv.nativeapp.data.repo
 
 import com.ultratv.tv.nativeapp.data.db.CategoryDao
 import com.ultratv.tv.nativeapp.data.db.CategoryEntity
+import com.ultratv.tv.nativeapp.data.net.EmptyCatalogException
 import com.ultratv.tv.nativeapp.data.db.ChannelDao
 import com.ultratv.tv.nativeapp.data.db.EpisodeDao
 import com.ultratv.tv.nativeapp.data.db.MovieDao
@@ -753,6 +754,8 @@ class ProviderRepository @Inject constructor(
         val keepCats: (Long) -> Collection<String> = { emptyList() },
         /** Éléments en base venus du fournisseur : référence de la garde anti-effacement ([CatalogGuard]). */
         val count: suspend (Long) -> Int = { 0 },
+        /** Éléments encore rattachés à une catégorie : une catégorie absente de la liste reçue n'est retirée qu'à 0. */
+        val countIn: suspend (Long, String) -> Int = { _, _ -> 0 },
     )
 
     private fun livePart(kind: String = "XTREAM") = PartSpec<com.ultratv.tv.nativeapp.data.db.ChannelEntity>(
@@ -767,6 +770,7 @@ class ProviderRepository @Inject constructor(
         // Rang de catégorie (ordre du Direct, voir LiveOrder) posé à l'insertion : aucune réécriture après coup.
         { all -> val rows = withoutHidden(all); val keep = liveIds; channelDao.upsertAll(liveRanks.stamp(if (keep.isEmpty()) rows else rows.map { c -> keep[c.remoteId]?.let { c.copy(id = it) } ?: c })) },
         count = { channelDao.countProvided(it) },
+        countIn = { pid, c -> channelDao.countInCategory(pid, c) },
     )
 
     /** remoteId → identifiant des chaînes AVANT la synchro en cours (voir [livePart]). */
@@ -786,6 +790,7 @@ class ProviderRepository @Inject constructor(
         incremental = IncrementalTable.MOVIES,
         keepCats = { pid -> stalkerFailedCats(pid, "MOVIE") },
         count = { movieDao.observeCount(it).first() },
+        countIn = { pid, c -> movieDao.countInCategory(pid, c) },
     )
 
     private fun seriesPart(kind: String = "XTREAM") = PartSpec<com.ultratv.tv.nativeapp.data.db.SeriesEntity>(
@@ -799,6 +804,7 @@ class ProviderRepository @Inject constructor(
         incremental = IncrementalTable.SERIES,
         keepCats = { pid -> stalkerFailedCats(pid, "SERIES") },
         count = { seriesDao.observeCount(it).first() },
+        countIn = { pid, c -> seriesDao.countInCategory(pid, c) },
     )
 
     // ───────────── Serveurs Jellyfin / Emby : bibliothèques = catégories ─────────────
@@ -1096,14 +1102,47 @@ class ProviderRepository @Inject constructor(
         val disabledIds = merged.filter { !it.enabled }.map { it.remoteId }
         val langByCat = merged.associate { it.remoteId to it.lang }
         val enabledSet = enabledIds.toHashSet()
+        // Catégories ABSENTES de la liste reçue (liste partielle d'un panneau surchargé, liste de démonstration d'un compte
+        // expiré) : gardées telles quelles (masquage, verrou, ordre) tant que la partie n'est pas acceptée par la garde.
+        val fetchedIds = merged.mapTo(HashSet()) { it.remoteId }
+        val absent = before.filter { it.remoteId !in fetchedIds }
         db.withTransaction {
             categoryDao.deleteForProviderKind(p.id, spec.kind)
-            categoryDao.upsertAll(merged)
+            // Les absentes d'abord, avec leur identifiant : les nouvelles (id 0) prennent les numéros suivants.
+            categoryDao.upsertAll(absent + merged)
             // SQLite plafonne les paramètres à 999 : purge par paquets.
             disabledIds.chunked(500).forEach { spec.deleteCats(p.id, it) }
         }
         // Les catégories viennent d'être réécrites (nouveaux id) : rangs du Direct relus avant d'insérer les chaînes.
         if (spec.kind == LiveOrder.KIND) liveRanks = LiveOrder.ranks(categoryDao.forProviderKind(p.id, spec.kind))
+        val n = try {
+            syncPartItems(p, spec, merged, enabledIds, enabledSet, langByCat, progress, onDownloaded)
+        } catch (e: EmptyCatalogException) {
+            // Partie refusée : la table des catégories redevient EXACTEMENT celle d'avant (réglages de l'utilisateur compris).
+            db.withTransaction {
+                categoryDao.deleteForProviderKind(p.id, spec.kind)
+                categoryDao.upsertAll(before)
+                if (spec.kind == LiveOrder.KIND) LiveOrder.apply(channelDao, p.id, LiveOrder.ranks(before))
+            }
+            throw e
+        }
+        // Partie acceptée : une catégorie absente n'est retirée que si plus aucun élément n'y renvoie (jamais d'orphelins).
+        val gone = absent.filter { it.remoteId != ManualChannels.CUSTOM_CAT && spec.countIn(p.id, it.remoteId) == 0 }.map { it.remoteId }
+        if (gone.isNotEmpty()) db.withTransaction { gone.chunked(500).forEach { categoryDao.deleteRemoteIds(p.id, spec.kind, it) } }
+        return n
+    }
+
+    /** Éléments d'une partie, catégories déjà écrites (voir [syncXtreamPartLocked]). Lève [EmptyCatalogException] si refusée. */
+    private suspend fun <T : Any> syncPartItems(
+        p: ProviderEntity,
+        spec: PartSpec<T>,
+        merged: List<CategoryEntity>,
+        enabledIds: List<String>,
+        enabledSet: Set<String>,
+        langByCat: Map<String, String>,
+        progress: (Float, Int) -> Unit,
+        onDownloaded: () -> Unit,
+    ): Int {
         // Référence de la garde anti-effacement : éléments des catégories actives (les désactivées viennent d'être purgées).
         val itemsBefore = spec.count(p.id)
         // Catégories reçues vides : effacées seulement à la fin, si au moins une catégorie a renvoyé quelque chose.
