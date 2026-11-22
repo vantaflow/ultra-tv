@@ -9,11 +9,13 @@ Android 14 / API 34) où Ultra TV est l'appli TV intégrée et Kairo (`com.vanta
 
 | | Valeur |
 |---|---|
-| Paquet (release) | `com.ultratv.tv.nativeapp` |
-| Paquet de développement | `com.ultratv.tv.nativeapp.debug` (pré-versions `-rcN`, à NE PAS intégrer au firmware) |
+| Paquet publié (versions ET pré-versions) | `com.ultratv.tv.nativeapp.debug` |
+| `com.ultratv.tv.nativeapp` | n'est publié nulle part : ne pas l'utiliser |
 | Signature | APK Signature Scheme v3 avec chaîne de rotation (lineage) |
 | Certificat actuel (SHA-256) | `702f820557cdc30a043a4181d87c21eb3f78126d4c244c4dac4a4156e99ca75d` (CN=Ultra TV, O=vantaflow, RSA 4096) |
 | Anciens certificats de la chaîne | `d9f167658dbfdcc8aefae4986bed37aea836098a0529f6ae73c8910c3885d219` (O=khalilbenaz), `f2e0ec80dcadb8a57c18648f5ba08b0ce2520bc2fd1fbcf04123b4e11337185f` (Android Debug) |
+
+**Correction du 2026-11-22 (soir)** : le type de build release ajoute lui aussi le suffixe `.debug` (`android-native/app/build.gradle.kts`, `applicationIdSuffix = ".debug"` dans `release`) ; vérifié avec `aapt2 dump badging` sur l'APK de la release 1.3.72 et de la rc7. Tous les utilisateurs ont ce paquet ; il ne changera pas (changer de paquet couperait leurs mises à jour). Les pré-versions `-rcN` ont le même paquet : intégrer l'APK d'une version stable (release « latest »), jamais d'une `-rc`.
 
 Relevé le 2026-11-22 sur `UltraTV-1.3.72-arm64-v8a.apk` de la release GitHub v1.3.72 (`apksigner verify` + `apksigner lineage`).
 
@@ -21,7 +23,7 @@ Relevé le 2026-11-22 sur `UltraTV-1.3.72-arm64-v8a.apk` de la release GitHub v1
   certificat actuel `702f82…a75d`. Le système accepte aussi les mises à jour signées par une clé plus récente de la même
   chaîne : une rotation future ne casserait pas les mises à jour, mais toute liste d'empreintes figée devrait être
   complétée. Aucune rotation n'est prévue ; si elle devait arriver, Kairo et KM2 OS seraient prévenus avant.
-- Appli à intégrer : l'APK `armeabi-v7a` de la release (`UltraTV-<version>-armeabi-v7a.apk`), jamais l'APK `debug`.
+- Appli à intégrer : l'APK `armeabi-v7a` d'une release stable (`UltraTV-<version>-armeabi-v7a.apk`), jamais `UltraTV-debug.apk` (universel) ni une pré-version `-rc`.
   La box 192.168.0.41 a un espace utilisateur 32 bits (`ro.product.cpu.abilist` = `armeabi-v7a,armeabi`, relevé le
   2026-11-22) : l'APK `arm64-v8a` y échoue avec `INSTALL_FAILED_NO_MATCHING_ABIS`. Si le firmware passe en 64 bits,
   prendre l'APK `arm64-v8a`.
@@ -44,7 +46,7 @@ flux : il est résolu dans le catalogue local. Un lien inconnu ou mal formé ouv
 Rangées système Android TV (fournisseur `android.media.tv`, lisibles par tout launcher) : « Continuer à regarder »,
 chaînes de prévisualisation « Favoris » et « Nouveautés » ; « Chaînes récentes » en cours ; images paysage 16:9 en cours.
 
-Fournisseur réservé à Kairo (en cours) : autorité `com.ultratv.tv.nativeapp.kairo`, `content://…/now` (en cours / suivant
+Fournisseur réservé à Kairo : autorité `com.ultratv.tv.nativeapp.debug.kairo`, `content://…/now` (en cours / suivant
 des chaînes favorites puis récentes, 20 lignes au plus) et `content://…/profile` (profil enfant ou non). Protégé par le
 paquet appelant `com.vantaflow.kairo` ET l'empreinte de signature de Kairo
 `b5c0901798aa6a67b3cd619c56c27057431eec2681c9b1799f9afc2aba5e8c3e`. Colonnes dans le contrat Kairo.
@@ -61,7 +63,7 @@ Ultra TV fonctionne sans privilège ; tout ce qui suit est facultatif.
 | `android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION` | mise à jour intégrée sans écran de confirmation (API 31+, Ultra TV doit être l'installeur de référence de son propre paquet) | normale, pas de liste blanche |
 | `android.permission.INSTALL_PACKAGES` | seulement si la précédente ne suffit pas sur ce firmware | privilégiée → `privapp-permissions` |
 | `com.android.providers.tv.permission.WRITE_EPG_DATA` | déjà demandée (rangées TV) | déjà accordée |
-| Exclusion de l'optimisation batterie / veille | synchro de nuit et enregistrements planifiés | `<allow-in-power-save package="com.ultratv.tv.nativeapp"/>` dans `sysconfig` |
+| Exclusion de l'optimisation batterie / veille | synchro de nuit et enregistrements planifiés | `<allow-in-power-save package="com.ultratv.tv.nativeapp.debug"/>` dans `sysconfig` |
 
 Décodage matériel : rien de spécifique (Media3 / MediaCodec et VLC utilisent les décodeurs du SoC). Pas de permission
 système demandée pour l'audio. Ultra TV n'a pas besoin d'être `persistent` ni signée avec la clé plateforme.
