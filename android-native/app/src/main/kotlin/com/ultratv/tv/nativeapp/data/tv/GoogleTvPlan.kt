@@ -79,6 +79,29 @@ object FavoritesChannelPlan {
         selected.joinToString("|") { "${it.providerId}:${it.remoteId}:${it.title}:${it.logo.orEmpty()}" }.hashCode().toString()
 }
 
+/** Chaîne d'accueil « Chaînes récentes » : dernières chaînes du direct regardées, distincte de « Favoris ». */
+object RecentChannelsPlan {
+    const val MAX = 20
+    /** Lignes d'historique lues (plusieurs lectures d'une même chaîne se suivent souvent). */
+    const val FETCH = 60
+
+    /** Ordre de l'historique (la plus récente d'abord), une tuile par nom, hors séparateurs et catégories masquées par le profil. */
+    fun select(recent: List<ChannelEntity>, hiddenCategoryKeys: Set<String>): List<ChannelEntity> =
+        recent.asSequence()
+            .filter { !it.isSeparator && it.title.isNotBlank() }
+            .filter { c -> c.categoryId == null || "LIVE:${c.providerId}:${c.categoryId}" !in hiddenCategoryKeys }
+            .distinctBy { it.providerId to it.remoteId }
+            .distinctBy { it.title.trim().uppercase() }
+            .take(MAX).toList()
+
+    fun internalId(c: ChannelEntity) = "RECENT:LIVE:${c.providerId}:${c.remoteId}"
+
+    fun deepLink(c: ChannelEntity) = DeepLink.live(c.providerId, c.remoteId)
+
+    fun signature(selected: List<ChannelEntity>): String =
+        "recent|" + selected.joinToString("|") { "${it.providerId}:${it.remoteId}:${it.title}:${it.logo.orEmpty()}" }.hashCode().toString()
+}
+
 /** Chaîne d'accueil « Ultra TV · Nouveautés » : derniers films et séries ajoutés par la source active. */
 object NewsChannelPlan {
     const val MAX = 20

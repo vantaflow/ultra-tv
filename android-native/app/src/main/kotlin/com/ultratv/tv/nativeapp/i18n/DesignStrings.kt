@@ -123,6 +123,8 @@ class DesignStrings(val lang: AppLang) {
     // Sans « Ultra TV · » : Google TV et les lanceurs (Kairo…) affichent déjà l'appli à côté (« Ultra TV · Nouveautés · UTV »),
     // et la chaîne Favoris n'avait pas ce préfixe.
     val newsChannelName get() = tx(R.string.ds_news_channel_name)
+    /** Nom de la chaîne d'accueil des dernières chaînes regardées (même libellé que dans le lecteur). */
+    val recentChannelsName get() = tx(R.string.osd_recent_channels)
     val seeAll get() = tx(R.string.ds_see_all)
     val loadingLabel get() = tx(R.string.ds_loading_label)
     val searchingLabel get() = tx(R.string.ds_searching_label)
