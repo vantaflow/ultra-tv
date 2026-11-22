@@ -82,8 +82,37 @@ class DetailStatesTouchTest {
         rule.onNode(hasText("هذا العنوان لم يعد متاحًا")).assertExists()
     }
 
-    @Test fun themeClair_etatsLisibles() {
+    private fun lum(c: androidx.compose.ui.graphics.Color): Double {
+        fun f(v: Float) = if (v <= 0.03928f) v / 12.92 else Math.pow(((v + 0.055) / 1.055), 2.4)
+        return 0.2126 * f(c.red) + 0.7152 * f(c.green) + 0.0722 * f(c.blue)
+    }
+    private fun ratio(a: androidx.compose.ui.graphics.Color, b: androidx.compose.ui.graphics.Color): Double {
+        val l1 = lum(a); val l2 = lum(b); return (maxOf(l1, l2) + 0.05) / (minOf(l1, l2) + 0.05)
+    }
+
+    @Test fun etats_lisibles_dansLes10Themes() {
+        val saved = Triple(com.ultratv.tv.nativeapp.ui.design.Ux.themeKind, com.ultratv.tv.nativeapp.ui.design.Ux.themeLight, com.ultratv.tv.nativeapp.ui.design.Ux.themeOled)
+        try {
+            for (t in com.ultratv.tv.nativeapp.data.prefs.AppTheme.entries) {
+                com.ultratv.tv.nativeapp.ui.design.Ux.themeKind = t
+                com.ultratv.tv.nativeapp.ui.design.Ux.themeLight = com.ultratv.tv.nativeapp.ui.theme.isLightTheme(t, systemDark = true, isTv = false)
+                com.ultratv.tv.nativeapp.ui.design.Ux.themeOled = t == com.ultratv.tv.nativeapp.data.prefs.AppTheme.OLED
+                val U = com.ultratv.tv.nativeapp.ui.design.Ux
+                // Message sur le fond de page, « Retour » (texte sur bouton) et « Réessayer » (encre claire/sombre sur le bouton d'action).
+                assertTrue("$t message ${ratio(U.Text, U.Bg)}", ratio(U.Text, U.Bg) >= 4.5)
+                assertTrue("$t Retour ${ratio(U.Text, U.Surface2)}", ratio(U.Text, U.Surface2) >= 4.5)
+                assertTrue("$t Réessayer ${ratio(U.TextOnLight, U.Cta)}", ratio(U.TextOnLight, U.Cta) >= 4.5)
+            }
+        } finally {
+            com.ultratv.tv.nativeapp.ui.design.Ux.themeKind = saved.first; com.ultratv.tv.nativeapp.ui.design.Ux.themeLight = saved.second; com.ultratv.tv.nativeapp.ui.design.Ux.themeOled = saved.third
+        }
+    }
+
+    @Test fun themeClair_etatsAffichesEtLisibles() {
         rule.setDetail(tv = false, width = 390, height = 844, light = true) { DetailStatePanel(DetailLoad.Failed(SyncErrorKind.TIMEOUT), {}, {}) }
-        rule.onNodeWithTag("dt-state").assertExists()
+        rule.onNodeWithTag("dt-state-retry").assertExists()
+        rule.onNodeWithTag("dt-state-back").assertExists()
+        val U = com.ultratv.tv.nativeapp.ui.design.Ux
+        assertTrue(ratio(U.Text, U.Bg) >= 4.5)
     }
 }

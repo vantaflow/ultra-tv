@@ -208,12 +208,7 @@ class CatalogRepository @Inject constructor(
         val p = providerDao.byId(m.providerId)
         if (p == null || p.kind != "XTREAM") return cached
         // Échec réseau ou réponse illisible : la fiche reste lisible avec le cache (ou le catalogue), une ligne de journal sans identifiant.
-        val attempt = com.ultratv.tv.nativeapp.ui.common.uiAttempt("movie", "details-source") { xtream.fetchVodInfo(p, m.remoteId) }
-        val fetched = attempt.getOrNull() ?: run {
-            // Réponse reçue mais illisible : même ligne de journal que pour un échec réseau.
-            if (attempt.isSuccess) com.ultratv.tv.nativeapp.ui.common.UiLog.failure("movie", "details-source", kotlinx.serialization.SerializationException("get_vod_info : réponse illisible"))
-            return cached
-        }
+        val fetched = com.ultratv.tv.nativeapp.ui.common.uiAttempt("movie", "details-source") { xtream.fetchVodInfo(p, m.remoteId) }.getOrNull() ?: return cached
         val row = VodInfoEntity(
             providerId = m.providerId, remoteId = m.remoteId, plot = fetched.plot, cast = fetched.cast, director = fetched.director,
             genre = fetched.genre, duration = fetched.duration, releaseDate = fetched.releaseDate, rating = fetched.rating,

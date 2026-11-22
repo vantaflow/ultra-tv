@@ -166,7 +166,10 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
 
     suspend fun fetchVodInfo(p: ProviderEntity, remoteId: String): VodInfo? {
         val body = get("${p.baseUrl}/player_api.php?username=${p.username.urlEnc()}&password=${p.password.urlEnc()}&action=get_vod_info&vod_id=$remoteId")
-        val info = (runCatching { json.parseToJsonElement(body) as? JsonObject }.getOrNull()?.get("info") as? JsonObject) ?: return null
+        // Corps qui n'est pas du JSON (page web, texte) : réponse illisible, signalée par une exception. `"info": []` (film sans
+        // fiche, cas courant) n'est PAS illisible : simplement pas de détails.
+        val root = runCatching { json.parseToJsonElement(body) }.getOrElse { throw kotlinx.serialization.SerializationException("get_vod_info : réponse illisible", it) }
+        val info = (root as? JsonObject)?.get("info") as? JsonObject ?: return null
         return parseVodInfo(info)
     }
 
@@ -239,7 +242,10 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
 
     suspend fun fetchSeriesDetail(p: ProviderEntity, seriesRemoteId: String, seriesLocalId: Long): SeriesDetail? {
         val body = get("${p.baseUrl}/player_api.php?username=${p.username.urlEnc()}&password=${p.password.urlEnc()}&action=get_series_info&series_id=$seriesRemoteId")
-        val root = runCatching { json.parseToJsonElement(body) as? JsonObject }.getOrNull() ?: return null
+        val element = runCatching { json.parseToJsonElement(body) }.getOrNull() ?: return null
+        // Série sans aucun épisode : la source répond `[]` (liste vide), ce n'est pas une réponse illisible.
+        if (element is JsonArray) return SeriesDetail(null, null, null, null, null, null, emptyList())
+        val root = element as? JsonObject ?: return null
         val tc = com.ultratv.tv.nativeapp.data.repo.TitleCleaner
         val info = root["info"] as? JsonObject
         fun si(k: String) = info?.get(k)?.str()?.let { tc.presentable(it) }
@@ -270,7 +276,7 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
                 )
             }
         }
-        if (episodes == null && out.isEmpty() && info == null) return null
+        if (episodes == null && out.isEmpty() && info == null && root["episodes"] == null && root["info"] == null) return null
         return SeriesDetail(
             plot = si("plot"), genre = si("genre"), cast = si("cast"),
             backdrop = ((info?.get("backdrop_path") as? JsonArray)?.firstOrNull()?.str())?.takeIf { it.startsWith("http") },

@@ -146,6 +146,7 @@ class MovieDetailViewModel @Inject constructor(
     val load: StateFlow<DetailLoad> = _load.asStateFlow()
 
     private var lastId = 0L
+    private var loadJob: kotlinx.coroutines.Job? = null
 
     /** Sources complémentaires déjà signalées pendant cette visite (une ligne de journal par source, jamais une par appel). */
     private val noted = java.util.Collections.synchronizedSet(HashSet<String>())
@@ -170,7 +171,9 @@ class MovieDetailViewModel @Inject constructor(
         lastId = id
         noted.clear()
         if (!alreadyShown) _load.value = DetailLoad.Loading
-        viewModelScope.launch {
+        // Un chargement en cours (retour pressé trop tôt, « Réessayer » répété) est annulé : jamais deux chargements concurrents.
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             val read = uiAttempt("movie", "chargement") { catalog.movieById(id) }
             val m = read.getOrNull()
             _m.value = m

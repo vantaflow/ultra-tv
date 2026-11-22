@@ -156,6 +156,9 @@ class SeriesDetailViewModel @Inject constructor(
     val episodesError: StateFlow<SyncErrorKind?> = _episodesError.asStateFlow()
 
     private var lastId = 0L
+    private var loadJob: kotlinx.coroutines.Job? = null
+    private var episodesJob: kotlinx.coroutines.Job? = null
+    private var collectorJob: kotlinx.coroutines.Job? = null
 
     /** Sources complémentaires déjà signalées pendant cette visite (une ligne de journal par source, jamais une par appel). */
     private val noted = java.util.Collections.synchronizedSet(HashSet<String>())
@@ -182,7 +185,8 @@ class SeriesDetailViewModel @Inject constructor(
         val id = lastId
         _episodesError.value = null
         _loading.value = true
-        viewModelScope.launch {
+        episodesJob?.cancel()
+        episodesJob = viewModelScope.launch {
             try {
                 fetchEpisodes(id)
                 // loadEpisodes complète plot / genre / année / distribution
@@ -201,7 +205,9 @@ class SeriesDetailViewModel @Inject constructor(
         noted.clear()
         _episodesError.value = null
         if (!alreadyShown) _load.value = DetailLoad.Loading
-        viewModelScope.launch {
+        // Un chargement en cours est annulé (jamais deux chargements ni deux collecteurs d'épisodes concurrents).
+        loadJob?.cancel(); episodesJob?.cancel(); collectorJob?.cancel()
+        loadJob = viewModelScope.launch {
             val read = uiAttempt("series", "chargement") { catalog.seriesById(id) }
             val s0 = read.getOrNull()
             if (read.isFailure) { _load.value = DetailLoad.Failed(SyncErrorKind.OTHER); return@launch }
@@ -213,6 +219,16 @@ class SeriesDetailViewModel @Inject constructor(
                 return@launch
             }
             _load.value = DetailLoad.Ready
+            // Épisodes de la base : observés seulement quand la série existe ; une exception Room est journalisée, pas fatale.
+            collectorJob = launch {
+                try {
+                    catalog.episodes(id).collect { _rawEpisodes.value = it }
+                } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                    throw e
+                } catch (t: Throwable) {
+                    UiLog.failure("series", "episodes-base", t)
+                }
+            }
             _loading.value = true
             fetchEpisodes(id)
             // loadEpisodes complète plot / genre / année / distribution
@@ -227,9 +243,6 @@ class SeriesDetailViewModel @Inject constructor(
                 it.tmdbId?.let { tid -> loadExtras(tid) }
                 _tmdbId.value = it.tmdbId
             }
-        }
-        viewModelScope.launch {
-            catalog.episodes(id).collect { _rawEpisodes.value = it }
         }
     }
 

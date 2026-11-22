@@ -78,6 +78,7 @@ class DetailViewModelErrorsTest {
     private val lines = CopyOnWriteArrayList<Pair<String, String>>()
     @Volatile private var netFailure: Throwable? = null
     @Volatile private var netBody = "{}"
+    private val netCalls = java.util.concurrent.atomic.AtomicInteger()
     private val savedLocale = Locale.getDefault()
 
     private class Wiring(
@@ -94,6 +95,7 @@ class DetailViewModelErrorsTest {
         db = Room.inMemoryDatabaseBuilder(ctx, UltraDb::class.java).allowMainThreadQueries().build()
         runBlocking { db.profileDao().insert(ProfileEntity(name = "Principal", color = 1, initial = "P")) }
         val ok = OkHttpClient.Builder().addInterceptor { chain ->
+            netCalls.incrementAndGet()
             netFailure?.let { throw it }
             Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).code(200).message("OK")
                 .body(netBody.toResponseBody("application/json".toMediaType())).build()
@@ -142,6 +144,12 @@ class DetailViewModelErrorsTest {
     private fun <T> awaitState(flow: kotlinx.coroutines.flow.Flow<T>, what: String, cond: (T) -> Boolean): T =
         runBlocking { withTimeout(15_000) { flow.first(cond) } }
 
+    /** Attend (sans supposer l'ordre des émissions) qu'une condition soit vraie, 15 s au plus. */
+    private fun awaitUntil(what: String, cond: () -> Boolean) {
+        val end = System.currentTimeMillis() + 15_000
+        while (!cond()) { check(System.currentTimeMillis() < end) { "délai dépassé : $what" }; Thread.sleep(20) }
+    }
+
     @Test fun film_introuvable_etatNotFound() {
         val vm = movieVm()
         vm.load(999)
@@ -172,8 +180,9 @@ class DetailViewModelErrorsTest {
         netFailure = java.net.ConnectException("failed to connect to http://h:8080/player_api.php?username=jean&password=s3cret&action=get_vod_info&vod_id=55")
         val vm = movieVm()
         vm.load(10)
-        awaitState(vm.infoLoading, "infoLoading") { !it }
-        assertEquals(DetailLoad.Ready, vm.load.value)
+        awaitUntil("fiche prête") { vm.load.value == DetailLoad.Ready }
+        awaitUntil("ligne details-source") { lines.any { it.first == "ui.movie" && it.second.startsWith("details-source") } }
+        awaitUntil("détails terminés") { !vm.infoLoading.value }
         assertEquals(10L, vm.movie.value?.id)
         val l = lines.filter { it.first == "ui.movie" && it.second.startsWith("details-source") }
         assertEquals(l.toString(), 1, l.size)
@@ -186,8 +195,9 @@ class DetailViewModelErrorsTest {
         netBody = "<html>pas du json</html>"
         val vm = movieVm()
         vm.load(10)
-        awaitState(vm.infoLoading, "infoLoading") { !it }
-        assertEquals(DetailLoad.Ready, vm.load.value)
+        awaitUntil("fiche prête") { vm.load.value == DetailLoad.Ready }
+        awaitUntil("ligne details-source") { lines.any { it.first == "ui.movie" && it.second.startsWith("details-source") } }
+        awaitUntil("détails terminés") { !vm.infoLoading.value }
         assertEquals(1, lines.count { it.first == "ui.movie" && it.second.startsWith("details-source") })
     }
 
@@ -240,6 +250,8 @@ class DetailViewModelErrorsTest {
         val vm = seriesVm()
         vm.load(20)
         awaitState(vm.load, "load") { it == DetailLoad.Ready }
+        awaitUntil("l'annulation a bien été rencontrée") { netCalls.get() >= 1 }
+        Thread.sleep(300)
         // L'annulation traverse `uiAttempt` sans ligne de journal ni erreur d'épisodes affichée.
         assertTrue(lines.toString(), lines.none { it.second.startsWith("episodes") })
         assertNull(vm.episodesError.value)
@@ -252,5 +264,64 @@ class DetailViewModelErrorsTest {
         seriesVm().playEpisode("Les Gardiens du phare", "77", providerId, ep) { _, t -> played = t }
         assertTrue(played, played!!.contains("S02E05"))
         assertFalse(played!!.any { it in '٠'..'٩' })
+    }
+
+    @Test fun film_infoVide_aucuneLigneDetailsSource() {
+        addMovie()
+        netBody = """{"info":[],"movie_data":{}}"""
+        val vm = movieVm()
+        vm.load(10)
+        awaitUntil("fiche prête") { vm.load.value == DetailLoad.Ready }
+        awaitUntil("détails terminés") { !vm.infoLoading.value }
+        assertTrue(lines.toString(), lines.none { it.second.startsWith("details-source") })
+        assertEquals(DetailLoad.Ready, vm.load.value)
+    }
+
+    @Test fun serie_exceptionRoom_failedEtJournal() {
+        db.openHelper.writableDatabase.execSQL("DROP TABLE series")
+        val vm = seriesVm()
+        vm.load(20)
+        assertEquals(DetailLoad.Failed(SyncErrorKind.OTHER), awaitState(vm.load, "load") { it != DetailLoad.Loading })
+        assertTrue(lines.any { it.first == "ui.series" && it.second.startsWith("chargement · OTHER") })
+    }
+
+    @Test fun serie_tableEpisodesAbimee_journaliseSansPlanter() {
+        addSeries()
+        db.openHelper.writableDatabase.execSQL("DROP TABLE episode")
+        val vm = seriesVm()
+        vm.load(20)
+        awaitUntil("fiche prête") { vm.load.value == DetailLoad.Ready }
+        awaitUntil("ligne episodes-base") { lines.any { it.first == "ui.series" && it.second.startsWith("episodes-base") } }
+        assertEquals(DetailLoad.Ready, vm.load.value)
+    }
+
+    @Test fun serie_listeVide_aucunEpisode_pasDErreur() {
+        addSeries()
+        netBody = "[]"
+        val vm = seriesVm()
+        vm.load(20)
+        awaitUntil("fiche prête") { vm.load.value == DetailLoad.Ready }
+        awaitUntil("épisodes terminés") { !vm.loading.value }
+        assertNull(vm.episodesError.value)
+        assertTrue(vm.episodes.value.isEmpty())
+        assertTrue(lines.toString(), lines.none { it.second.startsWith("episodes") })
+    }
+
+    @Test fun serie_infoEtEpisodesEnTableauxVides_pasDErreur() {
+        addSeries()
+        netBody = """{"info":[],"episodes":[]}"""
+        val vm = seriesVm()
+        vm.load(20)
+        awaitUntil("épisodes terminés") { vm.load.value == DetailLoad.Ready && !vm.loading.value && netCalls.get() >= 1 }
+        assertNull(vm.episodesError.value)
+    }
+
+    @Test fun retryPendantLeChargement_pasDeChargementsConcurrents() {
+        addSeries()
+        val vm = seriesVm()
+        vm.load(20); vm.retry(); vm.retry()
+        awaitUntil("fiche prête") { vm.load.value == DetailLoad.Ready }
+        awaitUntil("épisodes terminés") { !vm.loading.value }
+        assertEquals(DetailLoad.Ready, vm.load.value)
     }
 }
