@@ -174,7 +174,8 @@ class CatalogRepository @Inject constructor(
         if (last != null && now - last < 30 * 60_000L && episodeDao.forSeries(seriesId).isNotEmpty()) return
         val eps = when (p.kind) {
             "XTREAM" -> {
-                val d = xtream.fetchSeriesDetail(p, s.remoteId, s.id) ?: return
+                // Réponse illisible (page web, JSON tronqué) : une erreur d'affichage (« réponse illisible » + Réessayer), pas « Aucun épisode ».
+                val d = xtream.fetchSeriesDetail(p, s.remoteId, s.id) ?: throw kotlinx.serialization.SerializationException("get_series_info : réponse illisible")
                 // Mise à jour seulement si quelque chose change : chaque écriture de « series » relance les requêtes de l'accueil.
                 if (d.plot != s.plot || d.genre != s.genre || d.cast != s.cast || d.backdrop != s.backdrop || d.year != s.year || d.rating != s.rating)
                     seriesDao.updateInfo(s.id, d.plot, d.genre, d.cast, d.backdrop, d.year, d.rating)
@@ -206,7 +207,13 @@ class CatalogRepository @Inject constructor(
         if (cached != null && now - cached.fetchedAt < vodInfoTtlMs(cached)) return cached
         val p = providerDao.byId(m.providerId)
         if (p == null || p.kind != "XTREAM") return cached
-        val fetched = runCatching { xtream.fetchVodInfo(p, m.remoteId) }.getOrNull() ?: return cached
+        // Échec réseau ou réponse illisible : la fiche reste lisible avec le cache (ou le catalogue), une ligne de journal sans identifiant.
+        val attempt = com.ultratv.tv.nativeapp.ui.common.uiAttempt("movie", "details-source") { xtream.fetchVodInfo(p, m.remoteId) }
+        val fetched = attempt.getOrNull() ?: run {
+            // Réponse reçue mais illisible : même ligne de journal que pour un échec réseau.
+            if (attempt.isSuccess) com.ultratv.tv.nativeapp.ui.common.UiLog.failure("movie", "details-source", kotlinx.serialization.SerializationException("get_vod_info : réponse illisible"))
+            return cached
+        }
         val row = VodInfoEntity(
             providerId = m.providerId, remoteId = m.remoteId, plot = fetched.plot, cast = fetched.cast, director = fetched.director,
             genre = fetched.genre, duration = fetched.duration, releaseDate = fetched.releaseDate, rating = fetched.rating,

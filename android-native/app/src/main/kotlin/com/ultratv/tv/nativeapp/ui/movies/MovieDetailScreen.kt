@@ -48,6 +48,13 @@ import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.data.db.MovieEntity
 import com.ultratv.tv.nativeapp.data.repo.CatalogRepository
 import com.ultratv.tv.nativeapp.data.repo.PlaybackContext
+import com.ultratv.tv.nativeapp.data.net.SyncErrorKind
+import com.ultratv.tv.nativeapp.ui.common.LocalImageFailures
+import com.ultratv.tv.nativeapp.ui.common.UiLog
+import com.ultratv.tv.nativeapp.ui.common.rememberImageFailureTally
+import com.ultratv.tv.nativeapp.ui.common.uiAttempt
+import com.ultratv.tv.nativeapp.ui.detail.DetailLoad
+import com.ultratv.tv.nativeapp.ui.detail.DetailStatePanel
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.i18n.trailerLabel
@@ -86,7 +93,6 @@ import javax.inject.Inject
 class MovieDetailViewModel @Inject constructor(
     private val catalog: CatalogRepository,
     private val playback: PlaybackContext,
-    private val provider: com.ultratv.tv.nativeapp.data.repo.ProviderRepository,
     private val history: com.ultratv.tv.nativeapp.data.repo.HistoryRepository,
     private val tmdb: com.ultratv.tv.nativeapp.data.tmdb.TmdbRepository,
     private val trakt: com.ultratv.tv.nativeapp.data.trakt.TraktLibraryRepository,
@@ -122,7 +128,8 @@ class MovieDetailViewModel @Inject constructor(
     /** « Lecture » repart du début : on efface la position mémorisée avant de lancer. */
     fun restart(m: MovieEntity, onReady: (url: String, title: String) -> Unit) {
         viewModelScope.launch {
-            history.remove(m.providerId, "MOVIE", m.remoteId)
+            // Position non effacée (base indisponible) : la lecture part quand même du début, une ligne de journal.
+            uiAttempt("movie", "depuis-le-debut") { history.remove(m.providerId, "MOVIE", m.remoteId) }
             _resume.value = 0L
             play(m, onReady)
         }
@@ -134,30 +141,72 @@ class MovieDetailViewModel @Inject constructor(
     /** Film vu sur Trakt (historique du compte lié) : affiche la marque « Vu » sur la fiche. */
     val traktWatched: StateFlow<Boolean> = kotlinx.coroutines.flow.combine(_m, trakt.library) { m, lib -> m != null && lib.isMovieWatched(m.title, m.year) }
                 .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000), false)
-    fun load(id: Long) {
-        viewModelScope.launch {
-            val m = catalog.movieById(id)
-            _m.value = m
-            _resume.value = if (m == null) 0L else history.resumePositionMs(m.providerId, "MOVIE", m.remoteId)
-            if (m != null) _similar.value = runCatching { catalog.similarMovies(m.providerId, m.remoteId, 12)?.second }.getOrNull().orEmpty()
+    /** État de la fiche : chargement, prête, titre retiré du catalogue, ou lecture locale en échec (cause classée). */
+    private val _load = MutableStateFlow<DetailLoad>(DetailLoad.Loading)
+    val load: StateFlow<DetailLoad> = _load.asStateFlow()
+
+    private var lastId = 0L
+
+    /** Sources complémentaires déjà signalées pendant cette visite (une ligne de journal par source, jamais une par appel). */
+    private val noted = java.util.Collections.synchronizedSet(HashSet<String>())
+
+    /** Compléments de la fiche (TMDB, notes, Fanart) : sans eux la fiche reste telle quelle ; l'échec laisse une ligne par source. */
+    private suspend inline fun <T> enrich(source: String, block: () -> T): T? =
+        try {
+            block()
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            if (noted.add(source)) UiLog.failure("movie", source, t)
+            null
         }
-        // Détails (get_vod_info) en paresseux : cache Room d'abord, réseau seulement si périmé.
+
+    /** Relit le titre après un échec (bouton « Réessayer ») ou une synchro passée entre-temps. */
+    fun retry() = load(lastId)
+
+    fun load(id: Long) {
+        // Retour du lecteur (même titre déjà affiché) : la fiche reste affichée pendant la relecture, sans silhouette ni focus perdu.
+        val alreadyShown = id == lastId && _load.value == DetailLoad.Ready
+        lastId = id
+        noted.clear()
+        if (!alreadyShown) _load.value = DetailLoad.Loading
         viewModelScope.launch {
+            val read = uiAttempt("movie", "chargement") { catalog.movieById(id) }
+            val m = read.getOrNull()
+            _m.value = m
+            when {
+                read.isFailure -> {
+                    _resume.value = 0L; _infoLoading.value = false
+                    _load.value = DetailLoad.Failed(SyncErrorKind.OTHER)
+                    return@launch
+                }
+                m == null -> {
+                    // Titre retiré de la source depuis l'accueil : jamais l'adresse ni l'identifiant de la source.
+                    UiLog.emit("ui.movie", "introuvable id=$id")
+                    _resume.value = 0L; _infoLoading.value = false
+                    _load.value = DetailLoad.NotFound
+                    return@launch
+                }
+            }
+            val movie = m ?: return@launch
+            _load.value = DetailLoad.Ready
+            launch {
+                _resume.value = uiAttempt("movie", "reprise") { history.resumePositionMs(movie.providerId, "MOVIE", movie.remoteId) }.getOrDefault(0L)
+                _similar.value = uiAttempt("movie", "similaires") { catalog.similarMovies(movie.providerId, movie.remoteId, 12)?.second }.getOrNull().orEmpty()
+            }
+            // Détails (get_vod_info) en paresseux : cache Room d'abord, réseau seulement si périmé.
             _infoLoading.value = true
-            val m = catalog.movieById(id)
-            val source = if (m == null) null else runCatching { catalog.vodInfo(m) }.getOrNull()
+            val source = uiAttempt("movie", "details-source") { catalog.vodInfo(movie) }.getOrNull()
             _info.value = source
             _infoLoading.value = false
             // Fiche enrichie TMDB (désactivée si l'appareil n'est pas appairé) : comble ce que la source ne fournit pas.
-            if (m != null) {
-                val t = runCatching { tmdb.forMovie(m, source?.tmdbId) }.getOrNull()
-                if (t?.tmdbId != null) {
-                    _info.value = com.ultratv.tv.nativeapp.data.tmdb.mergeVodInfo(source, m, t)
-                    _m.value = com.ultratv.tv.nativeapp.data.tmdb.mergeMovie(m, t)
-                    _photos.value = runCatching { tmdb.castPhotos(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, t.tmdbId) }.getOrDefault(emptyMap())
-                    _ratings.value = runCatching { ratingsClient.forTmdb(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, t.tmdbId) }.getOrNull()
-                    _fanart.value = runCatching { fanart.movie(t.tmdbId, tmdb.langCode()) }.getOrNull()
-                }
+            val t = enrich("tmdb") { tmdb.forMovie(movie, source?.tmdbId) }
+            if (t?.tmdbId != null) {
+                _info.value = com.ultratv.tv.nativeapp.data.tmdb.mergeVodInfo(source, movie, t)
+                _m.value = com.ultratv.tv.nativeapp.data.tmdb.mergeMovie(movie, t)
+                _photos.value = enrich("tmdb") { tmdb.castPhotos(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, t.tmdbId) } ?: emptyMap()
+                _ratings.value = enrich("notes") { ratingsClient.forTmdb(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, t.tmdbId) }
+                _fanart.value = enrich("logo") { fanart.movie(t.tmdbId, tmdb.langCode()) }
             }
         }
     }
@@ -172,7 +221,6 @@ class MovieDetailViewModel @Inject constructor(
     }
 }
 
-@OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun MovieDetailScreen(
     movieId: Long,
@@ -182,23 +230,42 @@ fun MovieDetailScreen(
     onOpenMovie: (Long) -> Unit = {},
     vm: MovieDetailViewModel = hiltViewModel(),
 ) {
+    // Images introuvables de la fiche : UNE ligne de journal à la sortie de l'écran (jamais une par image).
+    val tally = rememberImageFailureTally("movie")
+    androidx.compose.runtime.CompositionLocalProvider(LocalImageFailures provides tally) {
+        MovieDetailBody(movieId, onPlay, onBack, onOpenPerson, onOpenMovie, vm)
+    }
+}
+
+@OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
+@Composable
+private fun MovieDetailBody(
+    movieId: Long,
+    onPlay: (url: String, title: String) -> Unit,
+    onBack: () -> Unit,
+    onOpenPerson: (String) -> Unit,
+    onOpenMovie: (Long) -> Unit,
+    vm: MovieDetailViewModel,
+) {
     val m by vm.movie.collectAsState()
     val resume by vm.resumeMs.collectAsState()
     val traktSeen by vm.traktWatched.collectAsState()
     LaunchedEffect(movieId) { vm.load(movieId) }
 
+    val loadState by vm.load.collectAsState()
     val movie = m
     val S = LocalStrings.current
     val D = LocalDs.current
-    if (movie == null) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(S.detailLoading, color = Ux.Text2, fontFamily = Manrope, fontSize = 26.spx) }
+    // Chargement, titre retiré de la source, lecture locale en échec : un état dessiné avec son action (jamais « Chargement… » sans fin).
+    if (movie == null || loadState != DetailLoad.Ready) {
+        DetailStatePanel(loadState, onRetry = vm::retry, onBack = onBack)
         return
     }
     // Lecture en ligne pendant un téléchargement : avertit si l'abonnement n'a qu'une connexion (rien si le film est téléchargé).
     val dlVm: com.ultratv.tv.nativeapp.ui.downloads.DownloadActionsViewModel = hiltViewModel()
     val dlStrings = com.ultratv.tv.nativeapp.ui.downloads.rememberDownloadStrings()
     val playOnline = onPlay
-    val onPlay: (String, String) -> Unit = { u, t -> dlVm.warnBeforePlay(movie.providerId, "MOVIE", movie.remoteId, dlStrings); playOnline(u, t) }
+    val onPlay = withDownloadWarning(warn = { dlVm.warnBeforePlay(movie.providerId, "MOVIE", movie.remoteId, dlStrings) }, play = playOnline)
     val info by vm.info.collectAsState()
     val infoLoading by vm.infoLoading.collectAsState()
     val photos by vm.photos.collectAsState()
@@ -286,6 +353,7 @@ fun MovieDetailScreen(
         extRatings?.rt?.let { add(com.ultratv.tv.nativeapp.ui.detail.RatingCell("$it %", "Rotten Tomatoes")) }
         duration?.let { add(com.ultratv.tv.nativeapp.ui.detail.RatingCell(it, com.ultratv.tv.nativeapp.ui.detail.durationLabel(D))) }
     }
+    val tvActions = movieTvActions(resume, play = { vm.play(movie, onPlay) }, restart = { vm.restart(movie, onPlay) })
     val model = com.ultratv.tv.nativeapp.ui.detail.MovieDetailTvModel(
         title = title, backdrop = backdrop, poster = movie.poster, chips = chips, ratings = ratingCells, synopsis = plot, skeleton = skeleton,
         primaryLabel = if (resume > 0) D.resumeAt(formatClock(resume)) else S.play,
@@ -310,8 +378,8 @@ fun MovieDetailScreen(
         com.ultratv.tv.nativeapp.ui.detail.MovieDetailTv(
             m = model,
             // Principal : « Reprendre à … » si le film est commencé, sinon « Regarder » (depuis le début).
-            onPrimary = { if (resume > 0) vm.play(movie, onPlay) else vm.restart(movie, onPlay) },
-            onFromStart = { vm.restart(movie, onPlay) },
+            onPrimary = tvActions.onPrimary,
+            onFromStart = tvActions.onFromStart,
             onTrailer = if (trailerKey != null) ({ trailerOpen = true }) else null,
             onBack = onBack, onOpenPerson = onOpenPerson,
             playRequester = playRequester, onPlayFocusChanged = { focused = it },
@@ -325,6 +393,23 @@ fun MovieDetailScreen(
         if (trailerOpen && trailerKey != null) com.ultratv.tv.nativeapp.ui.trailer.TrailerPlayer(trailerKey, title, onClose = { trailerOpen = false })
     }
 }
+
+/**
+ * Enveloppe [play] dans l'avertissement de téléchargement : lecture en ligne pendant un téléchargement, [warn] prévient
+ * d'abord si l'abonnement n'a qu'une connexion, puis la lecture démarre avec les mêmes arguments.
+ */
+internal fun withDownloadWarning(warn: () -> Unit, play: (url: String, title: String) -> Unit): (String, String) -> Unit =
+    { url, title -> warn(); play(url, title) }
+
+/** Actions du film à la télécommande : principal et « Depuis le début ». */
+internal class MovieTvActions(val onPrimary: () -> Unit, val onFromStart: () -> Unit)
+
+/**
+ * Film commencé ([resumeMs] > 0) : le bouton principal REPREND ([play], position gardée) et « Depuis le début » repart de
+ * zéro ([restart], position effacée). Film jamais commencé : le principal ([restart]) lance depuis le début.
+ */
+internal fun movieTvActions(resumeMs: Long, play: () -> Unit, restart: () -> Unit) =
+    MovieTvActions(onPrimary = { if (resumeMs > 0) play() else restart() }, onFromStart = restart)
 
 /**
  * Visuel de fiche. Un fond PAYSAGE est recadré plein cadre ; mais certaines sources renvoient en `backdrop_path` une

@@ -61,7 +61,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 
 /** Fiche série (maquette SerieDetail) : colonne gauche 560 px, saisons en onglets et épisodes 16:9 à droite. */
-@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun SeriesDetailScreen(
     seriesId: Long,
@@ -69,6 +68,22 @@ fun SeriesDetailScreen(
     onBack: () -> Unit = {},
     onOpenPerson: (String) -> Unit = {},
     vm: SeriesDetailViewModel = hiltViewModel(),
+) {
+    // Images introuvables de la fiche : UNE ligne de journal à la sortie de l'écran (jamais une par image).
+    val tally = com.ultratv.tv.nativeapp.ui.common.rememberImageFailureTally("series")
+    androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.common.LocalImageFailures provides tally) {
+        SeriesDetailBody(seriesId, onPlayEpisode, onBack, onOpenPerson, vm)
+    }
+}
+
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
+@Composable
+private fun SeriesDetailBody(
+    seriesId: Long,
+    onPlayEpisode: (url: String, title: String) -> Unit,
+    onBack: () -> Unit,
+    onOpenPerson: (String) -> Unit,
+    vm: SeriesDetailViewModel,
 ) {
     val s by vm.series.collectAsState()
     val eps by vm.episodes.collectAsState()
@@ -84,11 +99,14 @@ fun SeriesDetailScreen(
     var trailerOpen by remember { mutableStateOf(false) }
     LaunchedEffect(seriesId) { vm.load(seriesId) }
 
+    val loadState by vm.load.collectAsState()
+    val epError by vm.episodesError.collectAsState()
     val series = s
     val S = LocalStrings.current
     val D = LocalDs.current
-    if (series == null) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(S.detailLoading, color = Ux.Text2, fontFamily = Manrope, fontSize = 26.spx) }
+    // Chargement, série retirée de la source, lecture locale en échec : un état dessiné avec son action (jamais « Chargement… » sans fin).
+    if (series == null || loadState != com.ultratv.tv.nativeapp.ui.detail.DetailLoad.Ready) {
+        com.ultratv.tv.nativeapp.ui.detail.DetailStatePanel(loadState, onRetry = vm::retry, onBack = onBack)
         return
     }
     val seasons = remember(eps) { com.ultratv.tv.nativeapp.ui.detail.seasonsOf(eps) }
@@ -147,7 +165,7 @@ fun SeriesDetailScreen(
                     }
                 }
             }
-            if (shown.isEmpty()) item(key = "empty") { Text(if (loading) S.detailLoading else S.seriesNoEpisodes, color = Ux.Text3, fontFamily = Manrope, fontSize = 14.sp) }
+            if (shown.isEmpty()) item(key = "empty") { com.ultratv.tv.nativeapp.ui.detail.EpisodesEmptyState(loading, epError.takeIf { eps.isEmpty() }, vm::retryEpisodes) }
             else item(key = "dl-season") {
                 com.ultratv.tv.nativeapp.ui.mobile.MobileSecondaryButton(dlStrings.downloadSeason, onClick = { dlVm.downloadSeason(series, shown, dlStrings) })
             }
@@ -189,14 +207,14 @@ fun SeriesDetailScreen(
         data = com.ultratv.tv.nativeapp.ui.detail.SeriesDetailData(
             series = series, episodes = eps, seasons = seasons, activeSeason = activeSeason, target = target, resuming = resuming,
             progress = progress, traktSeen = traktSeen, ratings = extRatings, trailerUrl = trailerUrl, downloads = downloads, loading = loading,
-            logo = logo,
+            episodesError = epError, logo = logo,
             episodeLine = remember(epLine, D.lang) { com.ultratv.tv.nativeapp.ui.detail.episodeLineText(D, epLine, System.currentTimeMillis()) },
         ),
         onSeason = { season = it },
         onPlayTarget = { target?.let { vm.playEpisode(series.name, series.remoteId, series.providerId, it, onPlayEpisode) } },
         onPlayEpisode = { vm.playEpisode(series.name, series.remoteId, series.providerId, it, onPlayEpisode) },
         onOpenPerson = onOpenPerson,
-        dlVm = dlVm, dlStrings = dlStrings, onBack = onBack,
+        dlVm = dlVm, dlStrings = dlStrings, onBack = onBack, onRetryEpisodes = vm::retryEpisodes,
     )
 }
 

@@ -1864,5 +1864,7 @@
   "ProfileStrings.getSources()": "Fuentes",
   "ProfileStrings.getSourcesAll()": "Todas las fuentes",
   "ProfileStrings.getSearchAllSources()": "Buscar en todas las fuentes",
-  "ProfileStrings.getSearchAllSourcesHint()": "Resultados de todas las fuentes visibles, con la fuente indicada en cada uno"
+  "ProfileStrings.getSearchAllSourcesHint()": "Resultados de todas las fuentes visibles, con la fuente indicada en cada uno",
+  "DesignStrings/DesignStringsB1Kt.getDetailNotFound()": "Este título ya no está disponible",
+  "DesignStrings/DesignStringsB1Kt.getEpisodesLoadError()": "No se pudieron cargar los episodios"
 }

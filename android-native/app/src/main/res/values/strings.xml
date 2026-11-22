@@ -1957,4 +1957,6 @@
     <string name="syncerr_account_expired">Subscription expired — renew it with your provider</string>
     <string name="syncerr_empty_list">The provider returned an empty list — your catalogue is kept</string>
     <string name="syncerr_local_network">This address is on a local network — connect this device to the same network and turn off any VPN</string>
+    <string name="dt_not_found">This title is no longer available</string>
+    <string name="dt_episodes_error">Episodes could not be loaded</string>
 </resources>

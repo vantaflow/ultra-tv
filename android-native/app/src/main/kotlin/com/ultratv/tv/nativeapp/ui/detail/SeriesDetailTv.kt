@@ -101,6 +101,8 @@ class SeriesDetailData(
     val trailerUrl: String?,
     val downloads: Map<String, DownloadEntity>,
     val loading: Boolean,
+    /** Cause de l'échec du chargement des épisodes ; affichée (avec « Réessayer ») seulement quand aucun épisode n'est connu. */
+    val episodesError: com.ultratv.tv.nativeapp.data.net.SyncErrorKind? = null,
     /** Logo officiel de la série (Fanart.tv) : remplace le titre texte une fois chargé ; null = titre texte. */
     val logo: String? = null,
     /** « Prochain épisode : S2 É5 · titre · date » / « Dernier épisode diffusé… » / « Série terminée » (TVmaze) ; null = rien. */
@@ -121,10 +123,12 @@ fun SeriesDetailTv(
     dlVm: DownloadActionsViewModel,
     dlStrings: DownloadStrings,
     onBack: () -> Unit = {},
+    onRetryEpisodes: () -> Unit = {},
 ) {
     val series = data.series
     SeriesDetailTvContent(
         data = data, onSeason = onSeason, onPlayTarget = onPlayTarget, onPlayEpisode = onPlayEpisode, onOpenPerson = onOpenPerson, onBack = onBack,
+        onRetryEpisodes = onRetryEpisodes,
         onLongPressEpisode = { ep -> val d = data.downloads[ep.remoteId]; if (d != null) dlVm.act(d, dlStrings) else dlVm.downloadEpisode(series, ep, dlStrings) },
         downloadLabel = dlStrings.downloadSeason,
         onDownloadSeason = { dlVm.downloadSeason(series, data.episodes.filter { it.season == data.activeSeason }, dlStrings) },
@@ -149,6 +153,7 @@ fun SeriesDetailTvContent(
     onLongPressEpisode: (EpisodeEntity) -> Unit,
     downloadLabel: String,
     onDownloadSeason: () -> Unit,
+    onRetryEpisodes: () -> Unit = {},
     favorite: @Composable () -> Unit,
     trakt: @Composable () -> Unit,
 ) {
@@ -288,7 +293,7 @@ fun SeriesDetailTvContent(
             }
             if (shown.isNotEmpty()) Text(D.longPressDownload, color = Ux.Text3, fontFamily = Manrope, fontSize = 17.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             when {
-                shown.isEmpty() -> Text(if (data.loading) S.detailLoading else S.seriesNoEpisodes, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx)
+                shown.isEmpty() -> EpisodesEmptyState(data.loading, data.episodesError.takeIf { data.episodes.isEmpty() }, onRetryEpisodes)
                 else -> LazyColumn(
                     Modifier.fillMaxSize()
                         // Gauche (Droite en RTL) depuis un épisode : « Reprendre », sinon le premier bouton de la colonne de gauche.

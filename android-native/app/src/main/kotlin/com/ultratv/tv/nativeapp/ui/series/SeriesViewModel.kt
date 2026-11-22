@@ -8,7 +8,11 @@ import com.ultratv.tv.nativeapp.data.db.SeriesEntity
 import com.ultratv.tv.nativeapp.data.prefs.HiddenCategoriesStore
 import com.ultratv.tv.nativeapp.data.repo.CatalogRepository
 import com.ultratv.tv.nativeapp.data.repo.PlaybackContext
-import com.ultratv.tv.nativeapp.data.repo.ProviderRepository
+import com.ultratv.tv.nativeapp.data.net.NetErrors
+import com.ultratv.tv.nativeapp.data.net.SyncErrorKind
+import com.ultratv.tv.nativeapp.ui.common.UiLog
+import com.ultratv.tv.nativeapp.ui.common.uiAttempt
+import com.ultratv.tv.nativeapp.ui.detail.DetailLoad
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -34,7 +38,6 @@ import javax.inject.Inject
 class SeriesDetailViewModel @Inject constructor(
     private val catalog: CatalogRepository,
     private val playback: PlaybackContext,
-    private val provider: ProviderRepository,
     private val history: com.ultratv.tv.nativeapp.data.repo.HistoryRepository,
     private val tmdb: com.ultratv.tv.nativeapp.data.tmdb.TmdbRepository,
     private val trakt: com.ultratv.tv.nativeapp.data.trakt.TraktLibraryRepository,
@@ -141,22 +144,87 @@ class SeriesDetailViewModel @Inject constructor(
         if (_tmdbId.value == tmdbId) _tmdbSeasons.value = _tmdbSeasons.value + (n to eps)
     }
 
-    fun load(id: Long) {
-        viewModelScope.launch {
-            _series.value = catalog.seriesById(id)
-            _loading.value = true
+    /** État de la fiche : chargement, prête, série retirée du catalogue, ou lecture locale en échec (cause classée). */
+    private val _load = MutableStateFlow<DetailLoad>(DetailLoad.Loading)
+    val load: StateFlow<DetailLoad> = _load.asStateFlow()
+
+    /**
+     * Cause de l'échec du chargement des épisodes (fournisseur injoignable, réponse illisible…) ; null si tout va bien. L'écran
+     * ne l'affiche que si la base n'a aucun épisode : des épisodes déjà connus restent affichés.
+     */
+    private val _episodesError = MutableStateFlow<SyncErrorKind?>(null)
+    val episodesError: StateFlow<SyncErrorKind?> = _episodesError.asStateFlow()
+
+    private var lastId = 0L
+
+    /** Sources complémentaires déjà signalées pendant cette visite (une ligne de journal par source, jamais une par appel). */
+    private val noted = java.util.Collections.synchronizedSet(HashSet<String>())
+
+    /** Compléments de la fiche (TMDB, notes, Fanart, TVmaze) : sans eux la fiche reste telle quelle ; l'échec laisse une ligne par source. */
+    private suspend inline fun <T> enrich(source: String, block: () -> T): T? =
+        try {
+            block()
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            if (noted.add(source)) UiLog.failure("series", source, t)
+            null
         }
+
+    /** Charge les épisodes de la source ; l'échec est classé dans [episodesError] (une ligne de journal), le succès l'efface. */
+    private suspend fun fetchEpisodes(id: Long) {
+        val r = uiAttempt("series", "episodes") { catalog.loadEpisodes(id) }
+        _episodesError.value = r.exceptionOrNull()?.let { NetErrors.classify(it) }
+    }
+
+    /** Relance le chargement des épisodes (bouton « Réessayer » de la colonne des épisodes). */
+    fun retryEpisodes() {
+        val id = lastId
+        _episodesError.value = null
+        _loading.value = true
         viewModelScope.launch {
-            runCatching { catalog.loadEpisodes(id) }
-            val s = catalog.seriesById(id)             // loadEpisodes complète plot / genre / année / distribution
+            try {
+                fetchEpisodes(id)
+                // loadEpisodes complète plot / genre / année / distribution
+                uiAttempt("series", "relecture") { catalog.seriesById(id) }.getOrNull()?.let { _series.value = it }
+            } finally { _loading.value = false }
+        }
+    }
+
+    /** Relit la série après un échec (bouton « Réessayer ») ou une synchro passée entre-temps. */
+    fun retry() = load(lastId)
+
+    fun load(id: Long) {
+        // Retour du lecteur (même série déjà affichée) : la fiche reste affichée pendant la relecture, sans silhouette ni focus perdu.
+        val alreadyShown = id == lastId && _load.value == DetailLoad.Ready
+        lastId = id
+        noted.clear()
+        _episodesError.value = null
+        if (!alreadyShown) _load.value = DetailLoad.Loading
+        viewModelScope.launch {
+            val read = uiAttempt("series", "chargement") { catalog.seriesById(id) }
+            val s0 = read.getOrNull()
+            if (read.isFailure) { _load.value = DetailLoad.Failed(SyncErrorKind.OTHER); return@launch }
+            _series.value = s0
+            if (s0 == null) {
+                // Série retirée de la source depuis l'accueil : jamais l'adresse ni l'identifiant de la source.
+                UiLog.emit("ui.series", "introuvable id=$id")
+                _load.value = DetailLoad.NotFound
+                return@launch
+            }
+            _load.value = DetailLoad.Ready
+            _loading.value = true
+            fetchEpisodes(id)
+            // loadEpisodes complète plot / genre / année / distribution
+            val s = uiAttempt("series", "relecture") { catalog.seriesById(id) }.getOrNull() ?: s0
             _series.value = s
             _loading.value = false
             // Fiche enrichie TMDB (désactivée si l'appareil n'est pas appairé) : comble ce que la source ne fournit pas.
-            if (s != null) runCatching { tmdb.forSeries(s) }.getOrNull()?.let {
+            enrich("tmdb") { tmdb.forSeries(s) }?.let {
                 _series.value = com.ultratv.tv.nativeapp.data.tmdb.mergeSeries(s, it)
                 it.trailerKey?.let { k -> _trailer.value = com.ultratv.tv.nativeapp.data.tmdb.TmdbTrailer.webUrl(k) }
-                it.tmdbId?.let { id -> _ratings.value = runCatching { ratingsClient.forTmdb(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV, id) }.getOrNull() }
-                it.tmdbId?.let { id -> loadExtras(id) }
+                it.tmdbId?.let { tid -> _ratings.value = enrich("notes") { ratingsClient.forTmdb(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV, tid) } }
+                it.tmdbId?.let { tid -> loadExtras(tid) }
                 _tmdbId.value = it.tmdbId
             }
         }
@@ -167,13 +235,14 @@ class SeriesDetailViewModel @Inject constructor(
 
     /**
      * Compléments de la fiche (appareil appairé) : identifiants IMDb / TheTVDB (TMDB external_ids), puis épisode
-     * précédent / prochain (TVmaze, IMDb d'abord) et logo (Fanart.tv, TheTVDB). Tout échec laisse la fiche telle quelle.
+     * précédent / prochain (TVmaze, IMDb d'abord) et logo (Fanart.tv, TheTVDB). Tout échec laisse la fiche telle quelle
+     * (une ligne de journal par source).
      */
     private fun loadExtras(tmdbId: Int) {
         viewModelScope.launch {
-            val ids = runCatching { tmdb.externalIds(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV, tmdbId) }.getOrNull() ?: return@launch
-            launch { _episodeLine.value = com.ultratv.tv.nativeapp.data.extmeta.TvMazeLogic.lineOf(runCatching { tvMaze.show(ids) }.getOrNull()) }
-            ids.tvdbId?.let { tvdb -> _logo.value = runCatching { fanart.tv(tvdb, tmdb.langCode()) }.getOrNull()?.logo }
+            val ids = enrich("tmdb") { tmdb.externalIds(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV, tmdbId) } ?: return@launch
+            launch { _episodeLine.value = com.ultratv.tv.nativeapp.data.extmeta.TvMazeLogic.lineOf(enrich("tvmaze") { tvMaze.show(ids) }) }
+            ids.tvdbId?.let { tvdb -> _logo.value = enrich("logo") { fanart.tv(tvdb, tmdb.langCode()) }?.logo }
         }
     }
 }

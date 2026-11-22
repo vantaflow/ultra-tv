@@ -1,6 +1,7 @@
 package com.ultratv.tv.nativeapp.ui.detail
 
 import com.ultratv.tv.nativeapp.data.db.EpisodeEntity
+import com.ultratv.tv.nativeapp.data.net.SyncErrorKind
 import com.ultratv.tv.nativeapp.data.tmdb.ExternalRatings
 
 /**
@@ -59,3 +60,15 @@ fun progressFraction(durationMs: Long, positionMs: Long): Float = when {
 
 /** « Reprendre » plutôt que « Regarder » : l'épisode visé a une position de lecture mémorisée. */
 fun isResuming(positionMs: Long?): Boolean = (positionMs ?: 0L) > 0L
+
+/**
+ * État de chargement d'une fiche (film ou série), pur : [Loading] tant que la lecture locale n'a pas répondu, [Ready]
+ * quand le titre est au catalogue, [NotFound] quand il n'y est plus (retiré de la source depuis l'accueil, synchro passée
+ * entre-temps), [Failed] quand la lecture locale a échoué (cause classée, message traduit par `S.sync.messageFor`).
+ */
+sealed interface DetailLoad {
+    data object Loading : DetailLoad
+    data object Ready : DetailLoad
+    data object NotFound : DetailLoad
+    data class Failed(val kind: SyncErrorKind) : DetailLoad
+}

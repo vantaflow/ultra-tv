@@ -135,3 +135,7 @@ val DesignStrings.errFormatHint get() = tx(R.string.ds_err_format_hint)
 val DesignStrings.errDecoder get() = tx(R.string.ds_err_decoder)
 val DesignStrings.errDecoderHint get() = tx(R.string.ds_err_decoder_hint)
 val DesignStrings.errNoPicture get() = tx(R.string.ds_err_no_picture)
+
+// Fiches film / série : titre retiré de la source depuis l'accueil, épisodes impossibles à charger.
+val DesignStrings.detailNotFound get() = tx(R.string.dt_not_found)
+val DesignStrings.episodesLoadError get() = tx(R.string.dt_episodes_error)

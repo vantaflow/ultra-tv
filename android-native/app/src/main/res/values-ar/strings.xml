@@ -2000,4 +2000,6 @@
     <string name="syncerr_account_expired">انتهى الاشتراك — جدّده لدى مزوّدك</string>
     <string name="syncerr_empty_list">أرسل المزوّد قائمة فارغة — تم الاحتفاظ بالكتالوج</string>
     <string name="syncerr_local_network">هذا العنوان على شبكة محلية — صِل الجهاز بالشبكة نفسها وأوقف الـVPN</string>
+    <string name="dt_not_found">هذا العنوان لم يعد متاحًا</string>
+    <string name="dt_episodes_error">تعذّر تحميل الحلقات</string>
 </resources>
