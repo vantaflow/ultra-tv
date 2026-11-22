@@ -4,6 +4,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Bureau (prochaine version)
+- Accueil : aucune rangée (à la une, en direct, reprises, nouveautés, mieux notés, Trakt, nouveaux épisodes, sport) ne montre plus de contenu d'une catégorie masquée, verrouillée ou adulte ; un profil Enfants ne voit les catégories adultes nulle part (case « Profil Enfants » dans Réglages › Profils).
+- Contrôle parental : verrou par catégorie entière (Réglages › Catégories, Direct, Films et Séries), code exigé partout où un contenu peut s'ouvrir (listes, guide, panneau des chaînes, recherche, favoris, fiches, reprise, zapping qui la saute) ; déverrouillé pour la session seulement.
+- Abonnement : l'écran affiche l'adresse saisie par l'utilisateur, plus celle déclarée par le panneau du fournisseur.
+- Thèmes : choix du thème et de la couleur d'accent en tête de Réglages › Affichage et dans l'assistant de première source.
+- Affichage : « Taille de l'interface » de 90 % à 150 % (application de bureau).
+- Groupes de chaînes personnalisés dans le Direct et le Guide, par profil et par source (créer, renommer, supprimer, ajouter une chaîne par clic droit ou le bouton « Groupes »).
+- Réglages : niveaux Essentiel / Standard / Expert ; Expert d'office pour un utilisateur existant, Standard pour une installation neuve ; un réglage modifié reste toujours affiché.
+- Rail latéral : sélecteur de source rapide quand le profil voit plusieurs sources.
+
 ## [1.3.73] — 2026-11-22 (Android)
 
 ### Ajouté
@@ -17,6 +27,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Contrôle parental : verrou par catégorie entière (Gérer les catégories, Direct, Films et Séries), code demandé pour verrouiller comme pour déverrouiller ; une chaîne d'une catégorie verrouillée demande le code partout où elle peut se lancer (listes, mode simple, Sport, Guide sans aperçu, recherche, accueil, lien profond, rappel).
 - Guide : jours passés selon l'archive des chaînes de la source (jusqu'à 7 jours ; hier seulement sans archive), dans les puces de jours, avec ⏪ / ⏩ et sur téléphone et tablette. Les programmes passés des chaînes avec archive sont gardés dans la limite de leur archive et se revoient depuis le début ; ils sont indisponibles sinon (#248).
 - Recherche (TV) : touche « Clavier du système » (Gboard, texte envoyé depuis l'appli télécommande du téléphone, tout texte Unicode) et touche « عربي / ABC » pour un clavier arabe à l'écran, arabe par défaut quand l'appli est en arabe, choix mémorisé (#247).
+- Réglages › À propos : l'option « Télémétrie et rapports de plantage » est de retour et le choix de l'utilisateur est de nouveau respecté (active par défaut).
+- Menu latéral : à partir de deux sources (hors serveurs multimédias et NAS), une entrée affiche la source active et ouvre la liste des sources ; OK la rend active comme « Définir par défaut », Retour ferme sans rien changer.
 
 ### Modifié
 - Télécommande (TV) : sur l'Accueil, le Guide, le Direct, Films, Séries et les autres écrans du menu, Retour ouvre le menu latéral avec le focus sur l'écran courant, au lieu d'afficher seulement « Maintenez Retour pour quitter ». Menu ouvert, Retour garde la règle d'avant (retour à l'accueil, puis le message de sortie). Fenêtres et sous-niveaux gardent la priorité.
@@ -28,6 +40,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Télémétrie : les tests automatiques n'envoient plus rien vers le serveur ; côté serveur, toute adresse est réduite à une empreinte d'hôte et les identifiants, jetons, adresses MAC, IP et e-mails sont masqués.
 
 ### Corrigé
+- Ajout de source sur Fire TV : le clavier système plein écran ne bloque plus la saisie ; « Suivant » passe au champ suivant et « Précédent » revient au champ d'avant sans refermer le clavier, au toucher comme à la télécommande.
 - Abonnement : l'écran affiche l'adresse du serveur saisie par l'utilisateur, plus celle déclarée par le panneau du fournisseur.
 - Fiches film et série : une catégorie masquée volontairement n'empêche plus d'ouvrir un titre depuis Ma liste ou une reprise ; seuls le verrou (code), le profil Enfants et l'adulte ferment la fiche.
 - Recherche et Ma liste : plus d'affiche ni de titre d'un contenu verrouillé, ni de contenu adulte pour un profil Enfants ; les chaînes de la recherche suivent les catégories masquées, désactivées et verrouillées.
