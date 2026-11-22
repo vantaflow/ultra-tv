@@ -14,6 +14,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Mes bibliothèques : deux filtres combinables en haut de l'écran, par type (Tout, Films, Séries) et par source (Toutes, puis chaque bibliothèque Plex, Jellyfin, Emby ou NAS), en pastilles comme le catalogue, utilisables à la télécommande et au toucher. « Reprendre » les respecte, un filtre sans résultat affiche un message, et le choix est gardé tant que l'appli tourne.
 - Google TV / Android TV : Ultra TV sur l'écran d'accueil du système. « Continuer à regarder » et « Nouveautés » montrent le fond du titre en 16:9, « Nouveautés » suit le profil actif (rien de masqué, verrouillé ou adulte), et une rangée « Chaînes récentes » s'ajoute, distincte de « Favoris ».
 - Lanceur Kairo : liens directs vers les rubriques (ultratv://home, live, guide, movies, series, et live?category=…) et lecture du programme en cours / suivant, réservée à l'application Kairo signée.
+- Contrôle parental : verrou par catégorie entière (Gérer les catégories, Direct, Films et Séries), code demandé pour verrouiller comme pour déverrouiller ; une chaîne d'une catégorie verrouillée demande le code partout où elle peut se lancer (listes, mode simple, Sport, Guide sans aperçu, recherche, accueil, lien profond, rappel).
 
 ### Modifié
 - Télécommande (TV) : sur l'Accueil, le Guide, le Direct, Films, Séries et les autres écrans du menu, Retour ouvre le menu latéral avec le focus sur l'écran courant, au lieu d'afficher seulement « Maintenez Retour pour quitter ». Menu ouvert, Retour garde la règle d'avant (retour à l'accueil, puis le message de sortie). Fenêtres et sous-niveaux gardent la priorité.
@@ -25,6 +26,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Télémétrie : les tests automatiques n'envoient plus rien vers le serveur ; côté serveur, toute adresse est réduite à une empreinte d'hôte et les identifiants, jetons, adresses MAC, IP et e-mails sont masqués.
 
 ### Corrigé
+- Abonnement : l'écran affiche l'adresse du serveur saisie par l'utilisateur, plus celle déclarée par le panneau du fournisseur.
+- Fiches film et série : une catégorie masquée volontairement n'empêche plus d'ouvrir un titre depuis Ma liste ou une reprise ; seuls le verrou (code), le profil Enfants et l'adulte ferment la fiche.
+- Recherche et Ma liste : plus d'affiche ni de titre d'un contenu verrouillé, ni de contenu adulte pour un profil Enfants ; les chaînes de la recherche suivent les catégories masquées, désactivées et verrouillées.
 - Accueil (TV, téléphone et tablette) : aucune rangée (Top 10, mieux notés, nouveautés, reprises, chaînes) ne montre plus de contenu d'une catégorie masquée, verrouillée, désactivée ou adulte, ni de titre adulte, selon le profil actif.
 - Fiches film et série : le contenu d'une catégorie verrouillée demande le code parental, y compris en mode simple. Un titre retiré par le fournisseur affiche « Ce titre n'est plus disponible » et des épisodes impossibles à charger un message, au lieu d'un chargement sans fin.
 - Synchronisation : quand le fournisseur refuse une liste (compte expiré, liste partielle), les catégories ne sont plus perdues (chaînes, catégories masquées et verrous conservés) ; une partie refusée (films vides) n'arrête plus la lecture des séries ni du guide ; un changement durable et volontaire du fournisseur est accepté ; les petits délais du portail Stalker ne valent plus que pour le zapping.

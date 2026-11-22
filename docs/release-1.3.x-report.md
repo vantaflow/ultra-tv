@@ -155,3 +155,16 @@ Totaux : non 47, oui 75, partiel 1, réécrit 3 (sur 126).
 - b02fbbd4 (accueil sans contenu masqué / verrouillé / adulte selon le profil) : `HomeGuard` posé sur le `HomeViewModel` de la 1.3.72, sans le paramètre d'appareil TV de la refonte.
 - 668a647f : seule la partie journal (UiLog, uiAttempt, synthèse des images) est reportée ; l'anneau blanc sur image reste dans la refonte.
 - 43f7a239 : texte « Ma liste » de l'image à la une (refonte) retiré au conflit.
+
+## Second passage (git fetch en fin de report)
+
+| Hash | Titre | Classe | Reporté | Raison | Branche |
+|---|---|---|---|---|---|
+| 0ef39984 | Contrôle parental : verrou par catégorie entière, exigé partout où une chaîne peut se lancer | a | oui | conflits de textes résolus par union ; textes « Paiement par carte » (refonte) écartés du golden | feat/robustesse-remarques |
+| fc390b9d | Abonnement : afficher l'adresse saisie par l'utilisateur, jamais celle déclarée par le panneau | a | oui | correctif | feat/robustesse-remarques |
+| e6a8dc2d | Fiche film TV (en cours) : image plein écran, reprise et actions nommées, similaires et distribution | c | non | refonte des fiches (lot 3) | feat/accueil-tv-streaming |
+| a53922e6 | Références du Direct : portée limitée à la deuxième appli (refonte) | c | non | maquettes de la refonte | feat/accueil-tv-streaming |
+
+Compléments demandés par le coordinateur, propres à la ligne stable :
+- Fiches : `ProfileRepository.detailBlockedCategoryKeys` — une catégorie masquée volontairement par un profil ordinaire ne ferme plus la fiche (Ma liste, reprise) ; profil Enfants = ses masquages + catégories adultes ; verrou = code.
+- Recherche : catégories verrouillées exclues avec les masquées / désactivées, chaînes filtrées de même, titres adultes retirés pour un profil Enfants. Ma liste : `MyListGuard` (verrouillé toujours retiré ; profil Enfants : catégories fermées et titres adultes). L'accueil était déjà couvert par b02fbbd4 (HomeGuard).
