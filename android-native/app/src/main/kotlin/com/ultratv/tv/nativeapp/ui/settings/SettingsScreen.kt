@@ -987,6 +987,7 @@ private fun AboutPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, app:
         val stays = com.ultratv.tv.nativeapp.update.UpdateVersions.staysOnPreRelease(com.ultratv.tv.nativeapp.update.UpdateChannel.installed(), pre)
         PrefRow(D.updateChannel, if (pre) D.updateChannelPre else D.updateChannelStable, hint = if (stays) D.updateChannelStay else D.updateChannelHint) { channelOpen = true }
         PrefRow(D.diagnostic, "", hint = D.diagnosticHint) { onNavigate("diagnostic") }
+        SwitchPrefRow(D.telemetry, p.telemetryEnabled, hint = D.telemetryHint) { app.setTelemetry(it) }
     }
     if (channelOpen) {
         val ctx = androidx.compose.ui.platform.LocalContext.current
