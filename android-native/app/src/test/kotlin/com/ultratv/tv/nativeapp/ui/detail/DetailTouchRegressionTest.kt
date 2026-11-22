@@ -93,6 +93,7 @@ class DetailTouchRegressionTest {
      * Compose (essais `dispatchApplyWindowInsets` sans effet) ; il reste à la liste de contrôle sur appareil réel (tâche 9).
      */
     private fun retourFlottant(w: Int, h: Int) {
+        var back = 0
         rule.setDetail(tv = false, width = w, height = h) {
             MobileDetailFrame(null, null, "Orbite basse", onBack = { back++ }) { Text("Contenu", color = androidx.compose.ui.graphics.Color.White) }
         }
@@ -105,10 +106,9 @@ class DetailTouchRegressionTest {
         rule.onNodeWithTag("dt-back").performClick()
         assertEquals(1, back)
     }
-    private var back = 0
 
-    @Test fun tactile_retourSousLaBarreDEtat_telephone() = retourFlottant(390, 844)
-    @Test fun tactile_retourSousLaBarreDEtat_tabletteDeuxVolets() = retourFlottant(1280, 800)
+    @Test fun tactile_retourFlottant_telephone() = retourFlottant(390, 844)
+    @Test fun tactile_retourFlottant_tabletteDeuxVolets() = retourFlottant(1280, 800)
 
     @Test fun tactile_grandEcran_seuilDeuxVolets() {
         assertEquals(840f, EXPANDED_MIN_DP, 0f)
@@ -122,7 +122,7 @@ class DetailTouchRegressionTest {
             MobileDetailFrame(null, null, "Orbite basse", onBack = {}) { Text("Contenu", color = androidx.compose.ui.graphics.Color.White, modifier = Modifier.testTag("probe").fillMaxWidth()) }
         }
         val b = rule.onNodeWithTag("probe").fetchSemanticsNode().boundsInRoot
-        return b.left / rule.onNodeWithTag("dt-back").fetchSemanticsNode().let { (w * rule.density.density) }
+        return b.left / (w * rule.density.density)
     }
 
     @Test fun tactile_grandEcran_deuxVolets() {

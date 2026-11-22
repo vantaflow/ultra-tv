@@ -29,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.focusProperties
@@ -185,7 +186,7 @@ private fun SeriesDetailBody(
                 }
                 LazyColumn(Modifier.weight(0.62f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 8.dp, end = 24.dp, top = 24.dp, bottom = 24.dp)) { episodes() }
             }
-            com.ultratv.tv.nativeapp.ui.mobile.MobileBackButton(onBack, Modifier.align(Alignment.TopStart).padding(start = 12.dp, top = 8.dp))
+            com.ultratv.tv.nativeapp.ui.mobile.MobileBackButton(onBack, Modifier.align(Alignment.TopStart).padding(start = 12.dp, top = 8.dp).testTag("dt-back"))
         } else Box(Modifier.fillMaxSize().background(Ux.Bg)) {
             LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp)) {
                 item(key = "visual") {
@@ -197,7 +198,7 @@ private fun SeriesDetailBody(
                 item(key = "info") { Column(Modifier.offset(y = (-40).dp), verticalArrangement = Arrangement.spacedBy(14.dp)) { info() } }
                 episodes()
             }
-            com.ultratv.tv.nativeapp.ui.mobile.MobileBackButton(onBack, Modifier.align(Alignment.TopStart).padding(start = 12.dp, top = 8.dp).windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.Companion.statusBars))
+            com.ultratv.tv.nativeapp.ui.mobile.MobileBackButton(onBack, Modifier.align(Alignment.TopStart).padding(start = 12.dp, top = 8.dp).windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.Companion.statusBars).testTag("dt-back"))
         }
         if (trailerOpen && trailerKey != null) com.ultratv.tv.nativeapp.ui.trailer.TrailerPlayer(trailerKey, tc.tidy(series.title), onClose = { trailerOpen = false })
         return

@@ -28,7 +28,7 @@ class DetailBackdropTest {
     @get:Rule val rule = createComposeRule()
     @get:Rule val tmp = TemporaryFolder()
 
-    @After fun reset() = resetDetailHost()
+    @After fun reset() { resetDetailHost(); coil3.SingletonImageLoader.reset() }
 
     private fun png(name: String, w: Int, h: Int): String {
         val f = File(tmp.root, name)
@@ -70,9 +70,19 @@ class DetailBackdropTest {
     }
 
     @Test fun fondPaysage_pasDAfficheADroite() {
+        // Signal positif : la requête d'image est terminée (succès) avant de constater que l'affiche n'apparaît pas.
+        val done = java.util.concurrent.CountDownLatch(1)
+        var failed: String? = null
+        coil3.SingletonImageLoader.setUnsafe(
+            coil3.ImageLoader.Builder(androidx.test.core.app.ApplicationProvider.getApplicationContext())
+                .eventListener(object : coil3.EventListener() {
+                    override fun onSuccess(request: coil3.request.ImageRequest, result: coil3.request.SuccessResult) { done.countDown() }
+                    override fun onError(request: coil3.request.ImageRequest, result: coil3.request.ErrorResult) { failed = result.throwable.toString(); done.countDown() }
+                }).build(),
+        )
         show(png("paysage.png", 1280, 720))
-        // Laisse le temps au chargement : un fond paysage ne bascule PAS sur l'affiche.
-        Thread.sleep(1500)
+        assertTrue("l'image paysage doit se charger dans le délai", done.await(10, java.util.concurrent.TimeUnit.SECONDS))
+        assertEquals("aucune erreur de chargement", null, failed)
         rule.waitForIdle()
         assertTrue("un vrai fond paysage reste plein cadre", !rule.onAllNodesWithTagExists("dt-backdrop-poster"))
     }
