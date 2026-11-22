@@ -45,6 +45,7 @@ import { isMediaType } from "@/net/mediaServer";
 import { TraktSettings } from "@/trakt/TraktUi";
 import { DnsSettings } from "./DnsSettings";
 import { ThemePicker } from "@/ui/ThemePicker";
+import { levelShows, type SettingTier, type SettingsLevel } from "@/lib/settingsLevel";
 import { UI_SCALES, parseUiScale, uiScaleLabel } from "@/lib/uiScale";
 import { localeOf } from "@/i18n/lang";
 import { ParentalCodeRow, ScreenTimeButton } from "./ScreenTimeEditor";
@@ -87,6 +88,11 @@ export function Settings() {
     <div className="settings">
       <nav className="nav" aria-label={t("set.title")}>
         <h1>{t("set.title")}</h1>
+        <div className="set-level" title={t("set.levelD")}>
+          <span className="meta">{t("set.level")}</span>
+          <Seg<SettingsLevel> label={t("set.level")} value={prefs.settingsLevel} onChange={(settingsLevel) => prefs.set({ settingsLevel })}
+            options={[{ v: "essential", label: t("set.levelEssential") }, { v: "standard", label: t("set.levelStandard") }, { v: "expert", label: t("set.levelExpert") }]} />
+        </div>
         {SECTIONS.map((s) => (
           <button key={s.id} className={`nav-item${cur === s.id ? " on" : ""}`} onClick={() => nav(`/settings/${s.id}`)}>
             <span className="ico"><Icon name={s.icon} size={22} /></span>
@@ -109,7 +115,13 @@ export function Settings() {
   );
 }
 
-function Pref({ label, desc, children }: { label: string; desc?: string; children: React.ReactNode }) {
+/**
+ * Ligne de réglage. [tier] : palier (voir lib/settingsLevel) ; masquée quand le niveau choisi est en dessous, sauf si
+ * [modified] (valeur différente du défaut : un réglage changé reste toujours accessible).
+ */
+function Pref({ label, desc, children, tier = "basic", modified = false }: { label: string; desc?: string; children: React.ReactNode; tier?: SettingTier; modified?: boolean }) {
+  const level = usePrefs((s) => s.settingsLevel);
+  if (!levelShows(level, tier, modified)) return null;
   return <div className="pref"><div><div>{label}</div>{desc && <div className="d">{desc}</div>}</div>{children}</div>;
 }
 
@@ -304,19 +316,19 @@ function DisplayPane() {
           <Seg<string> label={t("set.uiScale")} value={String(p.uiScale)} onChange={(v) => p.set({ uiScale: parseUiScale(v) })} options={UI_SCALES.map((s) => ({ v: String(s), label: uiScaleLabel(s, localeOf(p.lang)) }))} />
         </Pref>
       )}
-      <Pref label={t("set.animations")}>
+      <Pref label={t("set.animations")} tier="tech" modified={p.animations !== "auto"}>
         <Seg<"auto" | "off" | "subtle" | "normal"> label={t("set.animations")} value={p.animations} onChange={(animations) => p.set({ animations })} options={[{ v: "auto", label: t("set.themeAuto") }, { v: "off", label: t("set.animOff") }, { v: "subtle", label: t("set.animSubtle") }, { v: "normal", label: t("set.animNormal") }]} />
       </Pref>
       <Pref label={t("set.channelLogos")}><Switch on={p.channelLogos} onChange={(channelLogos) => p.set({ channelLogos })} label={t("set.channelLogos")} /></Pref>
-      <Pref label={t("set.optimizeImages")} desc={t("set.optimizeImagesD")}><Switch on={p.optimizeImages} onChange={(optimizeImages) => p.set({ optimizeImages })} label={t("set.optimizeImages")} /></Pref>
+      <Pref label={t("set.optimizeImages")} desc={t("set.optimizeImagesD")} tier="tech" modified={!p.optimizeImages}><Switch on={p.optimizeImages} onChange={(optimizeImages) => p.set({ optimizeImages })} label={t("set.optimizeImages")} /></Pref>
       <Pref label={t("sport.setting")} desc={t("sport.settingD")}><Switch on={p.sportSection} onChange={(sportSection) => p.set({ sportSection })} label={t("sport.setting")} /></Pref>
-      <Pref label={t("set.openOn")} desc={t("set.openOnDesc")}>
+      <Pref label={t("set.openOn")} desc={t("set.openOnDesc")} tier="tech" modified={p.startScreen !== "home"}>
         <Seg<StartScreen> label={t("set.openOn")} value={p.startScreen} onChange={(startScreen) => p.set({ startScreen })} options={START_SCREENS.map((v) => ({ v, label: t(`set.open_${v}`) }))} />
       </Pref>
-      <Pref label={t("set.guideCol")}>
+      <Pref label={t("set.guideCol")} tier="tech" modified={p.guideCol !== "normal"}>
         <Seg<GuideCol> label={t("set.guideCol")} value={p.guideCol} onChange={(guideCol) => p.set({ guideCol })} options={[{ v: "narrow", label: t("set.colNarrow") }, { v: "normal", label: t("set.colNormal") }, { v: "wide", label: t("set.colWide") }]} />
       </Pref>
-      <Pref label={t("set.timeFormat")}>
+      <Pref label={t("set.timeFormat")} tier="tech" modified={p.timeFormat !== "auto"}>
         <Seg<TimeFormat> label={t("set.timeFormat")} value={p.timeFormat} onChange={(timeFormat) => p.set({ timeFormat })} options={[{ v: "auto", label: t("set.themeAuto") }, { v: "12", label: t("set.time12") }, { v: "24", label: t("set.time24") }]} />
       </Pref>
       <Pref label={t("set.uiLanguage")}>
@@ -337,8 +349,8 @@ function PlaybackPane() {
       <h2>{t("set.playback")}</h2>
       <Pref label={t("set.autoPreview")} desc={t("set.autoPreviewD")}><Switch on={p.autoPreview} onChange={(v) => p.set({ autoPreview: v })} label={t("set.autoPreview")} /></Pref>
       <Pref label={t("set.autoplayNext")}><Switch on={p.autoplayNext} onChange={(v) => p.set({ autoplayNext: v })} label={t("set.autoplayNext")} /></Pref>
-      <Pref label={t("set.preferMp4")} desc={t("set.preferMp4D")}><Switch on={p.preferMp4} onChange={(v) => p.set({ preferMp4: v })} label={t("set.preferMp4")} /></Pref>
-      <Pref label={t("set.liveFormat")} desc={t("set.liveFormatD")}>
+      <Pref label={t("set.preferMp4")} desc={t("set.preferMp4D")} tier="expert" modified={!p.preferMp4}><Switch on={p.preferMp4} onChange={(v) => p.set({ preferMp4: v })} label={t("set.preferMp4")} /></Pref>
+      <Pref label={t("set.liveFormat")} desc={t("set.liveFormatD")} tier="expert" modified={p.liveFormat !== "m3u8"}>
         <Seg<"m3u8" | "ts"> label={t("set.liveFormat")} value={p.liveFormat} onChange={(liveFormat) => p.set({ liveFormat })} options={[{ v: "m3u8", label: "HLS" }, { v: "ts", label: "MPEG-TS" }]} />
       </Pref>
       {!isElectron() && (
@@ -346,7 +358,7 @@ function PlaybackPane() {
           <input className="input" style={{ width: "22rem" }} value={proxy} placeholder={defaultProxy() ?? "https://…"} onChange={(e) => setProxy(e.target.value)} onBlur={() => void setProxySetting(proxy.trim() || null)} aria-label={t("set.proxy")} />
         </Pref>
       )}
-      {isElectron() && <DnsSettings Pref={Pref} />}
+      {isElectron() && levelShows(p.settingsLevel, "expert", p.dns.mode !== "system") && <DnsSettings Pref={Pref} />}
       <TraktSettings Pref={Pref} />
     </>
   );
@@ -375,7 +387,7 @@ function SyncPane() {
       {sync.running && sync.progress && <div className="bigbar"><i style={{ width: `${Math.round(sync.progress.ratio * 100)}%` }} /></div>}
       {sync.error && <div className="alert err" role="alert"><Icon name="alert" size={20} />{sync.error}</div>}
       {!sync.running && !sync.error && sync.skipped > 0 && <div className="alert" role="status"><Icon name="alert" size={20} />{t("sync.doneSkipped", { count: sync.skipped })}</div>}
-      <Pref label={t("set.syncWhen")}>
+      <Pref label={t("set.syncWhen")} tier="tech" modified={p.syncOn !== "launch"}>
         <Seg<"launch" | "manual"> label={t("set.syncWhen")} value={p.syncOn} onChange={(syncOn) => p.set({ syncOn })} options={[{ v: "launch", label: t("set.syncLaunch") }, { v: "manual", label: t("set.syncManual") }]} />
       </Pref>
       <ExtraEpgPref />
@@ -404,7 +416,7 @@ function ExtraEpgPref() {
     } finally { setBusy(false); }
   };
   return (
-    <Pref label={t("set.extraEpg")} desc={t("set.extraEpgDesc")}>
+    <Pref label={t("set.extraEpg")} desc={t("set.extraEpgDesc")} tier="expert" modified={!!url}>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <input className="input" aria-label={t("set.extraEpg")} value={url} spellCheck={false} autoCapitalize="off" placeholder="https://…/guide.xml.gz" style={{ minWidth: "16rem" }}
           onChange={(e) => { setUrl(e.target.value); setErr(null); }} onKeyDown={(e) => { if (e.key === "Enter" && !busy) void save(); }} />
@@ -726,7 +738,7 @@ function AboutPane() {
         )}
       </Pref>
       {b?.openLogsDir && (
-        <Pref label={t("set.about.logs")} desc={t("set.about.logsD")}>
+        <Pref label={t("set.about.logs")} desc={t("set.about.logsD")} tier="tech">
           <button className="btn" onClick={() => void b.openLogsDir!()}>{t("player.openLogs")}</button>
         </Pref>
       )}

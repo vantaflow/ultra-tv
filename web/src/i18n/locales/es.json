@@ -964,5 +964,10 @@
   "grp.removed": "Quitado de «{name}»",
   "grp.empty": "Este grupo está vacío: haz clic derecho en un canal (o usa «Grupos») para añadirlo.",
   "grp.button": "Grupos",
-  "grp.menu": "Acciones del canal"
+  "grp.menu": "Acciones del canal",
+  "set.level": "Nivel de ajustes",
+  "set.levelD": "Esencial oculta los ajustes técnicos y Experto los muestra todos. Un ajuste que hayas cambiado siempre sigue visible.",
+  "set.levelEssential": "Esencial",
+  "set.levelStandard": "Estándar",
+  "set.levelExpert": "Experto"
 }

@@ -964,5 +964,10 @@
   "grp.removed": "Retirée de « {name} »",
   "grp.empty": "Ce groupe est vide : clic droit sur une chaîne (ou bouton « Groupes ») pour l'y ajouter.",
   "grp.button": "Groupes",
-  "grp.menu": "Actions sur la chaîne"
+  "grp.menu": "Actions sur la chaîne",
+  "set.level": "Niveau des réglages",
+  "set.levelD": "Essentiel masque les réglages techniques, Expert les montre tous. Un réglage que vous avez modifié reste toujours visible.",
+  "set.levelEssential": "Essentiel",
+  "set.levelStandard": "Standard",
+  "set.levelExpert": "Expert"
 }

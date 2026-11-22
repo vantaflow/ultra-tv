@@ -124,7 +124,7 @@ export function TraktSettings({ Pref }: { Pref: PrefComponent }) {
   );
 }
 
-type PrefComponent = (p: { label: string; desc?: string; children: React.ReactNode }) => React.JSX.Element;
+type PrefComponent = (p: { label: string; desc?: string; children: React.ReactNode }) => React.JSX.Element | null;
 
 /** Réglage « Service de suivi » (Trakt / Simkl / aucun) : visible dès que le Worker propose un service (appareil appairé). */
 function TrackingSetting({ Pref }: { Pref: PrefComponent }) {

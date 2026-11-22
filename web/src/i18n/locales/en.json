@@ -953,5 +953,10 @@
   "grp.removed": "Removed from “{name}”",
   "grp.empty": "This group is empty: right-click a channel (or use “Groups”) to add it.",
   "grp.button": "Groups",
-  "grp.menu": "Channel actions"
+  "grp.menu": "Channel actions",
+  "set.level": "Settings level",
+  "set.levelD": "Essential hides technical settings, Expert shows them all. A setting you have changed always stays visible.",
+  "set.levelEssential": "Essential",
+  "set.levelStandard": "Standard",
+  "set.levelExpert": "Expert"
 }
