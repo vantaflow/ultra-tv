@@ -57,6 +57,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -121,12 +122,27 @@ class FavoritesViewModel @Inject constructor(
     private fun <T> perProvider(ids: List<Long>, one: (Long) -> Flow<List<T>>): Flow<List<T>> =
         if (ids.isEmpty()) flowOf(emptyList()) else combine(ids.map(one)) { parts -> parts.toList().flatten() }
 
+    /** Ma liste ne montre ni l'affiche ni le titre d'un contenu verrouillé, ni d'un contenu adulte pour un profil Enfants. */
+    private suspend fun guard(pid: Long, kind: String): MyListGuard {
+        val kids = com.ultratv.tv.nativeapp.data.profile.KidsRules.forcesParentalControl(profiles.current.first())
+        val blocked = if (kids) profiles.detailBlockedCategoryKeys.first() else emptySet()
+        return MyListGuard(kids, runCatching { catalog.lockedCategoryIds(pid, kind) }.getOrDefault(emptySet()), blocked)
+    }
+
     val movies: StateFlow<List<MovieEntity>> = pids.flatMapLatest { ids ->
-        perProvider(ids) { id -> catalog.favoritesByKind(id, "MOVIE").flatMapLatest { favs -> catalog.moviesByRemoteIds(id, favs.map { it.remoteId }) } }
+        perProvider(ids) { id ->
+            catalog.favoritesByKind(id, "MOVIE").flatMapLatest { favs -> catalog.moviesByRemoteIds(id, favs.map { it.remoteId }) }
+                .combine(profiles.current) { l, _ -> l }
+                .mapLatest { l -> val g = guard(id, "MOVIE"); l.filter { g.allows("MOVIE", it.providerId, it.categoryId, it.title) } }
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val series: StateFlow<List<SeriesEntity>> = pids.flatMapLatest { ids ->
-        perProvider(ids) { id -> catalog.favoritesByKind(id, "SERIES").flatMapLatest { favs -> catalog.seriesByRemoteIds(id, favs.map { it.remoteId }) } }
+        perProvider(ids) { id ->
+            catalog.favoritesByKind(id, "SERIES").flatMapLatest { favs -> catalog.seriesByRemoteIds(id, favs.map { it.remoteId }) }
+                .combine(profiles.current) { l, _ -> l }
+                .mapLatest { l -> val g = guard(id, "SERIES"); l.filter { g.allows("SERIES", it.providerId, it.categoryId, it.title) } }
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun setAllSources(on: Boolean) { viewModelScope.launch { profiles.setFavAll(on) } }
@@ -303,5 +319,19 @@ private fun ChannelTile(c: ChannelEntity, now: EpgEntity?, source: String?, onCl
             }
             ProgressLine(fraction, Modifier.fillMaxWidth().clip(RoundedCornerShape(3.design)), heightPx = 6, track = if (f) Ux.OnFocus2.copy(alpha = 0.4f) else Ux.Surface2)
         }
+    }
+}
+
+/**
+ * Règle de Ma liste (pure, testée) : un titre d'une catégorie verrouillée par le code parental n'y montre ni affiche ni
+ * titre ; pour un profil Enfants, ni catégorie fermée au profil (masquages du profil, adultes) ni titre adulte. Une
+ * catégorie masquée volontairement par un profil ordinaire n'enlève rien de Ma liste.
+ */
+data class MyListGuard(val kids: Boolean, val lockedCategoryIds: Set<String>, val kidsBlockedKeys: Set<String>) {
+    fun allows(kind: String, providerId: Long, categoryId: String?, title: String?): Boolean {
+        if (categoryId != null && categoryId in lockedCategoryIds) return false
+        if (!kids) return true
+        if (categoryId != null && "$kind:$providerId:$categoryId" in kidsBlockedKeys) return false
+        return title.isNullOrBlank() || !com.ultratv.tv.nativeapp.data.profile.AdultHeuristic.isAdult(title)
     }
 }

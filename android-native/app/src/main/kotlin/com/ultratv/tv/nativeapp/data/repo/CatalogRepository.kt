@@ -294,10 +294,16 @@ class CatalogRepository @Inject constructor(
                 }
             }
         }
+        // Profil Enfants : aucun titre adulte ; chaînes d'une catégorie masquée, désactivée ou verrouillée écartées aussi.
+        val kids = kotlinx.coroutines.withTimeoutOrNull(2_000) { com.ultratv.tv.nativeapp.data.profile.KidsRules.forcesParentalControl(profiles.current.first()) } ?: false
+        val channels = if (only == null) {
+            val excludedLive = excludedCategoryIds(pid, "LIVE").toHashSet()
+            channelDao.searchFts(pid, match, if (excludedLive.isEmpty()) limit else limit * 3).visibleIn(excludedLive) { it.categoryId }.withoutAdultTitles(kids) { it.name }.take(limit)
+        } else emptyList()
         return SearchResults(
-            channels = if (only == null) channelDao.searchFts(pid, match, limit) else emptyList(),
-            movies = movies,
-            series = series,
+            channels = channels,
+            movies = movies.withoutAdultTitles(kids) { it.title },
+            series = series.withoutAdultTitles(kids) { it.title },
             // Programmes : LIKE sur tout le guide (pas d'index possible) — seulement à partir de 3 caractères.
             programs = if (only == null && includePrograms && query.trim().length >= 3) searchPrograms(pid, query, nowMs) else emptyList(),
             fuzzy = fuzzy && (movies.isNotEmpty() || series.isNotEmpty()),
@@ -310,6 +316,7 @@ class CatalogRepository @Inject constructor(
             providerId = pid,
             profileHiddenKeys = profiles.hiddenCategoryKeys.first(),
             disabledRemoteIds = categoryDao.disabledIds(pid, kind),
+            lockedRemoteIds = categoryDao.lockedIds(pid, kind),
         )
 
     suspend fun searchPrograms(pid: Long, query: String, nowMs: Long = System.currentTimeMillis()): List<ProgramHit> =
