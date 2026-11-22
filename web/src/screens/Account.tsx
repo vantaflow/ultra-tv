@@ -7,6 +7,7 @@ import { credsOf } from "@/sync/core";
 import { stalkerClientFor } from "@/player/resolve";
 import { usePrefs } from "@/state/prefs";
 import { useActiveSource } from "@/state/sources";
+import { accountServer } from "@/lib/accountServer";
 
 const STR = {
   en: {
@@ -50,7 +51,6 @@ export function IptvAccountCard() {
   const lang = usePrefs((s) => s.lang);
   const source = useActiveSource();
   const [info, setInfo] = useState<XtreamHandshake["user_info"] | null>(null);
-  const [srv, setSrv] = useState<XtreamHandshake["server_info"] | null>(null);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const fmt = (ms: number) => new Date(ms).toLocaleDateString(lang, { day: "numeric", month: "long", year: "numeric" });
@@ -62,11 +62,11 @@ export function IptvAccountCard() {
       if (source.type === "stalker") {
         // Portail Stalker : échéance lue par account_info/get_main_info (aucun nombre de connexions publié).
         const a = await (await stalkerClientFor(source)).account();
-        setInfo({ status: a.status, exp_date: a.expDate ? String(Math.floor(a.expDate / 1000)) : null }); setSrv(null); setFailed(false);
+        setInfo({ status: a.status, exp_date: a.expDate ? String(Math.floor(a.expDate / 1000)) : null }); setFailed(false);
         return;
       }
       const h = await handshake(await currentTransport(), credsOf(source));
-      setInfo(h.user_info ?? null); setSrv(h.server_info ?? null); setFailed(false);
+      setInfo(h.user_info ?? null); setFailed(false);
     } catch { setFailed(true); } finally { setBusy(false); }
   };
   useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [source?.id]);
@@ -91,7 +91,8 @@ export function IptvAccountCard() {
               {created ? <AccountRow k={t.created} v={fmt(created * 1000)} /> : null}
               {(info as { is_trial?: unknown } | null)?.is_trial === "1" && <AccountRow k={t.trial} v={t.yes} />}
               {info?.allowed_output_formats?.length ? <AccountRow k={t.formats} v={info.allowed_output_formats.join(", ")} /> : null}
-              {srv?.url && <AccountRow k={t.server} v={<span className="mono">{srv.url}</span>} />}
+              {/* Adresse saisie par l'utilisateur, jamais server_info.url du panneau (adresse interne ou autre domaine). */}
+              {accountServer(source) && <AccountRow k={t.server} v={<span className="mono" dir="ltr">{accountServer(source)}</span>} />}
               {failed && <p className="muted">{t.offline}</p>}
               <div className="acc-actions"><button className="btn" disabled={busy} onClick={() => void load()}>{busy ? t.loading : t.refresh}</button></div>
             </>
