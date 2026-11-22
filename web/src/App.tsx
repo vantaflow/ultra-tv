@@ -11,6 +11,7 @@ import { Rail } from "@/ui/Rail";
 import { Toasts } from "@/ui/common";
 import { SyncPill } from "@/ui/SyncPill";
 import { ScreenTimeGate } from "@/ui/ScreenTimeGate";
+import { ParentalPrompt } from "@/ui/ParentalPrompt";
 import { startScreenTime } from "@/state/screenTime";
 import { resolveTheme, resolveThemeAttr, usePrefs } from "@/state/prefs";
 import { accentVars } from "@/lib/themes";
@@ -265,6 +266,7 @@ export function App() {
         <Shell />
         <PlayerHost />
         <ScreenTimeGate />
+        <ParentalPrompt />
         <HandoffPrompt />
       </HashRouter>
     </ErrorBoundary>

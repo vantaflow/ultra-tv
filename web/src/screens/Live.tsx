@@ -5,7 +5,7 @@ import { db } from "@/db/db";
 import { getOrder, resetOrder, saveOrder } from "@/db/channelOrder";
 import { channelsCol, notInHidden, searchByWords, toggleFavorite } from "@/db/queries";
 import type { ChannelRow, Source } from "@/db/types";
-import { useCategories, useFavorites, useHiddenCats } from "@/hooks/data";
+import { useCategories, useFavorites, useBlockedCats } from "@/hooks/data";
 import { useNowNext } from "@/hooks/epg";
 import { useElementSize, useDebounced } from "@/hooks/misc";
 import { usePagedQuery } from "@/hooks/paged";
@@ -60,7 +60,7 @@ function LiveInner({ source }: { source: Source }) {
   const favs = useFavorites(source, "live");
   const [root, size] = useElementSize<HTMLDivElement>();
   const wide = size.w >= 1400;
-  const hid = useHiddenCats(source, "live");
+  const hid = useBlockedCats(source, "live");
   const nh = useMemo(() => notInHidden<ChannelRow>(hid), [hid]);
   // Chaînes masquées par le profil courant (Set en mémoire) et numéros affichés propres au profil.
   const cv = useChannelView(source);

@@ -4,7 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { db } from "@/db/db";
 import { channelsCol, programsFor } from "@/db/queries";
 import type { ChannelRow, ProgramRow, Source } from "@/db/types";
-import { useCategories, useFavorites, useHiddenCats } from "@/hooks/data";
+import { useCategories, useFavorites, useBlockedCats } from "@/hooks/data";
 import { useNow } from "@/hooks/misc";
 import { useT } from "@/i18n";
 import { usePlayer } from "@/player/store";
@@ -141,7 +141,7 @@ function Inner({ source }: { source: Source }) {
   const t = useT();
   const prefs = usePrefs();
   const cats = useCategories(source, "live");
-  const hid = useHiddenCats(source, "live");
+  const hid = useBlockedCats(source, "live");
   // Chaînes masquées par le profil courant : absentes de la grille ; numéros affichés propres au profil.
   const cv = useChannelView(source);
   const favs = useFavorites(source, "live");

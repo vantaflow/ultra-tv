@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import type { ChannelRow, Source } from "@/db/types";
 import { useNow } from "@/hooks/misc";
 import { useSportData, useTeamBadges } from "@/hooks/sport";
+import { useBlockedCats } from "@/hooks/data";
 import { useT, type Key } from "@/i18n";
 import { progId } from "@/lib/schedule";
 import { alsoOnMap, badgesOf, collapseEvents, entryKey } from "@/lib/sportMatch";
@@ -174,7 +175,7 @@ function SportInner({ source }: { source: Source }) {
   const nav = useNavigate();
   const lang = usePrefs((s) => s.lang);
   const now = useNow(30_000);
-  const data = useSportData(source);
+  const data = useSportData(source, true, useBlockedCats(source, "live"));
   const hub = useLeagueHub();
   const reminded = useReminderIds();
   const recorded = useRecordingIds();
@@ -267,11 +268,11 @@ const NO_ENTRIES: SportEntry[] = [];
 const leagueKind = (key: string | null): SportKind | null => (key ? (({ ligue1: "football", premier: "football", liga: "football", seriea: "football", bundesliga: "football", ucl: "football", botola: "football", nba: "basket", top14: "rugby", premrugby: "rugby", f1: "motor" }) as Record<string, SportKind>)[key] ?? null : null);
 
 /** Rangée « Sport en direct » de l'accueil (rubrique activée et au moins un direct). */
-export function SportHomeRow({ source }: { source: Source }) {
+export function SportHomeRow({ source, blocked }: { source: Source; blocked?: ReadonlySet<string> }) {
   const t = useT();
   const nav = useNavigate();
   const now = useNow(30_000);
-  const data = useSportData(source);
+  const data = useSportData(source, true, blocked);
   const live = useMemo(() => (data ? collapseEvents(liveNow(data.entries, now, 12)) : []), [data, now]);
   const badges = useTeamBadges(useMemo(() => teamNamesOf(live), [live]));
   const also = useMemo(() => (data ? alsoOnMap(data.entries) : new Map<string, SportEntry[]>()), [data]);

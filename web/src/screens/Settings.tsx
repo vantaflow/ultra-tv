@@ -21,7 +21,9 @@ import { deleteProfileData } from "@/db/profileData";
 import { setCategoriesVisible } from "@/db/profileCategories";
 import { isShown } from "@/lib/profileCategories";
 import { toggleSource, visibleSources } from "@/lib/profileSources";
-import { PROFILE_COLORS, dateTimeLabel, usePrefs, type Theme } from "@/state/prefs";
+import { PROFILE_COLORS, dateTimeLabel, usePrefs, type Profile, type Theme } from "@/state/prefs";
+import { askParentalCode } from "@/state/unlocks";
+import { hasParentalCode } from "@/lib/parental";
 import { ACCENT_DEFS } from "@/lib/themes";
 import { useActiveSource, useSources } from "@/state/sources";
 import { useSync } from "@/state/sync";
@@ -635,6 +637,12 @@ function ProfilesPane() {
   const p = usePrefs();
   const sources = useSources((s) => s.list);
   const [name, setName] = useState("");
+  // Profil Enfants (synchronisé avec les autres appareils) : le retirer exige le code parental s'il existe.
+  const toggleKids = async (pr: Profile) => {
+    if (pr.kids && hasParentalCode() && !(await askParentalCode(pr.name || t("profile.main")))) return;
+    const cur = usePrefs.getState();
+    cur.set({ profiles: cur.profiles.map((x) => { if (x.id !== pr.id) return x; if (!pr.kids) return { ...x, kids: true }; const { kids: _k, ...rest } = x; void _k; return rest; }) });
+  };
   return (
     <>
       <h2>{t("set.profiles")}</h2>
@@ -644,6 +652,10 @@ function ProfilesPane() {
           <span className="avatar" style={{ background: pr.color }}>{(pr.name || t("profile.main")).slice(0, 1).toUpperCase()}</span>
           <span className="grow"><b>{pr.name || t("profile.main")}</b>{p.profileId === pr.id && <div className="meta">{t("set.active")}</div>}</span>
           <ScreenTimeButton profile={pr} />
+          <label className="btn sm" style={{ gap: 6 }} title={t("set.kidsProfileD")}>
+            <input type="checkbox" checked={!!pr.kids} onChange={() => void toggleKids(pr)} />
+            {t("set.kidsProfile")}
+          </label>
           {p.profileId !== pr.id && <button className="btn sm" onClick={() => p.set({ profileId: pr.id })}>{t("set.makeActive")}</button>}
           {i > 0 && <button className="btn sm danger" aria-label={t("common.delete")} onClick={() => { void deleteProfileData(pr.id); p.set({ profiles: p.profiles.filter((x) => x.id !== pr.id), profileId: p.profileId === pr.id ? p.profiles[0]!.id : p.profileId }); }}><Icon name="trash" size={16} /></button>}
           {sources.length > 1 && (

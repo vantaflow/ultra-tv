@@ -4,8 +4,8 @@ import { HScroll } from "@/ui/HScroll";
 import { useNavigate } from "react-router-dom";
 import { db } from "@/db/db";
 import { channelsCol, historyOf } from "@/db/queries";
-import type { ChannelRow, HistoryRow, SeriesRow, Source } from "@/db/types";
-import { useFavorites, useHiddenCats } from "@/hooks/data";
+import type { ChannelRow, FavoriteRow, HistoryRow, SeriesRow, Source } from "@/db/types";
+import { useFavorites, useBlockedCats } from "@/hooks/data";
 import { useNowNext } from "@/hooks/epg";
 import { useNow } from "@/hooks/misc";
 import { useT } from "@/i18n";
@@ -27,6 +27,7 @@ import { fmtEpisodeLine, type NewEpisode } from "@/lib/extmeta";
 import { localeOf } from "@/i18n/lang";
 import { TitleLogo } from "@/ui/TitleLogo";
 import { SportHomeRow } from "./Sport";
+import { homeAllowedHistory, homeAllowedTrakt } from "@/db/homeGate";
 
 export function Home() {
   const source = useActiveSource();
@@ -165,6 +166,9 @@ function NewEpisodesSection({ rows, onOpen }: { rows: NewEpisode<NewEpSeries>[];
   );
 }
 
+const NO_FAVS: FavoriteRow[] = [];
+const NO_HIST: HistoryRow[] = [];
+
 /** Rangées calculées en local : affichées seulement avec assez de titres (une rangée de 2 affiches fait vide). */
 const MIN_LOCAL_ROW = 4;
 
@@ -187,19 +191,29 @@ function HomeInner({ source }: { source: Source }) {
   const nav = useNavigate();
   const { profileId, lang, sportSection } = usePrefs();
   const favs = useFavorites(source, "live");
-  // Catégories masquées par le profil courant : exclues des rangées de la page d'accueil.
-  const hLive = useHiddenCats(source, "live");
-  const hMovie = useHiddenCats(source, "movie");
-  const hSeries = useHiddenCats(source, "series");
+  // Aucune rangée de l'accueil ne montre une catégorie masquée par le profil, verrouillée par le code parental (même
+  // déverrouillée pendant la session) ou adulte (voir lib/contentGate).
+  const hLive = useBlockedCats(source, "live", "home");
+  const hMovie = useBlockedCats(source, "movie", "home");
+  const hSeries = useBlockedCats(source, "series", "home");
   // Chaînes masquées par le profil courant : exclues aussi (Set en mémoire).
   const cv = useChannelView(source);
-  const hist = useLiveQuery(async () => (await historyOf(profileId, source.id!)).filter((h) => h.dur > 0 && h.pos / h.dur < 0.95).slice(0, 12), [profileId, source.id]) ?? [];
-  const favChans = useLiveQuery(async () => (await Promise.all(favs.slice(0, 12).map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c && (!cv.keep || cv.keep(c))), [favs, source.cid, cv]) ?? [];
+  const hist = useLiveQuery(async () => {
+    const list = (await historyOf(profileId, source.id!)).filter((h) => h.dur > 0 && h.pos / h.dur < 0.95);
+    return (await homeAllowedHistory(source.cid, list, hMovie, hSeries)).slice(0, 12);
+  }, [profileId, source.id, source.cid, hMovie, hSeries]) ?? [];
+  const favChans = useLiveQuery(async () => (await Promise.all(favs.slice(0, 12).map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c && !hLive.has(c.catExt) && (!cv.keep || cv.keep(c))), [favs, source.cid, cv, hLive]) ?? [];
   const featured = useLiveQuery(async () => favChans[0] ?? (await channelsCol(source.cid, null).filter((c) => !c.sep && !!c.epg && !hLive.has(c.catExt) && (!cv.keep || cv.keep(c))).first()) ?? (await channelsCol(source.cid, null).filter((c) => !c.sep && !hLive.has(c.catExt) && (!cv.keep || cv.keep(c))).first()), [favChans, source.cid, hLive, cv]);
   const nn = useNowNext(source, featured?.epg, featured?.streamId);
-  const trakt = useTraktRows(source);
-  const favSeries = useFavorites(source, "series");
-  const seriesHist = useLiveQuery(async () => (await historyOf(profileId, source.id!)).filter((h) => h.kind === "series"), [profileId, source.id]) ?? [];
+  const trakt = homeAllowedTrakt(useTraktRows(source), hMovie, hSeries);
+  const favSeriesAll = useFavorites(source, "series");
+  // Séries favorites et historique des séries : celles d'une catégorie écartée ne nourrissent pas « Nouveaux épisodes ».
+  const seriesHist = useLiveQuery(async () => homeAllowedHistory(source.cid, (await historyOf(profileId, source.id!)).filter((h) => h.kind === "series"), hMovie, hSeries), [profileId, source.id, source.cid, hMovie, hSeries]) ?? NO_HIST;
+  const favSeries = useLiveQuery(async () => {
+    if (!hSeries.size) return favSeriesAll;
+    const rows = await Promise.all(favSeriesAll.map((f) => db.series.where("[sourceId+seriesId]").equals([source.cid, f.refId]).first()));
+    return favSeriesAll.filter((_, i) => !rows[i] || !hSeries.has(rows[i]!.catExt));
+  }, [favSeriesAll, source.cid, hSeries]) ?? NO_FAVS;
   const newEps = useNewEpisodes(source, seriesHist, favSeries);
   const seen = useIsWatchedMovie();
   const openTrakt = (r: TraktRow) => nav(r.kind === "movie" ? `/movie/${r.ref}` : `/serie/${r.ref}`);
@@ -311,7 +325,7 @@ function HomeInner({ source }: { source: Source }) {
         </section>
       )}
 
-      {sportSection && <SportHomeRow source={source} />}
+      {sportSection && <SportHomeRow source={source} blocked={hLive} />}
 
       {hist.length > 0 && (
         <section>

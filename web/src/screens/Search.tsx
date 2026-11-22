@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "@/db/db";
 import { searchByWords, searchFuzzy } from "@/db/queries";
-import { hiddenCategoryIds } from "@/db/profileCategories";
+import { blockedCategoryIds } from "@/db/contentGate";
+import { useUnlocks } from "@/state/unlocks";
 import { sourceBadge, visibleSources } from "@/lib/profileSources";
 import { mergeSearch } from "@/lib/searchMerge";
 import type { ChannelRow, MovieRow, ProgramRow, SeriesRow, Source } from "@/db/types";
@@ -75,6 +76,9 @@ function Inner({ source, sources }: { source: Source; sources: Source[] }) {
   const input = useRef<HTMLInputElement>(null);
   const multi = sources.length > 1;
   const profile = usePrefs((s) => s.profileId);
+  // Porte des contenus : profil Enfants et catégories déverrouillées pendant la session changent les résultats.
+  const kids = usePrefs((s) => !!s.profiles.find((p) => p.id === s.profileId)?.kids);
+  const unlockV = useUnlocks((s) => s.v);
   // Génération de catalogue (`sourceId` des lignes) → source : nom court de la pastille et source à activer à l'ouverture.
   const byCid = useMemo(() => new Map(sources.map((s) => [s.cid, s])), [sources]);
   // Numéro affiché d'une chaîne pour le profil courant (selon sa source).
@@ -92,10 +96,11 @@ function Inner({ source, sources }: { source: Source; sources: Source[] }) {
     let dead = false;
     setBusy(true);
     // Une recherche indexée par source (plafonnée à LIMIT chacune), puis fusion : la mémoire reste bornée par sources × plafond.
-    // Catégories masquées par le profil courant : leurs chaînes, films et séries ne sortent pas de la recherche.
+    // Catégories masquées par le profil courant, verrouillées (code non saisi) ou adultes pour un profil Enfants : leurs chaînes,
+    // films et séries ne sortent pas de la recherche.
     const one = async (s: Source) => {
       const [hLive, hMovie, hSeries] = s.id != null
-        ? await Promise.all([hiddenCategoryIds(profile, s.id, "live"), hiddenCategoryIds(profile, s.id, "movie"), hiddenCategoryIds(profile, s.id, "series")])
+        ? await Promise.all([blockedCategoryIds(profile, s, "live"), blockedCategoryIds(profile, s, "movie"), blockedCategoryIds(profile, s, "series")])
         : [new Set<string>(), new Set<string>(), new Set<string>()];
       // Chaînes masquées par le profil courant : ni dans les chaînes, ni dans le guide.
       const cv = await loadChannelView(profile, s);
@@ -121,7 +126,7 @@ function Inner({ source, sources }: { source: Source; sources: Source[] }) {
     }).catch(() => { if (!dead) setBusy(false); });
     return () => { dead = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `sources` est résumé par `sourceKey`
-  }, [dq, sourceKey, profile]);
+  }, [dq, sourceKey, profile, kids, unlockV]);
 
   // Tri : sur la saisie qui a produit les résultats. Repli tolérant : l'ordre de ressemblance est gardé.
   const view = useMemo(() => {

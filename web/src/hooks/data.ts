@@ -1,22 +1,44 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useMemo } from "react";
 import { favoritesOf, visibleCategories } from "@/db/queries";
-import { hiddenCategoryIds } from "@/db/profileCategories";
+import { blockedCategoryIds, codeCategoryIds, unlistedCategoryIds } from "@/db/contentGate";
+import type { GateContext } from "@/lib/contentGate";
+import { useUnlocks } from "@/state/unlocks";
 import type { CategoryRow, FavoriteRow, Kind, Source } from "@/db/types";
 import { OTHER_LANG } from "@/sync/core";
 import { useT } from "@/i18n";
 import { usePrefs } from "@/state/prefs";
 
-/** Catégories affichées pour le profil courant (téléchargées et non masquées par lui), triées dans l'ordre du fournisseur. `undefined` pendant le premier chargement. */
-export function useCategories(source: Source | undefined, kind: Kind): CategoryRow[] | undefined {
+/** Profil courant, son statut Enfants et la version des déverrouillages : dépendances des requêtes de la porte des contenus. */
+function useGateDeps() {
   const profile = usePrefs((s) => s.profileId);
-  return useLiveQuery(async () => visibleCategories(source?.cid ?? 0, kind, source?.id ? await hiddenCategoryIds(profile, source.id, kind) : undefined), [source?.cid, source?.id, kind, profile]);
+  const kids = usePrefs((s) => !!s.profiles.find((p) => p.id === s.profileId)?.kids);
+  const v = useUnlocks((s) => s.v);
+  return { profile, kids, v };
 }
 
-/** Catégories masquées par le profil courant pour ce type : ensemble vide tant que non chargé ou si rien n'est masqué. */
-export function useHiddenCats(source: Source | undefined, kind: Kind): ReadonlySet<string> {
-  const profile = usePrefs((s) => s.profileId);
-  return useLiveQuery(() => (source?.id ? hiddenCategoryIds(profile, source.id, kind) : EMPTY), [source?.id, kind, profile]) ?? EMPTY;
+/**
+ * Catégories affichées pour le profil courant (téléchargées, non masquées par lui, et pas adultes pour un profil Enfants), triées dans
+ * l'ordre du fournisseur. Une catégorie verrouillée y reste (cadenas, voir useCodeCats). `undefined` pendant le premier chargement.
+ */
+export function useCategories(source: Source | undefined, kind: Kind): CategoryRow[] | undefined {
+  const { profile, kids, v } = useGateDeps();
+  return useLiveQuery(async () => visibleCategories(source?.cid ?? 0, kind, source?.id ? await unlistedCategoryIds(profile, { id: source.id, cid: source.cid }, kind) : undefined), [source?.cid, source?.id, kind, profile, kids, v]);
+}
+
+/**
+ * Catégories dont le contenu est écarté pour le profil courant : masquées, verrouillées (tant que le code n'a pas été saisi), adultes
+ * pour un profil Enfants ; sur l'accueil (`home`), verrouillées et adultes toujours. Ensemble vide tant que non chargé.
+ */
+export function useBlockedCats(source: Source | undefined, kind: Kind, ctx: GateContext = "list"): ReadonlySet<string> {
+  const { profile, kids, v } = useGateDeps();
+  return useLiveQuery(() => (source?.id ? blockedCategoryIds(profile, { id: source.id, cid: source.cid }, kind, ctx) : EMPTY), [source?.id, source?.cid, kind, profile, kids, v, ctx]) ?? EMPTY;
+}
+
+/** Catégories affichées avec un cadenas (code parental exigé pour les ouvrir). */
+export function useCodeCats(source: Source | undefined, kind: Kind): ReadonlySet<string> {
+  const { profile, kids, v } = useGateDeps();
+  return useLiveQuery(() => (source?.id ? codeCategoryIds(profile, { id: source.id, cid: source.cid }, kind) : EMPTY), [source?.id, source?.cid, kind, profile, kids, v]) ?? EMPTY;
 }
 const EMPTY: ReadonlySet<string> = new Set();
 

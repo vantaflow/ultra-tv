@@ -59,7 +59,7 @@ async function load(source: Source, now: number): Promise<SportData> {
 }
 
 /** Données Sport de la source (cache 5 min) ; `null` pendant le premier chargement. */
-export function useSportData(source: Source | undefined, enabled = true): SportData | null {
+export function useSportData(source: Source | undefined, enabled = true, blocked?: ReadonlySet<string>): SportData | null {
   const [state, setState] = useState<{ cid: number; data: SportData } | null>(null);
   const [tick, setTick] = useState(0);
   useEffect(() => {
@@ -80,14 +80,16 @@ export function useSportData(source: Source | undefined, enabled = true): SportD
     return () => { dead = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source?.cid, enabled, tick]);
-  // Le cache est partagé entre profils : les chaînes masquées par le profil courant sont écartées à la lecture.
+  // Le cache est partagé entre profils : les chaînes masquées par le profil courant, et celles des catégories écartées
+  // ([blocked] : masquées, verrouillées, adultes selon l'écran), sont écartées à la lecture.
   const cv = useChannelView(source);
   const data = state && state.cid === source?.cid ? state.data : null;
   return useMemo(() => {
     const keep = cv.keep;
-    if (!data || !keep) return data;
-    return { ...data, entries: data.entries.filter((e) => keep(e.channel)), channels: data.channels.filter((c) => keep(c)) };
-  }, [data, cv]);
+    if (!data || (!keep && !blocked?.size)) return data;
+    const ok = (c: SportData["channels"][number]) => (!keep || keep(c)) && !blocked?.has(c.catExt);
+    return { ...data, entries: data.entries.filter((e) => ok(e.channel)), channels: data.channels.filter(ok) };
+  }, [data, cv, blocked]);
 }
 
 // ───────────────────────── Écussons ─────────────────────────

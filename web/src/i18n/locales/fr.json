@@ -936,5 +936,10 @@
   "mc.catCustom": "Mes chaînes",
   "mc.badge": "Manuelle",
   "mc.badUrl": "Adresse invalide",
-  "mc.deleteSure": "Supprimer ?"
+  "mc.deleteSure": "Supprimer ?",
+  "gate.title": "Contenu protégé",
+  "gate.enter": "Saisissez le code parental pour ouvrir « {name} »",
+  "gate.noCode": "Aucun code parental n'est défini : définissez-en un dans Réglages › Profils.",
+  "set.kidsProfile": "Profil Enfants",
+  "set.kidsProfileD": "Les catégories adultes sont masquées partout et jamais montrées à l'accueil."
 }

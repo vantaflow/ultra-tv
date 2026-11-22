@@ -5,7 +5,7 @@ import { db } from "@/db/db";
 import { historyOf, moviesCol, notInHidden, searchByWords, seriesCol, type VodSort } from "@/db/queries";
 import { filterActive, matchesFilter, NO_FILTER, PERIODS, RATINGS, type VodFilter } from "@/lib/vodFilter";
 import type { CategoryRow, MovieRow, SeriesRow, Source } from "@/db/types";
-import { useCategories, useFavorites, useHiddenCats } from "@/hooks/data";
+import { useCategories, useFavorites, useBlockedCats } from "@/hooks/data";
 import { useDebounced } from "@/hooks/misc";
 import { usePagedQuery } from "@/hooks/paged";
 import { useT } from "@/i18n";
@@ -42,7 +42,7 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
   const seen = useIsWatchedMovie();
   const favSet = useMemo(() => new Set(favs.map((f) => f.refId)), [favs]);
   const key = `${source.id}:${kind}`;
-  const hid = useHiddenCats(source, kind);
+  const hid = useBlockedCats(source, kind);
   const nh = useMemo(() => notInHidden<Item>(hid), [hid]);
   // Catégorie mémorisée masquée par le profil courant : retour à « Tout ».
   const rawCat = prefs.liveCat[key] ?? "";
@@ -258,7 +258,7 @@ function CategoryRowView({ source, kind, cat, favSet, sort, onSeeAll, onOpen }: 
 function VodTop({ source, kind, onOpen }: { source: Source; kind: "movie" | "series"; onOpen: (id: number) => void }) {
   const t = useT();
   const { profileId } = usePrefs();
-  const hid = useHiddenCats(source, kind);
+  const hid = useBlockedCats(source, kind);
   const best = useLiveQuery(async () => {
     const table = (kind === "movie" ? db.movies : db.series) as unknown as import("dexie").Table<Item, number>;
     return table.where("[sourceId+rating]").between([source.cid, 0.01], [source.cid, 10], true, true).reverse().filter((m) => !!m.poster && !hid.has(m.catExt)).first();

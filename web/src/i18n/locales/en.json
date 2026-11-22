@@ -925,5 +925,10 @@
   "mc.catCustom": "My channels",
   "mc.badge": "Manual",
   "mc.badUrl": "Invalid address",
-  "mc.deleteSure": "Delete?"
+  "mc.deleteSure": "Delete?",
+  "gate.title": "Protected content",
+  "gate.enter": "Enter the parental code to open “{name}”",
+  "gate.noCode": "No parental code is set: set one in Settings › Profiles.",
+  "set.kidsProfile": "Kids profile",
+  "set.kidsProfileD": "Adult categories are hidden everywhere and never shown on Home."
 }

@@ -5,7 +5,9 @@ import { db } from "@/db/db";
 import { getOrder, resetOrder, saveOrder } from "@/db/channelOrder";
 import type { ChannelRow, FavoriteRow, Kind, Source } from "@/db/types";
 import { favoritesOf } from "@/db/queries";
-import { useFavorites } from "@/hooks/data";
+import { useBlockedCats, useFavorites } from "@/hooks/data";
+import { blockedCategoryIds } from "@/db/contentGate";
+import { useUnlocks } from "@/state/unlocks";
 import { useNowNext } from "@/hooks/epg";
 import { useReorderDnd } from "@/hooks/reorder";
 import { useT } from "@/i18n";
@@ -68,10 +70,12 @@ function Mixed({ sources }: { sources: Source[] }) {
   // Seuls les favoris sont lus (et leurs chaînes, une par une) : jamais un catalogue entier.
   const favs = useLiveQuery(async () => (await Promise.all(sources.map((s) => favoritesOf(profile, s.id!)))).flat(), [profile, key]) ?? [];
   const views = useChannelViews((st) => st.views);
+  const kids = usePrefs((st) => !!st.profiles.find((p) => p.id === st.profileId)?.kids);
+  const unlockV = useUnlocks((st) => st.v);
   const chans = useLiveQuery(async () => {
-    const hiddenRows = await db.profileHidden.where("sourceId").anyOf(sources.map((s) => s.id!)).toArray();
+    // Catégories écartées pour le profil (masquées, verrouillées sans code saisi, adultes pour un profil Enfants), source par source.
     const hidden = new Set<string>();
-    for (const r of hiddenRows) if (r.profile === profile && r.kind === "live") for (const id of r.ids) hidden.add(hiddenKey(r.sourceId, id));
+    for (const s of sources) for (const id of await blockedCategoryIds(profile, s, "live")) hidden.add(hiddenKey(s.id!, id));
     const groups = await Promise.all(sources.map(async (s) => {
       // Chaînes masquées par le profil courant : écartées source par source.
       const keep = views.get(s.id!)?.keep;
@@ -80,7 +84,7 @@ function Mixed({ sources }: { sources: Source[] }) {
       return { sourceId: s.id!, items: ord.map((c): MixedChan => ({ sourceId: s.id!, cid: s.cid, name: s.name, c })) };
     }));
     return dropHidden(concatBySource(groups), hidden);
-  }, [profile, key, views]) ?? [];
+  }, [profile, key, views, kids, unlockV]) ?? [];
   const byId = new Map(sources.map((s) => [s.id!, s] as const));
   const nameOf = (id: number) => byId.get(id)?.name ?? "";
   const vod = (k: "movie" | "series"): FavoriteRow[] => favs.filter((f) => f.kind === k && byId.has(f.sourceId));
@@ -138,7 +142,9 @@ function Inner({ source, chip }: { source: Source; chip?: React.ReactNode }) {
   const sid = source.id!;
   // Chaînes masquées par le profil courant : écartées des favoris (Set en mémoire).
   const cv = useChannelView(source);
-  const natural = useLiveQuery(async () => (tab === "live" || tab === "all" ? (await Promise.all(live.map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c && (!cv.keep || cv.keep(c))) : []), [tab, live.length, source.cid, cv]);
+  // Catégories écartées (masquées, verrouillées sans code saisi, adultes pour un profil Enfants).
+  const blocked = useBlockedCats(source, "live");
+  const natural = useLiveQuery(async () => (tab === "live" || tab === "all" ? (await Promise.all(live.map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c && !blocked.has(c.catExt) && (!cv.keep || cv.keep(c))) : []), [tab, live.length, source.cid, cv, blocked]);
   const order = useLiveQuery(() => getOrder(profile, sid, FAVORITES_SCOPE), [profile, sid]);
   // Déplacer (même ordre que la liste « Favoris » du Direct) : flèches, Entrée valide, Échap annule ; glisser-déposer à la souris.
   const [mv, setMv] = useState<MoveSession | null>(null);

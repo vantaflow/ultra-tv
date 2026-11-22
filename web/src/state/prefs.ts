@@ -7,7 +7,7 @@ import { parseStartScreen, type StartScreen } from "@/lib/startScreen";
 import { DEFAULT_ACCENT, parseAccent, parseTheme, themeAttr, type AccentId, type ThemeId } from "@/lib/themes";
 
 export type Theme = ThemeId;
-/** `kids`, `lang`, `sources` et `screenTime` viennent de la synchro entre appareils : « enfants » est conservé tel quel (aucun effet ici), `lang` = langue de l'interface du profil (absent = celle de l'appareil). */
+/** `kids`, `lang`, `sources` et `screenTime` viennent de la synchro entre appareils : « enfants » écarte les catégories adultes (voir lib/contentGate), `lang` = langue de l'interface du profil (absent = celle de l'appareil). */
 export interface Profile {
   id: string; name: string; color: string; kids?: boolean; lang?: Lang;
   /** Noms des sources visibles du profil (absent = toutes) ; partagé entre appareils. */

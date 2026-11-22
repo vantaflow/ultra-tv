@@ -936,5 +936,10 @@
   "mc.catCustom": "Mis canales",
   "mc.badge": "A mano",
   "mc.badUrl": "Dirección no válida",
-  "mc.deleteSure": "¿Eliminar?"
+  "mc.deleteSure": "¿Eliminar?",
+  "gate.title": "Contenido protegido",
+  "gate.enter": "Introduce el código parental para abrir «{name}»",
+  "gate.noCode": "No hay ningún código parental: define uno en Ajustes › Perfiles.",
+  "set.kidsProfile": "Perfil infantil",
+  "set.kidsProfileD": "Las categorías para adultos se ocultan en todas partes y nunca aparecen en Inicio."
 }
