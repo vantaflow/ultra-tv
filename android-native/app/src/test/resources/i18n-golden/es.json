@@ -333,6 +333,7 @@
   "DesignStrings.getMoviesTitle()": "Películas",
   "DesignStrings.getNeverSynced()": "Nunca sincronizado",
   "DesignStrings.getNewsChannelName()": "Novedades",
+  "DesignStrings.getRecentChannelsName()": "Canales recientes",
   "DesignStrings.getNextChannel()": "Canal siguiente",
   "DesignStrings.getNextOpenInstant()": "La próxima apertura será instantánea: el catálogo se guarda en el dispositivo y se actualiza en segundo plano.",
   "DesignStrings.getNo()": "No",
