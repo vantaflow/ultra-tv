@@ -222,6 +222,10 @@ interface ChannelDao {
     @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid AND categoryId = :cat")
     suspend fun countInCategory(pid: Long, cat: String): Int
 
+    /** Clés `source:identifiant` des chaînes rangées dans une catégorie du Direct verrouillée par code (voir ParentalLocks). */
+    @Query("SELECT ch.providerId || ':' || ch.remoteId FROM channel ch JOIN category c ON c.providerId = ch.providerId AND c.kind = 'LIVE' AND c.remoteId = ch.categoryId WHERE c.locked = 1")
+    fun observeCategoryLockedKeys(): kotlinx.coroutines.flow.Flow<List<String>>
+
     /** Catégories de chaînes par identifiant distant (rangée « Chaînes récentes » de l'accueil, voir HomeGuard). */
     @Query("SELECT id AS id, remoteId AS remoteId, categoryId AS categoryId FROM channel WHERE providerId = :pid AND remoteId IN (:rids)")
     suspend fun categoriesByRemote(pid: Long, rids: List<String>): List<TitleCategory>
@@ -883,6 +887,10 @@ interface CategoryDao {
 
     @Query("UPDATE category SET locked = :locked WHERE id = :id")
     suspend fun setLocked(id: Long, locked: Boolean)
+
+    /** Verrou parental d'une catégorie (Gérer les catégories › cadenas) ; conservé par les synchros (CatalogPlan.merge). */
+    @Query("UPDATE category SET locked = :locked WHERE providerId = :pid AND kind = :kind AND remoteId = :remoteId")
+    suspend fun setLockedRemote(pid: Long, kind: String, remoteId: String, locked: Boolean)
 
     @Query("SELECT kind AS kind, enabled AS enabled, COUNT(*) AS n FROM category WHERE providerId = :pid GROUP BY kind, enabled")
     fun observeEnabledCounts(pid: Long): Flow<List<EnabledCount>>

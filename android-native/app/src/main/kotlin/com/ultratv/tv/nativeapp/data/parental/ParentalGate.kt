@@ -38,7 +38,7 @@ open class ParentalGate(private val source: LockSource) {
         fun isBlocked(c: ChannelEntity, lockedKeys: Set<String>, lockedCategories: Set<String>, unlocked: Set<String>): Boolean {
             val key = keyOf(c)
             if (key in unlocked) return false
-            return key in lockedKeys || (c.categoryId != null && c.categoryId in lockedCategories)
+            return key in lockedKeys || CategoryLocks.isCategoryLocked(c.categoryId, lockedCategories)
         }
     }
 
@@ -52,6 +52,18 @@ open class ParentalGate(private val source: LockSource) {
         _pending.value = PendingSwitch(target, apply)
         return null
     }
+
+    /**
+     * Entrée dans le lecteur (liste, Guide, recherche, accueil, lien profond) : vrai si [target] peut jouer tout de suite —
+     * libre, déjà débloquée pour la session, ou code saisi à l'instant par l'écran de départ ([ParentalUnlocks]).
+     */
+    suspend fun admit(target: ChannelEntity): Boolean {
+        if (ParentalUnlocks.consume(target)) { unlocked.add(keyOf(target)); return true }
+        return !isBlocked(target, source.lockedChannelKeys(), source.lockedCategoryIds(target.providerId), unlocked)
+    }
+
+    /** Code accepté hors fenêtre de zapping (ouverture du lecteur) : [c] est débloquée pour la session. */
+    fun markUnlocked(c: ChannelEntity) { unlocked.add(keyOf(c)) }
 
     /** Code accepté : la chaîne est débloquée pour la session et le passage a lieu ; rend l'URL à lancer. */
     fun grant(): String? {

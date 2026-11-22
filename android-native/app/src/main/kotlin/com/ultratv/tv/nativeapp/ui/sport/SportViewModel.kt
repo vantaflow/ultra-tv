@@ -74,6 +74,7 @@ class SportViewModel @Inject constructor(
     private val reminders: RemindersScheduler,
     private val recScheduler: RecordingScheduler,
     lockedStore: LockedChannelsStore,
+    parentalLocks: com.ultratv.tv.nativeapp.data.parental.ParentalLocks,
     private val teamBadges: com.ultratv.tv.nativeapp.data.sport.TeamBadgeRepository,
 ) : ViewModel() {
     /** Source active (la première active, sinon la première) : même règle que l'accueil. */
@@ -132,7 +133,7 @@ class SportViewModel @Inject constructor(
         .flowOn(Dispatchers.IO)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
-    val locked: StateFlow<Set<String>> = lockedStore.locked.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+    val locked: StateFlow<Set<String>> = parentalLocks.effective.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     /** Contexte « LIVE » + file de zapping (comme le Direct et le Guide) AVANT d'ouvrir le lecteur. */
     fun play(c: ChannelEntity, then: () -> Unit) {

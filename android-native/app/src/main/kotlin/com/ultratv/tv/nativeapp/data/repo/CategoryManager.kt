@@ -55,6 +55,9 @@ class CategoryManager @Inject constructor(
     /** Total de catégories d'un type : un COUNT SQL (la liste complète des catégories n'est plus chargée pour en prendre la taille). */
     fun observeTotals(pid: Long, kind: String): Flow<Int> = categoryDao.observeCount(pid, kind)
 
+    /** Verrouille (code parental exigé) ou déverrouille une catégorie entière. */
+    suspend fun setLocked(pid: Long, kind: String, remoteId: String, locked: Boolean) = categoryDao.setLockedRemote(pid, kind, remoteId, locked)
+
     suspend fun setEnabled(pid: Long, kind: String, ids: List<String>, enabled: Boolean) {
         if (ids.isEmpty()) return
         // Décision manuelle : la catégorie ne dépend plus de la langue (réactiver une langue n'y touchera pas).

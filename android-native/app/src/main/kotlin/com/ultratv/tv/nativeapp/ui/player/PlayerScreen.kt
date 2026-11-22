@@ -269,6 +269,18 @@ class PlayerViewModel @Inject constructor(
     val current: StateFlow<PlaybackContext.Item?> = playback.current
 
     /**
+     * Chaîne du direct qui exige le code parental à l'OUVERTURE du lecteur (null = lecture libre) : chaîne verrouillée ou
+     * rangée dans une catégorie verrouillée, quelle que soit l'entrée (Guide, recherche, accueil, lien profond, rappel).
+     * Code déjà saisi par l'écran de départ : non redemandé (voir ParentalUnlocks).
+     */
+    suspend fun lockedAtOpen(url: String): com.ultratv.tv.nativeapp.data.db.ChannelEntity? {
+        val it = playback.current.value ?: return null
+        if (it.kind != "LIVE" || it.streamUrl != url) return null
+        val c = channelDao.byRemoteId(it.providerId, it.remoteId) ?: return null
+        return if (guard.admit(c)) null else c
+    }
+
+    /**
      * Programme en cours de la chaîne regardée (guide). Relu à la FIN du programme (borné 15 s – 2 min), pas toutes les
      * 20 s. Sans guide : programme court du fournisseur demandé 2 s après le zap, pas pendant l'ouverture du flux.
      */
@@ -668,6 +680,21 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     val prefs by vm.prefsFlow.collectAsState(initial = null)
     // Lu dans le gestionnaire de touches : toujours la valeur courante du réglage.
     val zapVertical by androidx.compose.runtime.rememberUpdatedState(prefs?.zapVertical == true)
+    // Code parental à l'ouverture : rien ne se lance (ni flux, ni contexte) avant l'accord ; annuler ferme le lecteur.
+    var openAllowed by remember { mutableStateOf<Boolean?>(null) }
+    var openLocked by remember { mutableStateOf<com.ultratv.tv.nativeapp.data.db.ChannelEntity?>(null) }
+    LaunchedEffect(Unit) { if (openAllowed == null) { val c = vm.lockedAtOpen(url); openLocked = c; openAllowed = c == null } }
+    if (openAllowed != true) {
+        Box(Modifier.fillMaxSize().background(Color.Black))
+        openLocked?.let { c ->
+            com.ultratv.tv.nativeapp.ui.parental.PinPromptDialog(
+                title = c.title,
+                onUnlocked = { vm.guard.markUnlocked(c); openLocked = null; openAllowed = true },
+                onCancel = onBack,
+            )
+        }
+        return
+    }
     val p = prefs ?: run { Box(Modifier.fillMaxSize().background(Color.Black)); return }
 
     var currentUrl by remember { mutableStateOf(url) }

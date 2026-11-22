@@ -115,7 +115,7 @@ fun SimpleChannelsScreen(
         }
     }
 
-    pinFor?.let { r -> PinPromptDialog(title = r.channel.title, onUnlocked = { pinFor = null; play(r) }, onCancel = { pinFor = null }) }
+    pinFor?.let { r -> PinPromptDialog(title = r.channel.title, onUnlocked = { pinFor = null; com.ultratv.tv.nativeapp.data.parental.ParentalUnlocks.grant(r.channel); play(r) }, onCancel = { pinFor = null }) }
 }
 
 @Composable

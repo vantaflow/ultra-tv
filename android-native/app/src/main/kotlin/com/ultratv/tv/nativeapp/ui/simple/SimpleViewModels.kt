@@ -87,6 +87,7 @@ class SimpleChannelsViewModel @Inject constructor(
     private val playback: PlaybackContext,
     private val queue: LivePlaybackQueue,
     lockedStore: LockedChannelsStore,
+    parentalLocks: com.ultratv.tv.nativeapp.data.parental.ParentalLocks,
     private val epgDao: com.ultratv.tv.nativeapp.data.db.EpgDao,
 ) : ViewModel() {
     private val pid = provider.activeId()
@@ -95,7 +96,7 @@ class SimpleChannelsViewModel @Inject constructor(
     val rows: StateFlow<List<SimpleChannelRow>?> = pid.flatMapLatest { id ->
         if (id == null) flowOf(emptyList<ChannelEntity>() to emptyList())
         else combine(catalog.favoriteChannels(id, SimpleHome.MAX_CHANNELS), catalog.firstChannels(id, SimpleHome.MAX_CHANNELS)) { f, o -> f to o }
-    }.combine(lockedStore.locked) { (favs, others), locked ->
+    }.combine(parentalLocks.effective) { (favs, others), locked ->
         val favIds = favs.map { it.id }.toSet()
         SimpleHome.orderChannels(favs, others).map { c ->
             SimpleChannelRow(c, SimpleHome.isFavorite(c, favIds), "${c.providerId}:${c.remoteId}" in locked)

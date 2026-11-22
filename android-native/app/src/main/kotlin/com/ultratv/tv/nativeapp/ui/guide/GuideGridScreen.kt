@@ -233,6 +233,7 @@ class GuideGridViewModel @Inject constructor(
     private val replay: com.ultratv.tv.nativeapp.data.replay.ReplayService,
     private val limits: com.ultratv.tv.nativeapp.data.prefs.ProviderLimitsStore,
     private val lockedStore: com.ultratv.tv.nativeapp.data.prefs.LockedChannelsStore,
+    private val parentalLocks: com.ultratv.tv.nativeapp.data.parental.ParentalLocks,
     private val catalog: com.ultratv.tv.nativeapp.data.repo.CatalogRepository,
     private val hiddenStore: com.ultratv.tv.nativeapp.data.prefs.HiddenCategoriesStore,
     private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
@@ -268,7 +269,8 @@ class GuideGridViewModel @Inject constructor(
      * Chaînes verrouillées (code parental) : jamais d'aperçu vidéo pour elles. Lecture à chaque décision, qui attend la liste réelle
      * du magasin : un StateFlow encore à sa valeur vide (premier accès, processus froid) laisserait démarrer une chaîne verrouillée.
      */
-    suspend fun lockedKeys(): Set<String> = lockedStore.locked.first()
+    /** Chaînes qui exigent le code (catégories verrouillées comprises) : jamais d'aperçu. */
+    suspend fun lockedKeys(): Set<String> = parentalLocks.effective.first()
 
     /** Adresse lisible du flux pour l'aperçu (portail Stalker : lien demandé au portail). */
     suspend fun previewUrl(c: ChannelEntity): String = c.streamUrl   // stalker:// : résolu par la session à chaque ouverture

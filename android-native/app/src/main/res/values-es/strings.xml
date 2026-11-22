@@ -1956,4 +1956,8 @@
     <string name="perso_ui_size_xlarge">Muy grande</string>
     <string name="ds_show_advanced">Mostrar ajustes avanzados</string>
     <string name="ds_show_advanced_hint">Motor, decodificación, búfer, calidad, frecuencia de imagen. Un ajuste modificado siempre queda visible.</string>
+    <string name="cat_lock_col">Código</string>
+    <string name="cat_lock">Bloquear esta categoría con el código parental</string>
+    <string name="cat_unlock">Desbloquear esta categoría</string>
+    <string name="cat_lock_need_pin">Define primero un código parental (Ajustes › Control parental): sin él, una categoría bloqueada no está protegida</string>
 </resources>

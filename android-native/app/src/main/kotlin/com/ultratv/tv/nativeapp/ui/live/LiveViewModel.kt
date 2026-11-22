@@ -61,6 +61,7 @@ class LiveViewModel @Inject constructor(
     private val catalog: CatalogRepository,
     private val hiddenStore: HiddenCategoriesStore,
     lockedStore: LockedChannelsStore,
+    parentalLocks: com.ultratv.tv.nativeapp.data.parental.ParentalLocks,
     private val playback: PlaybackContext,
     private val epgDao: EpgDao,
     private val zapQueue: LivePlaybackQueue,
@@ -78,7 +79,8 @@ class LiveViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _locked = lockedStore
-    val lockedChannels: StateFlow<Set<String>> = lockedStore.locked
+    /** Chaînes qui exigent le code : verrouillées une à une ou rangées dans une catégorie verrouillée. */
+    val lockedChannels: StateFlow<Set<String>> = parentalLocks.effective
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     private val providers = provider.observeProviders().distinctUntilChanged()
@@ -288,7 +290,7 @@ class LiveViewModel @Inject constructor(
 
     fun toggleLock(channel: ChannelEntity) {
         viewModelScope.launch {
-            val on = _locked.keyFor(channel.providerId, channel.remoteId) in lockedChannels.value
+            val on = _locked.keyFor(channel.providerId, channel.remoteId) in _locked.locked.first()
             _locked.set(channel.providerId, channel.remoteId, !on)
         }
     }

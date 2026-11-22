@@ -322,7 +322,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
     pinPrompt?.let { ch ->
         com.ultratv.tv.nativeapp.ui.parental.PinPromptDialog(
             title = ch.title,
-            onUnlocked = { pinPrompt = null; play(ch) },
+            onUnlocked = { pinPrompt = null; com.ultratv.tv.nativeapp.data.parental.ParentalUnlocks.grant(ch); play(ch) },
             onCancel = { pinPrompt = null },
         )
     }

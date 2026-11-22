@@ -1979,4 +1979,8 @@
     <string name="perso_ui_size_xlarge">Extra large</string>
     <string name="ds_show_advanced">Show advanced settings</string>
     <string name="ds_show_advanced_hint">Engine, decoding, buffer, quality, frame rate. A changed setting always stays visible.</string>
+    <string name="cat_lock_col">Code</string>
+    <string name="cat_lock">Lock this category with the parental code</string>
+    <string name="cat_unlock">Unlock this category</string>
+    <string name="cat_lock_need_pin">Set a parental code first (Settings › Parental control): without it, a locked category is not protected</string>
 </resources>

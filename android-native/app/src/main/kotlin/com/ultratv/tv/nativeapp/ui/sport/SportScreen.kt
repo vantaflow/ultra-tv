@@ -203,7 +203,7 @@ fun SportScreen(
         if (fullTable || customizing) StandingsScreen(D, lg, LeagueActions.of(lvm), customize = customizing, onClose = { fullTable = false; customizing = false })
     }
 
-    pinFor?.let { c -> PinPromptDialog(title = c.title, onUnlocked = { pinFor = null; vm.play(c) { onPlay(c.streamUrl, c.title) } }, onCancel = { pinFor = null }) }
+    pinFor?.let { c -> PinPromptDialog(title = c.title, onUnlocked = { pinFor = null; com.ultratv.tv.nativeapp.data.parental.ParentalUnlocks.grant(c); vm.play(c) { onPlay(c.streamUrl, c.title) } }, onCancel = { pinFor = null }) }
 }
 
 internal fun entryKey(e: SportEntry) = "${e.channel.id}-${e.prog.startMs}"

@@ -2022,4 +2022,8 @@
     <string name="perso_ui_size_xlarge">كبير جدًا</string>
     <string name="ds_show_advanced">إظهار الإعدادات المتقدمة</string>
     <string name="ds_show_advanced_hint">المشغّل وفك الترميز والتخزين المؤقت والجودة ومعدل الإطارات. يبقى الإعداد المعدَّل ظاهرًا دائمًا.</string>
+    <string name="cat_lock_col">الرمز</string>
+    <string name="cat_lock">قفل هذه الفئة برمز الرقابة الأبوية</string>
+    <string name="cat_unlock">إلغاء قفل هذه الفئة</string>
+    <string name="cat_lock_need_pin">عيّن رمز الرقابة الأبوية أولاً (الإعدادات › الرقابة الأبوية): بدونه لا تكون الفئة المقفلة محمية</string>
 </resources>

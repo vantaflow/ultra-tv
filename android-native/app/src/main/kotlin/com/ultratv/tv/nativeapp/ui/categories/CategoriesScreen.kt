@@ -11,6 +11,11 @@ import com.ultratv.tv.nativeapp.i18n.catChannelHidden
 import com.ultratv.tv.nativeapp.i18n.catOrderHint
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.platform.testTag
+import com.ultratv.tv.nativeapp.i18n.catLock
+import com.ultratv.tv.nativeapp.i18n.catUnlock
+import com.ultratv.tv.nativeapp.i18n.catLockCol
+import com.ultratv.tv.nativeapp.i18n.catLockNeedPin
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.widthIn
 import androidx.activity.compose.BackHandler
@@ -165,6 +170,11 @@ class CategoriesViewModel @Inject constructor(
         markPending(ids, v)
         viewModelScope.launch { try { providerId()?.let { profileCats.setVisible(it, kind.value, ids, v, downloaded); com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed(it) } } finally { clearPending(ids) } }
     }
+    /** Verrou parental de la catégorie (le code est vérifié par l'écran avant l'appel). */
+    fun setLocked(r: CategoryRow, locked: Boolean) {
+        viewModelScope.launch { providerId()?.let { manager.setLocked(it, kind.value, r.remoteId, locked) } }
+    }
+
     /** « Tout activer » / « Tout désactiver » : s'applique au résultat FILTRÉ (ex. filtrer « AR » puis tout désactiver). */
     fun setAll(enabled: Boolean) {
         val ids = rows.value.filter { it.enabled != enabled }.map { it.remoteId }
@@ -249,6 +259,19 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
     var manualCat by remember { mutableStateOf<String?>(null) }
     channelsOf?.let { (cat, label) -> CategoryChannelsDialog(vm, cat, label, D, onEditManual = { rid -> manualCat = cat; channelsOf = null; manualEdit = rid }) { channelsOf = null } }
     manualEdit?.let { rid -> ManualChannelHost(vm, rid.ifEmpty { null }, manualCat) { manualEdit = null; manualCat = null } }
+    // Verrou parental d'une catégorie entière : le code est exigé pour verrouiller comme pour déverrouiller. Sans code défini,
+    // verrouiller ne protégerait rien : on le dit au lieu de faire semblant.
+    val parental: com.ultratv.tv.nativeapp.ui.parental.ParentalViewModel = hiltViewModel()
+    val pinSet by parental.pinSet.collectAsState()
+    var lockFor by remember { mutableStateOf<CategoryRow?>(null) }
+    val askLock: (CategoryRow) -> Unit = { r -> if (!pinSet && !r.locked) com.ultratv.tv.nativeapp.ui.common.Toaster.show(D.catLockNeedPin) else lockFor = r }
+    lockFor?.let { r ->
+        com.ultratv.tv.nativeapp.ui.parental.PinPromptDialog(
+            title = r.label,
+            onUnlocked = { vm.setLocked(r, !r.locked); lockFor = null },
+            onCancel = { lockFor = null },
+        )
+    }
 
     if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
         TouchCategories(
@@ -263,6 +286,7 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
             onConfirmMove = { vm.saveOrder(local.map { it.remoteId }); moving = null },
             onChannels = { id, label -> channelsOf = id to label },
             onAddManual = { manualCat = null; manualEdit = "" },
+            onLock = askLock,
         )
         return
     }
@@ -304,6 +328,8 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
                 Spacer(Modifier.width(12.design))
                 Box(Modifier.width(110.design), contentAlignment = Alignment.Center) { Text(D.catChannels, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1) }
             }
+            Spacer(Modifier.width(12.design))
+            Box(Modifier.width(110.design), contentAlignment = Alignment.Center) { Text(D.catLockCol, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1) }
         }
         val state = rememberLazyListState()
         val firstRow = remember { androidx.compose.ui.focus.FocusRequester() }
@@ -333,6 +359,7 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
                     },
                     onConfirmMove = { vm.saveOrder(local.map { it.remoteId }); moving = null },
                     onChannels = if (kind == "LIVE") ({ channelsOf = r.remoteId to r.label }) else null,
+                    onLock = { askLock(r) },
                     movePos = if (moving == r.remoteId) "${local.indexOfFirst { it.remoteId == r.remoteId } + 1} / ${local.size}" else null,
                 )
             }
@@ -384,6 +411,7 @@ private fun CategoryLine(
     r: CategoryRow, kind: String, rowModifier: Modifier = Modifier, isMoving0: Boolean? = null, isMoving: Boolean, D: com.ultratv.tv.nativeapp.i18n.DesignStrings,
     onToggle: () -> Unit, onStartMove: () -> Unit, onMove: (Int) -> Unit, onConfirmMove: () -> Unit, onChannels: (() -> Unit)? = null,
     movePos: String? = null,
+    onLock: (() -> Unit)? = null,
 ) {
     // Activée mais pas encore téléchargée : « Chargement… » plutôt que « 0 chaîne » (le contenu arrive après la synchro en cours).
     val count = if (r.enabled && r.count == 0) D.categoryLoading
@@ -431,8 +459,20 @@ private fun CategoryLine(
                 DIcon("M4 6h16M4 12h16M4 18h10", 28.design, if (f) Ux.TextOnLight else Ux.Text2, strokeWidth = 2.4f)
             }
         }
+        // Cadenas : catégorie entière verrouillée par le code parental (fermé et sur fond d'accent quand elle l'est).
+        if (onLock != null) FocusSurface(
+            onClick = onLock, shape = RoundedCornerShape(18.design), bg = if (r.locked) Ux.Accent.copy(alpha = 0.22f) else Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1.0f,
+            modifier = Modifier.width(110.design).fillMaxHeight().testTag("cat-lock-${r.remoteId}").semantics { contentDescription = if (r.locked) D.catUnlock else D.catLock },
+        ) { f ->
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                DIcon(if (r.locked) LOCK_CLOSED else LOCK_OPEN, 28.design, if (f) Ux.TextOnLight else if (r.locked) Ux.AccentInk else Ux.Text3, strokeWidth = 2.4f)
+            }
+        }
     }
 }
+
+private const val LOCK_CLOSED = "M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3"
+private const val LOCK_OPEN = "M6 11h12v9H6zM8 11V8a4 4 0 0 1 7.5-2"
 
 /**
  * Chaînes d'une catégorie du Direct : un interrupteur par chaîne (désactivée = masquée partout, sur tous les appareils).
@@ -526,6 +566,7 @@ private fun TouchCategories(
     onBack: () -> Unit, onKind: (String) -> Unit, onStartMove: (String) -> Unit, onMove: (String, Int) -> Unit, onConfirmMove: () -> Unit,
     onChannels: (String, String) -> Unit = { _, _ -> },
     onAddManual: () -> Unit = {},
+    onLock: (CategoryRow) -> Unit = {},
 ) {
     val sortedAz by vm.sortedAz.collectAsState()
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dpT, vertical = 12.dpT), verticalArrangement = Arrangement.spacedBy(12.dpT)) {
@@ -583,6 +624,9 @@ private fun TouchCategories(
                         }
                         if (kind == "LIVE") Box(Modifier.size44().clip(RoundedCornerShape(22.dpT)).clickableT { onChannels(r.remoteId, r.label) }, contentAlignment = Alignment.Center) {
                             DIcon("M4 6h16M4 12h16M4 18h10", 20.dpT, Ux.Text3, strokeWidth = 2.2f)
+                        }
+                        Box(Modifier.size44().clip(RoundedCornerShape(22.dpT)).clickableT { if (moving == null) onLock(r) }.testTag("cat-lock-${r.remoteId}").semantics { contentDescription = if (r.locked) D.catUnlock else D.catLock }, contentAlignment = Alignment.Center) {
+                            DIcon(if (r.locked) LOCK_CLOSED else LOCK_OPEN, 20.dpT, if (r.locked) Ux.AccentInk else Ux.Text3, strokeWidth = 2.2f)
                         }
                     }
                 }

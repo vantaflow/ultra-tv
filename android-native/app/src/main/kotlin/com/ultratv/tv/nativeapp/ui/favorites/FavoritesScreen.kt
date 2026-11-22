@@ -277,7 +277,7 @@ fun FavoritesScreen(
         pinFor?.let { ch ->
             com.ultratv.tv.nativeapp.ui.parental.PinPromptDialog(
                 title = ch.title,
-                onUnlocked = { pinFor = null; vm.prepare(ch, channels); onPlayChannel(ch.streamUrl, ch.name) },
+                onUnlocked = { pinFor = null; com.ultratv.tv.nativeapp.data.parental.ParentalUnlocks.grant(ch); vm.prepare(ch, channels); onPlayChannel(ch.streamUrl, ch.name) },
                 onCancel = { pinFor = null },
             )
         }
