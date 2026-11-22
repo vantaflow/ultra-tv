@@ -32,23 +32,36 @@ import kotlinx.coroutines.delay
 /**
  * Clé de liste paginée qui ne plante jamais : pendant une synchro, la pagination par décalage de Room peut présenter un
  * instant le même élément sur deux pages ; deux clés identiques font planter Compose (« Key "2143" was already used »,
- * Chromecast HD, 1.2.69). Un doublon reçoit une clé distincte ; les autres gardent leur identifiant (focus conservé).
+ * Chromecast HD, 1.2.69 ; « Key "14100" », 1.3.72). Un doublon reçoit une clé distincte ; les autres gardent leur
+ * identifiant (focus conservé). Voir [SafePagingKeys] : clés tirées de l'instantané COURANT, celui que lit la mesure.
  */
 @Composable
 fun <T : Any> rememberSafeItemKey(items: androidx.paging.compose.LazyPagingItems<T>, id: (T) -> Any): (Int) -> Any {
-    val snap = items.itemSnapshotList
-    val dups = remember(snap) {
-        val seen = HashSet<Any>()
-        buildSet { snap.forEachIndexed { i, it -> if (it != null && !seen.add(id(it))) add(i) } }
-    }
-    // La liste peut rétrécir entre deux passes (synchro, filtre) alors que Compose demande encore la clé de l'ancien
-    // dernier élément : peek() hors limites plantait (« index 3 in ItemSnapshotList of size 3 », 1.2.98-rc1).
-    return { i ->
-        when {
-            i in dups -> "dup:$i"
-            i < 0 || i >= items.itemCount -> "gone:$i"
-            else -> runCatching { items.peek(i) }.getOrNull()?.let(id) ?: "placeholder:$i"
+    val keys = remember(items) { SafePagingKeys(id) }
+    // itemSnapshotList relu à chaque appel (mesure) : avant, les doublons venaient de l'instantané de la composition et
+    // la clé de items.peek() (instantané courant) — une page arrivée entre les deux apportait un doublon non repéré.
+    return remember(items, keys) { { i -> keys.key(items.itemSnapshotList, i) } }
+}
+
+/**
+ * Clés uniques d'un instantané de liste paginée (null = élément pas encore chargé), calculées une fois par instantané
+ * (identité de la liste) : première occurrence = son identifiant, doublon = clé dérivée de son rang ([uniqueKeys]),
+ * élément non chargé = « placeholder:i », hors limites (liste rétrécie entre deux passes) = « gone:i ».
+ */
+class SafePagingKeys<T : Any>(private val id: (T) -> Any) {
+    private var forList: List<T?>? = null
+    private var keys: List<Any> = emptyList()
+
+    fun key(snapshot: List<T?>, i: Int): Any {
+        if (i < 0 || i >= snapshot.size) return "gone:$i"
+        val k = synchronized(this) {
+            if (forList !== snapshot) {
+                keys = uniqueKeys(snapshot.indices.toList()) { j -> snapshot[j]?.let { runCatching { id(it) }.getOrNull() } ?: "placeholder:$j" }
+                forList = snapshot
+            }
+            keys
         }
+        return k[i]
     }
 }
 
