@@ -333,6 +333,7 @@
   "DesignStrings.getMoviesTitle()": "الأفلام",
   "DesignStrings.getNeverSynced()": "لم تتم المزامنة بعد",
   "DesignStrings.getNewsChannelName()": "الجديد",
+  "DesignStrings.getRecentChannelsName()": "القنوات الأخيرة",
   "DesignStrings.getNextChannel()": "القناة التالية",
   "DesignStrings.getNextOpenInstant()": "الفتح التالي فوري: يُحفظ الكتالوج على الجهاز ويُحدَّث في الخلفية.",
   "DesignStrings.getNo()": "لا",
