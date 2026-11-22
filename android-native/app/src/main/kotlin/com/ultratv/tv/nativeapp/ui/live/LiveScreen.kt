@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.live
 
+import androidx.compose.ui.platform.testTag
 import com.ultratv.tv.nativeapp.i18n.locale
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
@@ -647,7 +648,7 @@ internal fun StreamBadges(quality: Int, flags: Int, focused: Boolean, variant: I
 
 /** Ligne chaîne de 88 px : numéro, logo en boîte fixe 72×48 (Fit), nom (1 ligne), programme en cours, qualité. */
 @Composable
-private fun ChannelRow(
+internal fun ChannelRow(
     c: ChannelEntity, position: Int, locked: Boolean, favorite: Boolean, now: EpgEntity?, next: EpgEntity?, clock: androidx.compose.runtime.State<Long>,
     modifier: Modifier, onFocus: () -> Unit, onClick: () -> Unit, onLongClick: () -> Unit, highlighted: Boolean = false, variant: Int = 1,
 ) {
@@ -658,7 +659,8 @@ private fun ChannelRow(
         modifier = modifier.fillMaxWidth().height(ROW_H.designT).onFocusChanged { if (it.isFocused) onFocus() },
     ) { f ->
         val sub = if (f) Ux.OnFocus2 else Ux.Text3
-        Row(Modifier.fillMaxSize().padding(horizontal = 20.design), verticalAlignment = Alignment.CenterVertically) {
+        // Marge verticale : les pastilles (FR, HD, 4K, #2) ne touchent plus le bord haut de la carte.
+        Row(Modifier.fillMaxSize().padding(horizontal = 20.design, vertical = 10.design), verticalAlignment = Alignment.CenterVertically) {
             if (com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay.current.showNumbers) {
                 Text(position.toString(), color = if (f) Ux.TextOnLight else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, softWrap = false, modifier = Modifier.width(52.design))
                 Spacer(Modifier.width(16.design))
@@ -671,7 +673,7 @@ private fun ChannelRow(
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.design)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // Nom sur une ligne : retours à la ligne / espaces multiples du fournisseur ramenés à un espace.
-                    Text((if (locked) "🔒 " else "") + c.title.replace(WS_RUN, " ").trim(), color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f), style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content))
+                    Text((if (locked) "🔒 " else "") + oneLine(c.title), color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f), style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content))
                     if (favorite) { Text("♥", color = Ux.Accent, fontSize = 22.spx, maxLines = 1); Spacer(Modifier.width(8.design)) }
                     com.ultratv.tv.nativeapp.ui.common.LangBadge(c.lang, f)
                     Spacer(Modifier.width(8.design))
@@ -683,14 +685,15 @@ private fun ChannelRow(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(com.ultratv.tv.nativeapp.ui.common.EpgClock.hm(now.startMs), color = if (f) Ux.TextOnLight else Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, softWrap = false)
                         Spacer(Modifier.width(12.design))
-                        Text(now.title.replace(WS_RUN, " ").trim(), color = if (f) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        // Une seule ligne, quel que soit le titre (sauts de ligne Unicode du guide compris) : hauteur de ligne constante.
+                        Text(oneLine(now.title), color = if (f) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 28.spx, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).testTag("live-now-title"))
                     }
                     com.ultratv.tv.nativeapp.ui.common.EpgProgressBar(now.startMs, now.endMs, clock, heightDp = 3f, track = if (f) Color(0xFFD4D4D8) else Ux.Surface2)
                 } else Text("", maxLines = 1, fontSize = 22.spx)
                 if (next != null) Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(com.ultratv.tv.nativeapp.ui.common.EpgClock.hm(next.startMs), color = sub, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, softWrap = false)
                     Spacer(Modifier.width(12.design))
-                    Text(next.title.replace(WS_RUN, " ").trim(), color = sub, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    Text(oneLine(next.title), color = sub, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 28.spx, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 }
             }
         }
@@ -700,8 +703,11 @@ private fun ChannelRow(
 /** Hauteur de la carte chaîne TV : nom, programme en cours + barre, programme suivant. */
 private const val ROW_H = 136
 
-/** Suite d'espaces (dont retours à la ligne) dans un nom de chaîne. */
-private val WS_RUN = Regex("\\s+")
+/** Suite d'espaces dans un nom ou un titre : retours à la ligne, y compris Unicode (U+2028, U+2029, U+0085), insécables. */
+private val WS_RUN = Regex("[\\s\\u0085\\u00A0\\u2028\\u2029\\u200B]+")
+
+/** Texte d'une ligne de la liste du Direct : tous les sauts de ligne et espaces multiples ramenés à un espace. */
+internal fun oneLine(s: String): String = s.replace(WS_RUN, " ").trim()
 
 // ───────────────────────── Aperçu ─────────────────────────
 
