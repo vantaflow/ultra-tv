@@ -694,19 +694,25 @@ class ProviderRepository @Inject constructor(
         var written = 0
         if (p.kind == "STALKER") stalkerSkips[p.id] = StalkerSkips()
         try {
+            // Partie refusée par la garde (liste vide ou effondrée) : son catalogue est gardé, elle n'est pas marquée à jour,
+            // et les AUTRES parties continuent (le guide ne dépend jamais des films). L'échec est publié à la fin.
+            var refused: EmptyCatalogException? = null
+            suspend fun <R> orRefused(block: suspend () -> R): R? = try { block() } catch (e: EmptyCatalogException) { if (refused == null) refused = e; null }
             for (part in due) {
                 when (part) {
                     SyncPart.LIVE -> {
-                        written += syncXtreamPart(p, livePart(p.kind), ::maybeLock, { c, n -> step(part, "Live channels: $n", n, c) }, null, { syncScope.launch { startPrefetch() } })
+                        val n = orRefused { syncXtreamPart(p, livePart(p.kind), ::maybeLock, { c, n -> step(part, "Live channels: $n", n, c) }, null, { syncScope.launch { startPrefetch() } }) }
                         startPrefetch()   // direct par catégories (pas de liste complète) ou déjà lancé : sans effet si déjà fait
+                        if (n == null) { doneBefore += weights.getValue(part); continue }
+                        written += n
                     }
                     SyncPart.VOD -> {
-                        val n = stalkerTolerant(p, "MOVIE") { syncXtreamPart(p, vodPart(p.kind), ::maybeLock, { c, n -> step(part, "Movies: $n", n, c) }, catsAhead[part]) }
+                        val n = orRefused { stalkerTolerant(p, "MOVIE") { syncXtreamPart(p, vodPart(p.kind), ::maybeLock, { c, n -> step(part, "Movies: $n", n, c) }, catsAhead[part]) } }
                         if (n == null) { doneBefore += weights.getValue(part); continue }   // réessayée à la prochaine synchro
                         written += n
                     }
                     SyncPart.SERIES -> {
-                        val n = stalkerTolerant(p, "SERIES") { syncXtreamPart(p, seriesPart(p.kind), ::maybeLock, { c, n -> step(part, "Series: $n", n, c) }, catsAhead[part]) }
+                        val n = orRefused { stalkerTolerant(p, "SERIES") { syncXtreamPart(p, seriesPart(p.kind), ::maybeLock, { c, n -> step(part, "Series: $n", n, c) }, catsAhead[part]) } }
                         if (n == null) { doneBefore += weights.getValue(part); continue }
                         written += n
                     }
@@ -719,6 +725,7 @@ class ProviderRepository @Inject constructor(
                 providerDao.markSynced(p.id, part, System.currentTimeMillis())
                 doneBefore += weights.getValue(part)
             }
+            refused?.let { throw it }
             syncStatus.set(SyncStatusBus.Status(p.name, "Done", 100))
             // Catégories sautées : la synchro a réussi, le message final le dit (« X catégories ignorées »).
             stalkerSkips[p.id]?.count?.takeIf { it > 0 }?.let { syncStatus.setPartial(SyncStatusBus.Partial(p.id, p.name, it)) }

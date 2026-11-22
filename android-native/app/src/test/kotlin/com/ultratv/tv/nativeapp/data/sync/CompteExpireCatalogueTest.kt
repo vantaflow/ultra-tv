@@ -289,6 +289,25 @@ class CompteExpireCatalogueTest {
         assertEquals(listOf("L1", "L2", "L3"), r.liveCats().map { it.remoteId })
     }
 
+    /**
+     * C2 : films refusés (liste vide) : séries et guide continuent quand même (avant, la synchro s'arrêtait aux films et le
+     * guide n'était plus jamais lu). Les films restent en place, l'échec « liste vide » est signalé à la fin.
+     */
+    @Test fun xtream_films_vides_nempechent_pas_series_et_guide() {
+        val r = rig()
+        runBlocking { r.repo.syncAll(r.pid, force = true) }
+        val vodAvant = runBlocking { r.db.providerDao().byId(r.pid)!!.lastVodSyncAt }
+        mode = Mode.VOD_EMPTY
+        guideHits.set(0)
+        assertEquals(SyncErrorKind.EMPTY_LIST, r.syncFails())
+        assertEquals("films gardés, séries mises à jour (3 → 5)", listOf(6, 4, 5, 7), r.shape())
+        val apres = runBlocking { r.db.providerDao().byId(r.pid)!! }
+        assertTrue("séries marquées à jour", apres.lastSeriesSyncAt > 0)
+        assertEquals("films non marqués à jour (réessayés)", vodAvant, apres.lastVodSyncAt)
+        // Le guide (404 du faux serveur) a bien été DEMANDÉ après le refus des films.
+        assertTrue("guide demandé", guideHits.get() > 0)
+    }
+
     @Test fun suppression_explicite_de_la_source_vide_tout() {
         val r = rig()
         runBlocking { r.repo.syncAll(r.pid, force = true) }
