@@ -69,7 +69,11 @@ class AccountStrings(private val lang: AppLang) {
     val noXtream get() = tx(R.string.acct_no_xtream)
 }
 
-data class AccountState(val sourceName: String? = null, val xtream: Boolean = false, val account: XtreamAccount? = null, val failed: Boolean = false, val loading: Boolean = true)
+data class AccountState(
+    val sourceName: String? = null, val xtream: Boolean = false, val account: XtreamAccount? = null, val failed: Boolean = false, val loading: Boolean = true,
+    /** Adresse SAISIE par l'utilisateur (voir [AccountServer]) ; jamais server_info.url du panneau. */
+    val serverAddress: String? = null,
+)
 
 @HiltViewModel
 class AccountViewModel @Inject constructor(
@@ -112,7 +116,7 @@ class AccountViewModel @Inject constructor(
                 p.kind == "STALKER" -> stalker.fetchAccount(p)
                 else -> null
             }
-            _state.value = AccountState(p?.name, isX, acc, failed = isX && acc == null, loading = false)
+            _state.value = AccountState(p?.name, isX, acc, failed = isX && acc == null, loading = false, serverAddress = AccountServer.displayed(p?.baseUrl))
         }
     }
 }
@@ -158,7 +162,8 @@ fun IptvAccountCard(st: AccountState, s: AccountStrings) {
                 if (a == null || a.activeConnections != null || a.maxConnections != null) AccountRow(s.conns, if (a != null) "${a.activeConnections ?: 0} / ${a.maxConnections ?: 1}" else "—")
                 a?.createdAt?.let { AccountRow(s.created, fmt(it)) }
                 if (a?.trial == true) AccountRow(s.trial, s.yes)
-                a?.server?.let { AccountRow(s.server, it) }
+                // Adresse saisie par l'utilisateur, jamais celle que le panneau déclare (serveur amont d'un revendeur).
+                st.serverAddress?.let { AccountRow(s.server, it) }
                 if (st.failed) Text(s.offline, color = Ux.Muted, fontFamily = com.ultratv.tv.nativeapp.ui.design.Manrope, fontSize = 15.sp)
             }
         }
