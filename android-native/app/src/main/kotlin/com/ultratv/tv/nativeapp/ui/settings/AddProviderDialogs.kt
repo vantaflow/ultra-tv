@@ -388,7 +388,7 @@ fun FormField(
             // Clavier système des TV (souvent plein écran) : il ne montrait que le texte saisi, sans dire quel champ on remplit
             // (adresse, utilisateur, mot de passe). Le nom du champ lui est transmis (hintText), et on lui demande de ne pas
             // masquer l'écran (pas de zone d'extraction) : le libellé et le champ restent visibles au-dessus du clavier.
-            FieldImeLabel(label) { BasicTextField(
+            FieldImeLabel(label, last) { BasicTextField(
                 value = value,
                 onValueChange = onChange,
                 singleLine = true,
@@ -402,6 +402,8 @@ fun FormField(
                 ),
                 keyboardActions = KeyboardActions(
                     onNext = { fm.moveFocus(FocusDirection.Down) },
+                    // « Précédent » du clavier plein écran (Fire TV) : champ d'avant, clavier gardé.
+                    onPrevious = { fm.moveFocus(FocusDirection.Up) },
                     // « OK / Terminé » : valide (tactile) ou ferme le clavier puis va sur le bouton principal (TV : les boutons
                     // ne sont affichés qu'une fois le clavier fermé, mode compact).
                     onDone = {
@@ -740,9 +742,21 @@ internal fun keepsImeTextArea(manufacturer: String?): Boolean = manufacturer.equ
 
 private val keepImeTextArea: Boolean by lazy { keepsImeTextArea(android.os.Build.MANUFACTURER) }
 
+/**
+ * Options du clavier pour un champ de formulaire : nom du champ gardé à l'écran (sauf Fire TV, voir [keepsImeTextArea]) et
+ * champs voisins annoncés (NAVIGATE_NEXT / NAVIGATE_PREVIOUS) : le clavier plein écran des TV (Fire TV en tête) propose alors
+ * « Suivant » / « Précédent », et TOUS les champs restent atteignables sans refermer le clavier.
+ */
+internal fun formImeOptions(base: Int, keepTextArea: Boolean, last: Boolean): Int {
+    var o = base or android.view.inputmethod.EditorInfo.IME_FLAG_NAVIGATE_PREVIOUS
+    if (!last) o = o or android.view.inputmethod.EditorInfo.IME_FLAG_NAVIGATE_NEXT
+    if (!keepTextArea) o = o or android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI or android.view.inputmethod.EditorInfo.IME_FLAG_NO_FULLSCREEN
+    return o
+}
+
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
-private fun FieldImeLabel(label: String, content: @Composable () -> Unit) {
+private fun FieldImeLabel(label: String, last: Boolean = false, content: @Composable () -> Unit) {
     androidx.compose.ui.platform.InterceptPlatformTextInput(
         interceptor = { request, next ->
             next.startInputMethod(object : androidx.compose.ui.platform.PlatformTextInputMethodRequest {
@@ -751,8 +765,7 @@ private fun FieldImeLabel(label: String, content: @Composable () -> Unit) {
                     outAttributes.hintText = label
                     // Fire TV : le clavier Amazon reste en grand par-dessus l'écran quoi qu'on demande ; sans sa zone de texte
                     // (NO_EXTRACT_UI) on ne voyait plus du tout ce qu'on tapait. Il garde donc sa zone, avec le nom du champ.
-                    if (!keepImeTextArea) outAttributes.imeOptions = outAttributes.imeOptions or
-                        android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI or android.view.inputmethod.EditorInfo.IME_FLAG_NO_FULLSCREEN
+                    outAttributes.imeOptions = formImeOptions(outAttributes.imeOptions, keepImeTextArea, last)
                     return ic
                 }
             })
