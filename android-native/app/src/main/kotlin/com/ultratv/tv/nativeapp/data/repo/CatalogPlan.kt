@@ -32,7 +32,8 @@ object CatalogPlan {
 
     /**
      * Fusionne les catégories reçues du serveur avec l'état local : l'activation, l'ordre et le verrouillage
-     * de l'utilisateur sont conservés ; une catégorie NOUVELLE est active, sauf si sa langue détectée est exclue.
+     * de l'utilisateur sont conservés ; une catégorie NOUVELLE est active, sauf si sa langue détectée est exclue
+     * ou si [maskNew] (voir [mergeDetailed]).
      */
     fun merge(
         fetched: List<CategoryEntity>,
@@ -40,14 +41,55 @@ object CatalogPlan {
         selectedLanguages: Set<String>,
         includeMulti: Boolean = true,
         includeUnknown: Boolean = true,
-    ): List<CategoryEntity> {
+        maskNew: Boolean = false,
+    ): List<CategoryEntity> = mergeDetailed(fetched, existing, selectedLanguages, includeMulti, includeUnknown, maskNew).categories
+
+    /** Résultat de [mergeDetailed] : catégories à écrire et identifiants des NOUVELLES catégories masquées d'office. */
+    data class Merged(val categories: List<CategoryEntity>, val newMasked: List<String>)
+
+    /**
+     * Comme [merge], plus :
+     * - identifiant changé mais nom identique (espaces de bord ignorés) à une catégorie existante : même catégorie, son
+     *   état est repris (activation, verrou ; l'ordre aussi si l'ancien identifiant a disparu de la liste) ;
+     * - [maskNew] (synchros suivantes d'une source, voir [shouldMaskNew]) : une catégorie inconnue est créée DÉSACTIVÉE
+     *   (masquée pour tous les profils, rien n'est téléchargé) et listée dans [Merged.newMasked]. Une catégorie que la
+     *   langue exclut reste gérée par le filtre des langues (non listée).
+     */
+    fun mergeDetailed(
+        fetched: List<CategoryEntity>,
+        existing: List<CategoryEntity>,
+        selectedLanguages: Set<String>,
+        includeMulti: Boolean = true,
+        includeUnknown: Boolean = true,
+        maskNew: Boolean = false,
+    ): Merged {
         val old = existing.associateBy { it.remoteId }
-        return fetched.map { c ->
+        val fetchedIds = fetched.mapTo(HashSet()) { it.remoteId }
+        val byName = existing.groupBy { it.name.trim() }
+        val masked = ArrayList<String>()
+        val out = fetched.map { c ->
             val prev = old[c.remoteId]
-            if (prev != null) c.copy(enabled = prev.enabled, position = prev.position, locked = prev.locked || c.locked)
-            else c.copy(enabled = LanguageFilter.allows(c.lang, selectedLanguages, includeMulti, includeUnknown))
+            if (prev != null) return@map c.copy(enabled = prev.enabled, position = prev.position, locked = prev.locked || c.locked)
+            val sameName = byName[c.name.trim()].orEmpty()
+            val renamed = sameName.firstOrNull { it.remoteId !in fetchedIds } ?: sameName.firstOrNull()
+            if (renamed != null) {
+                return@map c.copy(enabled = renamed.enabled, locked = renamed.locked || c.locked, position = if (renamed.remoteId !in fetchedIds) renamed.position else c.position)
+            }
+            val langOk = LanguageFilter.allows(c.lang, selectedLanguages, includeMulti, includeUnknown)
+            if (maskNew && langOk) { masked += c.remoteId; c.copy(enabled = false) } else c.copy(enabled = langOk)
         }
+        return Merged(out, masked)
     }
+
+    /**
+     * Nouvelles catégories masquées d'office ? Jamais à la PREMIÈRE synchro d'une source (aucune catégorie connue pour ce
+     * type, « Mes chaînes » ajoutées à la main mises à part), ni pour les bibliothèques des serveurs multimédias et des
+     * NAS (choisies par l'utilisateur à l'ajout). Xtream, M3U et Stalker sont concernés.
+     */
+    fun shouldMaskNew(providerKind: String, existing: List<CategoryEntity>): Boolean =
+        providerKind !in LIBRARY_KINDS && existing.any { it.remoteId != ManualChannels.CUSTOM_CAT }
+
+    private val LIBRARY_KINDS = setOf("JELLYFIN", "EMBY", "PLEX", "NAS")
 }
 
 /** Règle de visibilité par langue : en cas de doute on AFFICHE. */

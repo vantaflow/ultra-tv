@@ -94,6 +94,8 @@ import com.ultratv.tv.nativeapp.i18n.startScreenName
 import com.ultratv.tv.nativeapp.i18n.textSizeLabel
 import com.ultratv.tv.nativeapp.i18n.textSizeName
 import com.ultratv.tv.nativeapp.i18n.settingsLevelLabel
+import com.ultratv.tv.nativeapp.i18n.newMaskedCategories
+import com.ultratv.tv.nativeapp.i18n.newMaskedCategoriesHint
 import com.ultratv.tv.nativeapp.i18n.settingsLevelName
 import com.ultratv.tv.nativeapp.i18n.settingsLevelHint
 import androidx.compose.ui.platform.testTag
@@ -175,12 +177,13 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
     val pp by panes.state.collectAsState()
     val syncProvider by panes.provider.collectAsState()
     val catTotals by panes.categoryTotals.collectAsState()
+    val newMaskedSub by panes.newMaskedCount.collectAsState()
     val kindNames = providers.mapNotNull { kindName(S.wiz, it.kind) ?: (if (it.kind == "STALKER") D.kindStalker else null) }.distinct()
     val lastSync = syncProvider?.let { maxOf(it.lastLiveSyncAt, it.lastVodSyncAt, it.lastSeriesSyncAt, it.lastEpgSyncAt) } ?: 0L
     val subs = listOf(
         if (providers.isEmpty()) D.setSourcesNone else D.setSourcesCount(providers.size) + (if (kindNames.isEmpty()) "" else " · " + kindNames.joinToString(", ")),
         if (lastSync <= 0L) D.neverSynced else D.setAgo(agoText(D, System.currentTimeMillis() - lastSync)),
-        activeDisabledText(D, catTotals.enabled, catTotals.disabled),
+        activeDisabledText(D, catTotals.enabled, catTotals.disabled) + (if (newMaskedSub > 0) " · " + D.newMaskedCategories(newMaskedSub) else ""),
         themeLabel(D, pp.theme) + " · " + D.setSportSummary(if (pp.sportSection) D.on else D.offState),
         D.setSubPlayback,
         D.setSubParental,
@@ -786,8 +789,14 @@ private fun nextText(mode: String, hour: Int, intervalH: Int, last: Long): Strin
 private fun CategoriesPane(panes: SettingsPanesViewModel, onNavigate: (String) -> Unit) {
     val D = LocalDs.current
     val totals by panes.categoryTotals.collectAsState()
+    val newMasked by panes.newMaskedCount.collectAsState()
     PaneTitle(D.rubCategories, D.categoriesFooter)
-    SettingsCard { PrefRow(D.manageCategories, activeDisabledText(D, totals.enabled, totals.disabled)) { onNavigate("categories") } }
+    SettingsCard {
+        // Ligne discrète : catégories apparues chez le fournisseur depuis la dernière synchro, créées masquées ; OK ouvre la
+        // gestion des catégories (accès direct) et la ligne disparaît.
+        if (newMasked > 0) PrefRow(D.newMaskedCategories(newMasked), "", hint = D.newMaskedCategoriesHint) { panes.newMaskedSeen(); onNavigate("categories") }
+        PrefRow(D.manageCategories, activeDisabledText(D, totals.enabled, totals.disabled)) { panes.newMaskedSeen(); onNavigate("categories") }
+    }
 }
 
 // ───────────────────────── Affichage ─────────────────────────

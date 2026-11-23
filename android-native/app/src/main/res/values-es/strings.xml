@@ -821,6 +821,12 @@
     <string name="cat_catalog_categories_title_1">Películas · Categorías</string>
     <string name="cat_catalog_categories_title_2">Series · Categorías</string>
     <string name="cat_categories_count">%1$s categorías</string>
+    <plurals name="cat_new_masked">
+        <item quantity="one">%1$d categoría nueva oculta</item>
+        <item quantity="many">%1$d categorías nuevas ocultas</item>
+        <item quantity="other">%1$d categorías nuevas ocultas</item>
+    </plurals>
+    <string name="cat_new_masked_hint">Añadidas por el proveedor desde la última sincronización. Abra para mostrar las que quiera.</string>
     <string name="cat_catalog_source_name_genres">Géneros automáticos</string>
     <string name="cat_catalog_source_name_provider">Categorías del proveedor</string>
     <string name="cat_catalog_layout_name_split">Lista + cuadrícula</string>

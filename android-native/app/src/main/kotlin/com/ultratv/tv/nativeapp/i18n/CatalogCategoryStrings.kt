@@ -13,6 +13,10 @@ fun DesignStrings.catalogCategoriesTitle(movies: Boolean) =
 
 fun DesignStrings.categoriesCount(n: Int) = tx(R.string.cat_categories_count, n)
 
+// Nouvelles catégories masquées d'office par une synchro : ligne discrète de Réglages › Catégories.
+fun DesignStrings.newMaskedCategories(n: Int) = tp(R.plurals.cat_new_masked, n, n)
+val DesignStrings.newMaskedCategoriesHint get() = tx(R.string.cat_new_masked_hint)
+
 fun DesignStrings.catalogSourceName(s: CategorySource) = when (s) {
     CategorySource.GENRES -> tx(R.string.cat_catalog_source_name_genres)
     CategorySource.PROVIDER -> tx(R.string.cat_catalog_source_name_provider)

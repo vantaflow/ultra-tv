@@ -46,7 +46,13 @@ class SettingsPanesViewModel @Inject constructor(
     private val languages: com.ultratv.tv.nativeapp.data.repo.LanguageManager,
     val adaptive: AdaptiveProfile,
     private val guideChecker: com.ultratv.tv.nativeapp.data.xmltv.GuideChecker,
+    private val newCategories: com.ultratv.tv.nativeapp.data.prefs.NewCategoriesStore,
 ) : ViewModel() {
+    /** Nouvelles catégories masquées d'office par les dernières synchros (toutes sources). */
+    val newMaskedCount: StateFlow<Int> = newCategories.keys.map { it.size }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), newCategories.keys.value.size)
+    /** L'utilisateur ouvre la gestion des catégories depuis Réglages › Catégories : la ligne disparaît. */
+    fun newMaskedSeen() = newCategories.clear()
+
     val state: StateFlow<UserPrefs> = prefs.flow.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UserPrefs())
     val provider: StateFlow<ProviderEntity?> = providers.observeProviders().map { ps -> ps.firstOrNull { it.active } ?: ps.firstOrNull() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)

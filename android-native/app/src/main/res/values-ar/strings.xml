@@ -871,6 +871,15 @@
     <string name="cat_catalog_categories_title_1">الأفلام · الفئات</string>
     <string name="cat_catalog_categories_title_2">المسلسلات · الفئات</string>
     <string name="cat_categories_count">%1$s فئة</string>
+    <plurals name="cat_new_masked">
+        <item quantity="zero">فئات جديدة مخفية: %1$d</item>
+        <item quantity="one">فئات جديدة مخفية: %1$d</item>
+        <item quantity="two">فئات جديدة مخفية: %1$d</item>
+        <item quantity="few">فئات جديدة مخفية: %1$d</item>
+        <item quantity="many">فئات جديدة مخفية: %1$d</item>
+        <item quantity="other">فئات جديدة مخفية: %1$d</item>
+    </plurals>
+    <string name="cat_new_masked_hint">أضافها المزوّد منذ آخر مزامنة. افتح لإظهار ما تريده منها.</string>
     <string name="cat_catalog_source_name_genres">أنواع تلقائية</string>
     <string name="cat_catalog_source_name_provider">فئات المزوّد</string>
     <string name="cat_catalog_layout_name_split">قائمة + شبكة</string>

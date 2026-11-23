@@ -56,6 +56,8 @@ class ProviderRepository @Inject constructor(
     private val mediaServer: com.ultratv.tv.nativeapp.data.mediaserver.MediaServerClient = com.ultratv.tv.nativeapp.data.mediaserver.MediaServerClient(okhttp3.OkHttpClient(), { "ultra-tv" }),
     private val nas: com.ultratv.tv.nativeapp.data.nas.NasClient = com.ultratv.tv.nativeapp.data.nas.NasClient(com.ultratv.tv.nativeapp.data.nas.NasSmb()) { null },
     private val guardMemory: SyncGuardMemory = SyncGuardMemory.inMemory(),
+    /** Nouvelles catégories masquées d'office (ligne de Réglages › Catégories) ; absent dans la plupart des tests. */
+    private val newCategories: com.ultratv.tv.nativeapp.data.prefs.NewCategoriesStore? = null,
 ) {
     /**
      * Garde anti-effacement d'une partie de la source [p] (voir [CatalogGuard]) : liste acceptée, ou refus qui lève
@@ -176,8 +178,10 @@ class ProviderRepository @Inject constructor(
             // Langues masquées : catégories désactivées (état de l'utilisateur conservé) et titres sautés avant l'écriture.
             val u = prefs.flow.first()
             val before = categoryDao.forProviderKind(p.id, "LIVE")
-            val cats = CatalogPlan.merge(locked, before, LangSelection.of(u.languages, u.includeMulti, u.includeUnknownLang).selected, u.includeMulti, u.includeUnknownLang)
-            noteLangDisabled(p.id, "LIVE", cats, before)
+            // Synchros suivantes : une catégorie inconnue arrive masquée (désactivée), voir CatalogPlan.mergeDetailed.
+            val md = CatalogPlan.mergeDetailed(locked, before, LangSelection.of(u.languages, u.includeMulti, u.includeUnknownLang).selected, u.includeMulti, u.includeUnknownLang, CatalogPlan.shouldMaskNew(p.kind, before))
+            val cats = md.categories
+            noteLangDisabled(p.id, "LIVE", cats, before, md.newMasked)
             val enabledCats = cats.filter { it.enabled }.map { it.remoteId }.toHashSet()
             val langByCat = cats.associate { it.remoteId to it.lang }
             val channels = res.channels
@@ -201,6 +205,8 @@ class ProviderRepository @Inject constructor(
                 // Chaînes ajoutées à la main : la table `channel` vient d'être vidée, on les y remet (même transaction).
                 ManualChannels.reinject(db, p.id)
             }
+            // Liste acceptée par la garde et écrite : les nouvelles catégories masquées sont signalées (jamais en cas de refus).
+            newCategories?.add(p.id, "LIVE", md.newMasked)
             step("Done — ${channels.size} channels", 100)
             return channels.size
         } finally {
@@ -568,6 +574,7 @@ class ProviderRepository @Inject constructor(
         categoryDao.deleteForProviderKind(id, "MOVIE")
         categoryDao.deleteForProviderKind(id, "SERIES")
         providerDao.delete(id)
+        newCategories?.forgetProvider(id)
     }
 
     /**
@@ -702,7 +709,8 @@ class ProviderRepository @Inject constructor(
             val langs = u.languages.split(',').filter { it.isNotBlank() }.toSet()
             suspend fun wantsFullList(part: SyncPart, kind: String): Boolean {
                 val fetched = runCatching { catsAhead[part]?.await() }.getOrNull() ?: return false
-                val merged = CatalogPlan.merge(fetched, categoryDao.forProviderKind(p.id, kind), langs, u.includeMulti, u.includeUnknownLang)
+                val known = categoryDao.forProviderKind(p.id, kind)
+                val merged = CatalogPlan.merge(fetched, known, langs, u.includeMulti, u.includeUnknownLang, CatalogPlan.shouldMaskNew(p.kind, known))
                 return CatalogPlan.strategy(merged.size, merged.count { it.enabled }, p.categoryFilter) != SyncStrategy.PER_CATEGORY
             }
             if (SyncPart.VOD in due && wantsFullList(SyncPart.VOD, "MOVIE")) xtream.prefetch(syncScope, p, "get_vod_streams")
@@ -1123,8 +1131,10 @@ class ProviderRepository @Inject constructor(
         // Garde anti-effacement : plus AUCUNE catégorie alors que la base en a (compte expiré qui répond `[]`) → rien n'est
         // touché, la synchro échoue avec une cause claire. « Mes chaînes » (locale) ne compte pas.
         if (fetched.isEmpty()) CatalogGuard.check(spec.kind, before.count { it.remoteId != ManualChannels.CUSTOM_CAT }, 0)
-        val merged = CatalogPlan.merge(fetched, before, langs, u.includeMulti, u.includeUnknownLang)
-        noteLangDisabled(p.id, spec.kind, merged, before)
+        // Synchros suivantes (Xtream, Stalker ; jamais les bibliothèques) : une catégorie inconnue arrive masquée.
+        val md = CatalogPlan.mergeDetailed(fetched, before, langs, u.includeMulti, u.includeUnknownLang, CatalogPlan.shouldMaskNew(p.kind, before))
+        val merged = md.categories
+        noteLangDisabled(p.id, spec.kind, merged, before, md.newMasked)
         val enabledIds = merged.filter { it.enabled }.map { it.remoteId }
         val disabledIds = merged.filter { !it.enabled }.map { it.remoteId }
         val langByCat = merged.associate { it.remoteId to it.lang }
@@ -1154,6 +1164,8 @@ class ProviderRepository @Inject constructor(
             throw e
         }
         // Partie acceptée : une catégorie absente n'est retirée que si plus aucun élément n'y renvoie (jamais d'orphelins).
+        // Partie acceptée : les nouvelles catégories masquées sont signalées (une liste refusée n'a rien créé).
+        newCategories?.add(p.id, spec.kind, md.newMasked)
         val gone = absent.filter { it.remoteId != ManualChannels.CUSTOM_CAT && spec.countIn(p.id, it.remoteId) == 0 }.map { it.remoteId }
         if (gone.isNotEmpty()) db.withTransaction { gone.chunked(500).forEach { categoryDao.deleteRemoteIds(p.id, spec.kind, it) } }
         return n
@@ -1265,8 +1277,9 @@ class ProviderRepository @Inject constructor(
     }
 
     /** Catégories NOUVELLES désactivées par la langue : la raison est retenue (réactivées avec leur langue, pas les autres). */
-    private fun noteLangDisabled(pid: Long, kind: String, merged: List<CategoryEntity>, before: List<CategoryEntity>) {
-        val known = before.map { it.remoteId }.toHashSet()
+    private fun noteLangDisabled(pid: Long, kind: String, merged: List<CategoryEntity>, before: List<CategoryEntity>, newMasked: List<String> = emptyList()) {
+        // Les nouvelles catégories masquées d'office ne sont PAS coupées par la langue : réactiver une langue ne les rouvre pas.
+        val known = before.map { it.remoteId }.toHashSet().apply { addAll(newMasked) }
         langDisabled.add(pid, kind, merged.filter { !it.enabled && it.remoteId !in known }.map { it.remoteId })
     }
 

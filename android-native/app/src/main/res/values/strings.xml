@@ -830,6 +830,11 @@
     <string name="cat_catalog_categories_title_1">Movies · Categories</string>
     <string name="cat_catalog_categories_title_2">Series · Categories</string>
     <string name="cat_categories_count">%1$s categories</string>
+    <plurals name="cat_new_masked">
+        <item quantity="one">%1$d new category hidden</item>
+        <item quantity="other">%1$d new categories hidden</item>
+    </plurals>
+    <string name="cat_new_masked_hint">Added by the provider since the last update. Open to show the ones you want.</string>
     <string name="cat_catalog_source_name_genres">Auto genres</string>
     <string name="cat_catalog_source_name_provider">Provider categories</string>
     <string name="cat_catalog_layout_name_split">List + grid</string>
