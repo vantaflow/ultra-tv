@@ -258,6 +258,18 @@ adb install -r UltraTV.apk</code></pre>
     'floating-chat.donateButton.background-color': '#d9534f',
     'floating-chat.donateButton.text-color': '#fff'
   });
+  // Cadre du bouton Ko-fi : même color-scheme sur le cadre ET son document, sinon le navigateur le peint en blanc opaque.
+  (function () {
+    function fix() {
+      document.querySelectorAll('iframe[id^="kofi-wo-container"]').forEach(function (f) {
+        f.style.setProperty('color-scheme', 'light', 'important');
+        try { var d = f.contentDocument; if (d && d.documentElement) d.documentElement.style.colorScheme = 'light'; } catch (e) {}
+      });
+    }
+    fix();
+    new MutationObserver(fix).observe(document.body, { childList: true, subtree: true });
+    var n = 0, t = setInterval(function () { fix(); if (++n > 20) clearInterval(t); }, 500);
+  })();
 </script>
 </body>
 </html>
