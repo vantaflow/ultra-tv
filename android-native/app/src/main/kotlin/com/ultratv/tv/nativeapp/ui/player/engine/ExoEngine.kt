@@ -395,6 +395,38 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         else select(id, C.TRACK_TYPE_TEXT, enableText = true)
     }
 
+    /** Variantes vidéo prises en charge par le décodeur (HLS / DASH), identifiées « groupe:piste ». */
+    override fun videoQualities(): List<VideoQuality> = runCatching {
+        player.currentTracks.groups.withIndex().filter { it.value.type == C.TRACK_TYPE_VIDEO }.flatMap { (gi, g) ->
+            (0 until g.length).filter { g.isTrackSupported(it) }.map { ti ->
+                val f = g.getTrackFormat(ti)
+                VideoQuality("$gi:$ti", f.height.coerceAtLeast(0), f.bitrate.coerceAtLeast(0) / 1000, g.isTrackSelected(ti), f.label)
+            }
+        }
+    }.getOrDefault(emptyList())
+
+    /**
+     * Qualité choisie à la main : la variante est forcée (TrackSelectionOverride) sans recharger le flux — le lecteur passe à
+     * la nouvelle variante au segment suivant. null = Auto : retour à l'adaptation (ou à la piste la plus haute en qualité
+     * « Maximale »).
+     */
+    override fun selectVideoQuality(id: String?): Boolean {
+        if (released) return false
+        if (id == null) {
+            player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().clearOverridesOfType(C.TRACK_TYPE_VIDEO).build()
+            if (config.maxQuality) { videoForced = false; forceHighestVideo() }
+            return true
+        }
+        val parts = id.split(':').mapNotNull { it.toIntOrNull() }
+        if (parts.size != 2) return false
+        val (gi, ti) = parts
+        val group = player.currentTracks.groups.getOrNull(gi)?.takeIf { it.type == C.TRACK_TYPE_VIDEO && ti in 0 until it.length } ?: return false
+        videoForced = true   // la qualité « Maximale » ne reprend pas la main sur un choix manuel
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+            .setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, ti)).build()
+        return true
+    }
+
     override fun setAspect(mode: AspectMode) {
         playerView.resizeMode = when (mode) {
             AspectMode.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT

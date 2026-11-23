@@ -106,7 +106,7 @@ class VlcEngine(private val ctx: Context, override val config: EngineConfig) : P
     override fun load(url: String, startPositionMs: Long) {
         if (released) return
         firstFrame = false
-        audioManual = false; textManual = false; textOffDone = false; lastAutoAudio = null; lastAutoText = null
+        audioManual = false; textManual = false; textOffDone = false; lastAutoAudio = null; lastAutoText = null; defaultVideoTrack = null
         val height = maxHeight
         val bitrate = maxBitrateBps
         // Sur le fil du moteur : stop() attend la sortie vidéo de LibVLC (ANR nativeStop au zapping sur le fil principal).
@@ -194,6 +194,32 @@ class VlcEngine(private val ctx: Context, override val config: EngineConfig) : P
         }
     }
     override val hasVideo get() = !released && mp.videoTracksCount > 0
+
+    /** Piste vidéo choisie par LibVLC à l'ouverture (« Auto ») ; réarmée à chaque [load]. */
+    @Volatile private var defaultVideoTrack: Int? = null
+
+    /**
+     * Pistes vidéo LibVLC (plusieurs seulement pour certains flux : programmes d'un MPEG-TS, angles) ; les variantes HLS d'un
+     * flux adaptatif ne sont pas exposées par LibVLC. Hauteur et débit lus dans les pistes du média quand il les connaît.
+     */
+    override fun videoQualities(): List<VideoQuality> {
+        if (released) return emptyList()
+        return runCatching {
+            val list = mp.videoTracks.orEmpty().filter { it.id >= 0 }
+            val cur = mp.videoTrack
+            if (defaultVideoTrack == null && cur >= 0) defaultVideoTrack = cur
+            val dims = mp.media?.let { m -> (0 until m.trackCount).mapNotNull { m.getTrack(it) as? org.videolan.libvlc.interfaces.IMedia.VideoTrack }.associateBy { it.id } }.orEmpty()
+            list.map { d -> val v = dims[d.id]; VideoQuality(d.id.toString(), v?.height ?: 0, (v?.bitrate ?: 0) / 1000, d.id == cur, d.name) }
+        }.getOrDefault(emptyList())
+    }
+
+    /** Change de piste vidéo sans relancer le média ; sur le fil du moteur (setVideoTrack attend la sortie vidéo : ANR). */
+    override fun selectVideoQuality(id: String?): Boolean {
+        if (released) return false
+        val t = id?.toIntOrNull() ?: defaultVideoTrack ?: return id == null
+        commands.post { if (!released) runCatching { mp.setVideoTrack(t) } }
+        return true
+    }
     private var maxHeight = Int.MAX_VALUE
     private var maxBitrateBps: Int? = null
 

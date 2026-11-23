@@ -1897,7 +1897,9 @@ private fun PlayerSidePanel(
     // Les pistes se découvrent à l'analyse du flux (parfois après l'ouverture du panneau) : liste relue tant qu'il est ouvert.
     var audio by remember { mutableStateOf(e?.audioTracks().orEmpty()) }
     var subs by remember { mutableStateOf(e?.subtitleTracks().orEmpty()) }
-    androidx.compose.runtime.LaunchedEffect(e) { while (true) { audio = e?.audioTracks().orEmpty(); subs = e?.subtitleTracks().orEmpty(); kotlinx.coroutines.delay(1_000) } }
+    var quality by remember { mutableStateOf(session.qualityMenu()) }
+    androidx.compose.runtime.LaunchedEffect(e) { while (true) { audio = e?.audioTracks().orEmpty(); subs = e?.subtitleTracks().orEmpty(); quality = session.qualityMenu(); kotlinx.coroutines.delay(1_000) } }
+    val Q = remember(D.lang) { QualityStrings(D.lang) }
     val labels = listOf(SideTab.TRACKS to D.pTracks, SideTab.DISPLAY to D.pDisplay, SideTab.PLAYER to D.pPlayer, SideTab.STATS to D.statsShort)
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     ModalFocusScope(onBack = onClose, modifier = Modifier.background(androidx.compose.ui.graphics.Color.Transparent), contentAlignment = Alignment.CenterEnd) {
@@ -1924,6 +1926,21 @@ private fun PlayerSidePanel(
             Column(Modifier.weight(1f).verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(22.design)) {
                 when (tab) {
                     SideTab.TRACKS -> {
+                        // Qualité : Auto puis les variantes du flux (au-dessus du plafond des Réglages : grisées) ; flux à une
+                        // seule qualité : « Qualité unique », jamais une liste vide.
+                        OptionGroup(Q.title) {
+                            when (val m = quality) {
+                                is com.ultratv.tv.nativeapp.ui.player.engine.QualityChoice.Menu.Single ->
+                                    Text(Q.single + (m.label?.let { " · $it" } ?: ""), color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
+                                is com.ultratv.tv.nativeapp.ui.player.engine.QualityChoice.Menu.Choices -> {
+                                    OptionRow(D.auto, null, m.autoSelected) { session.selectQuality(null); onClose() }
+                                    m.options.forEach { o ->
+                                        if (o.enabled) OptionRow(o.label, null, o.selected) { session.selectQuality(o.id); onClose() }
+                                        else Box(Modifier.alpha(0.45f)) { OptionRow(o.label, Q.aboveCap, false) { Toaster.err(Q.aboveCap) } }
+                                    }
+                                }
+                            }
+                        }
                         OptionGroup(D.audio) {
                             if (audio.isEmpty()) OptionRow("—", null, false) {}
                             audio.forEach { t -> OptionRow(t.label, null, t.selected) { session.selectAudio(t.id); onClose() } }

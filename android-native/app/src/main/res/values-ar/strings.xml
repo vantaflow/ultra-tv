@@ -2083,6 +2083,9 @@
     <string name="tvch_categories_hint">حتى 3 فئات من البث المباشر، كل منها في قناتها الخاصة.</string>
     <string name="tvch_add_category">إضافة فئة</string>
     <string name="tvch_no_category">لا توجد فئة متاحة</string>
+    <string name="pq_title">الجودة</string>
+    <string name="pq_single">جودة واحدة</string>
+    <string name="pq_above_cap">أعلى من الجودة القصوى المحددة في الإعدادات</string>
     <string name="grp_groups">مجموعاتي</string>
     <string name="grp_new">مجموعة جديدة</string>
     <string name="grp_new_ellipsis">مجموعة جديدة…</string>

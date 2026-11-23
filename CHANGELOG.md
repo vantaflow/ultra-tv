@@ -6,6 +6,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Ajouté (Android)
 - Groupes de chaînes personnalisés : créer, renommer, supprimer un groupe et y ranger des chaînes depuis le menu de la chaîne (appui long sur OK ou touche Menu dans le Direct et la recherche ; touche Menu ou dialogue du programme dans le Guide ; bouton « Groupes » du bandeau du lecteur). Les groupes s'affichent juste après « Favoris » dans le Direct, le Guide et la liste des chaînes du lecteur ; « Changer l'ordre » monte ou descend une chaîne dans le groupe. Par profil et par source, supprimés avec le profil ; un groupe vide explique comment y ajouter une chaîne ; une chaîne verrouillée demande toujours le code et un profil Enfants ne voit aucune chaîne adulte. Les groupes restent sur l'appareil (pas encore de synchronisation entre appareils).
+- Lecteur (direct et vidéos) : entrée « Qualité » dans le panneau des pistes, avec « Auto » (par défaut) puis les résolutions réellement proposées par le flux ; le choix s'applique sans relancer la lecture et vaut pour la session de l'application. Les qualités au-dessus de la « Qualité maximale » des Réglages sont grisées ; un flux à une seule qualité affiche « Qualité unique ».
 
 ### Bureau (prochaine version)
 - Accueil : aucune rangée (à la une, en direct, reprises, nouveautés, mieux notés, Trakt, nouveaux épisodes, sport) ne montre plus de contenu d'une catégorie masquée, verrouillée ou adulte ; un profil Enfants ne voit les catégories adultes nulle part (case « Profil Enfants » dans Réglages › Profils).

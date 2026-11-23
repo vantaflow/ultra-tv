@@ -2022,6 +2022,9 @@
     <string name="tvch_categories_hint">Jusqu\'à 3 catégories du Direct, chacune dans sa propre chaîne.</string>
     <string name="tvch_add_category">Ajouter une catégorie</string>
     <string name="tvch_no_category">Aucune catégorie disponible</string>
+    <string name="pq_title">Qualité</string>
+    <string name="pq_single">Qualité unique</string>
+    <string name="pq_above_cap">Au-dessus de la qualité maximale des Réglages</string>
     <string name="grp_groups">Mes groupes</string>
     <string name="grp_new">Nouveau groupe</string>
     <string name="grp_new_ellipsis">Nouveau groupe…</string>

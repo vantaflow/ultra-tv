@@ -2014,6 +2014,9 @@
     <string name="tvch_categories_hint">Hasta 3 categorías de TV en directo, cada una en su propio canal.</string>
     <string name="tvch_add_category">Añadir una categoría</string>
     <string name="tvch_no_category">Ninguna categoría disponible</string>
+    <string name="pq_title">Calidad</string>
+    <string name="pq_single">Calidad única</string>
+    <string name="pq_above_cap">Por encima de la calidad máxima de Ajustes</string>
     <string name="grp_groups">Mis grupos</string>
     <string name="grp_new">Nuevo grupo</string>
     <string name="grp_new_ellipsis">Nuevo grupo…</string>

@@ -2036,6 +2036,9 @@
     <string name="tvch_categories_hint">Up to 3 Live TV categories, each in its own channel.</string>
     <string name="tvch_add_category">Add a category</string>
     <string name="tvch_no_category">No category available</string>
+    <string name="pq_title">Quality</string>
+    <string name="pq_single">Single quality</string>
+    <string name="pq_above_cap">Above the maximum quality set in Settings</string>
     <string name="grp_groups">My groups</string>
     <string name="grp_new">New group</string>
     <string name="grp_new_ellipsis">New group…</string>
