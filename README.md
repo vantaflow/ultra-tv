@@ -32,7 +32,7 @@
 
 | Device | Link |
 |---|---|
-| **Android TV, Google TV, boxes, Fire TV**, Android phones and tablets (Android 9+, 7.1+ with the android7 APK) | See « Which APK? » below · on a box: Downloader app, code **`5189921`** |
+| **Android TV, Google TV, boxes, Fire TV**, Android phones and tablets (Android 9+, 7.1+ with the android7 APK) | See [« Which file? »](#which-file-android) below · on a box: Downloader app, code **`5189921`** |
 | **Samsung TVs** (Tizen 5.5+, 2020 models and later) | [Unsigned .wgt](https://github.com/vantaflow/ultra-tv/releases) — developer install, [see the guide](docs/tv.md) |
 | **LG TVs** (webOS 6+, 2021 models and later) | [.ipk](https://github.com/vantaflow/ultra-tv/releases) — developer mode, [see the guide](docs/tv.md) |
 | **Windows** (x64) | [.exe installer](https://ultratv.dpdns.org/download/windows) |
@@ -181,7 +181,7 @@ Pair in one scan: the TV shows a QR, the phone camera opens the pairing page wit
 
 | Device | File |
 |---|---|
-| Android (TV, smartphone, tablet) | [`UltraTV-arm64-v8a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-arm64-v8a.apk) (default), [`UltraTV-armeabi-v7a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-armeabi-v7a.apk) (32-bit), or the universal [`UltraTV.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk); versioned files `UltraTV-<version>-<abi>.apk` with their precompiled profile `.dm`, plus `SHA256SUMS.txt` |
+| Android (TV, smartphone, tablet) | One APK for your device: see [Which file? (Android)](#which-file-android) |
 | macOS | `UltraTV-<version>-mac-universal.dmg` (Apple Silicon and Intel) |
 | Windows | `UltraTV-<version>-win-x64.exe` (NSIS installer) |
 | Cloud dashboard | <https://ultratv.dpdns.org> (nothing to install) |
@@ -213,22 +213,27 @@ On first launch: choose the source type (Xtream Codes, M3U link, M3U file, **Sta
 
 An address like `…/get.php?username=…&password=…` pasted as an M3U link is recognised and added as an Xtream Codes source (many providers block `get.php`).
 
-### Which APK?
+### Which file? (Android)
 
-| Your device | APK | Short link (type it in Downloader) |
-|---|---|---|
-| Recent Fire TV Stick, Shield, most recent boxes and phones (64-bit) | **arm64** (≈ 36 MB), recommended | [`ultratv.dpdns.org/download/android-arm64`](https://ultratv.dpdns.org/download/android-arm64) |
-| **Chromecast with Google TV (HD)**, older boxes (32-bit) | **32-bit (armv7)** (≈ 34 MB) | [`ultratv.dpdns.org/download/android-32`](https://ultratv.dpdns.org/download/android-32) |
-| You do not know | Universal (≈ 58 MB), last resort | [`ultratv.dpdns.org/download/android-universal`](https://ultratv.dpdns.org/download/android-universal) |
+Each [Android release](https://github.com/vantaflow/ultra-tv/releases/latest) publishes several files; download **one** APK, the one for your device. Already installed? The app updates itself (Settings › About), nothing to download. The same table opens the notes of every release.
+
+| Your device | File on the release page | Fixed-name link (same file) | Short link (type it in Downloader) |
+|---|---|---|---|
+| Phones, tablets, recent boxes and Google TV, recent Fire TV Stick, Shield (64-bit) | **`UltraTV-<version>-arm64-v8a.apk`** (≈ 36 MB), recommended | [`UltraTV-arm64-v8a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-arm64-v8a.apk) | [`ultratv.dpdns.org/download/android-arm64`](https://ultratv.dpdns.org/download/android-arm64) |
+| 32-bit devices, **Chromecast with Google TV (HD)**, older boxes | `UltraTV-<version>-armeabi-v7a.apk` (≈ 34 MB) | [`UltraTV-armeabi-v7a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-armeabi-v7a.apk) | [`ultratv.dpdns.org/download/android-32`](https://ultratv.dpdns.org/download/android-32) |
+| Fire TV Stick on Fire OS 6 (Android 7.1) | `UltraTV-<version>-armeabi-v7a-android7.apk` | [`UltraTV-android7.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-android7.apk) | — |
+| You do not know, or another processor (x86, emulator) | `UltraTV.apk` (universal, ≈ 58 MB), last resort | [`UltraTV.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk) | [`ultratv.dpdns.org/download/android-universal`](https://ultratv.dpdns.org/download/android-universal) |
 
 `ultratv.dpdns.org/download/android` returns the arm64 APK. In Downloader, enter the code **`5189921`** or one of the short links above. If the install fails, take the 32-bit version.
+
+Not for manual download (kept so that the in-app update of every version still in use keeps working): `UltraTV-debug.apk` (same file as `UltraTV.apk`), the `.dm` startup profiles (see « adb, faster startup » above), the `.sha256` files and `SHA256SUMS.txt` (checksums of every file).
 
 ### Installation impossible (« package problem »)
 
 - **Free space**: keep at least 200 MB free; the universal APK (58 MB) needs a little more than the per-CPU APKs.
 - **Wrong APK**: on a 32-bit device (Chromecast with Google TV HD), take the 32-bit APK (`android-32`) rather than the universal one.
 - **Older version signed differently**: uninstall the old Ultra TV first (Settings › Apps), then reinstall. Your sources stay in the cloud if you enabled it.
-- **Truncated download**: compare the file size with the release's, and its SHA-256 with the `.sha256` file (or `SHA256SUMS.txt`) published alongside; download again if they differ.
+- **Truncated download**: compare the file size with the release's, and its SHA-256 with `SHA256SUMS.txt` published alongside (it lists every file); download again if they differ.
 - **Fire TV Stick on Fire OS 6 (Android 7.1): "problem parsing the package"**: the regular APKs are signed with v3 only (key rotation, Android 9 minimum), a format Android 7.x cannot read. Take the **android7** APK (`UltraTV-android7.apk`, 32-bit, v1/v2 signed); it then updates with later app versions. On Fire OS 7 (Android 9) the regular 32-bit APK works. If the error persists: incomplete file (compare the SHA-256) or not enough space (the basic Stick has only 8 GB). A basic Fire TV Stick has no 4K output: that is the hardware, not the app.
 - **Android 7.1 minimum** (API 25): older versions are not supported.
 
@@ -371,7 +376,7 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)   # macOS
 - The version comes from the [`VERSION`](VERSION) file; `versionCode = major×10000 + minor×100 + patch` (1.2.0 → 10200), identical for every ABI.
 - **Fake Xtream server** to test without a subscription: `python3 android-native/tools/fake-xtream/server.py` (the emulator reaches it at `http://10.0.2.2:8099`, credentials `test` / `test`); `demo.py` serves the synthetic data set used for the screenshots.
 - Debug build: debug intents (`debug_route`, `debug_theme`, `debug_lang`, `debug_engine`, `debug_decoder`, `debug_buffer`…) for screenshots and measurements.
-- **CI** ([ci.yml](.github/workflows/ci.yml)): web (tsc + vitest), Android (compile + unit tests), Worker. Publishing: [release.yml](.github/workflows/release.yml) on a `v*` tag (universal `UltraTV-debug.apk`, per-processor `UltraTV-<version>-<abi>.apk` and `SHA256SUMS.txt`); website: [pages.yml](.github/workflows/pages.yml).
+- **CI** ([ci.yml](.github/workflows/ci.yml)): web (tsc + vitest), Android (compile + unit tests), Worker. Publishing: [release.yml](.github/workflows/release.yml) on a `v*` tag (universal `UltraTV-debug.apk`, per-processor `UltraTV-<version>-<abi>.apk` and `SHA256SUMS.txt`, notes built by [release-notes.sh](.github/release-notes.sh): file table, English summary from the `### In English` subsection of the CHANGELOG, then the French notes); website: [pages.yml](.github/workflows/pages.yml).
 
 ## Cloudflare Worker
 

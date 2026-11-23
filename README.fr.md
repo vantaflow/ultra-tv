@@ -32,7 +32,7 @@
 
 | Appareil | Lien |
 |---|---|
-| **Android TV, Google TV, box, Fire TV**, téléphone et tablette Android (Android 9+, 7.1+ avec l’APK android7) | Voir « Quel APK prendre ? » ci-dessous · sur une box : appli Downloader, code **`5189921`** |
+| **Android TV, Google TV, box, Fire TV**, téléphone et tablette Android (Android 9+, 7.1+ avec l’APK android7) | Voir [« Quel fichier prendre ? »](#quel-fichier-prendre--android) ci-dessous · sur une box : appli Downloader, code **`5189921`** |
 | **TV Samsung** (Tizen 5.5+, modèles 2020+) | [.wgt non signé](https://github.com/vantaflow/ultra-tv/releases) — installation développeur, [voir la procédure](docs/tv.md) |
 | **TV LG** (webOS 6+, modèles 2021+) | [.ipk](https://github.com/vantaflow/ultra-tv/releases) — mode développeur, [voir la procédure](docs/tv.md) |
 | **Windows** (x64) | [Installeur .exe](https://ultratv.dpdns.org/download/windows) |
@@ -185,7 +185,7 @@ Appairage en un scan : la TV affiche un QR, l'appareil photo du téléphone ouvr
 
 | Appareil | Fichier |
 |---|---|
-| Android (TV, smartphone, tablette) | [`UltraTV-arm64-v8a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-arm64-v8a.apk) (par défaut), [`UltraTV-armeabi-v7a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-armeabi-v7a.apk) (32 bits), ou l'universel [`UltraTV.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk) ; fichiers versionnés `UltraTV-<version>-<abi>.apk` avec leur profil précompilé `.dm`, plus `SHA256SUMS.txt` |
+| Android (TV, smartphone, tablette) | Un seul APK, celui de votre appareil : voir [Quel fichier prendre ? (Android)](#quel-fichier-prendre--android) |
 | macOS | `UltraTV-<version>-mac-universal.dmg` (Apple Silicon et Intel) |
 | Windows | `UltraTV-<version>-win-x64.exe` (installeur NSIS) |
 | Tableau de bord cloud | <https://ultratv.dpdns.org> (aucune installation) |
@@ -217,13 +217,18 @@ Au premier lancement : choisissez le type de source (Xtream Codes, lien M3U, fic
 
 Une adresse du type `…/get.php?username=…&password=…` collée comme lien M3U est reconnue et ajoutée comme source Xtream Codes (beaucoup de fournisseurs bloquent `get.php`).
 
-### Quel APK prendre ?
+### Quel fichier prendre ? (Android)
 
-| Votre appareil | APK | Lien court (à taper dans Downloader) |
-|---|---|---|
-| Fire TV Stick récent, Shield, la plupart des box et téléphones récents (64 bits) | **arm64** (≈ 36 Mo), recommandé | [`ultratv.dpdns.org/download/android-arm64`](https://ultratv.dpdns.org/download/android-arm64) |
-| **Chromecast avec Google TV (HD)**, vieilles box (32 bits) | **32 bits (armv7)** (≈ 34 Mo) | [`ultratv.dpdns.org/download/android-32`](https://ultratv.dpdns.org/download/android-32) |
-| Vous ne savez pas | Universel (≈ 58 Mo), dernier recours | [`ultratv.dpdns.org/download/android-universal`](https://ultratv.dpdns.org/download/android-universal) |
+Chaque [release Android](https://github.com/vantaflow/ultra-tv/releases/latest) publie plusieurs fichiers ; téléchargez **un seul** APK, celui de votre appareil. Déjà installé ? L’appli se met à jour seule (Réglages › À propos), rien à télécharger. Le même tableau ouvre les notes de chaque release.
+
+| Votre appareil | Fichier sur la page de la release | Lien à nom fixe (même fichier) | Lien court (à taper dans Downloader) |
+|---|---|---|---|
+| Téléphones, tablettes, box récentes et Google TV, Fire TV Stick récent, Shield (64 bits) | **`UltraTV-<version>-arm64-v8a.apk`** (≈ 36 Mo), recommandé | [`UltraTV-arm64-v8a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-arm64-v8a.apk) | [`ultratv.dpdns.org/download/android-arm64`](https://ultratv.dpdns.org/download/android-arm64) |
+| Appareils 32 bits, **Chromecast avec Google TV (HD)**, vieilles box | `UltraTV-<version>-armeabi-v7a.apk` (≈ 34 Mo) | [`UltraTV-armeabi-v7a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-armeabi-v7a.apk) | [`ultratv.dpdns.org/download/android-32`](https://ultratv.dpdns.org/download/android-32) |
+| Fire TV Stick sous Fire OS 6 (Android 7.1) | `UltraTV-<version>-armeabi-v7a-android7.apk` | [`UltraTV-android7.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-android7.apk) | — |
+| Vous ne savez pas, ou autre processeur (x86, émulateur) | `UltraTV.apk` (universel, ≈ 58 Mo), dernier recours | [`UltraTV.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk) | [`ultratv.dpdns.org/download/android-universal`](https://ultratv.dpdns.org/download/android-universal) |
+
+À ne pas télécharger à la main (gardés pour que la mise à jour intégrée de toutes les versions encore utilisées continue de fonctionner) : `UltraTV-debug.apk` (même fichier que `UltraTV.apk`), les profils de démarrage `.dm` (voir « adb, démarrage plus rapide » plus haut), les fichiers `.sha256` et `SHA256SUMS.txt` (sommes de contrôle de tous les fichiers).
 
 `ultratv.dpdns.org/apk` affiche le choix 64 bits / 32 bits / universel (pratique dans Downloader) ; `…/download/android` renvoie directement l'APK arm64. Dans Downloader, saisissez le code **`5189921`** ou l'un des liens courts ci-dessus. Si l'installation échoue, prenez la version 32 bits.
 
@@ -232,7 +237,7 @@ Une adresse du type `…/get.php?username=…&password=…` collée comme lien M
 - **Espace libre** : prévoyez au moins 200 Mo ; l’APK universel (58 Mo) en demande un peu plus que les APK par processeur.
 - **Mauvais APK** : sur un appareil 32 bits (Chromecast avec Google TV HD), prenez l'APK 32 bits (`android-32`) plutôt que l'universel.
 - **Ancienne version signée autrement** : désinstallez d'abord l'ancienne Ultra TV (Réglages › Applications), puis réinstallez. Vos sources restent dans le cloud si vous l'avez activé.
-- **Téléchargement tronqué** : comparez la taille du fichier à celle de la release et sa somme SHA-256 au fichier `.sha256` (ou `SHA256SUMS.txt`) publié avec lui ; retéléchargez en cas de différence.
+- **Téléchargement tronqué** : comparez la taille du fichier à celle de la release et sa somme SHA-256 à `SHA256SUMS.txt` publié avec lui (il liste tous les fichiers) ; retéléchargez en cas de différence.
 - **Fire TV Stick sous Fire OS 6 (Android 7.1) : « problème lors de l’analyse du package »** : les APK habituels sont signés en v3 seul (rotation de clé, Android 9 minimum), un format qu’Android 7.x ne sait pas lire. Prenez l’APK **android7** (`UltraTV-android7.apk`, 32 bits, signé v1/v2) ; il se met ensuite à jour avec les versions suivantes de l’appli. Sur Fire OS 7 (Android 9), l’APK 32 bits habituel convient. Si l’erreur persiste : fichier incomplet (comparez le SHA-256) ou espace insuffisant (le Stick de base n’a que 8 Go). Un Fire TV Stick basique n’a pas de sortie 4K : c’est le matériel, pas l’appli.
 - **Android 7.1 minimum** (API 25) : les versions plus anciennes ne sont pas prises en charge.
 
@@ -375,7 +380,7 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)   # macOS
 - La version vient du fichier [`VERSION`](VERSION) ; `versionCode = major×10000 + minor×100 + patch` (1.2.0 → 10200).
 - **Faux serveur Xtream** pour tester sans abonnement : `python3 android-native/tools/fake-xtream/server.py` (l'émulateur y accède via `http://10.0.2.2:8099`, identifiants `test` / `test`).
 - Build debug : intents de débogage (`debug_route`, `debug_theme`, `debug_engine`, `debug_decoder`, `debug_buffer`…) pour les captures et les mesures.
-- **CI** ([ci.yml](.github/workflows/ci.yml)) : web (tsc + vitest), Android (compilation + tests unitaires), Worker. Publication : [release.yml](.github/workflows/release.yml) sur tag `v*` (APK universel `UltraTV-debug.apk`, APK par processeur `UltraTV-<version>-<abi>.apk` et `SHA256SUMS.txt`) ; site : [pages.yml](.github/workflows/pages.yml).
+- **CI** ([ci.yml](.github/workflows/ci.yml)) : web (tsc + vitest), Android (compilation + tests unitaires), Worker. Publication : [release.yml](.github/workflows/release.yml) sur tag `v*` (APK universel `UltraTV-debug.apk`, APK par processeur `UltraTV-<version>-<abi>.apk` et `SHA256SUMS.txt`, notes produites par [release-notes.sh](.github/release-notes.sh) : tableau des fichiers, résumé anglais tiré de la sous-section `### In English` du CHANGELOG, puis les notes en français) ; site : [pages.yml](.github/workflows/pages.yml).
 
 ## Worker Cloudflare
 
