@@ -3,7 +3,7 @@ import { escapeHtml as e } from "../http.js";
 import { ENVOYER_DICT, ENVOYER_DIR, ENVOYER_LANGS, ENVOYER_LANG_NAMES } from "../i18n/envoyer.js";
 import { SITE_DICT } from "../i18n/site.js";
 import { ico, jsonForScript, notice } from "../ui/components.js";
-import { DONATE_DICT, DONATE_AMOUNTS, DONATE_CURRENCY, PAYPAL_URL, donateCsp } from "../donate.js";
+import { DONATE_DICT, DONATE_CURRENCY, PAYPAL_HOSTED_BUTTON_ID, PAYPAL_URL, donateCsp } from "../donate.js";
 import { shell } from "../ui/layout.js";
 
 const nextField = (next) => (next && next !== "/" ? `<input type="hidden" name="next" value="${e(next)}"/>` : "");
@@ -199,8 +199,8 @@ export function offlinePage(n, { lang = "fr", url = "/offline" } = {}) {
 }
 
 /**
- * Page de dons (/donate) : PayPal seul. Avec `clientId` (PAYPAL_CLIENT_ID), boutons PayPal / carte intégrés (SDK JS PayPal,
- * commande créée et encaissée côté navigateur, montant au choix) ; sans, ou si le SDK ne charge pas, lien de paiement PayPal.
+ * Page de dons (/donate) : PayPal seul. Avec `clientId` (PAYPAL_CLIENT_ID), bouton PayPal hébergé (HostedButtons : montant libre,
+ * PayPal ou carte, réglé dans le tableau de bord PayPal) ; sans, ou si le SDK ne charge pas, lien de paiement PayPal.
  */
 export function donatePage(n, { lang = "en", clientId = null } = {}) {
   if (!ENVOYER_LANGS.includes(lang)) lang = "en";
@@ -209,22 +209,12 @@ export function donatePage(n, { lang = "en", clientId = null } = {}) {
   const dir = ENVOYER_DIR[lang];
   const langLinks = ENVOYER_LANGS.map((l) => `<a href="${e(`/donate?l=${l}`)}" data-lang="${l}" lang="${l}" hreflang="${l}"${l === lang ? ` aria-current="true"` : ""}>${e(ENVOYER_LANG_NAMES[l])}</a>`).join("");
   const direct = `<div class="row"><a class="button${clientId ? " alt-btn" : ""} block" id="pp-direct" href="${e(PAYPAL_URL)}" rel="noopener"${clientId ? "" : " autofocus"}>${e(clientId ? t.direct : t.paypal)}</a></div>`;
-  const amounts = DONATE_AMOUNTS.map((a, i) => `<label class="pp-amt"><input type="radio" name="pp-amt" value="${a}"${i === 1 ? " checked" : ""}/><span>${a} €</span></label>`).join("");
-  const sdk = clientId ? `<fieldset class="pp-box"><legend>${e(t.amount)}</legend><div class="pp-amts">${amounts}</div>
-<label class="field"><span>${e(t.other)}</span><input id="pp-other" type="number" inputmode="decimal" min="1" max="1000" step="1"/></label></fieldset>
-<div id="pp-buttons"></div><p class="hint" id="pp-msg" role="status" aria-live="polite"></p>` : "";
-  const body = `<div class="panel"><h1>${e(t.title)}</h1><p class="sub">${e(t.sub)}</p>${sdk}${direct}<p class="hint">${e(t.paypalNote)}</p></div>`;
-  const css = `<style nonce="${n}">.pp-box{border:0;padding:0;margin:0 0 14px}.pp-box legend{font-weight:600;margin-bottom:8px}.pp-amts{display:flex;gap:8px;flex-wrap:wrap}.pp-amt{position:relative}.pp-amt input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}.pp-amt span{display:inline-block;min-width:64px;text-align:center;padding:10px 14px;border-radius:999px;border:1px solid currentColor;opacity:.75;font-weight:600}.pp-amt input:checked+span{opacity:1;background:#d9534f;border-color:#d9534f;color:#fff}.pp-amt input:focus-visible+span{outline:2px solid #fff;outline-offset:2px}#pp-buttons{background:#fff;border-radius:14px;padding:12px 12px 4px;margin:12px 0;color-scheme:light}#pp-buttons:empty{display:none}</style>`;
-  const extra = clientId ? `<script nonce="${n}" src="https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=${DONATE_CURRENCY}&intent=capture&components=buttons&enable-funding=card" data-csp-nonce="${n}" defer></script>
-<script nonce="${n}">(function(){var msg=document.getElementById("pp-msg"),T=${JSON.stringify({ thanks: t.thanks, error: t.error }).replace(/</g, "\\u003c")};
-function amount(){var o=document.getElementById("pp-other").value;var v=o?Number(String(o).replace(",",".")):Number((document.querySelector('input[name="pp-amt"]:checked')||{}).value);if(!isFinite(v)||v<1||v>1000)return null;return (Math.round(v*100)/100).toFixed(2);}
-function go(){if(!window.paypal||!window.paypal.Buttons)return;window.paypal.Buttons({style:{layout:"vertical",label:"donate"},
-createOrder:function(d,a){var v=amount();if(!v){msg.textContent=T.error;throw new Error("amount");}return a.order.create({intent:"CAPTURE",purchase_units:[{amount:{currency_code:"${DONATE_CURRENCY}",value:v},description:"Ultra TV"}],application_context:{shipping_preference:"NO_SHIPPING"}});},
-onApprove:function(d,a){return a.order.capture().then(function(){msg.textContent=T.thanks;document.getElementById("pp-buttons").hidden=true;});},
-onError:function(){msg.textContent=T.error;}}).render("#pp-buttons");}
-if(window.paypal)go();else window.addEventListener("load",go);
-document.getElementById("pp-other").addEventListener("input",function(){if(this.value)document.querySelectorAll('input[name="pp-amt"]').forEach(function(r){r.checked=false;});});
-document.querySelectorAll('input[name="pp-amt"]').forEach(function(r){r.addEventListener("change",function(){document.getElementById("pp-other").value="";});});})();</script>${css}` : "";
+  const box = `pp-${PAYPAL_HOSTED_BUTTON_ID}`;
+  const hosted = clientId ? `<div id="${box}" class="pp-hosted"></div>` : "";
+  const body = `<div class="panel"><h1>${e(t.title)}</h1><p class="sub">${e(t.sub)}</p>${hosted}${direct}<p class="hint">${e(t.paypalNote)}</p></div>`;
+  const css = `<style nonce="${n}">.pp-hosted{background:#fff;border-radius:14px;padding:12px;margin:12px 0;color-scheme:light}.pp-hosted:empty{display:none}.pp-hosted{color:#1a1a1a}.pp-hosted label{color:#4a4a4a}.pp-hosted input{background:#fff!important;color:#1a1a1a!important;border:1px solid #c9ccd1!important;box-shadow:none!important}</style>`;
+  const extra = clientId ? `<script nonce="${n}" src="https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&components=hosted-buttons&disable-funding=venmo&currency=${DONATE_CURRENCY}" data-csp-nonce="${n}" crossorigin="anonymous" defer></script>
+<script nonce="${n}">(function(){function go(){if(!window.paypal||!window.paypal.HostedButtons)return;window.paypal.HostedButtons({hostedButtonId:"${PAYPAL_HOSTED_BUTTON_ID}"}).render("#${box}");}if(window.paypal)go();else window.addEventListener("load",go);})();</script>${css}` : "";
   const res = shell(n, { title: t.title, ctx: "public", width: "narrow", body, extra,
     loc: { lang, dir, skip: c.skip, themeBtn: c.themeBtn, themeLabels: { auto: c.themeAuto, light: c.themeLight, dark: c.themeDark }, themeChange: c.themeChange,
       foot: { github: c.footGithub, privacy: c.footPrivacy, navLabel: c.langLabel, langs: `<nav class="langs" aria-label="${e(c.langLabel)}">${langLinks}</nav>` } } });

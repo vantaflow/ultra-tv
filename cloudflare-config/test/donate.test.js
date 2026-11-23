@@ -20,13 +20,13 @@ describe("dons : PayPal seul", () => {
     expect(await donatePage("n1", { lang: "fr" }).text()).toContain("Soutenir Ultra TV");
     expect(await donatePage("n1", { lang: "ar" }).text()).toContain('dir="rtl"');
   });
-  it("avec PAYPAL_CLIENT_ID : SDK PayPal (nonce), montants, lien direct de secours, CSP élargie à PayPal seulement", async () => {
+  it("avec PAYPAL_CLIENT_ID : bouton hébergé PayPal (nonce), lien de paiement de secours, CSP élargie à PayPal seulement", async () => {
     const r = donatePage("n1", { lang: "en", clientId: CID });
     const h = await r.text();
-    expect(h).toContain(`https://www.paypal.com/sdk/js?client-id=${CID}&currency=EUR`);
+    expect(h).toContain(`https://www.paypal.com/sdk/js?client-id=${CID}&components=hosted-buttons&disable-funding=venmo&currency=EUR`);
+    expect(h).toContain('hostedButtonId:"JHPS8RCN35UWA"');
     expect(h).toContain('data-csp-nonce="n1"');
-    expect(h).toContain('id="pp-buttons"');
-    expect(h).toContain('name="pp-amt" value="5" checked');
+    expect(h).toContain('id="pp-JHPS8RCN35UWA"');
     expect(h).toContain('href="https://www.paypal.com/ncp/payment/JHPS8RCN35UWA"');
     const csp = r.headers.get("content-security-policy");
     expect(csp).toContain("script-src 'nonce-n1' https://www.paypal.com");
