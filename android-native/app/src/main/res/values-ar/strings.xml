@@ -1494,7 +1494,7 @@
     <string name="wiz_step_welcome">مرحبًا</string>
     <string name="wiz_step_source">المصدر</string>
     <string name="wiz_step_ready">جاهز</string>
-    <string name="wiz_step_label">الخطوة %d من 3</string>
+    <string name="wiz_step_label">الخطوة %d من 4</string>
     <string name="wiz_welcome_title">مرحبًا بك في Ultra TV</string>
     <string name="wiz_welcome_tagline">قنواتك وأفلامك ومسلسلاتك في مكان واحد. أضف مصدرك وسيتولى Ultra TV الباقي.</string>
     <string name="wiz_bullet_xtream">Xtream Codes</string>
@@ -2046,6 +2046,9 @@
     <string name="perso_ui_size_normal">عادي</string>
     <string name="perso_ui_size_large">كبير</string>
     <string name="perso_ui_size_xlarge">كبير جدًا</string>
+    <string name="perso_appearance_step">المظهر</string>
+    <string name="perso_appearance_title">اختر مظهرك</string>
+    <string name="perso_appearance_body">السمة ولون التمييز وحجم الواجهة. يمكنك تغييرها في أي وقت من الإعدادات › العرض.</string>
     <string name="ds_settings_level">مستوى الإعدادات</string>
     <string name="ds_settings_level_simple">بسيط</string>
     <string name="ds_settings_level_expert">خبير</string>

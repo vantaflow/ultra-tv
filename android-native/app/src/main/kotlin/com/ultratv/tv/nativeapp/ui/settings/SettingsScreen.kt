@@ -851,11 +851,12 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
     }
     val logosUri by vm.localLogosFolderUri.collectAsState()
     PaneTitle(D.rubDisplay, D.setDescDisplay)
+    // Thème en tête, en aperçus (les 10 thèmes restaient introuvables derrière une ligne « Thème : Sombre ») : OK applique.
+    ThemePicker(p.theme, AccentChoice.parse(p.accent), { app.setTheme(it) }, title = D.theme)
     SettingsCard {
         // Mode simple : grandes tuiles à la place de l'accueil (profil courant) ; la sortie demande le code parental s'il existe.
         // Masqué sur téléphone / tablette (tactile) : le mode simple est conçu pour la télécommande.
         if (com.ultratv.tv.nativeapp.ui.simple.simpleModeAvailable(com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current)) com.ultratv.tv.nativeapp.ui.simple.SimpleModeRow(p.simpleMode, onChange = { app.setSimpleMode(it) })
-        PrefRow(D.theme, themeLabel(D, p.theme)) { choice = "theme" }
         PrefRow(D.language, D.langName(AppLang.fromCode(p.language))) { choice = "lang" }
         // (Réglage « Menu : barre latérale / barre du haut » retiré : depuis le nouveau menu latéral il n'avait plus d'effet.)
         // Téléphone : « Raccourcis » = les trois rubriques entre Accueil et Plus (les autres restent dans « Plus »), à choisir
@@ -897,7 +898,6 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         PrefRow(D.homeRows, D.homeRowsSummary(layout.order.count { layout.isVisible(it) }, layout.order.size)) { choice = "home" }
     }
     when (choice) {
-        "theme" -> ChoiceDialog(D.theme, AppTheme.entries.map { it to themeLabel(D, it) }, p.theme, { app.setTheme(it); choice = "" }, { choice = "" })
         "lang" -> ChoiceDialog(D.language, AppLang.entries.map { it.code to D.langName(it) }, p.language, { app.setLanguage(it); choice = "" }, { choice = "" })
         "open" -> ChoiceDialog(D.openOn, com.ultratv.tv.nativeapp.nav.StartScreen.entries.map { it to D.startScreenName(it) }, com.ultratv.tv.nativeapp.nav.StartScreen.parse(p.startScreen, p.autoPlayLastOnLaunch), { app.setStartScreen(it.key); choice = "" }, { choice = "" })
         "accent" -> AccentDialog(AccentChoice.parse(p.accent), { app.setAccent(it.key); choice = "" }, { choice = "" })

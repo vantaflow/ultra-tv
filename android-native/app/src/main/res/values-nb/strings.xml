@@ -1415,7 +1415,7 @@
     <string name="wiz_step_welcome">Velkommen</string>
     <string name="wiz_step_source">Kilde</string>
     <string name="wiz_step_ready">Klar</string>
-    <string name="wiz_step_label">TRINN %d AV 3</string>
+    <string name="wiz_step_label">TRINN %d AV 4</string>
     <string name="wiz_welcome_title">Velkommen til Ultra TV</string>
     <string name="wiz_welcome_tagline">Kanalene, filmene og seriene dine på ett sted. Legg til kilden din, så ordner Ultra TV resten.</string>
     <string name="wiz_bullet_xtream">Xtream Codes</string>

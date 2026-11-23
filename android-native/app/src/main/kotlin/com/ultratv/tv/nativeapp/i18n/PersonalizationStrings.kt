@@ -75,6 +75,12 @@ fun DesignStrings.uiSizeName(s: com.ultratv.tv.nativeapp.ui.design.UiSize): Stri
     com.ultratv.tv.nativeapp.ui.design.UiSize.XLARGE -> tx(R.string.perso_ui_size_xlarge)
 }
 
+// ── Assistant de première configuration : étape « Apparence » ──
+
+val DesignStrings.appearanceStep get() = tx(R.string.perso_appearance_step)
+val DesignStrings.appearanceTitle get() = tx(R.string.perso_appearance_title)
+val DesignStrings.appearanceBody get() = tx(R.string.perso_appearance_body)
+
 val DesignStrings.screenEdgesLabel get() = tx(R.string.perso_screen_edges_label)
 val DesignStrings.screenEdgesHint get() = tx(R.string.perso_screen_edges_hint)
 

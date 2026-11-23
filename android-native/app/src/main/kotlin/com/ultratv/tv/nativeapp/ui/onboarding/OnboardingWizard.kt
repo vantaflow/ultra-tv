@@ -76,6 +76,9 @@ import com.ultratv.tv.nativeapp.ui.settings.M3uDialog
 import com.ultratv.tv.nativeapp.ui.settings.SettingsViewModel
 import com.ultratv.tv.nativeapp.ui.settings.StalkerDialog
 import com.ultratv.tv.nativeapp.ui.settings.XtreamDialog
+import com.ultratv.tv.nativeapp.i18n.appearanceBody
+import com.ultratv.tv.nativeapp.i18n.appearanceStep
+import com.ultratv.tv.nativeapp.i18n.appearanceTitle
 import com.ultratv.tv.nativeapp.i18n.cardPhone
 import com.ultratv.tv.nativeapp.i18n.cardPhoneDesc
 import com.ultratv.tv.nativeapp.i18n.formSubStalker
@@ -91,6 +94,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -145,9 +150,67 @@ class OnboardingViewModel @Inject constructor(
     fun chooseLanguages(pid: Long, langs: Set<String>) {
         viewModelScope.launch { prefs.setLanguages(langs.sorted().joinToString(",")); sync.request(pid, force = true) }
     }
+
+    // ── Étape « Apparence » : chaque choix est enregistré tout de suite (l'assistant entier sert d'aperçu). ──
+
+    val appearance: StateFlow<WizardAppearance?> = prefs.flow.map { WizardAppearance.of(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    suspend fun currentAppearance(): WizardAppearance = WizardAppearance.of(prefs.flow.first())
+    fun setTheme(t: com.ultratv.tv.nativeapp.data.prefs.AppTheme) { viewModelScope.launch { prefs.setTheme(t) } }
+    fun setAccent(a: com.ultratv.tv.nativeapp.ui.design.AccentChoice) { viewModelScope.launch { prefs.setAccent(a.key) } }
+    fun setUiSize(s: com.ultratv.tv.nativeapp.ui.design.UiSize) { viewModelScope.launch { prefs.setUiSize(s.key) } }
+
+    /** « Passer » : l'apparence d'avant l'étape revient (seulement ce qui a changé est réécrit). */
+    fun restoreAppearance(before: WizardAppearance) {
+        viewModelScope.launch {
+            val r = appearanceRestore(before, currentAppearance())
+            r.theme?.let { prefs.setTheme(it) }; r.accent?.let { prefs.setAccent(it.key) }; r.uiSize?.let { prefs.setUiSize(it.key) }
+        }
+    }
 }
 
-private enum class Step { Welcome, Source, Languages, Ready }
+/** Apparence réglable dans l'assistant : thème (par profil), couleur d'accent et taille de l'interface (par appareil). */
+data class WizardAppearance(
+    val theme: com.ultratv.tv.nativeapp.data.prefs.AppTheme,
+    val accent: com.ultratv.tv.nativeapp.ui.design.AccentChoice,
+    val uiSize: com.ultratv.tv.nativeapp.ui.design.UiSize,
+) {
+    companion object {
+        fun of(p: com.ultratv.tv.nativeapp.data.prefs.UserPrefs) = WizardAppearance(
+            p.theme, com.ultratv.tv.nativeapp.ui.design.AccentChoice.parse(p.accent), com.ultratv.tv.nativeapp.ui.design.UiSize.parse(p.uiSize),
+        )
+    }
+}
+
+/** Valeurs à réécrire pour revenir à [before] ; null = inchangé (rien n'est écrit). */
+data class AppearanceRestore(
+    val theme: com.ultratv.tv.nativeapp.data.prefs.AppTheme?,
+    val accent: com.ultratv.tv.nativeapp.ui.design.AccentChoice?,
+    val uiSize: com.ultratv.tv.nativeapp.ui.design.UiSize?,
+)
+
+internal fun appearanceRestore(before: WizardAppearance, now: WizardAppearance) = AppearanceRestore(
+    before.theme.takeIf { it != now.theme }, before.accent.takeIf { it != now.accent }, before.uiSize.takeIf { it != now.uiSize },
+)
+
+internal enum class Step { Welcome, Appearance, Source, Languages, Ready }
+
+/** Nombre d'étapes numérotées (« ÉTAPE n SUR 4 ») : Bienvenue, Apparence, Source (langues comprises), Prêt. */
+internal const val WIZARD_STEP_COUNT = 4
+
+/** Numéro affiché de l'étape (1 à [WIZARD_STEP_COUNT]). */
+internal fun stepNumber(step: Step): Int = when (step) {
+    Step.Welcome -> 1; Step.Appearance -> 2; Step.Source, Step.Languages -> 3; Step.Ready -> 4
+}
+
+/** Étape où ramène Retour ; null à la première (Retour y garde son comportement habituel). */
+internal fun previousStep(step: Step): Step? = when (step) {
+    Step.Welcome -> null
+    Step.Appearance -> Step.Welcome
+    Step.Source -> Step.Appearance
+    Step.Languages, Step.Ready -> Step.Source
+}
 private enum class Form { None, Xtream, M3uUrl, Stalker }
 
 /** Types de source proposés à l'étape « Source » de l'assistant. */
@@ -172,9 +235,7 @@ fun OnboardingWizard(
     var pendingProvider by remember { mutableStateOf<Long?>(null) }
     androidx.compose.runtime.LaunchedEffect(Unit) { vm.markStarted() }
     // BACK remonte d'une étape au lieu de quitter l'application en plein assistant.
-    BackHandler(enabled = step != Step.Welcome) {
-        step = when (step) { Step.Ready -> Step.Source; Step.Languages -> Step.Source; else -> Step.Welcome }
-    }
+    BackHandler(enabled = previousStep(step) != null) { previousStep(step)?.let { step = it } }
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     Column(
         Modifier.fillMaxSize().background(Ux.Bg)
@@ -183,7 +244,8 @@ fun OnboardingWizard(
         Header(W, step)
         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = if (touch) Alignment.TopStart else Alignment.CenterStart) {
             when (step) {
-                Step.Welcome -> WelcomeStep(W, onStart = { step = Step.Source }, onSkip = { vm.dismiss() })
+                Step.Welcome -> WelcomeStep(W, onStart = { step = Step.Appearance }, onSkip = { vm.dismiss() })
+                Step.Appearance -> AppearanceStep(W, vm, onDone = { step = Step.Source })
                 Step.Source -> SourceStep(W, onAdded = { step = Step.Ready }, onXtreamAdded = { id -> pendingProvider = id; step = Step.Languages }, onLater = { vm.dismiss() })
                 Step.Languages -> LanguagesStep(pendingProvider ?: 0L, vm, onDone = { step = Step.Ready })
                 Step.Ready -> ReadyStep(
@@ -222,16 +284,16 @@ private fun Header(W: WizardStrings, step: Step) {
 
 @Composable
 private fun Stepper(W: WizardStrings, step: Step) {
-    val labels = listOf(W.stepWelcome, W.stepSource, W.stepReady)
+    val labels = listOf(W.stepWelcome, com.ultratv.tv.nativeapp.i18n.LocalDs.current.appearanceStep, W.stepSource, W.stepReady)
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     Row(verticalAlignment = Alignment.CenterVertically) {
+        val ord = stepNumber(step) - 1
         labels.forEachIndexed { i, label ->
-            val ord = when (step) { Step.Welcome -> 0; Step.Source, Step.Languages -> 1; Step.Ready -> 2 }
             val past = i < ord
             val current = i == ord
             if (i > 0) {
-                Box(Modifier.padding(horizontal = 10.design).width(if (touch) 20.dp else 56.design).height(2.design)
-                    .background(if (i <= (when (step) { Step.Welcome -> 0; Step.Source, Step.Languages -> 1; Step.Ready -> 2 })) Ux.Accent else Ux.Line))
+                Box(Modifier.padding(horizontal = 10.design).width(if (touch) 16.dp else 40.design).height(2.design)
+                    .background(if (i <= ord) Ux.Accent else Ux.Line))
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
@@ -260,7 +322,7 @@ private fun Stepper(W: WizardStrings, step: Step) {
 @Composable
 private fun Footer(W: WizardStrings, step: Step) {
     Row(Modifier.fillMaxWidth().height(48.design), verticalAlignment = Alignment.CenterVertically) {
-        val ok = when (step) { Step.Welcome -> W.hintValidate; Step.Source, Step.Languages -> W.hintChoose; Step.Ready -> W.hintWatch }
+        val ok = when (step) { Step.Welcome -> W.hintValidate; Step.Appearance, Step.Source, Step.Languages -> W.hintChoose; Step.Ready -> W.hintWatch }
         KeyHint("OK", ok)
         Spacer(Modifier.width(36.design))
         if (step != Step.Ready) KeyHint(null, if (step == Step.Welcome) W.hintBack else W.hintPrevious, chevron = true)
@@ -271,10 +333,10 @@ private fun Footer(W: WizardStrings, step: Step) {
 
 /** CTA principal : 88 px de haut, focalisé par défaut, blanc/accent (état focus de la maquette). */
 @Composable
-private fun PrimaryCta(label: String, iconPath: String, fillIcon: Boolean, onClick: () -> Unit) {
+private fun PrimaryCta(label: String, iconPath: String, fillIcon: Boolean, initialFocus: Boolean = true, onClick: () -> Unit) {
     val requester = remember { FocusRequester() }
     var focused by remember { mutableStateOf(false) }
-    RequestInitialFocus(requester, hasFocus = { focused })
+    if (initialFocus) RequestInitialFocus(requester, hasFocus = { focused })
     FocusSurface(
         onClick = onClick,
         shape = RoundedCornerShape(44.design),
@@ -317,7 +379,7 @@ internal fun fitTitleSizePx(text: String, basePx: Int = 84, maxWidthPx: Int = 11
 private fun WelcomeStep(W: WizardStrings, onStart: () -> Unit, onSkip: () -> Unit) {
     if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
         TouchStepColumn {
-            Eyebrow(W.stepLabel.format(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current(), 1))
+            Eyebrow(W.stepLabel.format(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current(), stepNumber(Step.Welcome)))
             Text(W.welcomeTitle, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 34.sp, color = Ux.Text)
             Text(W.welcomeTagline, fontFamily = Manrope, fontSize = 16.sp, lineHeight = 24.sp, color = Ux.Text2)
             // Xtream Codes, lien M3U, fichier M3U : les trois seuls types de source.
@@ -331,7 +393,7 @@ private fun WelcomeStep(W: WizardStrings, onStart: () -> Unit, onSkip: () -> Uni
     Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.responsiveWidth(900), verticalArrangement = Arrangement.spacedBy(40.design)) {
             Column(verticalArrangement = Arrangement.spacedBy(20.design)) {
-                Eyebrow(W.stepLabel.format(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current(), 1))
+                Eyebrow(W.stepLabel.format(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current(), stepNumber(Step.Welcome)))
                 Text(
                     W.welcomeTitle,
                     fontFamily = Sora, fontWeight = FontWeight.Bold,
@@ -412,7 +474,79 @@ private fun PreviewGrid(raw: String, modifier: Modifier) {
     }
 }
 
-// ───────────────────────── Étape 2 : Source ─────────────────────────
+// ───────────────────────── Étape 2 : Apparence ─────────────────────────
+
+@Composable
+private fun AppearanceStep(W: WizardStrings, vm: OnboardingViewModel, onDone: () -> Unit) {
+    val current by vm.appearance.collectAsState()
+    // Apparence d'avant l'étape : « Passer » la rétablit (les choix sont appliqués en direct pendant l'étape).
+    var before by remember { mutableStateOf<WizardAppearance?>(null) }
+    androidx.compose.runtime.LaunchedEffect(Unit) { before = vm.currentAppearance() }
+    val a = current ?: return
+    AppearanceStepContent(
+        W, a,
+        onTheme = vm::setTheme, onAccent = vm::setAccent, onUiSize = vm::setUiSize,
+        onContinue = onDone,
+        onSkip = { before?.let { vm.restoreAppearance(it) }; onDone() },
+    )
+}
+
+/**
+ * Étape « Apparence » sans ViewModel (rendu de test) : thème par tuiles d'aperçu, couleur d'accent, taille de l'interface.
+ * TV : texte et boutons à gauche, aperçus à droite (le focus arrive sur la tuile du thème actif) ; tactile : une colonne.
+ */
+@Composable
+internal fun AppearanceStepContent(
+    W: WizardStrings,
+    a: WizardAppearance,
+    onTheme: (com.ultratv.tv.nativeapp.data.prefs.AppTheme) -> Unit,
+    onAccent: (com.ultratv.tv.nativeapp.ui.design.AccentChoice) -> Unit,
+    onUiSize: (com.ultratv.tv.nativeapp.ui.design.UiSize) -> Unit,
+    onContinue: () -> Unit,
+    onSkip: () -> Unit,
+) {
+    val D = com.ultratv.tv.nativeapp.i18n.LocalDs.current
+    val eyebrow = W.stepLabel.format(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current(), stepNumber(Step.Appearance))
+    if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
+        TouchStepColumn {
+            Eyebrow(eyebrow)
+            Text(D.appearanceTitle, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 32.sp, color = Ux.Text)
+            Text(D.appearanceBody, fontFamily = Manrope, fontSize = 15.sp, lineHeight = 22.sp, color = Ux.Text2)
+            com.ultratv.tv.nativeapp.ui.settings.ThemePicker(a.theme, a.accent, onTheme, title = D.theme)
+            com.ultratv.tv.nativeapp.ui.settings.AccentPicker(a.accent, onAccent)
+            com.ultratv.tv.nativeapp.ui.settings.UiSizePicker(a.uiSize, onUiSize)
+            TouchCta(D.continueLabel, true, onContinue)
+            TouchCta(W.skip, false, onSkip)
+        }
+        return
+    }
+    Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.responsiveWidth(640), verticalArrangement = Arrangement.spacedBy(32.design)) {
+            Column(verticalArrangement = Arrangement.spacedBy(18.design)) {
+                Eyebrow(eyebrow)
+                Text(D.appearanceTitle, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = fitTitleSizePx(D.appearanceTitle, basePx = 64, maxWidthPx = 640).spx,
+                    lineHeight = 72.spx, color = Ux.Text, maxLines = 2)
+                Text(D.appearanceBody, fontFamily = Manrope, fontSize = 28.spx, lineHeight = 40.spx, color = Ux.Text2)
+            }
+            Row(Modifier.padding(top = 8.design), verticalAlignment = Alignment.CenterVertically) {
+                PrimaryCta(D.continueLabel, Icons.Arrow, fillIcon = false, initialFocus = false, onClick = onContinue)
+                Spacer(Modifier.width(24.design))
+                SecondaryButton(W.skip, onSkip)
+            }
+        }
+        Spacer(Modifier.width(72.design))
+        Column(
+            Modifier.weight(1f).fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(32.design, Alignment.CenterVertically),
+        ) {
+            com.ultratv.tv.nativeapp.ui.settings.ThemePicker(a.theme, a.accent, onTheme, title = D.theme, initialFocus = true)
+            com.ultratv.tv.nativeapp.ui.settings.AccentPicker(a.accent, onAccent)
+            com.ultratv.tv.nativeapp.ui.settings.UiSizePicker(a.uiSize, onUiSize)
+        }
+    }
+}
+
+// ───────────────────────── Étape 3 : Source ─────────────────────────
 
 @Composable
 private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Long) -> Unit, onLater: () -> Unit) {
@@ -477,7 +611,7 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Lo
 
     if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
         TouchStepColumn {
-            Eyebrow(W.stepLabel.format(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current(), 2))
+            Eyebrow(W.stepLabel.format(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current(), stepNumber(Step.Source)))
             Text(W.sourceTitle, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 32.sp, color = Ux.Text)
             Text(W.sourceSubtitle, fontFamily = Manrope, fontSize = 15.sp, lineHeight = 22.sp, color = Ux.Text2)
             for (o in sourceOptions(touch = true)) when (o) {
@@ -492,7 +626,7 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Lo
         }
     } else Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.Center) {
         Column(verticalArrangement = Arrangement.spacedBy(16.design)) {
-            Eyebrow(W.stepLabel.format(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current(), 2))
+            Eyebrow(W.stepLabel.format(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current(), stepNumber(Step.Source)))
             Text(W.sourceTitle, fontFamily = Sora, fontWeight = FontWeight.Bold,
                 fontSize = fitTitleSizePx(W.sourceTitle, basePx = 72).spx, color = Ux.Text, maxLines = 1, softWrap = false,
                 modifier = Modifier.wrapContentWidth(align = Alignment.Start, unbounded = true))
@@ -577,7 +711,7 @@ private fun SourceCard(modifier: Modifier, icon: String, title: String, desc: St
     }
 }
 
-// ───────────────────────── Étape 3 : Prêt ─────────────────────────
+// ───────────────────────── Étape 4 : Prêt ─────────────────────────
 
 @Composable
 private fun ReadyStep(W: WizardStrings, vm: OnboardingViewModel, onWatch: () -> Unit, onAddAnother: () -> Unit) {
@@ -587,7 +721,7 @@ private fun ReadyStep(W: WizardStrings, vm: OnboardingViewModel, onWatch: () -> 
     if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
         TouchStepColumn {
             Box(Modifier.size(56.dp).clip(CircleShape).background(Ux.Accent), contentAlignment = Alignment.Center) { DIcon(Icons.Check, 28.dp, Ux.OnAccent, strokeWidth = 2.5f) }
-            Eyebrow(W.stepLabel.format(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current(), 3))
+            Eyebrow(W.stepLabel.format(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current(), stepNumber(Step.Ready)))
             Text(W.readyTitle, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 30.sp, color = Ux.Text)
             val f = failure
             Text(if (f != null) LocalStrings.current.sync.messageFor(f.kind) else W.readyBody, fontFamily = Manrope, fontSize = 16.sp, lineHeight = 24.sp, color = if (f != null) Ux.Err else Ux.Text2)
@@ -603,7 +737,7 @@ private fun ReadyStep(W: WizardStrings, vm: OnboardingViewModel, onWatch: () -> 
                 DIcon(Icons.Check, 56.design, Ux.OnAccent, strokeWidth = 2.5f)
             }
             Column(verticalArrangement = Arrangement.spacedBy(20.design)) {
-                Eyebrow(W.stepLabel.format(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current(), 3))
+                Eyebrow(W.stepLabel.format(com.ultratv.tv.nativeapp.i18n.DisplayLocale.current(), stepNumber(Step.Ready)))
                 Text(W.readyTitle, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 84.spx, color = Ux.Text, maxLines = 1, softWrap = false)
                 val f = failure
                 if (f != null) {

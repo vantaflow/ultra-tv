@@ -14,6 +14,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Réglages : niveaux Essentiel / Standard / Expert ; Expert d'office pour un utilisateur existant, Standard pour une installation neuve ; un réglage modifié reste toujours affiché.
 - Rail latéral : sélecteur de source rapide quand le profil voit plusieurs sources.
 
+### Ajouté
+- Assistant de première configuration : nouvelle étape « Apparence » (étape 2 sur 4) pour choisir le thème parmi les 10 par tuiles d'aperçu, la couleur d'accent et la taille de l'interface, à la télécommande comme au toucher. Chaque choix s'applique aussitôt ; « Passer pour l'instant » rétablit l'apparence d'avant. Un utilisateur existant ne revoit pas l'assistant.
+
+### Modifié
+- Réglages › Affichage : le thème se choisit en tête de la rubrique, directement sur les tuiles d'aperçu des 10 thèmes (avant : une ligne « Thème » qui ouvrait une liste de noms).
+
 ## [1.3.73] — 2026-11-23 (Android)
 
 ### Ajouté
