@@ -195,8 +195,19 @@ class UserPreferencesStore @Inject constructor(
 ) {
     companion object {
         /** Niveau des réglages lu dans les préférences (clé settings_level, sinon reprise de show_advanced, sinon neuf / existant). */
-        internal fun settingsLevelFrom(p: androidx.datastore.preferences.core.Preferences): com.ultratv.tv.nativeapp.ui.settings.SettingsLevel =
-            com.ultratv.tv.nativeapp.ui.settings.SettingsLevels.resolve(p[Keys.settingsLevel], p[Keys.showAdvanced], p[Keys.seenOnboarding] ?: false)
+        internal fun settingsLevelFrom(p: androidx.datastore.preferences.core.Preferences, hasProviders: Boolean = false): com.ultratv.tv.nativeapp.ui.settings.SettingsLevel =
+            com.ultratv.tv.nativeapp.ui.settings.SettingsLevels.resolve(
+                p[Keys.settingsLevel], p[Keys.showAdvanced], p[Keys.seenOnboarding] ?: false, hasProviders,
+                chosen = p[Keys.settingsLevelChosen] ?: false, migrated = p[Keys.settingsLevelMigrated] ?: false,
+            )
+
+        /** Fige le niveau une fois (voir [SettingsLevels.resolve]) ; un niveau choisi ou déjà fixé n'est jamais touché. */
+        internal fun fixSettingsLevel(p: androidx.datastore.preferences.core.MutablePreferences, hasProviders: Boolean) {
+            if ((p[Keys.settingsLevelChosen] == true || p[Keys.settingsLevelMigrated] == true) &&
+                com.ultratv.tv.nativeapp.ui.settings.SettingsLevel.parse(p[Keys.settingsLevel]) != null) return
+            p[Keys.settingsLevel] = settingsLevelFrom(p, hasProviders).key
+            p[Keys.settingsLevelMigrated] = true
+        }
     }
 
     private object Keys {
@@ -219,6 +230,10 @@ class UserPreferencesStore @Inject constructor(
         /** Ancien interrupteur S1 (1.3.73) : lu seulement pour fixer le niveau la première fois, jamais effacé. */
         val showAdvanced = booleanPreferencesKey("show_advanced")
         val settingsLevel = stringPreferencesKey("settings_level")
+        /** Niveau choisi par l'utilisateur dans le sélecteur (jamais écrit automatiquement). */
+        val settingsLevelChosen = booleanPreferencesKey("settings_level_chosen")
+        /** Niveau fixé par la reprise au démarrage (les valeurs écrites automatiquement par rc8 / rc9 / 1.3.73 ne valent pas choix). */
+        val settingsLevelMigrated = booleanPreferencesKey("settings_level_migrated")
         val language = stringPreferencesKey("language")
         val timeZone = stringPreferencesKey("time_zone")
         val timeFormat = stringPreferencesKey("time_format")
@@ -351,12 +366,15 @@ class UserPreferencesStore @Inject constructor(
     suspend fun setLastSyncAt(ms: Long) = update { it[Keys.lastSyncAt] = ms }
     suspend fun setWorkerBase(url: String) = update { it[Keys.workerBase] = url.trim() }
     suspend fun markOnboardingSeen() = update { it[Keys.seenOnboarding] = true }
-    suspend fun setSettingsLevel(level: com.ultratv.tv.nativeapp.ui.settings.SettingsLevel) = update { it[Keys.settingsLevel] = level.key }
-    /** Fige au premier démarrage le niveau des réglages (avant que l'assistant ne soit passé) ; une valeur déjà enregistrée est gardée. */
-    suspend fun initSettingsLevel() = update {
-        if (com.ultratv.tv.nativeapp.ui.settings.SettingsLevel.parse(it[Keys.settingsLevel]) == null)
-            it[Keys.settingsLevel] = settingsLevelFrom(it).key
+    suspend fun setSettingsLevel(level: com.ultratv.tv.nativeapp.ui.settings.SettingsLevel) = update {
+        it[Keys.settingsLevel] = level.key
+        it[Keys.settingsLevelChosen] = true
     }
+    /**
+     * Fige au démarrage le niveau des réglages : Expert pour un utilisateur existant (assistant passé ou sources déjà
+     * présentes), Simple pour une installation neuve. Un niveau choisi dans le sélecteur est gardé.
+     */
+    suspend fun initSettingsLevel(hasProviders: Boolean) = update { fixSettingsLevel(it, hasProviders) }
     /** Langue de l'interface : celle du PROFIL (partagée entre appareils) ; la valeur de l'appareil sert aux profils sans choix. */
     suspend fun setLanguage(code: String) {
         update { it[Keys.language] = code }
