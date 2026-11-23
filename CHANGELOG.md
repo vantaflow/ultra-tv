@@ -21,6 +21,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Réglages : niveaux Essentiel / Standard / Expert ; Expert d'office pour un utilisateur existant, Standard pour une installation neuve ; un réglage modifié reste toujours affiché.
 - Rail latéral : sélecteur de source rapide quand le profil voit plusieurs sources.
 
+### Modifié
+- Écran d'accueil Android TV / Google TV : les films, séries et épisodes publiés (« Continuer à regarder », Nouveautés, Nouveaux films, Nouvelles séries, Top 10, Mieux notés, Ma liste) montrent de nouveau leur affiche en 2:3 au lieu d'une photo de scène en 16:9 ; un épisode montre l'affiche de sa série. Sans affiche seulement, le fond du titre apparaît entier dans une vignette 2:3, le titre dessous.
+
+### Corrigé
+- Écran d'accueil Android TV / Google TV : le logo des chaînes (Chaînes récentes, Favoris, catégories choisies, Sport en direct, direct de « Continuer à regarder ») s'affiche en entier, centré sur un fond sombre (ou clair pour un logo sombre), au lieu d'être agrandi et coupé ; sans logo, le nom de la chaîne. Les vignettes sont préparées par l'appli au fil de l'eau (jamais juste après le démarrage de la box) et vidées avec le cache d'images.
+
 ## [1.3.73] — 2026-11-23 (Android)
 
 ### Ajouté

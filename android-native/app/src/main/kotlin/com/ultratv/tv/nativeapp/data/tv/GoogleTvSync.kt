@@ -63,6 +63,7 @@ class GoogleTvSync @Inject constructor(
     private val lockedStore: com.ultratv.tv.nativeapp.data.prefs.LockedChannelsStore,
     private val sportRepo: dagger.Lazy<com.ultratv.tv.nativeapp.data.sport.SportRepository>,
     private val traktMatcher: dagger.Lazy<com.ultratv.tv.nativeapp.data.trakt.TraktCatalogMatcher>,
+    private val artStore: TvArtStore,
 ) {
     private val isTv = ctx.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
     private val prefs = ctx.getSharedPreferences("google_tv", Context.MODE_PRIVATE)
@@ -223,7 +224,7 @@ class GoogleTvSync @Inject constructor(
                     runCatching {
                         val allowed = guardHistory(plan)
                         val sel = WatchNextPlan.select(allowed) + WatchNextPlan.selectLive(allowed)
-                        syncWatchNext(sel, landscapes(sel))
+                        syncWatchNext(sel, titleImages(sel))
                     }.onFailure { e -> fail("watchnext", "watch next", e) }
                     lastWatchNextSync = System.currentTimeMillis()
                 }
@@ -466,22 +467,33 @@ class GoogleTvSync @Inject constructor(
         )
     }
 
-    /** Fonds (images paysage) des films et séries de « Continuer à regarder », lus dans le catalogue local. */
-    private suspend fun landscapes(selected: List<com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity>): Map<WatchNextPlan.LandscapeKey, String> {
-        val out = HashMap<WatchNextPlan.LandscapeKey, String>()
+    /** Affiches et fonds des films et séries (série de l'épisode) de « Continuer à regarder », lus dans le catalogue local. */
+    private suspend fun titleImages(selected: List<com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity>): Map<WatchNextPlan.TitleKey, WatchNextPlan.TitleImages> {
+        val out = HashMap<WatchNextPlan.TitleKey, WatchNextPlan.TitleImages>()
         for (h in selected) {
-            val key = WatchNextPlan.landscapeKey(h) ?: continue
+            val key = WatchNextPlan.titleKey(h) ?: continue
             if (key in out) continue
-            val bg = runCatching {
+            val images = runCatching {
                 when (key.kind) {
-                    NewsChannelPlan.Kind.MOVIE -> movies.byRemoteId(h.providerId, key.remoteId)?.backdrop
-                    NewsChannelPlan.Kind.SERIES -> seriesDao.byRemoteId(h.providerId, key.remoteId)?.backdrop
+                    NewsChannelPlan.Kind.MOVIE -> movies.byRemoteId(h.providerId, key.remoteId)?.let { WatchNextPlan.TitleImages(it.poster, it.backdrop) }
+                    NewsChannelPlan.Kind.SERIES -> seriesDao.byRemoteId(h.providerId, key.remoteId)?.let { WatchNextPlan.TitleImages(it.poster, it.backdrop) }
                 }
             }.getOrNull()
-            if (!bg.isNullOrBlank()) out[key] = bg
+            if (images != null) out[key] = images
         }
         return out
     }
+
+    /** Image publiée : composée par l'appli si [compose] est donné (URI content://), sinon son adresse ; repli : bannière. */
+    private suspend fun artUri(uri: String, compose: TvArtRequest?): Uri {
+        if (compose != null) runCatching { return Uri.parse(artStore.uriFor(compose)) }
+            .onFailure { e -> if (e is kotlinx.coroutines.CancellationException) throw e; android.util.Log.w("UltraGoogleTv", "tv art", e) }
+        return Uri.parse(uri.takeIf { it.isNotBlank() } ?: bannerUri())
+    }
+
+    /** Vignette 16:9 d'une chaîne : logo entier centré (ou son nom), jamais le logo brut agrandi par le lanceur. */
+    private suspend fun channelArt(logo: String?, title: String): Uri =
+        artUri(logo.orEmpty(), TvArtRequest.ChannelLogo(logo?.takeIf { it.isNotBlank() }, title))
 
     /** Nom de la chaîne dans la langue de l'appli (« système » : langue de l'appareil). */
     private suspend fun newsChannelName(): String = com.ultratv.tv.nativeapp.i18n.DesignStrings(appLang()).newsChannelName
@@ -508,7 +520,7 @@ class GoogleTvSync @Inject constructor(
         runCatching {
             val allowed = guardHistory(Triple(hist, hg, hg))
             val sel = WatchNextPlan.select(allowed) + WatchNextPlan.selectLive(allowed)
-            syncWatchNext(sel, landscapes(sel))
+            syncWatchNext(sel, titleImages(sel))
         }.onFailure { fail("watchnext", "watch next", it) }
         if (c.isEffective(TvHomeChannel.FAVORITES, sport)) runCatching {
             val favs = favorites.observeForKind(prof, pid, "LIVE").first()
@@ -530,7 +542,7 @@ class GoogleTvSync @Inject constructor(
 
     // ---- Watch Next -----------------------------------------------------------------
 
-    private fun syncWatchNext(selected: List<com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity>, landscapes: Map<WatchNextPlan.LandscapeKey, String> = emptyMap()) {
+    private suspend fun syncWatchNext(selected: List<com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity>, images: Map<WatchNextPlan.TitleKey, WatchNextPlan.TitleImages> = emptyMap()) {
         if (!providerAvailable()) return
         val cr = ctx.contentResolver
         // Lignes déjà publiées par l'application : identifiant interne -> identifiant de ligne.
@@ -548,14 +560,14 @@ class GoogleTvSync @Inject constructor(
             val key = WatchNextPlan.internalId(h)
             keep += key
             if (h.kind == "LIVE") {
-                // Chaîne du direct : vignette 16:9 (logo), marquée « en direct », sans progression.
+                // Chaîne du direct : vignette 16:9 composée (logo entier centré), marquée « en direct », sans progression.
                 val live = WatchNextProgram.Builder()
                     .setType(TvContractCompat.WatchNextPrograms.TYPE_CHANNEL)
                     .setWatchNextType(TvContractCompat.WatchNextPrograms.WATCH_NEXT_TYPE_CONTINUE)
                     .setLastEngagementTimeUtcMillis(h.watchedAt)
                     .setTitle(h.title)
                     .setLive(true)
-                    .setPosterArtUri(Uri.parse(h.poster?.takeIf { it.isNotBlank() } ?: "android.resource://${ctx.packageName}/drawable/banner"))
+                    .setPosterArtUri(channelArt(h.poster, h.title))
                     .setPosterArtAspectRatio(TvContractCompat.PreviewPrograms.ASPECT_RATIO_16_9)
                     .setInternalProviderId(key)
                     .setIntentUri(Uri.parse(WatchNextPlan.deepLink(h)))
@@ -566,15 +578,15 @@ class GoogleTvSync @Inject constructor(
                 if (!ok) failed++
                 continue
             }
-            val art = WatchNextPlan.art(h, WatchNextPlan.landscapeKey(h)?.let { landscapes[it] })
+            val art = WatchNextPlan.art(h, WatchNextPlan.titleKey(h)?.let { images[it] })
             val b = WatchNextProgram.Builder()
                 .setType(if (h.kind == "EPISODE") TvContractCompat.WatchNextPrograms.TYPE_TV_EPISODE else TvContractCompat.WatchNextPrograms.TYPE_MOVIE)
                 .setWatchNextType(TvContractCompat.WatchNextPrograms.WATCH_NEXT_TYPE_CONTINUE)
                 .setLastEngagementTimeUtcMillis(h.watchedAt)
                 // Titre nettoyé, comme « Reprendre la lecture » : « Captain Marvel », pas « TOP - Captain Marvel (2019) ».
                 .setTitle(com.ultratv.tv.nativeapp.data.repo.TitleCleaner.historyTitle(h.title))
-                // Fond du titre en 16:9 s'il existe (film, ou série de l'épisode), sinon l'affiche en 2:3.
-                .setPosterArtUri(Uri.parse(art.uri))
+                // Affiche en 2:3 (film, ou série de l'épisode) ; sans affiche, le fond composé en 2:3.
+                .setPosterArtUri(artUri(art.uri, art.compose))
                 .setPosterArtAspectRatio(art.aspectRatio)
                 .setLastPlaybackPositionMillis(h.positionMs.toInt())
                 .setInternalProviderId(key)
@@ -593,7 +605,7 @@ class GoogleTvSync @Inject constructor(
 
     // ---- Chaîne de prévisualisation « Favoris » -------------------------------------------
 
-    private fun syncFavoritesChannel(selected: List<com.ultratv.tv.nativeapp.data.db.ChannelEntity>) {
+    private suspend fun syncFavoritesChannel(selected: List<com.ultratv.tv.nativeapp.data.db.ChannelEntity>) {
         if (!providerAvailable()) return
         val helper = PreviewChannelHelper(ctx)
         var channelId = prefs.getLong(K_CHANNEL, -1L)
@@ -617,8 +629,10 @@ class GoogleTvSync @Inject constructor(
         }
         val signature = FavoritesChannelPlan.signature(selected)
         if (prefs.getString(K_SIGNATURE, null) == signature) return
+        // Vignettes composées AVANT de vider la chaîne (pas de rangée vide pendant la génération).
+        val arts = selected.map { channelArt(it.logo, it.title) }
         ctx.contentResolver.delete(TvContractCompat.buildPreviewProgramsUriForChannel(channelId), null, null)
-        for (c in selected) {
+        selected.forEachIndexed { index, c ->
             val b = PreviewProgram.Builder()
                 .setChannelId(channelId)
                 .setType(TvContractCompat.PreviewPrograms.TYPE_CHANNEL)
@@ -626,7 +640,7 @@ class GoogleTvSync @Inject constructor(
                 .setPosterArtAspectRatio(TvContractCompat.PreviewPrograms.ASPECT_RATIO_16_9)
                 .setInternalProviderId("LIVE:${c.providerId}:${c.remoteId}")
                 .setIntentUri(Uri.parse(FavoritesChannelPlan.deepLink(c)))
-            b.setPosterArtUri(Uri.parse(c.logo?.takeIf { it.isNotBlank() } ?: "android.resource://${ctx.packageName}/drawable/banner"))
+            b.setPosterArtUri(arts[index])
             helper.publishPreviewProgram(b.build())
         }
         prefs.edit().putString(K_SIGNATURE, signature).apply()
@@ -668,6 +682,8 @@ class GoogleTvSync @Inject constructor(
         }
         val signature = RecentChannelsPlan.signature(selected)
         if (prefs.getString(K_RECENT_SIGNATURE, null) == signature) return@withLock
+        // Vignettes composées AVANT de vider la chaîne (pas de rangée vide pendant la génération).
+        val arts = selected.map { channelArt(it.logo, it.title) }
         ctx.contentResolver.delete(TvContractCompat.buildPreviewProgramsUriForChannel(channelId), null, null)
         var failed = 0
         selected.forEachIndexed { index, c ->
@@ -675,7 +691,7 @@ class GoogleTvSync @Inject constructor(
                 .setChannelId(channelId)
                 .setType(TvContractCompat.PreviewPrograms.TYPE_CHANNEL)
                 .setTitle(c.title)
-                .setPosterArtUri(Uri.parse(c.logo?.takeIf { it.isNotBlank() } ?: "android.resource://${ctx.packageName}/drawable/banner"))
+                .setPosterArtUri(arts[index])
                 .setPosterArtAspectRatio(TvContractCompat.PreviewPrograms.ASPECT_RATIO_16_9)
                 .setLive(true)
                 .setWeight(NewsChannelPlan.weight(index, selected.size))
@@ -790,12 +806,15 @@ class GoogleTvSync @Inject constructor(
             }
         }
         if (!ChannelPublishPlan.mustRewrite(prefs.getString(K_NEWS_SIGNATURE, null) == signature, existing.size, selected.size)) return@withLock
+        // Images résolues avant l'écriture (composition éventuelle, sur le disque).
+        val arts = selected.map { NewsChannelPlan.art(it) }
+        val uris = arts.map { artUri(it.uri, it.compose) }
         fun program(i: NewsChannelPlan.Item, index: Int) = PreviewProgram.Builder()
             .setChannelId(channelId)
             .setType(if (i.kind == NewsChannelPlan.Kind.MOVIE) TvContractCompat.PreviewPrograms.TYPE_MOVIE else TvContractCompat.PreviewPrograms.TYPE_TV_SERIES)
             .setTitle(i.title)
-            .setPosterArtUri(Uri.parse(NewsChannelPlan.art(i).uri))
-            .setPosterArtAspectRatio(NewsChannelPlan.art(i).aspectRatio)
+            .setPosterArtUri(uris[index])
+            .setPosterArtAspectRatio(arts[index].aspectRatio)
             .setWeight(NewsChannelPlan.weight(index, selected.size))
             .setInternalProviderId(NewsChannelPlan.internalId(i))
             .setIntentUri(Uri.parse(NewsChannelPlan.deepLink(i)))
@@ -922,12 +941,13 @@ class GoogleTvSync @Inject constructor(
         }
         val signature = TvChannelPlan.signature(items)
         if (ChannelPublishPlan.mustRewrite(prefs.getString(kSig(key), null) == signature, existing.size, items.size)) {
+            val uris = items.map { artUri(it.image, it.compose) }
             fun program(i: TvProgramItem, index: Int) = PreviewProgram.Builder()
                 .setChannelId(channelId)
                 .setType(i.type)
                 .setTitle(i.title)
                 .apply { i.description?.let { setDescription(it) } }
-                .setPosterArtUri(Uri.parse(i.image))
+                .setPosterArtUri(uris[index])
                 .setPosterArtAspectRatio(i.aspectRatio)
                 .setLive(i.live)
                 .setWeight(NewsChannelPlan.weight(index, items.size))

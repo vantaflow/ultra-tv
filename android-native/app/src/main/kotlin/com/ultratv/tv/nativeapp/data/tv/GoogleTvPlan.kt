@@ -24,17 +24,28 @@ object WatchNextPlan {
 
     fun internalId(h: WatchHistoryEntity) = "${h.kind}:${h.providerId}:${h.remoteId}"
 
-    /** Où chercher l'image paysage : le film lui-même, ou la série d'un épisode. Chaîne du direct : aucune. */
-    data class LandscapeKey(val kind: NewsChannelPlan.Kind, val remoteId: String)
+    /** Où chercher les images du titre dans le catalogue : le film lui-même, ou la série d'un épisode. Chaîne du direct : aucune. */
+    data class TitleKey(val kind: NewsChannelPlan.Kind, val remoteId: String)
 
-    fun landscapeKey(h: WatchHistoryEntity): LandscapeKey? = when (h.kind) {
-        "MOVIE" -> LandscapeKey(NewsChannelPlan.Kind.MOVIE, h.remoteId)
-        "EPISODE" -> (h.parentRemoteId ?: return null).let { LandscapeKey(NewsChannelPlan.Kind.SERIES, it) }
+    fun titleKey(h: WatchHistoryEntity): TitleKey? = when (h.kind) {
+        "MOVIE" -> TitleKey(NewsChannelPlan.Kind.MOVIE, h.remoteId)
+        "EPISODE" -> (h.parentRemoteId ?: return null).let { TitleKey(NewsChannelPlan.Kind.SERIES, it) }
         else -> null
     }
 
-    /** Film ou épisode : fond du titre en 16:9 s'il existe, sinon l'affiche en 2:3 (comme avant). */
-    fun art(h: WatchHistoryEntity, landscape: String?): NewsChannelPlan.Art = NewsChannelPlan.art(h.poster, landscape)
+    /** Affiche et fond du titre lus dans le catalogue (film, ou série de l'épisode). */
+    data class TitleImages(val poster: String?, val backdrop: String?)
+
+    /**
+     * Film ou épisode : l'AFFICHE en 2:3 (épisode : celle de la série, jamais l'image de l'épisode) ; sans affiche, le fond
+     * composé en 2:3 sans rogner. L'historique d'un épisode garde souvent l'image de l'épisode : elle ne sert que de fond.
+     */
+    fun art(h: WatchHistoryEntity, images: TitleImages?): NewsChannelPlan.Art {
+        fun String?.nb() = this?.takeIf { it.isNotBlank() }
+        val poster = images?.poster.nb() ?: if (h.kind == "MOVIE") h.poster.nb() else null
+        val backdrop = images?.backdrop.nb() ?: if (h.kind == "EPISODE") h.poster.nb() else null
+        return NewsChannelPlan.art(poster, backdrop, com.ultratv.tv.nativeapp.data.repo.TitleCleaner.historyTitle(h.title))
+    }
 
     fun deepLink(h: WatchHistoryEntity) = when (h.kind) {
         "LIVE" -> DeepLink.live(h.providerId, h.remoteId)
@@ -76,7 +87,7 @@ object FavoritesChannelPlan {
 
     /** Empreinte de la sélection : on ne republie la chaîne que si elle a changé. */
     fun signature(selected: List<ChannelEntity>): String =
-        selected.joinToString("|") { "${it.providerId}:${it.remoteId}:${it.title}:${it.logo.orEmpty()}" }.hashCode().toString()
+        "art${TvArtPlan.VERSION}|" + selected.joinToString("|") { "${it.providerId}:${it.remoteId}:${it.title}:${it.logo.orEmpty()}" }.hashCode().toString()
 }
 
 /** Chaîne d'accueil « Chaînes récentes » : dernières chaînes du direct regardées, distincte de « Favoris ». */
@@ -107,7 +118,7 @@ object RecentChannelsPlan {
     fun deepLink(c: ChannelEntity) = DeepLink.live(c.providerId, c.remoteId)
 
     fun signature(selected: List<ChannelEntity>): String =
-        "recent|" + selected.joinToString("|") { "${it.providerId}:${it.remoteId}:${it.title}:${it.logo.orEmpty()}" }.hashCode().toString()
+        "recent|art${TvArtPlan.VERSION}|" + selected.joinToString("|") { "${it.providerId}:${it.remoteId}:${it.title}:${it.logo.orEmpty()}" }.hashCode().toString()
 }
 
 /** Chaîne d'accueil « Ultra TV · Nouveautés » : derniers films et séries ajoutés par la source active. */
@@ -126,17 +137,25 @@ object NewsChannelPlan {
         val categoryId: String? = null,
     )
 
-    /** Image publiée et son format (constantes TvContractCompat.PreviewPrograms.ASPECT_RATIO_*). */
-    data class Art(val uri: String, val aspectRatio: Int)
+    /**
+     * Image publiée et son format (constantes TvContractCompat.PreviewPrograms.ASPECT_RATIO_*). [compose] : image à
+     * composer par l'appli ([TvArtStore]) à la place de [uri] (qui reste dans les signatures).
+     */
+    data class Art(val uri: String, val aspectRatio: Int, val compose: TvArtRequest? = null)
 
-    private const val RATIO_16_9 = androidx.tvprovider.media.tv.TvContractCompat.PreviewPrograms.ASPECT_RATIO_16_9
     private const val RATIO_2_3 = androidx.tvprovider.media.tv.TvContractCompat.PreviewPrograms.ASPECT_RATIO_2_3
 
-    /** Fond du titre en 16:9 quand il existe, sinon l'affiche en 2:3. */
-    fun art(poster: String?, landscape: String?): Art =
-        landscape?.takeIf { it.isNotBlank() }?.let { Art(it, RATIO_16_9) } ?: Art(poster.orEmpty(), RATIO_2_3)
+    /**
+     * L'affiche en 2:3 ; sans affiche seulement, le fond du titre composé en 2:3 (entier, jamais rogné par le lanceur).
+     * Plus de photo de scène en 16:9 à la place de l'affiche.
+     */
+    fun art(poster: String?, landscape: String?, title: String = ""): Art {
+        poster?.takeIf { it.isNotBlank() }?.let { return Art(it, RATIO_2_3) }
+        landscape?.takeIf { it.isNotBlank() }?.let { return Art(it, RATIO_2_3, TvArtRequest.Backdrop(it, title)) }
+        return Art("", RATIO_2_3)
+    }
 
-    fun art(i: Item): Art = art(i.poster, i.landscape)
+    fun art(i: Item): Art = art(i.poster, i.landscape, i.title)
 
     private fun hasImage(i: Item) = !i.poster.isNullOrBlank() || !i.landscape.isNullOrBlank()
 
@@ -203,7 +222,7 @@ object NewsChannelPlan {
 
     /** Empreinte de la sélection (ordre, titres, affiches) : on ne touche à la chaîne que si elle a changé. */
     fun signature(selected: List<Item>): String =
-        selected.joinToString("|") { "${internalId(it)}:${it.title}:${it.poster.orEmpty()}:${it.landscape.orEmpty()}" }.hashCode().toString()
+        "art${TvArtPlan.VERSION}|" + selected.joinToString("|") { "${internalId(it)}:${it.title}:${it.poster.orEmpty()}:${it.landscape.orEmpty()}" }.hashCode().toString()
 }
 
 /** Règles pures de publication des chaînes d'accueil (testables sans Android). */
