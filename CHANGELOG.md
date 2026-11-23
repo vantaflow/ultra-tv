@@ -4,6 +4,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 Chaque version Android peut finir par une sous-section `### In English` : quelques puces courtes en anglais, reprises en tête des notes de la release GitHub (« English summary ») par `.github/release-notes.sh` ; le reste de la section y figure en français. Uniquement des puces sous ce titre, sans autre sous-titre.
 
+## [Non publié] (Android)
+
+### Ajouté
+- Mode simple : « Soutenir Ultra TV » apparaît aussi dans ses réglages (cœur, avant « Tous les réglages »). Même comportement que Réglages › À propos : QR code PayPal sur TV, lien de paiement direct sur téléphone et tablette.
+
+### In English
+- Simple mode: "Support Ultra TV" (PayPal QR code on TV, direct link on phones) is now in the simple-mode settings too.
+
 ## [1.3.76] — 2026-11-23 (Android)
 
 ### Ajouté
