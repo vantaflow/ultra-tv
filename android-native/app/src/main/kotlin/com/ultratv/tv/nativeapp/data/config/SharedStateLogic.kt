@@ -60,4 +60,35 @@ object SharedStateLogic {
     fun favsToJson(m: Collection<SharedFav>) = JSONArray().apply { m.forEach { put(favToJson(it)) } }
     fun parseFavs(a: JSONArray?): List<SharedFav> = if (a == null) emptyList() else (0 until a.length()).mapNotNull { a.optJSONObject(it)?.let(::parseFav) }
     fun parseHists(a: JSONArray?): List<SharedHist> = if (a == null) emptyList() else (0 until a.length()).mapNotNull { a.optJSONObject(it)?.let(::parseHist) }
+
+    /** Chaîne / titre du catalogue local pour un identifiant reçu : nom, image et adresse. */
+    data class LocalItem(val title: String, val image: String?, val streamUrl: String)
+
+    /** Ligne d'historique locale de même identifiant : nom, image et adresse. */
+    data class LocalRow(val title: String, val image: String?, val streamUrl: String)
+
+    /**
+     * Nom, image et adresse d'une ligne d'historique reçue d'un autre appareil (pure, testée).
+     *
+     * Avant : nom distant + image et adresse de la ligne LOCALE de même identifiant, quel que soit son nom. Quand l'identifiant
+     * désigne désormais une autre chaîne (fournisseur qui renumérote, image distante absente ou locale à l'appareil), la carte
+     * « Dernières chaînes regardées » montrait « Geo National Wild » avec le logo — et l'adresse — de « La chaîne météo ».
+     * Règle : une image et une adresse locales (catalogue [catalog] puis ligne locale [local]) ne sont reprises que si elles
+     * portent le MÊME nom que la ligne reçue ; sinon l'image distante seule et aucune adresse (ligne non affichée à
+     * l'accueil plutôt qu'une carte qui lance une autre chaîne).
+     */
+    fun mergeHist(e: SharedHist, local: LocalRow?, catalog: LocalItem?): Triple<String, String?, String> {
+        val title = e.t.ifBlank { catalog?.title ?: local?.title.orEmpty() }
+        val cat = catalog?.takeIf { e.t.isBlank() || sameTitle(it.title, e.t) }
+        val loc = local?.takeIf { e.t.isBlank() || sameTitle(it.title, e.t) }
+        val image = cat?.image ?: e.img ?: loc?.image
+        val url = cat?.streamUrl?.takeIf { it.isNotBlank() } ?: loc?.streamUrl?.takeIf { it.isNotBlank() } ?: ""
+        return Triple(title, image, url)
+    }
+
+    /** Même nom à la casse, aux espaces et à la ponctuation près (« Serie Club » = « SERIE-CLUB »). */
+    internal fun sameTitle(a: String, b: String): Boolean {
+        fun norm(x: String) = x.lowercase().filter { it.isLetterOrDigit() }
+        return norm(a) == norm(b)
+    }
 }

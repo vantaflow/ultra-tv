@@ -408,7 +408,9 @@ class MainActivity : ComponentActivity() {
             if (coldStart && !deepLinkPending && target is com.ultratv.tv.nativeapp.nav.StartupTarget.Route) StartupNav.pendingRoute.value = target.route
             StartupNav.startupDecided.value = true
             if (coldStart && !deepLinkPending && target == com.ultratv.tv.nativeapp.nav.StartupTarget.LastChannel) {
-                val firstProvider = providerRepo.get().observeProviders().first().firstOrNull()
+                // Source ACTIVE (celle de l'accueil et de son historique), pas la première créée : avec plusieurs sources,
+                // « Ouvrir sur la dernière chaîne » relançait une chaîne d'une autre source que celle regardée.
+                val firstProvider = providerRepo.get().observeProviders().first().let { ps -> ps.firstOrNull { it.active } ?: ps.firstOrNull() }
                 if (firstProvider != null) {
                     // Dernière CHAÎNE regardée ; à défaut (aucune chaîne dans l'historique), le dernier élément regardé.
                     val last = historyRepo.get().recentByKind(firstProvider.id, "LIVE", 1).first().firstOrNull()

@@ -263,15 +263,16 @@ class CloudSyncManager @Inject constructor(
             val local = db.watchHistoryDao().get(prof, pid, e.k, e.r)
             if (local != null && local.watchedAt >= e.at) continue
             received = true
-            val url = local?.streamUrl ?: when (e.k) {
-                "LIVE" -> db.channelDao().byRemoteId(pid, e.r)?.streamUrl
-                "MOVIE" -> db.movieDao().byRemoteId(pid, e.r)?.streamUrl
-                "EPISODE" -> db.episodeDao().byRemoteId(pid, e.r)?.streamUrl
+            val catalog = when (e.k) {
+                "LIVE" -> db.channelDao().byRemoteId(pid, e.r)?.let { SharedStateLogic.LocalItem(it.title, it.logo, it.streamUrl) }
+                "MOVIE" -> db.movieDao().byRemoteId(pid, e.r)?.let { SharedStateLogic.LocalItem(it.title, it.poster, it.streamUrl) }
+                "EPISODE" -> db.episodeDao().byRemoteId(pid, e.r)?.let { SharedStateLogic.LocalItem(it.title, it.image, it.streamUrl) }
                 else -> null
-            } ?: ""
+            }
+            val (title, poster, url) = SharedStateLogic.mergeHist(e, local?.let { SharedStateLogic.LocalRow(it.title, it.poster, it.streamUrl) }, catalog)
             db.watchHistoryDao().upsert(com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity(
-                providerId = pid, kind = e.k, remoteId = e.r, title = e.t.ifBlank { local?.title.orEmpty() },
-                poster = e.img ?: local?.poster, streamUrl = url, positionMs = e.pos, durationMs = e.dur, watchedAt = e.at,
+                providerId = pid, kind = e.k, remoteId = e.r, title = title,
+                poster = poster, streamUrl = url, positionMs = e.pos, durationMs = e.dur, watchedAt = e.at,
                 parentRemoteId = e.par ?: local?.parentRemoteId, profileId = prof,
             ))
             maxAt = maxOf(maxAt, e.at)
