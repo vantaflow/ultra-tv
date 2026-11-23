@@ -230,7 +230,16 @@ adb install -r UltraTV.apk</code></pre>
 <section id="soutenir">
   <h2>Soutenir le projet</h2>
   <p>Ultra TV est gratuit, sans publicité, et le restera. Un don aide à payer les serveurs (synchronisation cloud, guide, affiches) et le temps passé à l'améliorer. Carte bancaire ou PayPal, depuis n'importe quel pays ; aucune donnée bancaire ne passe par Ultra TV.</p>
-  <p class="cta"><a class="btn" href="https://paypal.me/kbenazzouz" rel="noopener">♥ Faire un don avec PayPal</a></p>
+  <div class="pp-donate">
+    <p class="pp-label">Montant</p>
+    <div class="pp-amts"><label class="pp-amt"><input type="radio" name="pp-amt" value="3"/><span>3 €</span></label><label class="pp-amt"><input type="radio" name="pp-amt" value="5" checked/><span>5 €</span></label><label class="pp-amt"><input type="radio" name="pp-amt" value="10"/><span>10 €</span></label><label class="pp-amt"><input type="radio" name="pp-amt" value="20"/><span>20 €</span></label></div>
+    <label class="pp-other">Autre montant (€) <input id="pp-other" type="number" inputmode="decimal" min="1" max="1000" step="1"/></label>
+    <div id="pp-buttons"></div>
+    <p id="pp-msg" role="status" aria-live="polite"></p>
+    <span hidden id="pp-thanks">Merci beaucoup pour votre don !</span>
+    <span hidden id="pp-error">Le paiement n'a pas abouti. Vous pouvez réessayer ou passer par le lien ci-dessous.</span>
+  </div>
+  <p class="cta"><a class="btn alt" href="https://paypal.me/kbenazzouz" rel="noopener">Ou par le lien PayPal direct</a></p>
 </section>
 
 <section id="faq">
@@ -249,7 +258,36 @@ adb install -r UltraTV.apk</code></pre>
 </footer>
 </div>
 <script src="app.js" defer></script>
-<!-- Dons : bouton flottant vers PayPal (don direct) -->
-<a class="donate-float" href="https://paypal.me/kbenazzouz" rel="noopener">♥ Me soutenir</a>
+<!-- Dons : boutons PayPal / carte (SDK JS PayPal, compte Business ; commande créée dans le navigateur, aucun secret) -->
+<script src="https://www.paypal.com/sdk/js?client-id=BAAj_4Phky4o6zEklDhdQHbghPjUbv14ymR4CsSdaLRNOrgd1jEx6zu6h_VYqCQbBVqtb_gk3HYMPHs_JQ&currency=EUR&intent=capture&components=buttons&enable-funding=card" defer></script>
+<script>
+(function () {
+  var msg = document.getElementById('pp-msg'), other = document.getElementById('pp-other');
+  if (!msg || !other) return;
+  function txt(id) { var el = document.getElementById(id); return el ? el.textContent : ''; }
+  function amount() {
+    var v = other.value ? Number(String(other.value).replace(',', '.')) : Number((document.querySelector('input[name="pp-amt"]:checked') || {}).value);
+    if (!isFinite(v) || v < 1 || v > 1000) return null;
+    return (Math.round(v * 100) / 100).toFixed(2);
+  }
+  other.addEventListener('input', function () { if (other.value) document.querySelectorAll('input[name="pp-amt"]').forEach(function (r) { r.checked = false; }); });
+  document.querySelectorAll('input[name="pp-amt"]').forEach(function (r) { r.addEventListener('change', function () { other.value = ''; }); });
+  function go() {
+    if (!window.paypal || !window.paypal.Buttons) return;
+    window.paypal.Buttons({
+      style: { layout: 'vertical', label: 'donate' },
+      createOrder: function (d, a) {
+        var v = amount(); if (!v) { msg.textContent = txt('pp-error'); throw new Error('amount'); }
+        return a.order.create({ intent: 'CAPTURE', purchase_units: [{ amount: { currency_code: 'EUR', value: v }, description: 'Ultra TV' }], application_context: { shipping_preference: 'NO_SHIPPING' } });
+      },
+      onApprove: function (d, a) { return a.order.capture().then(function () { msg.textContent = txt('pp-thanks'); document.getElementById('pp-buttons').hidden = true; }); },
+      onError: function () { msg.textContent = txt('pp-error'); }
+    }).render('#pp-buttons');
+  }
+  if (window.paypal) go(); else window.addEventListener('load', go);
+})();
+</script>
+<!-- Dons : bouton flottant vers la section Soutenir (boutons PayPal intégrés) -->
+<a class="donate-float" href="#soutenir">♥ Me soutenir</a>
 </body>
 </html>
