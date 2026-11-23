@@ -26,6 +26,7 @@ import com.ultratv.tv.nativeapp.i18n.SimpleStrings
 import com.ultratv.tv.nativeapp.i18n.simpleAllSettings
 import com.ultratv.tv.nativeapp.i18n.simpleBackFull
 import com.ultratv.tv.nativeapp.i18n.simpleFullHint
+import com.ultratv.tv.nativeapp.i18n.supportTitle
 import com.ultratv.tv.nativeapp.ui.AppViewModel
 import com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus
 import com.ultratv.tv.nativeapp.ui.common.design
@@ -38,7 +39,7 @@ import com.ultratv.tv.nativeapp.ui.profile.ProfileViewModel
 
 /**
  * Réglages du mode simple : un grand bouton « Revenir au mode complet » (code parental demandé s'il existe) et
- * « Tous les réglages » (réglages complets, sans quitter le mode simple).
+ * « Tous les réglages » (réglages complets, sans quitter le mode simple), plus quelques réglages essentiels et « Soutenir Ultra TV ».
  */
 @Composable
 fun SimpleSettingsScreen(
@@ -49,6 +50,7 @@ fun SimpleSettingsScreen(
     profiles: ProfileViewModel = hiltViewModel(),
 ) {
     val D = LocalDs.current
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     val S = SimpleStrings(D.lang)
     val pinSet by profiles.parentalPinSet.collectAsState()
     var askPin by remember { mutableStateOf(false) }
@@ -73,6 +75,8 @@ fun SimpleSettingsScreen(
             SimpleSettingRow(D.textSizeLabel, D.textSizeName(com.ultratv.tv.nativeapp.ui.design.TextSize.parse(p.textSize)), Icons.Info) { choice = "text" }
             SimpleSettingRow(D.theme, com.ultratv.tv.nativeapp.ui.settings.themeLabel(D, p.theme), Icons.Monitor) { choice = "theme" }
             if (multiProfiles) SimpleSettingRow(S.switchProfile, profileName.orEmpty(), Icons.Account) { profiles.requestSwitch() }
+            // Dons (PayPal) : même ligne que Réglages › À propos (QR code sur TV, lien direct sur téléphone / tablette).
+            SimpleSettingRow(D.supportTitle, "PayPal", Icons.Heart) { if (!com.ultratv.tv.nativeapp.ui.settings.openSupportLink(ctx)) choice = "support" }
             SimpleButton(D.simpleAllSettings, Icons.Settings, primary = false, onClick = onAllSettings, modifier = Modifier.fillMaxWidth())
         }
     }
@@ -80,6 +84,7 @@ fun SimpleSettingsScreen(
         "lang" -> com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(D.language, com.ultratv.tv.nativeapp.i18n.AppLang.entries.map { it.code to D.langName(it) }, p.language, { app.setLanguage(it); choice = "" }, { choice = "" })
         "size" -> com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(D.simpleSize, SimpleSize.entries.map { it to D.simpleSizeName(it) }, SimpleSize.parse(p.simpleSize), { app.setSimpleSize(it.key); choice = "" }, { choice = "" })
         "text" -> com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(D.textSizeLabel, com.ultratv.tv.nativeapp.ui.design.TextSize.entries.map { it to D.textSizeName(it) }, com.ultratv.tv.nativeapp.ui.design.TextSize.parse(p.textSize), { app.setTextSize(it.key); choice = "" }, { choice = "" })
+        "support" -> com.ultratv.tv.nativeapp.ui.settings.SupportQrDialog(D) { choice = "" }
         "theme" -> com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(D.theme, listOf(com.ultratv.tv.nativeapp.data.prefs.AppTheme.AUTO, com.ultratv.tv.nativeapp.data.prefs.AppTheme.LIGHT, com.ultratv.tv.nativeapp.data.prefs.AppTheme.DARK).map { it to com.ultratv.tv.nativeapp.ui.settings.themeLabel(D, it) }, p.theme, { app.setTheme(it); choice = "" }, { choice = "" })
     }
     if (askPin) ExitSimpleModePin(onUnlocked = { askPin = false; leave() }, onCancel = { askPin = false })

@@ -45,14 +45,17 @@ import com.ultratv.tv.nativeapp.ui.design.*
 fun SupportRow(D: DesignStrings = LocalDs.current) {
     val ctx = LocalContext.current
     var dialog by remember { mutableStateOf(false) }
-    PrefRow(D.supportTitle, "", hint = D.supportSub) {
-        val opened = !isTelevision(ctx) && try {
-            ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(SUPPORT_URL)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); true
-        } catch (_: ActivityNotFoundException) { false }
-        if (!opened) dialog = true
-    }
+    PrefRow(D.supportTitle, "", hint = D.supportSub) { if (!openSupportLink(ctx)) dialog = true }
     if (dialog) SupportQrDialog(D) { dialog = false }
 }
+
+/**
+ * Téléphone / tablette : ouvre le lien PayPal et rend vrai. TV (ou aucune appli pour le lien) : rend faux, l'appelant montre
+ * alors [SupportQrDialog]. Partagé par Réglages › À propos et les réglages du mode simple.
+ */
+fun openSupportLink(ctx: android.content.Context): Boolean = !isTelevision(ctx) && try {
+    ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(SUPPORT_URL)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); true
+} catch (_: ActivityNotFoundException) { false }
 
 /** Dialogue : QR code PayPal (généré sur l'appareil avec ZXing : aucun accès réseau), adresse en clair, Fermer. */
 @Composable
