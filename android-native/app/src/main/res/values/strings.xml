@@ -2036,4 +2036,19 @@
     <string name="tvch_categories_hint">Up to 3 Live TV categories, each in its own channel.</string>
     <string name="tvch_add_category">Add a category</string>
     <string name="tvch_no_category">No category available</string>
+    <string name="replay_nav">Replay</string>
+    <string name="replay_all_channels">All channels</string>
+    <string name="replay_category">Category</string>
+    <string name="replay_today">Today</string>
+    <string name="replay_yesterday">Yesterday</string>
+    <string name="replay_archive_days">Archive: %1$d d</string>
+    <string name="replay_minutes">%1$d min</string>
+    <string name="replay_unavailable">Unavailable</string>
+    <string name="replay_on_now">On now</string>
+    <string name="replay_pick_channel">Choose a channel</string>
+    <string name="replay_no_programmes">No programme known for this day.</string>
+    <string name="replay_empty_title">No replay</string>
+    <string name="replay_empty_body">Your provider does not offer replay.</string>
+    <string name="replay_hidden_body">The channels with replay are hidden for this profile.</string>
+    <string name="replay_no_source">Add a source to watch replay.</string>
 </resources>

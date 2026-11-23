@@ -2022,4 +2022,19 @@
     <string name="tvch_categories_hint">Jusqu\'à 3 catégories du Direct, chacune dans sa propre chaîne.</string>
     <string name="tvch_add_category">Ajouter une catégorie</string>
     <string name="tvch_no_category">Aucune catégorie disponible</string>
+    <string name="replay_nav">Replay</string>
+    <string name="replay_all_channels">Toutes les chaînes</string>
+    <string name="replay_category">Catégorie</string>
+    <string name="replay_today">Aujourd\'hui</string>
+    <string name="replay_yesterday">Hier</string>
+    <string name="replay_archive_days">Archive : %1$d j</string>
+    <string name="replay_minutes">%1$d min</string>
+    <string name="replay_unavailable">Indisponible</string>
+    <string name="replay_on_now">En cours</string>
+    <string name="replay_pick_channel">Choisissez une chaîne</string>
+    <string name="replay_no_programmes">Aucun programme connu pour ce jour.</string>
+    <string name="replay_empty_title">Pas de replay</string>
+    <string name="replay_empty_body">Votre fournisseur ne propose pas de replay.</string>
+    <string name="replay_hidden_body">Les chaînes avec replay sont masquées pour ce profil.</string>
+    <string name="replay_no_source">Ajoutez une source pour regarder le replay.</string>
 </resources>

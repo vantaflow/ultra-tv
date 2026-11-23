@@ -2083,4 +2083,19 @@
     <string name="tvch_categories_hint">حتى 3 فئات من البث المباشر، كل منها في قناتها الخاصة.</string>
     <string name="tvch_add_category">إضافة فئة</string>
     <string name="tvch_no_category">لا توجد فئة متاحة</string>
+    <string name="replay_nav">إعادة</string>
+    <string name="replay_all_channels">كل القنوات</string>
+    <string name="replay_category">الفئة</string>
+    <string name="replay_today">اليوم</string>
+    <string name="replay_yesterday">أمس</string>
+    <string name="replay_archive_days">الأرشيف: %1$d ي</string>
+    <string name="replay_minutes">%1$d د</string>
+    <string name="replay_unavailable">غير متاح</string>
+    <string name="replay_on_now">يُعرض الآن</string>
+    <string name="replay_pick_channel">اختر قناة</string>
+    <string name="replay_no_programmes">لا توجد برامج معروفة لهذا اليوم.</string>
+    <string name="replay_empty_title">لا توجد إعادة</string>
+    <string name="replay_empty_body">مزوّدك لا يوفّر خدمة الإعادة.</string>
+    <string name="replay_hidden_body">القنوات التي توفّر الإعادة مخفية لهذا الملف الشخصي.</string>
+    <string name="replay_no_source">أضف مصدرًا لمشاهدة الإعادة.</string>
 </resources>
