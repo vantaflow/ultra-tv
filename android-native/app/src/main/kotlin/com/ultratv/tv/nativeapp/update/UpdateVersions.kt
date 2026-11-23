@@ -15,8 +15,17 @@ object UpdateVersions {
         /** Nombre comparable sur une seule échelle : x.y.z sur 10 000 / 100, puis pré-versions sous la stable (99 = stable). */
         val rank: Long get() = (major * 10_000L + minor * 100L + patch) * 100L + (rc?.coerceIn(0, 98) ?: 99)
         val code: Int get() = major * 10_000 + minor * 100 + patch
+        /**
+         * versionCode Android (miroir de `app/build.gradle.kts`) : une pré-version -rcN est STRICTEMENT inférieure à la stable
+         * du même numéro (99). Ex. 1.3.76-rc1 → 1 037 601, 1.3.76 → 1 037 699. Toujours > 10 375 (ancien schéma, 1.3.75).
+         */
+        val androidCode: Int get() = androidVersionCode(major, minor, patch, rc)
         override fun compareTo(other: Version): Int = rank.compareTo(other.rank)
     }
+
+    /** major*1 000 000 + minor*10 000 + patch*100 + (rcN, 1..98 | 99 pour une stable). Mêmes règles dans build.gradle.kts. */
+    fun androidVersionCode(major: Int, minor: Int, patch: Int, rc: Int?): Int =
+        major * 1_000_000 + minor * 10_000 + patch * 100 + (rc?.coerceIn(0, 98) ?: 99)
 
     data class Release(val tag: String, val preRelease: Boolean, val draft: Boolean = false)
 

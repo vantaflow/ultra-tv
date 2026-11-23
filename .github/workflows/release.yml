@@ -87,6 +87,8 @@ jobs:
           ULTRA_LINEAGE: ${{ steps.signing.outputs.lineage }}
         run: |
           chmod +x gradlew
+          # Pré-version « v1.3.76-rc2 » : numéro de RC transmis au build (versionCode strictement inférieur à la stable).
+          case "$GITHUB_REF_NAME" in *-rc[0-9]*) export RC_NUMBER="${GITHUB_REF_NAME##*-rc}" ;; esac
           if [ "${{ steps.signing.outputs.signed }}" = "true" ]; then
             ./gradlew assembleRelease resignRelease --console=plain --stacktrace
           else

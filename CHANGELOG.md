@@ -15,10 +15,16 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 - Lecteur en direct : l'action « Ma liste » est renommée « Favoris », comme la rubrique qu'elle ouvre (les fiches film et série gardent « Ma liste »).
 
 ### Corrigé
+- Écran noir permanent après le passage de la pré-version 1.3.75-rc1 à la 1.3.75 : la base locale rétrogradée (25 → 24) était reconstruite sans profil par défaut, donc « Qui regarde ? » et les préférences n'émettaient jamais. Le profil Principal est désormais recréé à chaque ouverture s'il manque (les appareils déjà touchés sont réparés au lancement suivant).
+- Premier écran : plus jamais un écran vide. Au bout de 3 s, l'écran de chargement ; au bout de 12 s, un écran d'erreur avec « Réessayer » et « Réinitialiser les données locales » (la configuration revient du cloud). Une exception dans les flux de démarrage est journalisée et donne une valeur de repli au lieu d'un blocage.
 - Accueil TV : « Votre catalogue se charge… » n'apparaît que pendant une synchronisation réelle ; une source sans film ni série (direct seul, M3U) n'affiche plus ce message indéfiniment.
 - Couleur d'accent : le schéma Material ne teinte plus les surfaces avec l'accent (surfaceTint neutralisé) ; l'accent reste réservé au focus, aux sélections et aux progressions.
 
+### Technique
+- Numéro de version interne (versionCode) : une pré-version -rcN est désormais strictement inférieure à la stable du même numéro (major×1 000 000 + minor×10 000 + patch×100 + rcN, ou 99 pour une stable ; 1.3.76-rc1 → 1037601, 1.3.76 → 1037699), tous supérieurs à celui de la 1.3.75 (10375). La mise à jour automatique (sans base de données) est inchangée.
+
 ### In English
+- Fixes the permanent black screen after updating from the 1.3.75-rc1 pre-release to 1.3.75 (the app now recreates its default profile); the first screen is never blank again (loading screen, then an error screen with Retry / Reset).
 - Donations: PayPal only (Ko-fi and Liberapay removed). Settings › About › Support Ultra TV opens the PayPal payment link; on TV, the QR code leads to it. The /donate page and the website offer one-time and monthly donations (3, 5 or 10 €).
 - Favourite categories (#249): star a Live, Movies or Series category in Settings › Categories (or from the web dashboard); favourites move to the top of the lists.
 - TV: "Large" and "Extra large" interface sizes now scale like the text (x1.15 / x1.3), and the side menu grows with the text size.

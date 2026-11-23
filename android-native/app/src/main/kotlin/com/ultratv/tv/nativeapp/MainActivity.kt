@@ -507,10 +507,10 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
             val profileGate: com.ultratv.tv.nativeapp.ui.profile.ProfileGateViewModel = hiltViewModel()
             val askProfile by profileGate.needsSelection.collectAsState()
             when {
-                askProfile == null -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+                askProfile == null -> com.ultratv.tv.nativeapp.ui.startup.StartupGateWait { StartupLoading() }
                 askProfile == true && showOnboarding == false -> com.ultratv.tv.nativeapp.ui.profile.WhoIsWatchingScreen()
                 else -> when (showOnboarding) {
-                null -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+                null -> com.ultratv.tv.nativeapp.ui.startup.StartupGateWait { StartupLoading() }
                 true -> {
                     // L'assistant est hors de la racine qui fournit l'OverlayHost : sans le sien,
                     // ses modales (appairage cloud, formulaires) étaient composées DANS le volet
@@ -906,7 +906,7 @@ private fun NavGraphBuilder.screen(
 
 /** Attente sobre (logo + « Chargement… ») pendant que la base répond, au lieu d'un écran noir. */
 @Composable
-private fun StartupLoading() {
+internal fun StartupLoading() {
     Box(Modifier.fillMaxSize().background(com.ultratv.tv.nativeapp.ui.design.Ux.Bg), contentAlignment = androidx.compose.ui.Alignment.Center) {
         Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally, verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(28.design)) {
             com.ultratv.tv.nativeapp.ui.design.LogoMark(96)

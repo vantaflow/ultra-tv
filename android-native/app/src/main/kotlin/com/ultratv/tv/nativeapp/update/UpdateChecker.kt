@@ -117,7 +117,7 @@ object UpdateChecker {
                     RemoteLog.warn(TAG, "no installable APK asset on $tag")
                     return@use null
                 }
-                val info = UpdateInfo(tag, verName, remote.code, choice.apkUrl, notes, choice.sha256Url, choice.apkName, choice.sumsUrl, choice.dmName, choice.dmUrl,
+                val info = UpdateInfo(tag, verName, remote.androidCode, choice.apkUrl, notes, choice.sha256Url, choice.apkName, choice.sumsUrl, choice.dmName, choice.dmUrl,
                     preRelease = remote.isPreRelease || chosen.preRelease, rank = remote.rank)
                 _state.value = info
                 RemoteLog.info(TAG, "update available: $tag (rank ${remote.rank})")
