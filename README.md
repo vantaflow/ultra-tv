@@ -226,7 +226,7 @@ Each [Android release](https://github.com/vantaflow/ultra-tv/releases/latest) pu
 
 `ultratv.dpdns.org/download/android` returns the arm64 APK. In Downloader, enter the code **`5189921`** or one of the short links above. If the install fails, take the 32-bit version.
 
-Not for manual download (kept so that the in-app update of every version still in use keeps working): `UltraTV-debug.apk` (same file as `UltraTV.apk`), the `.dm` startup profiles (see « adb, faster startup » above), the `.sha256` files and `SHA256SUMS.txt` (checksums of every file).
+Not for manual download (kept so that the in-app update of every version still in use keeps working): `UltraTV-debug.apk` (same file as `UltraTV.apk`), the `.dm` startup profiles (see « adb, faster startup » above), `UltraTV-debug.apk.sha256` and `SHA256SUMS.txt` (checksums of every file).
 
 ### Installation impossible (« package problem »)
 

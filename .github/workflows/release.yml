@@ -170,12 +170,9 @@ jobs:
           fi
           cd dist
           # Condensat seul de l'universel : lu par la mise à jour intégrée quand aucun APK par processeur ne convient
-          # (et par les versions ≤ 1.1.0). UltraTV.apk.sha256 n'est plus publié (aucun lecteur ; SHA256SUMS.txt le couvre).
+          # (et par les versions ≤ 1.1.0). Seul .sha256 publié : UltraTV.apk et les noms fixes n'en ont plus (aucun lecteur ; SHA256SUMS.txt les couvre).
           sha256sum UltraTV-debug.apk | awk '{print $1}' > UltraTV-debug.apk.sha256
-          # Condensat des copies à nom fixe par processeur (même format que UltraTV-debug.apk.sha256), pour les liens stables.
-          for abi in arm64-v8a armeabi-v7a android7; do
-            [ -f "UltraTV-$abi.apk" ] && sha256sum "UltraTV-$abi.apk" | awk '{print $1}' > "UltraTV-$abi.apk.sha256"
-          done
+          # Copies à nom fixe (UltraTV-<abi>.apk, UltraTV-android7.apk) : pas de .sha256 séparé (aucun lecteur), SHA256SUMS.txt les couvre.
           sha256sum *.apk $(ls *.dm 2>/dev/null) > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
@@ -204,7 +201,4 @@ jobs:
             dist/*.apk
             dist/*.dm
             dist/UltraTV-debug.apk.sha256
-            dist/UltraTV-arm64-v8a.apk.sha256
-            dist/UltraTV-armeabi-v7a.apk.sha256
-            dist/UltraTV-android7.apk.sha256
             dist/SHA256SUMS.txt

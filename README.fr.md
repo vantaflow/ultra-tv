@@ -228,7 +228,7 @@ Chaque [release Android](https://github.com/vantaflow/ultra-tv/releases/latest) 
 | Fire TV Stick sous Fire OS 6 (Android 7.1) | `UltraTV-<version>-armeabi-v7a-android7.apk` | [`UltraTV-android7.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-android7.apk) | — |
 | Vous ne savez pas, ou autre processeur (x86, émulateur) | `UltraTV.apk` (universel, ≈ 58 Mo), dernier recours | [`UltraTV.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk) | [`ultratv.dpdns.org/download/android-universal`](https://ultratv.dpdns.org/download/android-universal) |
 
-À ne pas télécharger à la main (gardés pour que la mise à jour intégrée de toutes les versions encore utilisées continue de fonctionner) : `UltraTV-debug.apk` (même fichier que `UltraTV.apk`), les profils de démarrage `.dm` (voir « adb, démarrage plus rapide » plus haut), les fichiers `.sha256` et `SHA256SUMS.txt` (sommes de contrôle de tous les fichiers).
+À ne pas télécharger à la main (gardés pour que la mise à jour intégrée de toutes les versions encore utilisées continue de fonctionner) : `UltraTV-debug.apk` (même fichier que `UltraTV.apk`), les profils de démarrage `.dm` (voir « adb, démarrage plus rapide » plus haut), `UltraTV-debug.apk.sha256` et `SHA256SUMS.txt` (sommes de contrôle de tous les fichiers).
 
 `ultratv.dpdns.org/apk` affiche le choix 64 bits / 32 bits / universel (pratique dans Downloader) ; `…/download/android` renvoie directement l'APK arm64. Dans Downloader, saisissez le code **`5189921`** ou l'un des liens courts ci-dessus. Si l'installation échoue, prenez la version 32 bits.
 

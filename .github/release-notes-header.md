@@ -12,7 +12,7 @@ Download **one** APK, the one for your device. Ultra TV already installed? Nothi
 If the install fails, take the 32-bit file (`armeabi-v7a`).
 
 - **Same files under a name that never changes** (for links and the Downloader app): `UltraTV-arm64-v8a.apk`, `UltraTV-armeabi-v7a.apk`, `UltraTV-android7.apk`. Take either name, not both.
-- **Not for manual download**, kept for the in-app update of every version still in use: `UltraTV-debug.apk` (same file as `UltraTV.apk`), the `.dm` startup profiles, the `.sha256` files and `SHA256SUMS.txt` (checksums of every file).
+- **Not for manual download**, kept for the in-app update of every version still in use: `UltraTV-debug.apk` (same file as `UltraTV.apk`), the `.dm` startup profiles, `UltraTV-debug.apk.sha256` and `SHA256SUMS.txt` (checksums of every file, to check a download).
 
 ### Quel fichier télécharger ?
 
@@ -28,6 +28,6 @@ Téléchargez **un seul** APK, celui de votre appareil. Ultra TV déjà install�
 Si l'installation échoue, prenez le fichier 32 bits (`armeabi-v7a`).
 
 - **Mêmes fichiers sous un nom qui ne change jamais** (pour les liens et l'appli Downloader) : `UltraTV-arm64-v8a.apk`, `UltraTV-armeabi-v7a.apk`, `UltraTV-android7.apk`. L'un ou l'autre nom, pas les deux.
-- **À ne pas télécharger à la main**, gardés pour la mise à jour intégrée de toutes les versions encore utilisées : `UltraTV-debug.apk` (même fichier que `UltraTV.apk`), les profils de démarrage `.dm`, les fichiers `.sha256` et `SHA256SUMS.txt` (sommes de contrôle de tous les fichiers).
+- **À ne pas télécharger à la main**, gardés pour la mise à jour intégrée de toutes les versions encore utilisées : `UltraTV-debug.apk` (même fichier que `UltraTV.apk`), les profils de démarrage `.dm`, `UltraTV-debug.apk.sha256` et `SHA256SUMS.txt` (sommes de contrôle de tous les fichiers, pour vérifier un téléchargement).
 
 ---

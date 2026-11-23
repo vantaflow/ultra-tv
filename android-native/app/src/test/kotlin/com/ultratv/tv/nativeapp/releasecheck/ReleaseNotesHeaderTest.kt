@@ -73,4 +73,15 @@ class ReleaseNotesHeaderTest {
         assertTrue("les notes sont toujours tirées du CHANGELOG", s.contains("CHANGELOG.md"))
         assertTrue("le résumé anglais vient de « ### In English »", s.contains("### In English"))
     }
+
+    @Test
+    fun workflow_publie_seulement_les_sommes_lues() {
+        val wf = workflow.readText()
+        // Lus par la mise à jour intégrée : à garder.
+        assertTrue(wf.contains("dist/UltraTV-debug.apk.sha256"))
+        assertTrue(wf.contains("SHA256SUMS.txt"))
+        // Lus par personne (couverts par SHA256SUMS.txt) : plus publiés.
+        listOf("UltraTV.apk.sha256", "UltraTV-arm64-v8a.apk.sha256", "UltraTV-armeabi-v7a.apk.sha256", "UltraTV-android7.apk.sha256")
+            .forEach { assertTrue("« $it » n'est plus publié", !wf.contains("dist/$it")) }
+    }
 }
