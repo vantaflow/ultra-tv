@@ -98,6 +98,13 @@ class HomeLogicTest {
         assertEquals(HomeTopSlot.LOADING, homeTopSlot(false, true, listOf("XTREAM"), supported, hasFailure = false))
     }
 
+    @Test fun homeTopSlot_synchroTerminee_sansHero_pasDeCarteDeChargement() {
+        // Source sans VOD (direct seul, M3U) : aucun hero ne viendra, le message ne doit pas rester affiché.
+        assertEquals(HomeTopSlot.NONE, homeTopSlot(false, true, listOf("M3U"), supported, hasFailure = false, syncing = false))
+        assertEquals(HomeTopSlot.LOADING, homeTopSlot(false, true, listOf("M3U"), supported, hasFailure = false, syncing = true))
+        assertEquals(HomeTopSlot.HERO, homeTopSlot(true, true, listOf("M3U"), supported, hasFailure = false, syncing = false))
+    }
+
     // ── Méta du hero et cartes « Reprendre » ──
 
     @Test fun heroMeta_toutConnu_separateurPoint() {

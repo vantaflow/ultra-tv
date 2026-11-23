@@ -262,13 +262,16 @@ enum class HomeTopSlot { HERO, NO_SOURCE, UNSUPPORTED, FAILURE, LOADING, NONE }
  * (pas de « aucune source » une fraction de seconde) ; puis aucune source → sources toutes non prises en charge
  * → source en erreur → chargement.
  */
-fun homeTopSlot(hasHero: Boolean, loaded: Boolean, providerKinds: List<String>, supportedKinds: Set<String>, hasFailure: Boolean): HomeTopSlot = when {
+fun homeTopSlot(hasHero: Boolean, loaded: Boolean, providerKinds: List<String>, supportedKinds: Set<String>, hasFailure: Boolean, syncing: Boolean = true): HomeTopSlot = when {
     hasHero -> HomeTopSlot.HERO
     !loaded -> HomeTopSlot.NONE
     providerKinds.isEmpty() -> HomeTopSlot.NO_SOURCE
     providerKinds.none { it in supportedKinds } -> HomeTopSlot.UNSUPPORTED
     hasFailure -> HomeTopSlot.FAILURE
-    else -> HomeTopSlot.LOADING
+    // Chargement SEULEMENT pendant une synchro réellement en cours : une source sans film ni série (direct seul, M3U)
+    // n'aura jamais de hero, la carte restait affichée pour toujours ; les rangées Direct suffisent.
+    syncing -> HomeTopSlot.LOADING
+    else -> HomeTopSlot.NONE
 }
 
 /** Méta du hero « 2024 · Drame · ★ 7.8 » ; élément absent masqué, chaîne vide si rien n'est connu. */
