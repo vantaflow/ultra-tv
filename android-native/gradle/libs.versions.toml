@@ -2,7 +2,7 @@
 agp = "9.5.2"
 kotlin = "2.4.21"
 ksp = "2.3.14"
-compose-bom = "2026.11.01"
+compose-bom = "2026.09.00"
 compose-tv-foundation = "1.0.0"
 compose-tv-material = "1.1.0"
 media3 = "1.11.1"
