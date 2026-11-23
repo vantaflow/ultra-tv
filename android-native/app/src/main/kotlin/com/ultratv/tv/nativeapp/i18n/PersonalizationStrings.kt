@@ -134,3 +134,33 @@ fun DesignStrings.homeBlockName(b: HomeBlock): String = when (b) {
     HomeBlock.SHORTCUTS -> homeShortcutsRow
     HomeBlock.TOP10 -> homeTop10
 }
+
+// ── Chaînes de l'écran d'accueil Android TV (Réglages › Affichage, TV seulement) ──
+
+val DesignStrings.tvChannelsLabel get() = tx(R.string.tvch_label)
+val DesignStrings.tvChannelsHint get() = tx(R.string.tvch_hint)
+fun DesignStrings.tvChannelsCount(n: Int) = tx(R.string.tvch_count, n)
+val DesignStrings.tvChannelsSportNeeds get() = tx(R.string.tvch_sport_needs)
+val DesignStrings.tvChannelsCategories get() = tx(R.string.tvch_categories)
+val DesignStrings.tvChannelsCategoriesHint get() = tx(R.string.tvch_categories_hint)
+val DesignStrings.tvChannelsAddCategory get() = tx(R.string.tvch_add_category)
+val DesignStrings.tvChannelsNoCategory get() = tx(R.string.tvch_no_category)
+
+/** Nom d'une chaîne d'accueil dans Réglages (les trois historiques gardent leur nom publié). */
+fun DesignStrings.tvChannelName(c: com.ultratv.tv.nativeapp.data.tv.TvHomeChannel): String = when (c) {
+    com.ultratv.tv.nativeapp.data.tv.TvHomeChannel.RECENT -> recentChannelsName
+    com.ultratv.tv.nativeapp.data.tv.TvHomeChannel.FAVORITES -> tx(R.string.tvch_favorites)
+    com.ultratv.tv.nativeapp.data.tv.TvHomeChannel.NEWS -> newsChannelName
+    com.ultratv.tv.nativeapp.data.tv.TvHomeChannel.NEW_MOVIES -> tx(R.string.tvch_new_movies)
+    com.ultratv.tv.nativeapp.data.tv.TvHomeChannel.NEW_SERIES -> tx(R.string.tvch_new_series)
+    com.ultratv.tv.nativeapp.data.tv.TvHomeChannel.TOP10 -> tx(R.string.tvch_top10)
+    com.ultratv.tv.nativeapp.data.tv.TvHomeChannel.TOP_RATED_MOVIES -> tx(R.string.tvch_top_movies)
+    com.ultratv.tv.nativeapp.data.tv.TvHomeChannel.MY_LIST -> tx(R.string.tvch_my_list)
+    com.ultratv.tv.nativeapp.data.tv.TvHomeChannel.SPORT_LIVE -> tx(R.string.tvch_sport)
+}
+
+/** Nom publié des chaînes activables (sans précision entre parenthèses : « Ma liste », pas « Ma liste (films…) »). */
+fun DesignStrings.tvChannelPublishedName(c: com.ultratv.tv.nativeapp.data.tv.TvHomeChannel): String = when (c) {
+    com.ultratv.tv.nativeapp.data.tv.TvHomeChannel.MY_LIST -> tx(R.string.tvch_my_list).substringBefore(" (").trim()
+    else -> tvChannelName(c)
+}

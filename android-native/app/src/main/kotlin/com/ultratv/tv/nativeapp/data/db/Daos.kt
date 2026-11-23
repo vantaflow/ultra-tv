@@ -597,6 +597,13 @@ interface MovieDao {
     @Query("SELECT * FROM movie WHERE id = :id")
     suspend fun byId(id: Long): MovieEntity?
 
+    /** Chaînes d'accueil Android TV (Ma liste, Top 10) : lot d'identifiants, ordre non garanti. */
+    @Query("SELECT * FROM movie WHERE providerId = :pid AND remoteId IN (:rids)")
+    suspend fun byRemoteIds(pid: Long, rids: List<String>): List<MovieEntity>
+
+    @Query("SELECT * FROM movie WHERE id IN (:ids)")
+    suspend fun byIds(ids: List<Long>): List<MovieEntity>
+
     /** Rapprochement Trakt : colonnes minimales, par tranches (pagination par clé, sans OFFSET). */
     @Query("SELECT id, title, poster, year, rating FROM movie WHERE providerId = :pid AND id > :afterId ORDER BY id LIMIT :limit")
     suspend fun liteChunk(pid: Long, afterId: Long, limit: Int): List<CatalogLite>
@@ -768,6 +775,13 @@ interface SeriesDao {
 
     @Query("SELECT * FROM series WHERE id = :id")
     suspend fun byId(id: Long): SeriesEntity?
+
+    /** Chaînes d'accueil Android TV (Ma liste, Top 10) : lot d'identifiants, ordre non garanti. */
+    @Query("SELECT * FROM series WHERE providerId = :pid AND remoteId IN (:rids)")
+    suspend fun byRemoteIds(pid: Long, rids: List<String>): List<SeriesEntity>
+
+    @Query("SELECT * FROM series WHERE id IN (:ids)")
+    suspend fun byIds(ids: List<Long>): List<SeriesEntity>
 
     /** Rapprochement Trakt : colonnes minimales, par tranches (pagination par clé, sans OFFSET). */
     @Query("SELECT id, title, poster, year, rating FROM series WHERE providerId = :pid AND id > :afterId ORDER BY id LIMIT :limit")

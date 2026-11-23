@@ -8,6 +8,10 @@ import com.ultratv.tv.nativeapp.i18n.channelLogos
 import com.ultratv.tv.nativeapp.i18n.sportSectionHint
 import com.ultratv.tv.nativeapp.i18n.sportSectionLabel
 import com.ultratv.tv.nativeapp.i18n.kindStalker
+import com.ultratv.tv.nativeapp.i18n.sourceEdit
+import com.ultratv.tv.nativeapp.i18n.sourceEditSaved
+import com.ultratv.tv.nativeapp.i18n.sourceEditFailed
+import com.ultratv.tv.nativeapp.i18n.sourceEditExists
 import com.ultratv.tv.nativeapp.i18n.mediaFailed
 import com.ultratv.tv.nativeapp.i18n.mlibHubRowHint
 import com.ultratv.tv.nativeapp.i18n.mlibHubTitle
@@ -102,6 +106,9 @@ import androidx.compose.ui.platform.testTag
 import com.ultratv.tv.nativeapp.i18n.uiSizeLabel
 import com.ultratv.tv.nativeapp.i18n.uiSizeName
 import com.ultratv.tv.nativeapp.i18n.screenEdgesHint
+import com.ultratv.tv.nativeapp.i18n.tvChannelsCount
+import com.ultratv.tv.nativeapp.i18n.tvChannelsHint
+import com.ultratv.tv.nativeapp.i18n.tvChannelsLabel
 import com.ultratv.tv.nativeapp.i18n.screenEdgesLabel
 import com.ultratv.tv.nativeapp.i18n.screenEdgesName
 import com.ultratv.tv.nativeapp.i18n.updateChannel
@@ -145,7 +152,7 @@ import kotlinx.coroutines.withContext
 import java.text.NumberFormat
 import com.ultratv.tv.nativeapp.ui.profile.TechnicalGate
 
-private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, STALKER, JELLYFIN, EMBY, PLEX, NAS, MEDIA_FIND, MEDIA_KIND, CLOUD, PHONE, REMOTE, WORKER, SOURCE_ACTIONS, SOURCE_GUIDE, WORKER_URL, SHARE, RENAME_DEVICE }
+private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, STALKER, JELLYFIN, EMBY, PLEX, NAS, MEDIA_FIND, MEDIA_KIND, CLOUD, PHONE, REMOTE, WORKER, SOURCE_ACTIONS, SOURCE_GUIDE, EDIT_SOURCE, WORKER_URL, SHARE, RENAME_DEVICE }
 /** [technicalOnly] : rubrique ENTIÈREMENT technique, masquée au niveau Simple (aucune aujourd'hui : chacune garde au moins un réglage simple). */
 private enum class Rub(val icon: String, val technicalOnly: Boolean = false) {
     SOURCES("M3 5h18v12H3zM8 21h8M12 17v4"), SYNC("M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"), CATEGORIES("M4 6h16M4 12h16M4 18h10"),
@@ -404,6 +411,11 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, on
     // Adresse du serveur choisi à l'étape 1 de l'assistant « Ma bibliothèque » (préremplit l'étape 2).
     var mediaPrefill by remember { mutableStateOf("") }
     var selected by remember { mutableStateOf<ProviderEntity?>(null) }
+    // « Modifier › Choisir un autre fichier » d'une playlist locale : le fichier choisi est relu dans CETTE source.
+    var replaceFileFor by remember { mutableStateOf<Long?>(null) }
+    // Modification qui changerait de fournisseur : enregistrée seulement après confirmation.
+    var pendingEdit by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val editSavedText = LocalDs.current.sourceEditSaved
     val C = rememberCloudStrings()
     val cloud by vm.cloud.collectAsState()
     val offer by vm.offerShare.collectAsState()
@@ -431,8 +443,10 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, on
                 val display = runCatching { ctx.contentResolver.query(uri, null, null, null, null)?.use { c -> val i = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME); if (i >= 0 && c.moveToFirst()) c.getString(i) else uri.lastPathSegment } }.getOrNull() ?: "Local"
                 display to (ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() }?.toString(Charsets.UTF_8).orEmpty())
             }
-            vm.addM3uLocal("", label, text)
-        }
+            val target = replaceFileFor
+            replaceFileFor = null
+            if (target != null) vm.replaceLocalFile(target, label, text, editSavedText) else vm.addM3uLocal("", label, text)
+        } else replaceFileFor = null
     }
 
     PaneTitle(D.rubSources, D.sourcesSubtitle)
@@ -634,13 +648,38 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, on
             val linked = vm.cloudIdOf(p.id) != null
             val supported = p.kind in SUPPORTED_KINDS
             val opts = buildList {
-                if (supported) { add("default" to D.setDefault); add("sync" to D.syncNow); if (!com.ultratv.tv.nativeapp.data.mediaserver.MediaServer.isMediaKind(p.kind) && !com.ultratv.tv.nativeapp.data.nas.Nas.isNasKind(p.kind)) add("guide" to D.sourceGuide) }
+                if (supported) { add("default" to D.setDefault); if (p.kind in com.ultratv.tv.nativeapp.data.repo.SourceEdit.EDITABLE_KINDS) add("edit" to D.sourceEdit); add("sync" to D.syncNow); if (!com.ultratv.tv.nativeapp.data.mediaserver.MediaServer.isMediaKind(p.kind) && !com.ultratv.tv.nativeapp.data.nas.Nas.isNasKind(p.kind)) add("guide" to D.sourceGuide) }
                 if (supported && shareable && !linked) add("share" to C.shareSource)
                 if (supported && shareable && linked) { add("share" to C.editSharing); add("stop" to C.stopSharing) }
                 add("delete" to D.deleteSource)
             }
             ChoiceDialog(p.name, opts, if (supported) null else D.unsupportedSourceHint,
-                onPick = { k -> when (k) { "default" -> vm.setDefault(p.id); "sync" -> vm.resync(p.id); "delete" -> vm.delete(p.id); "stop" -> vm.stopSharing(p.id) }; dialog = when (k) { "share" -> OpenDialog.SHARE; "guide" -> OpenDialog.SOURCE_GUIDE; else -> OpenDialog.NONE } }, onDismiss = { dialog = OpenDialog.NONE })
+                onPick = { k -> when (k) { "default" -> vm.setDefault(p.id); "sync" -> vm.resync(p.id); "delete" -> vm.delete(p.id); "stop" -> vm.stopSharing(p.id) }; dialog = when (k) { "share" -> OpenDialog.SHARE; "guide" -> OpenDialog.SOURCE_GUIDE; "edit" -> OpenDialog.EDIT_SOURCE; else -> OpenDialog.NONE } }, onDismiss = { dialog = OpenDialog.NONE })
+        }
+        // « Modifier » : formulaire d'ajout rouvert et prérempli ; la MÊME source est mise à jour (identifiant local gardé),
+        // puis synchronisée. Autre fournisseur : confirmation « Remplacer le catalogue ? » avant d'enregistrer.
+        OpenDialog.EDIT_SOURCE -> selected?.let { p ->
+            val initial = remember(p.id) { vm.editPrefill(p) }
+            var checking by remember { mutableStateOf(false) }
+            val texts = SettingsViewModel.EditTexts(D.sourceEditSaved, D.sourceEditFailed, D.sourceEditExists)
+            val close = { dialog = OpenDialog.NONE }
+            fun go(block: suspend com.ultratv.tv.nativeapp.data.repo.ProviderRepository.() -> com.ultratv.tv.nativeapp.data.repo.ProviderRepository.EditResult) {
+                checking = true
+                vm.applyEdit(texts, { ok -> checking = false; if (ok) close() }, block)
+            }
+            fun submit(url: String, user: String, run: () -> Unit) { if (vm.editReplacesCatalog(p, url, user)) pendingEdit = run else run() }
+            when (p.kind) {
+                "XTREAM" -> XtreamDialog(close, initial, checking) { n, u, user, pw -> submit(u, user) { go { editXtream(p.id, n, u, user, pw) } } }
+                "M3U" -> M3uDialog(close, initial, checking) { n, u -> submit(u, "") { go { editM3u(p.id, n, u) } } }
+                "M3U_LOCAL" -> M3uLocalEditDialog(initial, close, onPickFile = { replaceFileFor = p.id; close(); pickFile.launchOrToast(arrayOf("*/*"), D.filePickerUnavailable) }) { n -> go { editM3uLocal(p.id, n) } }
+                "STALKER" -> StalkerDialog(close, busy = checking, initial = initial) { n, u, mac, login, pw, identity -> submit(u, mac) { go { editStalker(p.id, n, u, mac, login, pw, identity) } } }
+                "JELLYFIN", "EMBY" -> MediaServerDialog(if (p.kind == "EMBY") "Emby" else "Jellyfin", close, busy = checking, initial = initial) { n, u, user, pw, key ->
+                    submit(u, p.username) { go { editMediaServer(p.id, n, u, user, pw, key) } }
+                }
+                "NAS" -> NasDialog(close, busy = checking, initial = initial) { n, addr, user, pw -> submit(addr, user) { go { editNas(p.id, n, addr, user, pw) } } }
+                else -> Unit
+            }
+            pendingEdit?.let { run -> ReplaceCatalogDialog(onConfirm = { pendingEdit = null; run() }, onDismiss = { pendingEdit = null }) }
         }
         // « Guide de cette source » : adresse XMLTV propre à la source (remplace ou complète celui du fournisseur), vérifiée avant l'enregistrement.
         OpenDialog.SOURCE_GUIDE -> selected?.let { p ->
@@ -828,6 +867,11 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         SwitchPrefRow(D.channelNumbers, p.showChannelNumbers) { app.setShowChannelNumbers(it) }
         SwitchPrefRow(D.channelLogos, p.showChannelLogos) { app.setShowChannelLogos(it) }
         SwitchPrefRow(D.sportSectionLabel, p.sportSection, hint = D.sportSectionHint) { app.setSportSection(it) }
+        // TV seulement : chaînes publiées sur l'écran d'accueil Android TV / Google TV.
+        if (!com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
+            val tvch = remember(p.tvHomeChannels) { com.ultratv.tv.nativeapp.data.tv.TvChannelsChoice.parse(p.tvHomeChannels) }
+            PrefRow(D.tvChannelsLabel, D.tvChannelsCount(tvch.count(p.sportSection)), hint = D.tvChannelsHint) { choice = "tvch" }
+        }
         // (« Colonne des chaînes du guide » retiré : largeur normale pour tous, un réglage de moins.)
         SwitchPrefRow(D.launchAtBoot, p.launchAtBoot) { app.setLaunchAtBoot(it) }
         val start = com.ultratv.tv.nativeapp.nav.StartScreen.parse(p.startScreen, p.autoPlayLastOnLaunch)
@@ -861,6 +905,16 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         "edges" -> ChoiceDialog(D.screenEdgesLabel, com.ultratv.tv.nativeapp.ui.design.ScreenEdges.entries.map { it to D.screenEdgesName(it) }, com.ultratv.tv.nativeapp.ui.design.ScreenEdges.parse(p.screenEdges), { app.setScreenEdges(it.key); choice = "" }, { choice = "" })
         "uisize" -> ChoiceDialog(D.uiSizeLabel, com.ultratv.tv.nativeapp.ui.design.UiSize.entries.map { it to D.uiSizeName(it) }, com.ultratv.tv.nativeapp.ui.design.UiSize.parse(p.uiSize), { app.setUiSize(it.key); choice = "" }, { choice = "" })
         "text" -> ChoiceDialog(D.textSizeLabel, TextSize.entries.map { it to D.textSizeName(it) }, TextSize.parse(p.textSize), { app.setTextSize(it.key); choice = "" }, { choice = "" })
+        "tvch" -> {
+            var cats by remember { mutableStateOf<Pair<Long, List<Pair<String, String>>>?>(null) }
+            androidx.compose.runtime.LaunchedEffect(Unit) { cats = panes.tvChannelCategories() ?: (-1L to emptyList()) }
+            cats?.let { (pid, list) ->
+                TvChannelsDialog(
+                    com.ultratv.tv.nativeapp.data.tv.TvChannelsChoice.parse(p.tvHomeChannels), p.sportSection, pid.takeIf { it >= 0 }, list,
+                    onSave = { app.setTvHomeChannels(it) }, onDismiss = { choice = "" },
+                )
+            }
+        }
         "home" -> HomeRowsDialog(com.ultratv.tv.nativeapp.ui.home.HomeLayout.parse(p.homeOrder, p.homeHidden), onSave = { app.setHomeLayout(it) }, onDismiss = { choice = "" })
         "shortcuts" -> ShortcutsDialog(
             com.ultratv.tv.nativeapp.ui.mobile.bottomTabRoutes(p.bottomTabs, p.sportSection), p.sportSection,

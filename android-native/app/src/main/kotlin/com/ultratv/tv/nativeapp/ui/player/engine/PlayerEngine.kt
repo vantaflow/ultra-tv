@@ -164,5 +164,7 @@ interface PlayerEngine {
     fun onVideoDetaching() {}
     /** La vue vidéo est rattachée à son nouveau parent (après la création de la nouvelle surface). */
     fun onVideoReattached() {}
+    /** Vue vidéo à l'écran avec une surface de rendu créée (voir [FrameProbe.surfaceReady]). */
+    val surfaceReady: Boolean get() = FrameProbe.surfaceReady(view)
     fun release()
 }

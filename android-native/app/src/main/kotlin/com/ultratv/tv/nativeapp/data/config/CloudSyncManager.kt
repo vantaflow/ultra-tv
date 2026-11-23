@@ -715,6 +715,24 @@ class CloudSyncManager @Inject constructor(
         runCatching { if (flushPendingDeletes(base)) links.resetVersion() }
     }
 
+    /**
+     * Source liée MODIFIÉE sur cet appareil (Réglages › Sources › Modifier) : nouvelle adresse et nouveaux identifiants
+     * envoyés au compte, même identifiant cloud et mêmes destinataires. Sans cet envoi, la synchro cloud suivante
+     * (le cloud gagne pour l'accès) remettait l'ancienne adresse. Source non liée : rien n'est envoyé.
+     */
+    suspend fun pushEdited(localId: Long): Boolean = mutex.withLock {
+        val base = workerBase() ?: return false
+        val cid = links.cloudIdOf(localId) ?: return false
+        val p = repo.byId(localId) ?: return false
+        if (p.kind != "XTREAM" && p.kind != "M3U" && p.kind != "STALKER") return false
+        return try {
+            source.withToken(base) { t -> client.put(base, t, CloudSyncLogic.uploadBody(localModel(p), links.assignOf(cid), cid)) }
+            links.link(localId, cid, p.name, links.sharedWith(cid))
+            links.resetVersion()
+            true
+        } catch (t: Throwable) { false }
+    }
+
     /** Retire cet appareil de la source cloud (la source locale reste, redevient privée). */
     suspend fun stopSharing(localId: Long): Boolean = mutex.withLock {
         val base = workerBase() ?: return false

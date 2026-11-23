@@ -118,6 +118,8 @@ class SharedLiveSession(
         val s = cur ?: create().also { session = it }
         // Aperçu du Guide seulement (le Direct garde son comportement) : un seul essai, sans cascade de replis.
         s.previewMode = gateAudioOnPicture
+        // Direct comme Guide : « aucune image » jugé seulement une fois la vidéo dans l'encadré (surface créée).
+        s.waitForSurface = true
         lastPreviewStartMs = now
         previewMuted = muted
         // Nouveau flux : l'image affichée (s'il y en avait une) était celle du précédent.
@@ -142,6 +144,7 @@ class SharedLiveSession(
         session?.muted = false
         // Plein écran : replis habituels du lecteur (autre décodeur, autre moteur).
         session?.previewMode = false
+        session?.waitForSurface = false
         owner = LiveOwner.FULLSCREEN; promoted = instant
         orphanJob = scope.launch { delay(adoptTimeoutMs); if (owner == LiveOwner.FULLSCREEN && pendingAdoption) stop() }
         pendingAdoption = true
@@ -162,6 +165,7 @@ class SharedLiveSession(
         promoted = false; pendingAdoption = false; orphanJob?.cancel()
         s.muted = false
         s.previewMode = false
+        s.waitForSurface = false
         _channelKey.value = key
         return LiveAdoption(s, playing)
     }
@@ -177,6 +181,7 @@ class SharedLiveSession(
         rowKey = _channelKey.value
         s.muted = previewMutedNow()
         s.previewMode = gateAudioOnPicture
+        s.waitForSurface = true
         if (hosts == 0) armOrphan()
     }
 

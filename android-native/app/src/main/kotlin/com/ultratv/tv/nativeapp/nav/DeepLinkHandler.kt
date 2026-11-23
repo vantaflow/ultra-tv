@@ -7,21 +7,34 @@ import com.ultratv.tv.nativeapp.data.db.MovieDao
 import com.ultratv.tv.nativeapp.data.db.SeriesDao
 import com.ultratv.tv.nativeapp.data.repo.LivePlaybackQueue
 import com.ultratv.tv.nativeapp.data.repo.PlaybackContext
-import com.ultratv.tv.nativeapp.data.repo.ProviderRepository
+import com.ultratv.tv.nativeapp.data.db.CategoryDao
+import com.ultratv.tv.nativeapp.data.parental.DeepLinkLocks
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Exécute un [DeepLink] : prépare le contexte de lecture et demande à l'application d'ouvrir l'écran. */
+/**
+ * Exécute un [DeepLink] : prépare le contexte de lecture et demande à l'application d'ouvrir l'écran.
+ * Contrôle parental : film ou épisode d'une catégorie verrouillée → code demandé par le lecteur avant toute lecture
+ * ([DeepLinkLocks]) ; chaîne verrouillée → code demandé par le lecteur (ParentalGate.admit) ; fiche verrouillée → panneau
+ * verrouillé de la fiche (code exigé).
+ */
 @Singleton
 class DeepLinkHandler @Inject constructor(
     private val channelDao: ChannelDao,
-    private val provider: ProviderRepository,
     private val playback: PlaybackContext,
     private val zapQueue: LivePlaybackQueue,
     private val movieDao: MovieDao,
     private val seriesDao: SeriesDao,
     private val episodeDao: EpisodeDao,
+    private val categoryDao: CategoryDao,
 ) {
+    /** Le titre de cette catégorie exige-t-il le code ? Verrous illisibles : oui (le code plutôt que laisser passer). */
+    private suspend fun locked(pid: Long, kind: String, categoryId: String?): Boolean {
+        if (categoryId.isNullOrEmpty()) return false
+        val ids = runCatching { categoryDao.lockedIds(pid, kind).toSet() }.getOrNull() ?: return true
+        return DeepLinkLocks.isLocked(categoryId, ids)
+    }
+
     /** Renvoie false si la cible n'existe plus dans le catalogue (source supprimée, chaîne retirée). */
     suspend fun handle(link: DeepLink): Boolean = when (link) {
         is DeepLink.PlayLive -> playLive(link.providerId, link.remoteId)
@@ -50,6 +63,7 @@ class DeepLinkHandler @Inject constructor(
     private suspend fun playMovie(providerId: Long, remoteId: String): Boolean {
         val m = movieDao.byRemoteId(providerId, remoteId) ?: return false
         val url = m.streamUrl
+        if (locked(m.providerId, "MOVIE", m.categoryId)) DeepLinkLocks.require(url, m.title)
         playback.set(PlaybackContext.Item(m.providerId, "MOVIE", m.remoteId, m.name, m.poster, url))
         StartupNav.pending.value = StartupNav.Pending(url, m.name)
         return true
@@ -59,6 +73,8 @@ class DeepLinkHandler @Inject constructor(
         val e = episodeDao.byRemoteId(providerId, remoteId) ?: return false
         val series = seriesDao.byId(e.seriesId)
         val url = e.streamUrl
+        // Épisode : la catégorie qui compte est celle de sa série.
+        if (series != null && locked(series.providerId, "SERIES", series.categoryId)) DeepLinkLocks.require(url, series.title)
         playback.set(PlaybackContext.Item(providerId, "EPISODE", e.remoteId, e.title, e.image ?: series?.poster, url, parentRemoteId = series?.remoteId))
         StartupNav.pending.value = StartupNav.Pending(url, e.title)
         return true

@@ -172,6 +172,8 @@ data class UserPrefs(
     val lastScreen: String = "",
     /** Rubrique Sport (entrée de menu + rangée d'accueil « Sport en direct ») : désactivée par défaut, activée dans Réglages › Affichage. */
     val sportSection: Boolean = false,
+    /** Chaînes de l'écran d'accueil Android TV (voir TvChannelsChoice) ; null = choix par défaut (les 3 historiques). */
+    val tvHomeChannels: String? = null,
     /** Mode simple : grandes tuiles à la place de l'accueil (surchargé PAR PROFIL, voir ProfilePrefs.simpleMode). */
     val simpleMode: Boolean = false,
     // ── Écrans Films / Séries ──
@@ -265,6 +267,7 @@ class UserPreferencesStore @Inject constructor(
         val startScreen = stringPreferencesKey("start_screen")
         val lastScreen = stringPreferencesKey("last_screen")
         val sportSection = booleanPreferencesKey("sport_section")
+        val tvHomeChannels = stringPreferencesKey("tv_home_channels")
         val catalogSource = stringPreferencesKey("catalog_source")
         val catalogLayout = stringPreferencesKey("catalog_layout")
         val catalogColumns = intPreferencesKey("catalog_columns")
@@ -326,6 +329,7 @@ class UserPreferencesStore @Inject constructor(
             accent = p[Keys.accent] ?: "red", textSize = p[Keys.textSize] ?: "normal", uiSize = p[Keys.uiSize] ?: "normal", screenEdges = p[Keys.screenEdges] ?: "small", simpleSize = p[Keys.simpleSize] ?: "normal", animations = p[Keys.animations] ?: "auto",
             homeOrder = p[Keys.homeOrder] ?: "", homeHidden = p[Keys.homeHidden] ?: "", startScreen = p[Keys.startScreen] ?: "", lastScreen = p[Keys.lastScreen] ?: "",
             sportSection = p[Keys.sportSection] ?: false,
+            tvHomeChannels = p[Keys.tvHomeChannels],
             catalogSource = p[Keys.catalogSource] ?: "provider", catalogLayout = p[Keys.catalogLayout] ?: "split",
             catalogColumns = p[Keys.catalogColumns] ?: 0, catalogSort = p[Keys.catalogSort] ?: 0,
         )
@@ -399,6 +403,7 @@ class UserPreferencesStore @Inject constructor(
     /** Mode simple du profil COURANT. */
     suspend fun setSimpleMode(v: Boolean) = profiles.putPref(com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.SIMPLE_MODE, v.toString())
     suspend fun setSportSection(v: Boolean) = update { it[Keys.sportSection] = v }
+    suspend fun setTvHomeChannels(v: String) = update { it[Keys.tvHomeChannels] = v }
     suspend fun setCatalogSource(v: String) = update { it[Keys.catalogSource] = v }
     suspend fun setCatalogLayout(v: String) = update { it[Keys.catalogLayout] = v }
     suspend fun setCatalogColumns(v: Int) = update { it[Keys.catalogColumns] = v }
