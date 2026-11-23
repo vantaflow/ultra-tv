@@ -6,6 +6,9 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 
 ## [Non publié]
 
+### Ajouté
+- Réglages › Messages : bouton « Rafraîchir » en tête de la rubrique, qui va chercher tout de suite les annonces de l'équipe au serveur (télécommande et toucher). « Actualisation… » pendant l'appel (un seul appel à la fois), puis la liste à jour ; message clair hors ligne ou serveur injoignable, avec « Réessayer » ; « Dernière vérification : HH:MM » affichée (chiffres latins en arabe). Une annonce reçue ainsi suit les règles habituelles (affichée une fois par appareil, niveaux, ciblage version / appareil / langue) et fonctionne sans appairage ; la vérification automatique toutes les 15 minutes est inchangée.
+
 ### Modifié
 - Releases GitHub : cinq fichiers de moins à chaque version (12 au lieu de 17) et des notes plus claires. Le tableau « Which file should I download? / Quel fichier télécharger ? » en tête dit quel APK prendre selon l'appareil, quels noms sont les mêmes fichiers (noms fixes pour les liens) et lesquels ignorer (mise à jour intégrée, sommes de contrôle) ; un résumé en anglais (`### In English` du CHANGELOG) précède les notes en français. Retirés : `UltraTV.apk.sha256` et les `.sha256` des noms fixes `UltraTV-arm64-v8a.apk`, `UltraTV-armeabi-v7a.apk`, `UltraTV-android7.apk` (lus par personne, couverts par `SHA256SUMS.txt`), et le `.dm` de l'APK android7 (profil Android 12+, jamais lu sous Android 7). Tous les autres noms restent publiés : la mise à jour intégrée de chaque version encore en circulation, Kairo, le Worker et les liens existants en dépendent.
 

@@ -282,6 +282,14 @@ class DesignStrings(val lang: AppLang) {
     val announcementUpdate get() = tx(R.string.ds_announcement_update)
     val rubMessages get() = tx(R.string.ds_rub_messages)
     val noMessages get() = tx(R.string.ds_no_messages)
+    /** Réglages › Messages : bouton « Rafraîchir » (lecture immédiate des annonces) et ses états. */
+    val messagesRefresh get() = tx(R.string.ds_messages_refresh)
+    val messagesRefreshing get() = tx(R.string.ds_messages_refreshing)
+    val messagesRetry get() = tx(R.string.ds_messages_retry)
+    val messagesOffline get() = tx(R.string.ds_messages_offline)
+    val messagesUnreachable get() = tx(R.string.ds_messages_unreachable)
+    /** « Dernière vérification : HH:MM » (heure déjà formatée, chiffres latins). */
+    fun messagesLastCheck(time: String) = tx(R.string.ds_messages_last_check, time)
     val langSystem get() = tx(R.string.ds_lang_system)
     /** Nom d'une langue dans les choix : chaque langue dans sa propre langue, sauf « Système », traduit. */
     fun langName(l: AppLang) = if (l == AppLang.System) langSystem else l.displayName

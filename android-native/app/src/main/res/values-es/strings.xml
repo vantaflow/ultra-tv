@@ -215,6 +215,12 @@
     <string name="ds_announcement_update">Actualizar</string>
     <string name="ds_rub_messages">Mensajes</string>
     <string name="ds_no_messages">Aún no hay mensajes. Los avisos del servicio aparecerán aquí.</string>
+    <string name="ds_messages_refresh">Actualizar</string>
+    <string name="ds_messages_refreshing">Actualizando…</string>
+    <string name="ds_messages_retry">Reintentar</string>
+    <string name="ds_messages_offline">Sin conexión. Comprueba la conexión y vuelve a intentarlo.</string>
+    <string name="ds_messages_unreachable">No se puede contactar con el servidor ahora mismo. Inténtalo de nuevo en un momento.</string>
+    <string name="ds_messages_last_check">Última comprobación: %1$s</string>
     <string name="ds_lang_system">Sistema (auto)</string>
     <string name="ds_guide_no_data_yet">Aún no hay programas para este día: el proveedor solo publica las próximas horas.</string>
     <string name="ds_guide_no_data">La guía de programas aún se está cargando.</string>

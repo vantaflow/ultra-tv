@@ -59,7 +59,10 @@ import javax.inject.Inject
  * are counted once per device.
  */
 @HiltViewModel
-class AnnouncementViewModel @Inject constructor(private val repo: AnnouncementRepository) : ViewModel() {
+class AnnouncementViewModel @Inject constructor(
+    private val repo: AnnouncementRepository,
+    private val feed: com.ultratv.tv.nativeapp.data.announce.AnnouncementFeed,
+) : ViewModel() {
     private val _current = MutableStateFlow<Announcement?>(null)
     val current: StateFlow<Announcement?> = _current.asStateFlow()
     /** Recherche de mise à jour demandée par le bouton « Mettre à jour » : le dialogue de mise à jour s'affiche. */
@@ -76,6 +79,15 @@ class AnnouncementViewModel @Inject constructor(private val repo: AnnouncementRe
         if (started) return
         started = true
         audience = if (touch) "mobile" else "tv"
+
+        // Alertes partagées : celles reçues par « Rafraîchir » (Réglages › Messages) passent ici aussi, avec les mêmes
+        // règles (une fois par appareil, urgentes une fois par lancement) — rien n'est montré en double.
+        viewModelScope.launch {
+            feed.items.collect { got ->
+                items = got
+                if (_current.value == null) _current.value = AnnouncementPlan.next(items, repo.seen(), shownThisLaunch)
+            }
+        }
 
         // Re-check immediately when the activity returns to the foreground instead of waiting
         // for the next periodic tick. The StateFlow emits the current visibility on collection.
@@ -97,11 +109,9 @@ class AnnouncementViewModel @Inject constructor(private val repo: AnnouncementRe
         val now = System.currentTimeMillis()
         if (now - lastRefreshAt < MIN_REFRESH_INTERVAL_MS) return@withLock
         lastRefreshAt = now
-        val got = repo.fetch(audience)
-        if (got != null) {
-            items = got
-            repo.saveSeen(AnnouncementPlan.pruneSeen(repo.seen(), got, true))
-        }
+        // Lecture partagée (le flux nettoie les identifiants « vus » et publie les alertes, collectées dans start()).
+        val got = feed.check(audience)
+        if (got is com.ultratv.tv.nativeapp.data.announce.FetchOutcome.Ok) items = got.items
         if (_current.value == null) _current.value = AnnouncementPlan.next(items, repo.seen(), shownThisLaunch)
     }
 
@@ -241,11 +251,34 @@ private fun AnnouncementDialog(shown: Announcement, vm: AnnouncementViewModel) {
 
 /** Rubrique « Messages » des Réglages : les alertes déjà reçues sur cet appareil, la plus récente d'abord. */
 @Composable
-fun AnnouncementHistoryPane(vm: AnnouncementViewModel = hiltViewModel()) {
+fun AnnouncementHistoryPane(vm: AnnouncementMessagesViewModel = hiltViewModel()) {
     val D = com.ultratv.tv.nativeapp.i18n.LocalDs.current
-    val list = remember { vm.history() }
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    val list by vm.history.collectAsState()
+    val ui by vm.ui.collectAsState()
     val fmt = remember(D.lang) { java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM, com.ultratv.tv.nativeapp.i18n.DisplayLocale.of(D.lang)) }
     com.ultratv.tv.nativeapp.ui.design.PaneTitle(D.rubMessages)
+    // « Rafraîchir » : lecture immédiate des annonces (mêmes règles d'affichage que la vérification automatique, qui
+    // continue toutes les 15 minutes). Pendant l'appel, le bouton garde le focus mais n'agit plus (pas de double appel).
+    Row(Modifier.padding(bottom = 18.design), horizontalArrangement = Arrangement.spacedBy(24.design), verticalAlignment = Alignment.CenterVertically) {
+        val label = when {
+            ui.refreshing -> D.messagesRefreshing
+            ui.error != null -> D.messagesRetry
+            else -> D.messagesRefresh
+        }
+        PillButton(label, onClick = { vm.refreshNow(if (touch) "mobile" else "tv") }, bg = if (ui.refreshing) Ux.Surface else Ux.Surface2)
+        ui.lastCheckAt?.let { at ->
+            // EpgClock.wall : chiffres latins dans toutes les langues (arabe compris).
+            Text(D.messagesLastCheck(com.ultratv.tv.nativeapp.ui.common.EpgClock.wall(at)), color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1)
+        }
+    }
+    ui.error?.let { e ->
+        Text(
+            if (e == RefreshError.OFFLINE) D.messagesOffline else D.messagesUnreachable,
+            color = Ux.Accent, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx,
+            modifier = Modifier.padding(bottom = 18.design),
+        )
+    }
     if (list.isEmpty()) {
         Text(D.noMessages, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 32.spx)
         return
