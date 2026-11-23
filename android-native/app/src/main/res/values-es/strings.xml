@@ -1990,6 +1990,8 @@
     <string name="ds_settings_level_expert_hint">Se muestran todos los ajustes, incluidos los técnicos.</string>
     <string name="cat_lock_col">Código</string>
     <string name="cat_lock">Bloquear esta categoría con el código parental</string>
+    <string name="cat_fav">Marcar esta categoría como favorita</string>
+    <string name="cat_unfav">Quitar esta categoría de favoritas</string>
     <string name="cat_unlock">Desbloquear esta categoría</string>
     <string name="cat_lock_need_pin">Define primero un código parental (Ajustes › Control parental): sin él, una categoría bloqueada no está protegida</string>
     <string name="rail_switch_source">Cambiar de fuente</string>

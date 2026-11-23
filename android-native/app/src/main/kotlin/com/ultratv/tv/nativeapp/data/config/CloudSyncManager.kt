@@ -66,6 +66,7 @@ class CloudSyncManager @Inject constructor(
     private val handoffs: HandoffInbox,
     private val profileSwitcher: com.ultratv.tv.nativeapp.data.repo.ProfileSwitcher,
     private val profileSources: dagger.Lazy<com.ultratv.tv.nativeapp.data.profile.ProfileSources>,
+    private val favCats: com.ultratv.tv.nativeapp.data.prefs.FavoriteCategoriesStore,
 ) {
     private val mutex = Mutex()
     /** Premier relevé de chaque lancement : toujours complet (jamais en 304), pour réparer un état où une source du site manque ici. */
@@ -377,7 +378,9 @@ class CloudSyncManager @Inject constructor(
         }
         val firstId = names.keys.minOrNull()
         val legacyOrder = DisplayPrefs.KINDS.keys.associateWith { k -> orders.filter { it.profileId == firstId && it.kind == k }.sortedBy { it.position }.map { it.remoteId } }
-        return LocalDisplayPrefs(selected, p.includeMulti, p.includeUnknownLang, disabled, legacyOrder, categories.hiddenOf(localId), chOrder, pHidden, pHiddenCh, pOrder)
+        // Favorites : publiées seulement si l'état est établi sur cet appareil (reçu du cloud ou modifié ici) ; sinon null = rien envoyé.
+        val fav = if (favCats.isKnown(localId)) DisplayPrefs.KINDS.entries.associate { (k, w) -> w to favCats.ids(localId, k).toList() } else null
+        return LocalDisplayPrefs(selected, p.includeMulti, p.includeUnknownLang, disabled, legacyOrder, categories.hiddenOf(localId), chOrder, pHidden, pHiddenCh, pOrder, fav)
     }
 
     /** Applique les réglages cloud plus récents que ceux déjà appliqués/publiés (source par source). */
@@ -394,6 +397,8 @@ class CloudSyncManager @Inject constructor(
 
     private suspend fun applyRemote(localId: Long, cloudId: String, remote: CloudPrefs, isActive: Boolean) {
         val dao = db.categoryDao()
+        // Catégories favorites (seulement si transmises ; indépendantes du catalogue : de simples identifiants, appliquées tout de suite).
+        remote.favCats?.let { favCats.replaceFromCloud(localId, it, DisplayPrefs.KINDS) }
         // Catalogue pas encore chargé (appairage tout neuf) : on garde ces réglages et on les applique à la fin de la synchro.
         if (DisplayPrefs.KINDS.keys.all { dao.remoteIds(localId, it).isEmpty() }) {
             links.setPendingPrefs(cloudId, DisplayPrefs.toJson(remote))

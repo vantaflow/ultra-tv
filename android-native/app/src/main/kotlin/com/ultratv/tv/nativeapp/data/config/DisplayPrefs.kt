@@ -28,6 +28,8 @@ data class CloudPrefs(
     val pHiddenCh: List<ProfileChannelsShare>? = null,
     /** Ordre des catégories PAR PROFIL (nom) ; réutilise [ProfileHiddenShare] (p, type, identifiants dans l'ordre) ; `null` = non transmis. */
     val pOrder: List<ProfileHiddenShare>? = null,
+    /** Catégories FAVORITES par type (clé du protocole → identifiants du fournisseur) ; `null` = non lu / non transmis : jamais renvoyé. */
+    val favCats: Map<String, List<String>>? = null,
 )
 
 /** Chaînes masquées par le seul profil [p] (nom). */
@@ -52,6 +54,8 @@ data class LocalDisplayPrefs(
     val pHidden: List<ProfileHiddenShare> = emptyList(),
     val pHiddenCh: List<ProfileChannelsShare> = emptyList(),
     val pOrder: List<ProfileHiddenShare> = emptyList(),
+    /** Favorites par type (clé du protocole) ; `null` = état jamais lu ni modifié sur cet appareil : on n'en publie pas. */
+    val favCats: Map<String, List<String>>? = null,
 )
 
 object DisplayPrefs {
@@ -91,6 +95,7 @@ object DisplayPrefs {
         pHidden = p.pHidden.sortedWith(compareBy({ it.p }, { it.k })),
         pHiddenCh = p.pHiddenCh.filter { it.ch.isNotEmpty() }.sortedBy { it.p.lowercase() },
         pOrder = p.pOrder.sortedWith(compareBy({ it.p }, { it.k })),
+        favCats = p.favCats?.let { f -> KINDS.values.associateWith { k -> f[k].orEmpty().distinct().sorted() } },
     )
 
     /** Empreinte stable de l'état (sans l'horodatage) : évite de republier ce qu'on vient d'appliquer ou d'envoyer. */
@@ -104,11 +109,14 @@ object DisplayPrefs {
         val phi = (p.pHidden ?: emptyList()).joinToString("|") { it.p.lowercase() + "/" + it.k + ":" + it.ids.sorted().joinToString(",") }
         val pch = (p.pHiddenCh ?: emptyList()).joinToString("|") { it.p.lowercase() + ":" + it.ch.map { h -> h.id }.sorted().joinToString(",") }
         val por = (p.pOrder ?: emptyList()).joinToString("|") { it.p.lowercase() + "/" + it.k + ":" + it.ids.joinToString(",") }
-        return "$langs#$dis#$ord#$hid#$cho#$phi#$pch#$por".hashCode().toString(16) + ":" + (langs.length + dis.length + ord.length + hid.length + cho.length + phi.length + pch.length + por.length)
+        // Favorites : ajoutées SEULEMENT si lues (sinon l'empreinte reste celle d'avant, pas de republication à la mise à jour).
+        val fav = p.favCats?.let { f -> "#" + KINDS.values.joinToString("|") { k -> k + ":" + (f[k] ?: emptyList()).sorted().joinToString(",") } }.orEmpty()
+        return "$langs#$dis#$ord#$hid#$cho#$phi#$pch#$por$fav".hashCode().toString(16) + ":" + (langs.length + dis.length + ord.length + hid.length + cho.length + phi.length + pch.length + por.length + fav.length)
     }
 
     fun tooLarge(p: CloudPrefs): Boolean = p.disabled.values.any { it.size > MAX_IDS } || (p.order?.values?.any { it.size > MAX_IDS } ?: false) || (p.hidden?.size ?: 0) > MAX_IDS ||
-        (p.pHiddenCh?.any { it.ch.size > MAX_IDS } ?: false) || (p.pOrder?.any { it.ids.size > MAX_IDS } ?: false)
+        (p.pHiddenCh?.any { it.ch.size > MAX_IDS } ?: false) || (p.pOrder?.any { it.ids.size > MAX_IDS } ?: false) ||
+        (p.favCats?.values?.any { it.size > MAX_IDS } ?: false)
 
     fun toJson(p: CloudPrefs): String = JSONObject().apply {
         put("langs", p.langs?.let { JSONArray(it) } ?: JSONObject.NULL)
@@ -120,6 +128,7 @@ object DisplayPrefs {
         p.pHidden?.let { l -> put("pHidden", JSONArray().apply { l.forEach { c -> put(JSONObject().put("p", c.p).put("k", c.k).put("ids", JSONArray(c.ids))) } }) }
         p.pHiddenCh?.let { l -> put("pHiddenCh", JSONArray().apply { l.forEach { c -> put(JSONObject().put("p", c.p).put("ch", JSONArray(com.ultratv.tv.nativeapp.data.prefs.HiddenChannelsStore.toJson(c.ch)))) } }) }
         p.pOrder?.let { l -> put("pOrder", JSONArray().apply { l.forEach { c -> put(JSONObject().put("p", c.p).put("k", c.k).put("ids", JSONArray(c.ids))) } }) }
+        p.favCats?.let { f -> put("favCats", JSONObject().apply { KINDS.values.forEach { k -> put(k, JSONArray(f[k] ?: emptyList<String>())) } }) }
     }.toString()
 
     fun parse(o: JSONObject?): CloudPrefs? {
@@ -159,7 +168,9 @@ object DisplayPrefs {
                 ProfileHiddenShare(c.optString("p").takeIf { it.isNotBlank() } ?: return@mapNotNull null, c.optString("k").takeIf { it in KINDS.values } ?: return@mapNotNull null, ids)
             }
         }
-        return CloudPrefs(langs, disabled, updatedAt, order, hidden, chOrder, pHidden, pHiddenCh, pOrder)
+        // Absent ou invalide = non transmis (null), jamais « aucune favorite » : un champ manquant n'efface rien.
+        val favCats = o.optJSONObject("favCats")?.let { fo -> KINDS.values.associateWith { k -> fo.optJSONArray(k)?.let { a -> (0 until a.length()).map { a.optString(it) }.filter { it.isNotEmpty() }.distinct() } ?: emptyList() } }
+        return CloudPrefs(langs, disabled, updatedAt, order, hidden, chOrder, pHidden, pHiddenCh, pOrder, favCats)
     }
 }
 

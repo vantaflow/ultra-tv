@@ -23,7 +23,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /** Ligne de l'écran « Gérer les catégories ». */
-data class CategoryRow(val remoteId: String, val label: String, val badge: String?, val count: Int?, val enabled: Boolean, val lang: String, val locked: Boolean)
+data class CategoryRow(val remoteId: String, val label: String, val badge: String?, val count: Int?, val enabled: Boolean, val lang: String, val locked: Boolean, val fav: Boolean = false)
 
 /**
  * Activation / désactivation / ordre des catégories. UN SEUL interrupteur : désactivée = ni téléchargée, ni mise à jour,
