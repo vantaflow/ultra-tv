@@ -48,6 +48,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Accueil : « Dernières chaînes regardées » montre de nouveau toutes les chaînes regardées, même celles d'une catégorie masquée ou désactivée ; seules les chaînes verrouillées (et l'adulte pour un profil Enfants) en sont exclues.
 - Contrôle parental : effacer ou changer le code demande d'abord le code actuel (mêmes essais limités que le déverrouillage) ; sans lui, rien ne change.
 - Mise à jour : la fenêtre « Mettre à jour » couvre tout l'écran d'un voile opaque sur une carte opaque (on voyait les menus derrière), dans les 10 thèmes, qu'elle s'ouvre depuis À propos ou depuis une alerte ; le focus reste dedans, les appuis ne la traversent plus et Retour la ferme.
+- Profils : retirer ou changer le code d'un profil protégé demande d'abord le code de ce profil (comme le code parental) ; mauvais code ou annulation : rien ne change.
 - Télémétrie : plus aucun journal, plantage, blocage ni relevé anonyme n'est envoyé pendant les tests automatiques (interrupteur général coupé sous Robolectric) ; aucun changement sur un vrai appareil.
 - Lecteur VLC : l'arrêt du flux au changement de chaîne et la coupure de la piste vidéo au changement d'écran ne bloquent plus l'interface (blocages « l'application ne répond pas » sur certaines TV TCL) : ils passent par un fil dédié au moteur.
 - Interface plus réactive sur les box lentes : le nettoyage des journaux se fait en arrière-plan et le nettoyage des noms de chaînes est mémorisé (blocages relevés sur une Sharp Google TV).

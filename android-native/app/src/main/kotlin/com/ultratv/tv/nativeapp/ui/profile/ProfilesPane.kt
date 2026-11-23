@@ -34,6 +34,9 @@ import kotlinx.coroutines.launch
 
 private enum class ProfileAction { RENAME, COLOR, KIDS, SIMPLE, SOURCES, SCREEN_TIME, PIN, PIN_REMOVE, DELETE }
 
+/** Étape du code d'un profil protégé : saisie du code actuel avant de le retirer ou de le changer, puis nouveau code. */
+private enum class PinStep { CURRENT, NEW }
+
 /** Réglages › Profils : liste, création, renommage, couleur, profil Enfants, PIN, suppression, mode de démarrage. */
 @Composable
 fun ProfilesPane(vm: ProfileViewModel = hiltViewModel()) {
@@ -55,6 +58,12 @@ fun ProfilesPane(vm: ProfileViewModel = hiltViewModel()) {
     var action by remember { mutableStateOf<Pair<ProfileEntity, ProfileAction>?>(null) }
     var creating by remember { mutableStateOf(false) }
     var startupDialog by remember { mutableStateOf(false) }
+    // Code d'un profil protégé : le code ACTUEL de ce profil est exigé pour le retirer ou le changer (mauvais code ou
+    // annulation : rien ne change), comme pour le code parental.
+    var pinStep by remember { mutableStateOf(PinStep.CURRENT) }
+    var pinCurrent by remember { mutableStateOf<String?>(null) }
+    var pinError by remember { mutableStateOf<String?>(null) }
+    var pinAttempt by remember { mutableStateOf(0) }
 
     PaneTitle(S.settingsTitle, S.settingsSub)
     Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
@@ -93,13 +102,13 @@ fun ProfilesPane(vm: ProfileViewModel = hiltViewModel()) {
                 // Activer : libre. Désactiver : code parental s'il existe.
                 if (p.id in simpleIds && com.ultratv.tv.nativeapp.ui.simple.SimpleHome.exitNeedsPin(pinSet)) action = p to a else vm.setSimpleMode(p.id, p.id !in simpleIds)
             }
-            else if (a == ProfileAction.PIN_REMOVE) vm.setPin(p.id, null)
+            else if (a == ProfileAction.PIN || a == ProfileAction.PIN_REMOVE) { pinStep = PinStep.CURRENT; pinCurrent = null; pinError = null; pinAttempt = 0; action = p to a }
             else if (a != ProfileAction.DELETE || ProfileRules.canDelete(profiles.size)) action = p to a
         }, onDismiss = { menuFor = null })
     }
 
     action?.let { (p, a) ->
-        val close = { action = null; screenTimeUnlocked = null }
+        val close = { action = null; screenTimeUnlocked = null; pinCurrent = null; pinError = null }
         when (a) {
             ProfileAction.RENAME -> ProfileEditDialog(p, vm, onDismiss = close)
             ProfileAction.SIMPLE -> com.ultratv.tv.nativeapp.ui.simple.ExitSimpleModePin(onUnlocked = { vm.setSimpleMode(p.id, false); close() }, onCancel = close)
@@ -113,9 +122,21 @@ fun ProfilesPane(vm: ProfileViewModel = hiltViewModel()) {
             } else com.ultratv.tv.nativeapp.ui.screentime.ScreenTimeEditor(p, screenTimes[p.id], pinSet, onSave = { vm.setScreenTime(p.id, it) }, onClose = close)
             ProfileAction.SOURCES -> SourcesDialog(p, providers.map { it.name }, vm, S, close)
             ProfileAction.COLOR -> ChoiceDialog(S.color, ProfileColors.palette.mapIndexed { i, c -> c to S.colorNames[i] }, p.color, { vm.setColor(p.id, it); close() }, close)
-            ProfileAction.PIN -> {
-                PinPad(title = S.pin, subtitle = p.name, onComplete = { vm.setPin(p.id, it); close() }, onCancel = close)
-            }
+            // Profil sans code : premier code directement. Profil protégé : son code actuel d'abord, puis le nouveau.
+            ProfileAction.PIN -> if (p.pinHash != null && pinStep == PinStep.CURRENT) PinPad(
+                title = S.pin, subtitle = S.pinSubtitle(p.name),
+                onComplete = { pin -> scope.launch { if (vm.verifyPin(p.id, pin)) { pinCurrent = pin; pinStep = PinStep.NEW } else { pinError = S.wrongPin; pinAttempt++ } } },
+                onCancel = close, error = pinError, resetKey = pinAttempt,
+            ) else PinPad(
+                title = S.pin, subtitle = p.name,
+                onComplete = { pin -> val cur = pinCurrent; if (cur == null) { vm.setFirstPin(p.id, pin); close() } else scope.launch { vm.changePinWith(p.id, cur, pin); close() } },
+                onCancel = close, resetKey = pinStep,
+            )
+            ProfileAction.PIN_REMOVE -> PinPad(
+                title = S.pinRemove, subtitle = S.pinSubtitle(p.name),
+                onComplete = { pin -> scope.launch { if (vm.clearPinWith(p.id, pin)) close() else { pinError = S.wrongPin; pinAttempt++ } } },
+                onCancel = close, error = pinError, resetKey = pinAttempt,
+            )
             ProfileAction.DELETE -> ChoiceDialog(S.deleteConfirm(p.name), listOf(true to S.confirm, false to S.cancel), false, { if (it) vm.delete(p.id); close() }, close)
             else -> close()
         }

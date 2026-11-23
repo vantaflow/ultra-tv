@@ -144,6 +144,29 @@ class ProfileRepository(
 
     suspend fun verifyPin(id: Long, typed: String): Boolean = dao.byId(id)?.let { ProfileRules.pinMatches(it, typed) } ?: false
 
+    /** Premier code d'un profil SANS code ; un profil déjà protégé passe par [changePinWith] (sans effet sinon). */
+    suspend fun setFirstPin(id: Long, pin: String): Boolean {
+        val p = dao.byId(id) ?: return false
+        if (p.pinHash != null || pin.isBlank()) return false
+        setPin(id, pin); return true
+    }
+
+    /** Retire le code du profil seulement si [current] est son code actuel (comme ParentalStore.clearWith). */
+    suspend fun clearPinWith(id: Long, current: String): Boolean {
+        val p = dao.byId(id) ?: return false
+        if (p.pinHash == null) return true
+        if (!ProfileRules.pinMatches(p, current)) return false
+        setPin(id, null); return true
+    }
+
+    /** Remplace le code du profil par [newPin] seulement si [current] est son code actuel ; un nouveau code vide est refusé. */
+    suspend fun changePinWith(id: Long, current: String, newPin: String): Boolean {
+        if (newPin.isBlank()) return false
+        val p = dao.byId(id) ?: return false
+        if (p.pinHash != null && !ProfileRules.pinMatches(p, current)) return false
+        setPin(id, newPin); return true
+    }
+
     /** Supprime un profil et ses données. Refuse (false) pour le dernier profil. */
     suspend fun delete(id: Long): Boolean {
         if (!ProfileRules.canDelete(dao.count())) return false

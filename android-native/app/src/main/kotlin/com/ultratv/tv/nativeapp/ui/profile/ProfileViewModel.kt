@@ -45,7 +45,10 @@ class ProfileViewModel @Inject constructor(
     fun rename(id: Long, name: String) = viewModelScope.launch { repo.rename(id, name) }
     fun setColor(id: Long, color: Int) = viewModelScope.launch { repo.setColor(id, color) }
     fun setKids(id: Long, kids: Boolean) = viewModelScope.launch { repo.setKids(id, kids) }
-    fun setPin(id: Long, pin: String?) = viewModelScope.launch { repo.setPin(id, pin) }
+    /** Premier code d'un profil sans code. Retirer ou changer un code existant exige ce code ([clearPinWith] / [changePinWith]). */
+    fun setFirstPin(id: Long, pin: String) = viewModelScope.launch { repo.setFirstPin(id, pin) }
+    suspend fun clearPinWith(id: Long, current: String) = repo.clearPinWith(id, current)
+    suspend fun changePinWith(id: Long, current: String, newPin: String) = repo.changePinWith(id, current, newPin)
     fun delete(id: Long) = viewModelScope.launch { repo.delete(id) }
     fun setStartupMode(m: StartupMode) = viewModelScope.launch { repo.setStartupMode(m) }
     suspend fun verifyPin(id: Long, pin: String) = repo.verifyPin(id, pin)
