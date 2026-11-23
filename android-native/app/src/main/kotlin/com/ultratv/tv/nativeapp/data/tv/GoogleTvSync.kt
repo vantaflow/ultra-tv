@@ -99,12 +99,17 @@ class GoogleTvSync @Inject constructor(
         lockedStore.locked,
     ) { hidden, live, ms, ss, locked -> com.ultratv.tv.nativeapp.ui.home.HomeGuard.of(hidden, live + ms + ss, locked) }.distinctUntilChanged()
 
-    /** Historique du direct ([com.ultratv.tv.nativeapp.ui.home.HomeGuard.forHistory]) : verrous, et adulte pour un profil Enfants. */
+    /**
+     * Choix de l'utilisateur (Favoris, Ma liste, Chaînes récentes, Continuer à regarder) : [com.ultratv.tv.nativeapp.ui.home.HomeGuard.forHistory]
+     * sur toutes les catégories — verrou parental, et adulte pour un profil Enfants ; JAMAIS le masquage ni la désactivation.
+     */
     private fun rawHistoryGuard(pid: Long): kotlinx.coroutines.flow.Flow<com.ultratv.tv.nativeapp.ui.home.HomeGuard> = combine(
         categoryDao.observeForProviderKind(pid, "LIVE"),
+        categoryDao.observeForProviderKind(pid, "MOVIE"),
+        categoryDao.observeForProviderKind(pid, "SERIES"),
         lockedStore.locked,
         profiles.current.map { it?.isKids == true }.distinctUntilChanged(),
-    ) { live, locked, kids -> com.ultratv.tv.nativeapp.ui.home.HomeGuard.forHistory(live, locked, kids) }.distinctUntilChanged()
+    ) { live, ms, ss, locked, kids -> com.ultratv.tv.nativeapp.ui.home.HomeGuard.forHistory(live + ms + ss, locked, kids) }.distinctUntilChanged()
 
     /**
      * Filtres partagés par tous les collecteurs une fois [start] lancé (une seule lecture des catégories par changement,
@@ -206,7 +211,7 @@ class GoogleTvSync @Inject constructor(
                 if (pid == null) { report("skip:wn", "watch next skipped: no active provider"); flowOf(Triple(emptyList<com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity>(), com.ultratv.tv.nativeapp.ui.home.HomeGuard.NONE, com.ultratv.tv.nativeapp.ui.home.HomeGuard.NONE)) }
                 // Contrôle parental : aucun élément verrouillé (ni masqué pour le profil, comme « Continuer à regarder » de
                 // l'accueil), republié à chaque changement de verrou.
-                else combine(history.observeRecent(prof, pid, 40), historyGuard(pid), rowGuard(pid)) { h, live, vod -> Triple(h, live, vod) }
+                else combine(history.observeRecent(prof, pid, 40), historyGuard(pid)) { h, hg -> Triple(h, hg, hg) }
             }
                 // 1.2.42 avait mis un debounce de 45 s : tant que l'historique bouge (position enregistrée toutes les 30 s,
                 // synchro d'appareils), RIEN n'était publié, et rien non plus si l'appli était quittée / tuée dans les 45 s
@@ -228,8 +233,8 @@ class GoogleTvSync @Inject constructor(
                 if (!on) flowOf<List<com.ultratv.tv.nativeapp.data.db.ChannelEntity>?>(null)
                 else scope_.flatMapLatest { (prof, pid) ->
                     if (pid == null) flowOf(emptyList())
-                    else combine(favorites.observeForKind(prof, pid, "LIVE"), history.observeRecent(prof, pid, 40), rowGuard(pid), historyGuard(pid)) { favs, hist, g, hg ->
-                        favoritesSelection(pid, favs.map { it.remoteId }, hist, g, hg)
+                    else combine(favorites.observeForKind(prof, pid, "LIVE"), history.observeRecent(prof, pid, 40), historyGuard(pid)) { favs, hist, hg ->
+                        favoritesSelection(pid, favs.map { it.remoteId }, hist, hg)
                     }
                 }
             }.debounce(3_000).collect { sel ->
@@ -328,7 +333,7 @@ class GoogleTvSync @Inject constructor(
             }
         }
         optional(TvHomeChannel.MY_LIST, 3_000) { prof, pid ->
-            combine(favorites.observeForKind(prof, pid, "MOVIE"), favorites.observeForKind(prof, pid, "SERIES"), rowGuard(pid)) { fm, fs, g ->
+            combine(favorites.observeForKind(prof, pid, "MOVIE"), favorites.observeForKind(prof, pid, "SERIES"), historyGuard(pid)) { fm, fs, g ->
                 val ms = orderedMovies(pid, fm.map { it.remoteId }).map(::vodOf)
                 val ss = orderedSeries(pid, fs.map { it.remoteId }).map(::vodOf)
                 TvChannelPlan.selectVod(TvChannelPlan.interleave(ms, ss), g).map { TvChannelPlan.vodProgram("MYLIST", it) }
@@ -411,12 +416,12 @@ class GoogleTvSync @Inject constructor(
         }
     }
 
-    /** Favoris (filtre des rangées) complétés par les dernières chaînes regardées (filtre de l'historique). */
+    /** Favoris complétés par les dernières chaînes regardées : choix de l'utilisateur, seuls le verrou et l'adulte (Enfants) les écartent. */
     private suspend fun favoritesSelection(
         pid: Long, favRemoteIds: List<String>, hist: List<com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity>,
-        g: com.ultratv.tv.nativeapp.ui.home.HomeGuard, hg: com.ultratv.tv.nativeapp.ui.home.HomeGuard,
+        hg: com.ultratv.tv.nativeapp.ui.home.HomeGuard,
     ): List<com.ultratv.tv.nativeapp.data.db.ChannelEntity> {
-        val fav = orderedByRemote(pid, favRemoteIds).filter(g::allowsChannel)
+        val fav = orderedByRemote(pid, favRemoteIds).filter(hg::allowsChannel)
         val recent = orderedByRemote(pid, WatchNextPlan.selectLive(hist).map { it.remoteId }).filter(hg::allowsChannel)
         return FavoritesChannelPlan.select(fav, recent)
     }
@@ -501,13 +506,13 @@ class GoogleTvSync @Inject constructor(
         val hg = historyGuard(pid).first()
         val (c, sport) = choice.first()
         runCatching {
-            val allowed = guardHistory(Triple(hist, hg, g))
+            val allowed = guardHistory(Triple(hist, hg, hg))
             val sel = WatchNextPlan.select(allowed) + WatchNextPlan.selectLive(allowed)
             syncWatchNext(sel, landscapes(sel))
         }.onFailure { fail("watchnext", "watch next", it) }
         if (c.isEffective(TvHomeChannel.FAVORITES, sport)) runCatching {
             val favs = favorites.observeForKind(prof, pid, "LIVE").first()
-            syncFavoritesChannel(favoritesSelection(pid, favs.map { it.remoteId }, hist, g, hg))
+            syncFavoritesChannel(favoritesSelection(pid, favs.map { it.remoteId }, hist, hg))
         }.onFailure { fail("favorites", "favorites channel", it) }
         if (c.isEffective(TvHomeChannel.RECENT, sport)) runCatching {
             val recent = history.observeRecentByKind(prof, pid, "LIVE", RecentChannelsPlan.FETCH).first()

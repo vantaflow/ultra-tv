@@ -218,8 +218,9 @@ object TvChannelPlan {
 
 /**
  * Contrôle parental des chaînes publiées : AUCUN élément verrouillé (chaîne verrouillée, ou catégorie verrouillée) dans
- * « Continuer à regarder », quelle que soit la règle de la rangée. Historique : filtre [HomeGuard.forHistory] (chaînes du
- * direct) ou [HomeGuard.of] (films, épisodes), catégorie relue dans le catalogue ([categoryOf]).
+ * « Continuer à regarder ». Choix de l'utilisateur (comme Favoris, Ma liste, Chaînes récentes) : filtre
+ * [HomeGuard.forHistory] pour le direct comme pour les films et épisodes — verrou parental et adulte en profil Enfants,
+ * jamais le masquage ni la désactivation de catégorie ; catégorie relue dans le catalogue.
  */
 object HistoryGuardPlan {
     fun categoryKind(h: WatchHistoryEntity) = when (h.kind) { "LIVE" -> "LIVE"; "MOVIE" -> "MOVIE"; else -> "SERIES" }

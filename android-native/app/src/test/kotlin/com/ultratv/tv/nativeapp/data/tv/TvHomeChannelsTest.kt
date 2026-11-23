@@ -76,7 +76,7 @@ class TvHomeChannelsTest {
     private val cats = listOf(
         cat("MOVIE", "ok"), cat("MOVIE", "verrou", locked = true), cat("MOVIE", "off", enabled = false),
         cat("SERIES", "ok"), cat("SERIES", "verrou", locked = true),
-        cat("LIVE", "ok"), cat("LIVE", "verrou", locked = true),
+        cat("LIVE", "ok"), cat("LIVE", "verrou", locked = true), cat("LIVE", "off_live", enabled = false),
     )
 
     private fun vod(rid: String, catId: String?, title: String = "Titre $rid", kind: NewsChannelPlan.Kind = NewsChannelPlan.Kind.MOVIE) =
@@ -131,9 +131,45 @@ class TvHomeChannelsTest {
         assertEquals(listOf("1"), NewsChannelPlan.visible(listOf(item("1", "ok"), item("2", "verrou")), g).map { it.remoteId })
     }
 
+    /** Choix de l'utilisateur (Favoris, Ma liste, récentes, reprises) : filtre de l'historique sur toutes les catégories. */
+    private fun choiceGuard(locked: Set<String> = emptySet(), kids: Boolean = false, extra: List<CategoryEntity> = emptyList()) =
+        HomeGuard.forHistory(cats + extra, lockedChannels = locked, kids = kids)
+
+    @Test fun favori_dans_une_categorie_desactivee_reste_publie() {
+        val g = choiceGuard()
+        // Chaîne favorite rangée dans une catégorie désactivée (1 549 sur la box du propriétaire) : reste dans « Favoris ».
+        val chans = listOf(ch("a"), ch("b", "off_live"))
+        val out = FavoritesChannelPlan.select(chans.filter(g::allowsChannel), emptyList())
+        assertEquals(listOf("a", "b"), out.map { it.remoteId })
+        // Film favori (Ma liste) d'une catégorie désactivée : reste aussi.
+        assertEquals(listOf("3"), TvChannelPlan.selectVod(listOf(vod("3", "off")), g).map { it.remoteId })
+        // Les chaînes de découverte, elles, gardent le filtre des rangées.
+        assertTrue(TvChannelPlan.selectVod(listOf(vod("3", "off")), HomeGuard.of(emptySet(), cats, emptySet())).isEmpty())
+    }
+
+    @Test fun favori_verrouille_retire() {
+        val g = choiceGuard(locked = setOf("1:b"))
+        val out = FavoritesChannelPlan.select(listOf(ch("a"), ch("b"), ch("c", "verrou")).filter(g::allowsChannel), emptyList())
+        assertEquals(listOf("a"), out.map { it.remoteId })
+        assertTrue(TvChannelPlan.selectVod(listOf(vod("4", "verrou")), g).isEmpty())
+    }
+
+    @Test fun adulte_retire_en_profil_enfants_seulement() {
+        val adultCat = cat("LIVE", "xx", name = "Adulte XXX")
+        val kids = choiceGuard(kids = true, extra = listOf(adultCat))
+        val adult = choiceGuard(kids = false, extra = listOf(adultCat))
+        val chans = listOf(ch("a"), ch("b", "xx"), ch("c", name = "XXX"))
+        assertEquals(listOf("a"), chans.filter(kids::allowsChannel).map { it.remoteId })
+        assertEquals(listOf("a", "b", "c"), chans.filter(adult::allowsChannel).map { it.remoteId })
+        assertTrue(TvChannelPlan.selectVod(listOf(vod("5", "ok", title = "XXX")), kids).isEmpty())
+        assertEquals(1, TvChannelPlan.selectVod(listOf(vod("5", "ok", title = "XXX")), adult).size)
+    }
+
     @Test fun continuer_a_regarder_sans_element_verrouille() {
-        val live = HomeGuard.forHistory(cats.filter { it.kind == "LIVE" }, lockedChannels = setOf("1:lc"), kids = false)
-        val vodG = HomeGuard.of(emptySet(), cats, setOf("1:lc"))
+        val live = choiceGuard(locked = setOf("1:lc"))
+        val vodG = live
+        // Film d'une catégorie désactivée : choix de l'utilisateur, il reste.
+        assertTrue(HistoryGuardPlan.allows(WatchHistoryEntity(providerId = 1, kind = "MOVIE", remoteId = "d", title = "Td", poster = "p", streamUrl = "u"), "off", live, vodG))
         fun h(kind: String, rid: String, parent: String? = null) = WatchHistoryEntity(providerId = 1, kind = kind, remoteId = rid, title = "T$rid", poster = "p", streamUrl = "u", parentRemoteId = parent)
         assertTrue(HistoryGuardPlan.allows(h("MOVIE", "m"), "ok", live, vodG))
         assertFalse(HistoryGuardPlan.allows(h("MOVIE", "m"), "verrou", live, vodG))
