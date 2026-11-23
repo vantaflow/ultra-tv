@@ -8,6 +8,15 @@ import { ago, frDate } from "../ui/format.js";
 import { shell } from "../ui/layout.js";
 import { PAIR_JS, scanJs, pairForm } from "./pair.js";
 
+/** Catégories favorites d'une source Xtream : liste chargée à l'ouverture (lue chez le fournisseur par le serveur), cases à cocher par type. */
+function favCatsForm(p, csrfInput, lang = "fr") {
+  const s = (SITE_DICT[lang] || SITE_DICT.fr).dash.srcs;
+  return `<details class="favcats" data-id="${e(p.id)}"><summary>${ico("star")}${e(s.favCats)}</summary><form method="post" action="/providers/${e(p.id)}/favcats" class="drop favcats-form">${csrfInput}
+<p class="muted small mt0">${e(s.favCatsHint)}</p>
+<div class="favcats-body" aria-live="polite"><span class="muted">${e(s.favCatsLoading)}</span></div>
+<div class="row"><button type="submit" hidden>${e(s.favCatsSave)}</button></div></form></details>`;
+}
+
 function sharing(p, devices, csrfInput, lang = "fr") {
   const dict = SITE_DICT[lang] || SITE_DICT.fr;
   const s = dict.dash.srcs;
@@ -82,6 +91,7 @@ ${p.managed === "reseller" ? `<div class="card-meta mt10"><span class="muted sma
     : MEDIA_KINDS.includes(p.kind) ? `<div class="card-meta mt10"><span class="muted small">${e(t.srcs.mediaNoLink)}</span></div>`
     : p.kind === "STALKER" ? `<div class="card-meta mt10"><span class="muted small">${e(t.srcs.stalkerNoLink)}</span></div>` : ""}
 <div class="actions">${sh.form}
+${xtreamCredsOf(p) ? favCatsForm(p, csrfInput, lang) : ""}
 ${p.managed === "reseller" ? "" : `${MEDIA_KINDS.includes(p.kind) || p.kind === "STALKER" ? ""
     : `<button type="button" class="secondary reveal-link" data-id="${e(p.id)}" aria-controls="lk-${e(p.id)}" aria-expanded="false">${e(t.srcs.showLink)}</button>`}
 <form method="post" action="/providers/${e(p.id)}/delete" data-confirm="${e(t.srcs.delProvConfirm)}">${csrfInput}<button class="danger" type="submit">${e(t.srcs.deleteBtn)}</button></form>`}</div></article>`;
@@ -143,6 +153,30 @@ document.querySelectorAll('.reveal-link').forEach(function(b){b.addEventListener
   .then(function(j){var i=box.querySelector('input');i.value=j.link||'';box.hidden=false;b.setAttribute('aria-expanded','true');b.textContent=${JSON.stringify(cJs.hideLink)};i.focus();i.select();})
   .catch(function(){alert(${JSON.stringify(cJs.linkFail)});})
   .then(function(){b.disabled=false;});
+});});
+// Catégories favorites : chargées à la première ouverture du volet (noms lus chez le fournisseur par le serveur).
+document.querySelectorAll('details.favcats').forEach(function(dt){dt.addEventListener('toggle',function(){
+ if(!dt.open||dt.dataset.loaded)return;dt.dataset.loaded='1';
+ var body=dt.querySelector('.favcats-body'),btn=dt.querySelector('button[type=submit]');
+ var T=${JSON.stringify({ live: cJs.favLive, movie: cJs.favMovie, series: cJs.favSeries, none: cJs.favNone, fail: cJs.favFail, noPrefs: cJs.favNoPrefs })};
+ fetch('/providers/'+dt.dataset.id+'/categories',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/x-www-form-urlencoded'},body:'csrf='+encodeURIComponent(${JSON.stringify(csrf)})})
+  .then(function(r){if(!r.ok)throw new Error(String(r.status));return r.json();})
+  .then(function(j){
+   body.textContent='';
+   if(j.error){var m=document.createElement('span');m.className='muted';m.textContent=T.fail;body.appendChild(m);dt.removeAttribute('data-loaded');return;}
+   if(!j.hasPrefs){var np=document.createElement('span');np.className='muted';np.textContent=T.noPrefs;body.appendChild(np);return;}
+   var any=false;
+   ['live','movie','series'].forEach(function(k){
+    var list=j[k]||[],fav=(j.fav&&j.fav[k])||[];if(!list.length)return;any=true;
+    var h=document.createElement('div');h.className='lbl';h.textContent=T[k];body.appendChild(h);
+    var w=document.createElement('div');w.className='picks';
+    list.forEach(function(c){var l=document.createElement('label');l.className='pick';var i=document.createElement('input');i.type='checkbox';i.name=k;i.value=c.id;i.checked=fav.indexOf(c.id)>=0;l.appendChild(i);l.appendChild(document.createTextNode(c.name));w.appendChild(l);});
+    body.appendChild(w);
+   });
+   if(!any){var n0=document.createElement('span');n0.className='muted';n0.textContent=T.none;body.appendChild(n0);return;}
+   btn.hidden=false;
+  })
+  .catch(function(){body.textContent=T.fail;dt.removeAttribute('data-loaded');});
 });});
 // Abonnement de chaque fournisseur Xtream : lu par le serveur (identifiants jamais exposés), un appel par carte.
 (function(){

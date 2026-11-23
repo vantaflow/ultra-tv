@@ -24,7 +24,7 @@ import {
 } from "./http.js";
 import {
   guardStub, normalizeLogin, isMacLogin, getAccount, putAccount, loadProviders, saveProviders, deleteAccount,
-  newDeviceToken, registerDevice, authDevice, revokeDevice, rotateDevice, parseProvider, publicProvider, syncProvider, parseDeviceProvider, parsePrefs,
+  newDeviceToken, registerDevice, authDevice, revokeDevice, rotateDevice, parseProvider, publicProvider, syncProvider, parseDeviceProvider, parsePrefs, parseFavCats, xtreamCategories,
   isVisibleTo, assignmentOf, addTombstones, liveTombstones, isSupportedKind, parseAssign, dropDeviceFromAssignments, renameDevice,
   MAX_PROVIDERS, MAX_DEVICES, iptvLink, xtreamAccount, verifyProLicense, setDeviceInfo, parseStateBody, mergeState, loadState, saveState, deleteState, parseProfiles, mergeProfiles,
 } from "./store.js";
@@ -345,7 +345,7 @@ async function route(req, env, ctx) {
   const adminRoute = /^\/admin(\/(accounts|anon|devices|alerts|comptes\.csv))?$/.test(path) && m === "GET";
   const pairRoute = path === "/pair" && m === "GET";
   const mutating = m === "POST" && ["/pair", "/providers", "/password", "/account/delete", "/logout", "/subtitles/link", "/subtitles/unlink", "/trakt/connect", "/trakt/disconnect", "/simkl/connect", "/simkl/disconnect", "/tracking/service", "/profiles/sources", "/plex/pin", "/plex/check"].includes(path)
-    || (m === "POST" && /^\/(devices\/[0-9a-f]+\/(revoke|rename)|providers\/[0-9a-f]+\/(delete|assign|link|account)|admin\/announcements(\/[0-9a-f]+\/(end|delete))?)$/.test(path));
+    || (m === "POST" && /^\/(devices\/[0-9a-f]+\/(revoke|rename)|providers\/[0-9a-f]+\/(delete|assign|link|account|categories|favcats)|admin\/announcements(\/[0-9a-f]+\/(end|delete))?)$/.test(path));
   if (!dashboardRoute && !pairRoute && !adminRoute && !mutating) return new Response("Not found", { status: 404 });
   if (!sess) {
     const c = pairRoute ? normalizeCode(url.searchParams.get("code")) : null;
@@ -392,6 +392,18 @@ async function route(req, env, ctx) {
     const p = (await loadProviders(env, sess.acct)).find((x) => x.id === acc[1]);
     if (!p) return new Response("Not found", { status: 404 });
     return new Response(JSON.stringify(await cachedAccount(env, sess.acct.login, p)), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
+  }
+
+  // Catégories d'une source Xtream (noms lus chez le fournisseur par le Worker) + favorites déjà enregistrées.
+  const cats = path.match(/^\/providers\/([0-9a-f]+)\/categories$/);
+  if (cats) {
+    const rlc = await limited(env, `catlist:${sess.acct.login}`, 120, 3600);
+    if (rlc) return rlc;
+    const p = (await loadProviders(env, sess.acct)).find((x) => x.id === cats[1]);
+    if (!p) return new Response("Not found", { status: 404 });
+    const relay = env.ACCOUNT_RELAY_URL && env.ACCOUNT_RELAY_KEY ? { url: env.ACCOUNT_RELAY_URL, key: env.ACCOUNT_RELAY_KEY } : null;
+    const list = await xtreamCategories(p, fetch, 8000, relay);
+    return new Response(JSON.stringify({ ...list, fav: p.prefs?.favCats || { live: [], movie: [], series: [] }, hasPrefs: !!p.prefs }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
   }
 
   // Plex : liaison du compte (PIN plex.tv) depuis le tableau de bord. Réponses JSON ; débit propre (l'attente de la
@@ -502,6 +514,21 @@ async function route(req, env, ctx) {
     await saveProviders(env, acct, providers.map((p) => (p.id === asg[1] ? { ...p, assign: r.assign, updatedAt: Date.now() } : p)));
     await putAccount(env, acct);
     return redirect("/?m=assigned");
+  }
+  const fav = path.match(/^\/providers\/([0-9a-f]+)\/favcats$/);
+  if (fav) {
+    const providers = await loadProviders(env, acct);
+    const i = providers.findIndex((p) => p.id === fav[1]);
+    if (i < 0) return redirect("/");
+    // Sans réglages déjà publiés par un appareil, on ne crée pas de réglages « par défaut » (ils écraseraient ceux des appareils).
+    const cur = providers[i].prefs;
+    if (!cur) return redirect("/?e=favcats_noprefs");
+    const r = parseFavCats({ live: form.getAll("live").map(String), movie: form.getAll("movie").map(String), series: form.getAll("series").map(String) });
+    if (!r) return redirect("/?e=favcats");
+    providers[i] = { ...providers[i], prefs: { ...cur, favCats: r, updatedAt: Math.max(Date.now(), (cur.updatedAt || 0) + 1), by: "dashboard" } };
+    await saveProviders(env, acct, providers);
+    await putAccount(env, acct);
+    return redirect("/?m=favcats_saved");
   }
   const del = path.match(/^\/providers\/([0-9a-f]+)\/delete$/);
   if (!del) return new Response("Not found", { status: 404 });
@@ -1701,6 +1728,7 @@ async function devicePutPrefs(req, env, id) {
     if (next.hidden === undefined && cur?.hidden) next.hidden = cur.hidden;
     if (next.chOrder === undefined && cur?.chOrder) next.chOrder = cur.chOrder;
     if (next.pHidden === undefined && cur?.pHidden) next.pHidden = cur.pHidden;
+    if (next.favCats === undefined && cur?.favCats) next.favCats = cur.favCats;
     // Chaînes masquées et ordre des catégories PAR PROFIL : gardés si le client ne les envoie pas. L'ordre par profil n'est
     // gardé que si l'ordre historique n'a pas changé : un appareil ancien qui réordonne doit l'emporter sur l'ancien état par profil.
     if (next.pHiddenCh === undefined && cur?.pHiddenCh) next.pHiddenCh = cur.pHiddenCh;
