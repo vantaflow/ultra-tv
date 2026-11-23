@@ -504,11 +504,13 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
             val showOnboarding by onboarding.show.collectAsState()
             val profileGate: com.ultratv.tv.nativeapp.ui.profile.ProfileGateViewModel = hiltViewModel()
             val askProfile by profileGate.needsSelection.collectAsState()
+            // Tant que préférences, profils et catalogue ne sont pas prêts : un seul écran de chargement (nom de la marque et
+            // trois points) juste après l'écran système, sans second logo ni durée minimale.
             when {
-                askProfile == null -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+                askProfile == null -> com.ultratv.tv.nativeapp.ui.design.StartupLoadingScreen()
                 askProfile == true && showOnboarding == false -> com.ultratv.tv.nativeapp.ui.profile.WhoIsWatchingScreen()
                 else -> when (showOnboarding) {
-                null -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+                null -> com.ultratv.tv.nativeapp.ui.design.StartupLoadingScreen()
                 true -> {
                     // L'assistant est hors de la racine qui fournit l'OverlayHost : sans le sien,
                     // ses modales (appairage cloud, formulaires) étaient composées DANS le volet
@@ -531,7 +533,7 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
                     when {
                         // Jamais d'écran noir muet : sur une box lente en pleine écriture du catalogue,
                         // la première réponse de la base peut prendre plusieurs secondes.
-                        firstState == null -> StartupLoading()
+                        firstState == null -> com.ultratv.tv.nativeapp.ui.design.StartupLoadingScreen()
                         ui != null -> com.ultratv.tv.nativeapp.ui.sync.FirstSyncScreen(
                             ui,
                             onWatchLive = { StartupNav.pendingRoute.value = Routes.LIVE; first.leaveToLive() },
@@ -546,8 +548,6 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
             // Horaires de visionnage et temps d'écran du profil : blocage et avertissement par-dessus tout, sauf pendant « Qui regarde ? » et l'assistant.
             com.ultratv.tv.nativeapp.ui.screentime.ScreenTimeOverlay(active = askProfile == false && showOnboarding == false)
         }
-        // Animation d'ouverture (700 ms) : posée AU-DESSUS de l'application, déjà en cours de chargement derrière.
-        com.ultratv.tv.nativeapp.ui.design.StartupAnimation()
         }
     }
 }
@@ -899,18 +899,6 @@ private fun NavGraphBuilder.screen(
 ) {
     composable(route, arguments = arguments) { entry ->
         ScreenFocusHost { content(entry) }
-    }
-}
-
-/** Attente sobre (logo + « Chargement… ») pendant que la base répond, au lieu d'un écran noir. */
-@Composable
-private fun StartupLoading() {
-    Box(Modifier.fillMaxSize().background(com.ultratv.tv.nativeapp.ui.design.Ux.Bg), contentAlignment = androidx.compose.ui.Alignment.Center) {
-        Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally, verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(28.design)) {
-            com.ultratv.tv.nativeapp.ui.design.LogoMark(96)
-            androidx.compose.material3.CircularProgressIndicator(color = com.ultratv.tv.nativeapp.ui.design.Ux.Accent, strokeWidth = 5.design, modifier = Modifier.size(56.design))
-            androidx.tv.material3.Text(com.ultratv.tv.nativeapp.i18n.LocalDs.current.loadingLabel, color = com.ultratv.tv.nativeapp.ui.design.Ux.Text2, fontSize = 24.spx)
-        }
     }
 }
 

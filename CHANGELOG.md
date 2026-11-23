@@ -18,6 +18,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Assistant de première configuration : nouvelle étape « Apparence » (étape 2 sur 4) pour choisir le thème parmi les 10 par tuiles d'aperçu, la couleur d'accent et la taille de l'interface, à la télécommande comme au toucher. Chaque choix s'applique aussitôt ; « Passer pour l'instant » rétablit l'apparence d'avant. Un utilisateur existant ne revoit pas l'assistant.
 
 ### Modifié
+- Démarrage : juste après l'écran système (gardé le plus court possible), un écran de chargement sobre affiche « ULTRA TV » dans la typographie de la marque et trois points animés tant que l'appli prépare l'accueil (préférences, profils, catalogue), puis disparaît aussitôt, sans durée minimale. Plus de second logo ni d'animation d'ouverture de 700 ms par-dessus l'accueil, plus d'écran vide entre les deux ; points immobiles quand les animations sont réduites ou désactivées ; fond de fenêtre aligné sur celui de l'appli (plus d'éclair bleu nuit).
 - Réglages › Affichage : le thème se choisit en tête de la rubrique, directement sur les tuiles d'aperçu des 10 thèmes (avant : une ligne « Thème » qui ouvrait une liste de noms).
 
 ## [1.3.73] — 2026-11-23 (Android)
