@@ -1640,7 +1640,7 @@
     <string name="shortcuts_hint">ส่วนต่างๆ ของแถบด้านล่าง แตะเพื่อเปลี่ยน ▲ ▼ เพื่อย้าย</string>
     <string name="support_title">สนับสนุน Ultra TV</string>
     <string name="support_sub">ฟรีและไม่มีโฆษณา: การบริจาคช่วยจ่ายค่าเซิร์ฟเวอร์</string>
-    <string name="support_scan">สแกนคิวอาร์โค้ดด้วยโทรศัพท์เพื่อบริจาคบน Ko-fi (บัตรหรือ PayPal)</string>
+    <string name="support_scan">สแกนคิวอาร์โค้ดด้วยโทรศัพท์เพื่อบริจาคผ่าน PayPal</string>
     <string name="simple_back_full">กลับสู่โหมดเต็ม</string>
     <string name="simple_all_settings">การตั้งค่าทั้งหมด</string>
     <string name="simple_full_hint">โหมดเต็มแสดงทุกส่วน: ผังรายการ กีฬา หมวดหมู่ การบันทึก…</string>

@@ -1664,7 +1664,7 @@
     <string name="shortcuts_hint">Sekce spodní lišty. Klepnutím jednu změníte, ▲ ▼ ji přesunete.</string>
     <string name="support_title">Podpořit Ultra TV</string>
     <string name="support_sub">Zdarma a bez reklam: dar pomáhá hradit servery.</string>
-    <string name="support_scan">Naskenujte QR kód telefonem a přispějte na Ko-fi (kartou nebo PayPal).</string>
+    <string name="support_scan">Naskenujte QR kód telefonem a přispějte přes PayPal.</string>
     <string name="simple_back_full">Zpět do plného režimu</string>
     <string name="simple_all_settings">Všechna nastavení</string>
     <string name="simple_full_hint">Plný režim zobrazuje všechny sekce: průvodce, sport, kategorie, nahrávky…</string>

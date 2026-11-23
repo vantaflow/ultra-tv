@@ -6,6 +6,9 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 
 ## [Non publié]
 
+### Android et site (prochaine version)
+- Dons : PayPal en direct (paypal.me) en premier. Réglages › À propos › Soutenir Ultra TV ouvre PayPal sur téléphone et tablette ; sur TV, le QR code mène à PayPal et il est généré sur l'appareil. Le site, la page /donate et le tableau de bord proposent PayPal, puis Ko-fi et Liberapay ; le bouton flottant du site mène à PayPal.
+
 ### Bureau (prochaine version)
 - Accueil : aucune rangée (à la une, en direct, reprises, nouveautés, mieux notés, Trakt, nouveaux épisodes, sport) ne montre plus de contenu d'une catégorie masquée, verrouillée ou adulte ; un profil Enfants ne voit les catégories adultes nulle part (case « Profil Enfants » dans Réglages › Profils).
 - Contrôle parental : verrou par catégorie entière (Réglages › Catégories, Direct, Films et Séries), code exigé partout où un contenu peut s'ouvrir (listes, guide, panneau des chaînes, recherche, favoris, fiches, reprise, zapping qui la saute) ; déverrouillé pour la session seulement.

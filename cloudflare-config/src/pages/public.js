@@ -3,7 +3,7 @@ import { escapeHtml as e } from "../http.js";
 import { ENVOYER_DICT, ENVOYER_DIR, ENVOYER_LANGS, ENVOYER_LANG_NAMES } from "../i18n/envoyer.js";
 import { SITE_DICT } from "../i18n/site.js";
 import { ico, jsonForScript, notice } from "../ui/components.js";
-import { DONATE_DICT, KOFI_URL, LIBERAPAY_URL } from "../donate.js";
+import { DONATE_DICT, KOFI_URL, LIBERAPAY_URL, PAYPAL_URL } from "../donate.js";
 import { shell } from "../ui/layout.js";
 
 const nextField = (next) => (next && next !== "/" ? `<input type="hidden" name="next" value="${e(next)}"/>` : "");
@@ -198,15 +198,15 @@ export function offlinePage(n, { lang = "fr", url = "/offline" } = {}) {
   });
 }
 
-/** Page de dons (/donate) : liens Ko-fi et Liberapay. */
+/** Page de dons (/donate) : PayPal (en premier), Ko-fi et Liberapay. */
 export function donatePage(n, { lang = "en" } = {}) {
   if (!ENVOYER_LANGS.includes(lang)) lang = "en";
   const t = DONATE_DICT[lang];
   const c = ENVOYER_DICT[lang];
   const dir = ENVOYER_DIR[lang];
   const langLinks = ENVOYER_LANGS.map((l) => `<a href="${e(`/donate?l=${l}`)}" data-lang="${l}" lang="${l}" hreflang="${l}"${l === lang ? ` aria-current="true"` : ""}>${e(ENVOYER_LANG_NAMES[l])}</a>`).join("");
-  const kofi = `<div class="row"><a class="button block" href="${e(KOFI_URL)}" rel="noopener" autofocus>${e(t.kofi)}</a></div><p class="hint">${e(t.kofiNote)}</p><div class="row"><a class="button alt-btn block" href="${e(LIBERAPAY_URL)}" rel="noopener">${e(t.liberapay)}</a></div>`;
-  const body = `<div class="panel"><h1>${e(t.title)}</h1><p class="sub">${e(t.sub)}</p>${kofi}</div>`;
+  const links = `<div class="row"><a class="button block" href="${e(PAYPAL_URL)}" rel="noopener" autofocus>${e(t.paypal)}</a></div><p class="hint">${e(t.paypalNote)}</p><div class="row"><a class="button alt-btn block" href="${e(KOFI_URL)}" rel="noopener">${e(t.kofi)}</a></div><p class="hint">${e(t.kofiAlt)}</p><div class="row"><a class="button alt-btn block" href="${e(LIBERAPAY_URL)}" rel="noopener">${e(t.liberapay)}</a></div>`;
+  const body = `<div class="panel"><h1>${e(t.title)}</h1><p class="sub">${e(t.sub)}</p>${links}</div>`;
   const res = shell(n, { title: t.title, ctx: "public", width: "narrow", body,
     loc: { lang, dir, skip: c.skip, themeBtn: c.themeBtn, themeLabels: { auto: c.themeAuto, light: c.themeLight, dark: c.themeDark }, themeChange: c.themeChange,
       foot: { github: c.footGithub, privacy: c.footPrivacy, navLabel: c.langLabel, langs: `<nav class="langs" aria-label="${e(c.langLabel)}">${langLinks}</nav>` } } });

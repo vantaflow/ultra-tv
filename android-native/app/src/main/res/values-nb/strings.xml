@@ -1658,7 +1658,7 @@
     <string name="shortcuts_hint">Seksjoner i det nederste feltet. Trykk på en for å endre den, ▲ ▼ for å flytte den.</string>
     <string name="support_title">Støtt Ultra TV</string>
     <string name="support_sub">Gratis og uten reklame: en donasjon hjelper med å betale for serverne.</string>
-    <string name="support_scan">Skann QR-koden med telefonen for å donere på Ko-fi (kort eller PayPal).</string>
+    <string name="support_scan">Skann QR-koden med telefonen for å donere med PayPal.</string>
     <string name="simple_back_full">Tilbake til full modus</string>
     <string name="simple_all_settings">Alle innstillinger</string>
     <string name="simple_full_hint">Full modus viser alle seksjoner: guide, sport, kategorier, opptak…</string>

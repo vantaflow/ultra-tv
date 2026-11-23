@@ -1628,7 +1628,7 @@
     <string name="shortcuts_hint">Alapalkin osiot. Vaihda napauttamalla, siirrä ▲ ▼.</string>
     <string name="support_title">Tue Ultra TV:tä</string>
     <string name="support_sub">Ilmainen ja mainokseton: lahjoitus auttaa kattamaan palvelinkulut.</string>
-    <string name="support_scan">Skannaa QR-koodi puhelimellasi ja lahjoita Ko-fissa (kortilla tai PayPalilla).</string>
+    <string name="support_scan">Skannaa QR-koodi puhelimellasi ja lahjoita PayPalilla.</string>
     <string name="simple_back_full">Takaisin täyteen tilaan</string>
     <string name="simple_all_settings">Kaikki asetukset</string>
     <string name="simple_full_hint">Täysi tila näyttää kaikki osiot: opas, urheilu, luokat, tallenteet…</string>

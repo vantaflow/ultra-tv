@@ -1658,7 +1658,7 @@
     <string name="shortcuts_hint">Ενότητες της κάτω γραμμής. Πατήστε μία για να την αλλάξετε, ▲ ▼ για να τη μετακινήσετε.</string>
     <string name="support_title">Υποστηρίξτε το Ultra TV</string>
     <string name="support_sub">Δωρεάν και χωρίς διαφημίσεις: μια δωρεά βοηθά στην κάλυψη του κόστους των διακομιστών.</string>
-    <string name="support_scan">Σαρώστε τον κωδικό QR με το τηλέφωνό σας για να κάνετε δωρεά στο Ko-fi (κάρτα ή PayPal).</string>
+    <string name="support_scan">Σαρώστε τον κωδικό QR με το τηλέφωνό σας για να κάνετε δωρεά μέσω PayPal.</string>
     <string name="simple_back_full">Επιστροφή στην πλήρη λειτουργία</string>
     <string name="simple_all_settings">Όλες οι ρυθμίσεις</string>
     <string name="simple_full_hint">Η πλήρης λειτουργία εμφανίζει όλες τις ενότητες: οδηγό, αθλητικά, κατηγορίες, εγγραφές…</string>

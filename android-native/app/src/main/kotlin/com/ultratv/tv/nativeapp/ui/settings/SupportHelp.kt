@@ -3,7 +3,6 @@ package com.ultratv.tv.nativeapp.ui.settings
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,10 +22,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import com.ultratv.tv.nativeapp.R
 import com.ultratv.tv.nativeapp.i18n.DesignStrings
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.SUPPORT_URL
@@ -41,8 +38,8 @@ import com.ultratv.tv.nativeapp.ui.common.isTelevision
 import com.ultratv.tv.nativeapp.ui.design.*
 
 /**
- * Ligne « Soutenir Ultra TV » de Réglages › À propos. Téléphone / tablette : ouvre la page Ko-fi dans le navigateur (repli
- * sur le QR code si aucune appli ne gère le lien). TV : QR code Ko-fi à scanner avec le téléphone.
+ * Ligne « Soutenir Ultra TV » de Réglages › À propos. Téléphone / tablette : ouvre la page PayPal (appli PayPal ou navigateur) (repli
+ * sur le QR code si aucune appli ne gère le lien). TV : QR code PayPal à scanner avec le téléphone.
  */
 @Composable
 fun SupportRow(D: DesignStrings = LocalDs.current) {
@@ -57,7 +54,7 @@ fun SupportRow(D: DesignStrings = LocalDs.current) {
     if (dialog) SupportQrDialog(D) { dialog = false }
 }
 
-/** Dialogue : QR code Ko-fi (image fournie par Ko-fi, embarquée : aucun accès réseau), adresse en clair, Fermer. */
+/** Dialogue : QR code PayPal (généré sur l'appareil avec ZXing : aucun accès réseau), adresse en clair, Fermer. */
 @Composable
 fun SupportQrDialog(D: DesignStrings, onClose: () -> Unit) {
     ModalFocusScope(onBack = onClose, modifier = Modifier.background(Ux.Scrim)) {
@@ -67,7 +64,7 @@ fun SupportQrDialog(D: DesignStrings, onClose: () -> Unit) {
         ) {
             Text(D.supportTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 36.spx, maxLines = 2, textAlign = TextAlign.Center)
             Text(D.supportScan, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 3, textAlign = TextAlign.Center)
-            Image(painterResource(R.drawable.kofi_qr), contentDescription = SUPPORT_URL, modifier = Modifier.size(300.design).clip(RoundedCornerShape(16.design)))
+            QrCode(SUPPORT_URL, 300.design, Modifier.clip(RoundedCornerShape(16.design)))
             Text(SUPPORT_URL.removePrefix("https://"), color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, textAlign = TextAlign.Center)
             val req = remember { FocusRequester() }
             var f by remember { mutableStateOf(false) }

@@ -1,4 +1,4 @@
-# Bouton « Sponsor » du dépôt : Ko-fi (don ponctuel, carte ou PayPal), Liberapay (don récurrent) et page de dons du projet.
+# Bouton « Sponsor » du dépôt : PayPal (don direct), Ko-fi (don ponctuel, carte ou PayPal), Liberapay (don récurrent) et page de dons du projet.
 ko_fi: ultratv
 liberapay: ultratv
-custom: ["https://ultratv.dpdns.org/donate"]
+custom: ["https://paypal.me/kbenazzouz", "https://ultratv.dpdns.org/donate"]

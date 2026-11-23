@@ -1676,7 +1676,7 @@
     <string name="shortcuts_hint">Secțiunile barei de jos. Atinge una pentru a o schimba, ▲ ▼ pentru a o muta.</string>
     <string name="support_title">Susține Ultra TV</string>
     <string name="support_sub">Gratuit și fără reclame: o donație ajută la plata serverelor.</string>
-    <string name="support_scan">Scanează codul QR cu telefonul pentru a dona pe Ko-fi (card sau PayPal).</string>
+    <string name="support_scan">Scanează codul QR cu telefonul pentru a dona prin PayPal.</string>
     <string name="simple_back_full">Înapoi la modul complet</string>
     <string name="simple_all_settings">Toate setările</string>
     <string name="simple_full_hint">Modul complet afișează toate secțiunile: ghid, sport, categorii, înregistrări…</string>

@@ -230,7 +230,7 @@ adb install -r UltraTV.apk</code></pre>
 <section id="soutenir">
   <h2><span lang="fr">Soutenir le projet</span><span lang="en">Support the project</span></h2>
   <p><span lang="fr">Ultra TV est gratuit, sans publicité, et le restera. Un don aide à payer les serveurs (synchronisation cloud, guide, affiches) et le temps passé à l'améliorer. Carte bancaire ou PayPal, depuis n'importe quel pays ; aucune donnée bancaire ne passe par Ultra TV.</span><span lang="en">Ultra TV is free and ad-free, and will stay that way. A donation helps pay for the servers (cloud sync, guide, artwork) and the time spent improving it. Card or PayPal, from any country; no card details ever go through Ultra TV.</span></p>
-  <p class="cta"><a class="btn" href="https://ko-fi.com/ultratv" rel="noopener">♥ <span lang="fr">Faire un don sur Ko-fi</span><span lang="en">Donate on Ko-fi</span></a> <a class="btn alt" href="https://liberapay.com/ultratv/" rel="noopener"><span lang="fr">Don régulier sur Liberapay</span><span lang="en">Recurring on Liberapay</span></a></p>
+  <p class="cta"><a class="btn" href="https://paypal.me/kbenazzouz" rel="noopener">♥ <span lang="fr">Faire un don avec PayPal</span><span lang="en">Donate with PayPal</span></a> <a class="btn alt" href="https://ko-fi.com/ultratv" rel="noopener"><span lang="fr">Faire un don sur Ko-fi</span><span lang="en">Donate on Ko-fi</span></a> <a class="btn alt" href="https://liberapay.com/ultratv/" rel="noopener"><span lang="fr">Don régulier sur Liberapay</span><span lang="en">Recurring on Liberapay</span></a></p>
 </section>
 
 <section id="faq">
@@ -249,27 +249,7 @@ adb install -r UltraTV.apk</code></pre>
 </footer>
 </div>
 <script src="{{ROOT}}app.js" defer></script>
-<!-- Dons : bouton flottant Ko-fi -->
-<script src='https://storage.ko-fi.com/cdn/scripts/overlay-widget.js'></script>
-<script>
-  kofiWidgetOverlay.draw('ultratv', {
-    'type': 'floating-chat',
-    'floating-chat.donateButton.text': '{{KOFI}}',
-    'floating-chat.donateButton.background-color': '#d9534f',
-    'floating-chat.donateButton.text-color': '#fff'
-  });
-  // Cadre du bouton Ko-fi : même color-scheme sur le cadre ET son document, sinon le navigateur le peint en blanc opaque.
-  (function () {
-    function fix() {
-      document.querySelectorAll('iframe[id^="kofi-wo-container"]').forEach(function (f) {
-        f.style.setProperty('color-scheme', 'light', 'important');
-        try { var d = f.contentDocument; if (d && d.documentElement) d.documentElement.style.colorScheme = 'light'; } catch (e) {}
-      });
-    }
-    fix();
-    new MutationObserver(fix).observe(document.body, { childList: true, subtree: true });
-    var n = 0, t = setInterval(function () { fix(); if (++n > 20) clearInterval(t); }, 500);
-  })();
-</script>
+<!-- Dons : bouton flottant vers PayPal (don direct) -->
+<a class="donate-float" href="https://paypal.me/kbenazzouz" rel="noopener">♥ {{DONATE}}</a>
 </body>
 </html>

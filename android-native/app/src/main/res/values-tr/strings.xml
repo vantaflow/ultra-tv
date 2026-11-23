@@ -1632,7 +1632,7 @@
 <string name="shortcuts_hint">Alt çubuğun bölümleri. Değiştirmek için birine dokun, taşımak için ▲ ▼ kullan.</string>
 <string name="support_title">Ultra TV\'yi destekle</string>
 <string name="support_sub">Ücretsiz ve reklamsız: bağış sunucu masraflarına katkı sağlar.</string>
-<string name="support_scan">Ko-fi\'de bağış yapmak için telefonunla QR kodunu tara (kart veya PayPal).</string>
+<string name="support_scan">PayPal ile bağış yapmak için telefonunla QR kodunu tara.</string>
 <string name="simple_back_full">Tam moda dön</string>
 <string name="simple_all_settings">Tüm ayarlar</string>
 <string name="simple_full_hint">Tam mod tüm bölümleri gösterir: rehber, spor, kategoriler, kayıtlar…</string>

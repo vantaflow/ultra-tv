@@ -1640,7 +1640,7 @@
     <string name="shortcuts_hint">Các mục của thanh dưới. Chạm vào một mục để đổi, ▲ ▼ để di chuyển.</string>
     <string name="support_title">Ủng hộ Ultra TV</string>
     <string name="support_sub">Miễn phí và không quảng cáo: khoản quyên góp giúp trả tiền máy chủ.</string>
-    <string name="support_scan">Quét mã QR bằng điện thoại để quyên góp trên Ko-fi (thẻ hoặc PayPal).</string>
+    <string name="support_scan">Quét mã QR bằng điện thoại để quyên góp qua PayPal.</string>
     <string name="simple_back_full">Quay lại chế độ đầy đủ</string>
     <string name="simple_all_settings">Tất cả cài đặt</string>
     <string name="simple_full_hint">Chế độ đầy đủ hiện mọi mục: lịch phát sóng, thể thao, danh mục, bản ghi…</string>

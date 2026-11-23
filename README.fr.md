@@ -13,6 +13,7 @@
   <a href="https://github.com/vantaflow/ultra-tv/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/vantaflow/ultra-tv?label=release" /></a>
   <a href="LICENSE"><img alt="Licence MIT" src="https://img.shields.io/badge/licence-MIT-0284c7" /></a>
   <a href="https://vantaflow.github.io/ultra-tv/"><img alt="Site" src="https://img.shields.io/badge/site-GitHub%20Pages-d91e2b" /></a>
+  <a href="https://paypal.me/kbenazzouz"><img alt="Faire un don avec PayPal" src="https://img.shields.io/badge/PayPal-donate-003087?logo=paypal&logoColor=white" /></a>
   <a href="https://ko-fi.com/ultratv"><img alt="Soutenir sur Ko-fi" src="https://img.shields.io/badge/Ko--fi-ultratv-ff5e5b?logo=ko-fi&logoColor=white" /></a>
   <a href="https://liberapay.com/ultratv/"><img alt="Soutenir sur Liberapay" src="https://img.shields.io/liberapay/receives/ultratv.svg?logo=liberapay" /></a>
 </p>
@@ -347,7 +348,7 @@ Une question ou un doute sur ce code ? Ouvrez une [issue](https://github.com/van
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/A2F42AM3QY)
 
-Ultra TV est gratuit, sans publicité, et le restera. Pour aider à payer les serveurs et le temps passé à l'améliorer : <https://ko-fi.com/ultratv> (carte bancaire ou PayPal, depuis n'importe quel pays) ou <https://liberapay.com/ultratv/> (don régulier), aussi accessible par le bouton « Sponsor » du dépôt, par <https://ultratv.dpdns.org/donate> et dans l'appli (Réglages › À propos › Soutenir Ultra TV, QR code sur TV). Aucune donnée bancaire ne passe par Ultra TV.
+Ultra TV est gratuit, sans publicité, et le restera. Pour aider à payer les serveurs et le temps passé à l'améliorer : <https://paypal.me/kbenazzouz> (don direct, compte PayPal ou carte bancaire), <https://ko-fi.com/ultratv> (carte bancaire ou PayPal, depuis n'importe quel pays) ou <https://liberapay.com/ultratv/> (don régulier), aussi accessible par le bouton « Sponsor » du dépôt, par <https://ultratv.dpdns.org/donate> et dans l'appli (Réglages › À propos › Soutenir Ultra TV, QR code sur TV). Aucune donnée bancaire ne passe par Ultra TV.
 
 ## Aider à traduire
 
@@ -401,7 +402,7 @@ wrangler secret put ACCOUNT_RELAY_KEY              # facultatif : relais d'abonn
 npm test && wrangler deploy --dry-run
 ```
 
-TMDB et OpenSubtitles sont facultatifs : sans leurs secrets, l'application masque les fonctions correspondantes. Ko-fi et Liberapay ne demandent aucun secret. La variable `SITE_HOST` (`wrangler.toml`) désigne l'adresse du site principal : les anciennes adresses redirigent leurs pages vers elle, sauf `/api/*`. Trakt utilise `TRAKT_CLIENT_ID` (`wrangler.toml`, application Trakt en PKCE : pas de secret client). Pour un fork, compilez avec `-PULTRA_WORKER_URL=https://votre-worker.workers.dev`.
+TMDB et OpenSubtitles sont facultatifs : sans leurs secrets, l'application masque les fonctions correspondantes. PayPal, Ko-fi et Liberapay ne demandent aucun secret. La variable `SITE_HOST` (`wrangler.toml`) désigne l'adresse du site principal : les anciennes adresses redirigent leurs pages vers elle, sauf `/api/*`. Trakt utilise `TRAKT_CLIENT_ID` (`wrangler.toml`, application Trakt en PKCE : pas de secret client). Pour un fork, compilez avec `-PULTRA_WORKER_URL=https://votre-worker.workers.dev`.
 
 ## Limites connues
 

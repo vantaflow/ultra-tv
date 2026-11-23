@@ -1676,7 +1676,7 @@
     <string name="shortcuts_hint">Seções da barra inferior. Toque em uma para trocar, ▲ ▼ para mover.</string>
     <string name="support_title">Apoiar o Ultra TV</string>
     <string name="support_sub">Grátis e sem anúncios: uma doação ajuda a pagar os servidores.</string>
-    <string name="support_scan">Escaneie o QR code com o celular para doar no Ko-fi (cartão ou PayPal).</string>
+    <string name="support_scan">Escaneie o QR code com o celular para doar com PayPal.</string>
     <string name="simple_back_full">Voltar ao modo completo</string>
     <string name="simple_all_settings">Todas as configurações</string>
     <string name="simple_full_hint">O modo completo mostra todas as seções: guia, esportes, categorias, gravações…</string>

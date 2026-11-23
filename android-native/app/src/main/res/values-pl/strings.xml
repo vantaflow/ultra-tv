@@ -1636,7 +1636,7 @@
     <string name="shortcuts_hint">Sekcje dolnego paska. Dotknij, aby zmienić, ▲ ▼, aby przesunąć.</string>
     <string name="support_title">Wesprzyj Ultra TV</string>
     <string name="support_sub">Darmowe i bez reklam: darowizna pomaga opłacić serwery.</string>
-    <string name="support_scan">Zeskanuj kod QR telefonem, aby wesprzeć przez Ko-fi (karta lub PayPal).</string>
+    <string name="support_scan">Zeskanuj kod QR telefonem, aby wesprzeć przez PayPal.</string>
     <string name="simple_back_full">Wróć do pełnego trybu</string>
     <string name="simple_all_settings">Wszystkie ustawienia</string>
     <string name="simple_full_hint">Pełny tryb pokazuje wszystkie sekcje: przewodnik, sport, kategorie, nagrania…</string>
