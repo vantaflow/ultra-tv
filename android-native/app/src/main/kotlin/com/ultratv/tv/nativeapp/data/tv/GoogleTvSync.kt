@@ -33,9 +33,12 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
+import com.ultratv.tv.nativeapp.i18n.tvChannelPublishedName
 
 /**
  * Intégration Google TV / Android TV : « Continuer à regarder » (Watch Next) et chaîne de prévisualisation
@@ -57,6 +60,9 @@ class GoogleTvSync @Inject constructor(
     private val prefsStore: com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore,
     private val providerDao: com.ultratv.tv.nativeapp.data.db.ProviderDao,
     private val categoryDao: com.ultratv.tv.nativeapp.data.db.CategoryDao,
+    private val lockedStore: com.ultratv.tv.nativeapp.data.prefs.LockedChannelsStore,
+    private val sportRepo: dagger.Lazy<com.ultratv.tv.nativeapp.data.sport.SportRepository>,
+    private val traktMatcher: dagger.Lazy<com.ultratv.tv.nativeapp.data.trakt.TraktCatalogMatcher>,
 ) {
     private val isTv = ctx.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
     private val prefs = ctx.getSharedPreferences("google_tv", Context.MODE_PRIVATE)
@@ -73,6 +79,57 @@ class GoogleTvSync @Inject constructor(
     private val scope_ = combine(profiles.currentId, activeProvider) { prof, pid -> prof to pid }.distinctUntilChanged()
 
     private val gate = TelemetryGate()
+
+    /** Chaînes activées (Réglages › Affichage) et rubrique Sport : (choix, sport activé). */
+    private val choice = prefsStore.flow.map { TvChannelsChoice.parse(it.tvHomeChannels) to it.sportSection }.distinctUntilChanged()
+
+    /** La chaîne [kind] est-elle à publier ? Faux : elle est supprimée de l'écran d'accueil. */
+    private fun enabled(kind: TvHomeChannel) = choice.map { (c, sport) -> c.isEffective(kind, sport) }.distinctUntilChanged()
+
+    /**
+     * Ce que les rangées de l'accueil montrent au profil actif ([com.ultratv.tv.nativeapp.ui.home.HomeGuard.of]) : suit les
+     * masquages du profil, les verrous et désactivations de catégories et les chaînes verrouillées (republication à chaque
+     * changement de verrou).
+     */
+    private fun rawRowGuard(pid: Long): kotlinx.coroutines.flow.Flow<com.ultratv.tv.nativeapp.ui.home.HomeGuard> = combine(
+        profiles.hiddenCategoryKeys,
+        categoryDao.observeForProviderKind(pid, "LIVE"),
+        categoryDao.observeForProviderKind(pid, "MOVIE"),
+        categoryDao.observeForProviderKind(pid, "SERIES"),
+        lockedStore.locked,
+    ) { hidden, live, ms, ss, locked -> com.ultratv.tv.nativeapp.ui.home.HomeGuard.of(hidden, live + ms + ss, locked) }.distinctUntilChanged()
+
+    /** Historique du direct ([com.ultratv.tv.nativeapp.ui.home.HomeGuard.forHistory]) : verrous, et adulte pour un profil Enfants. */
+    private fun rawHistoryGuard(pid: Long): kotlinx.coroutines.flow.Flow<com.ultratv.tv.nativeapp.ui.home.HomeGuard> = combine(
+        categoryDao.observeForProviderKind(pid, "LIVE"),
+        lockedStore.locked,
+        profiles.current.map { it?.isKids == true }.distinctUntilChanged(),
+    ) { live, locked, kids -> com.ultratv.tv.nativeapp.ui.home.HomeGuard.forHistory(live, locked, kids) }.distinctUntilChanged()
+
+    /**
+     * Filtres partagés par tous les collecteurs une fois [start] lancé (une seule lecture des catégories par changement,
+     * pas une par chaîne) ; avant [start] (demande ponctuelle du système), lus directement.
+     */
+    @Volatile private var sharedRowGuard: kotlinx.coroutines.flow.Flow<Pair<Long?, com.ultratv.tv.nativeapp.ui.home.HomeGuard>>? = null
+    @Volatile private var sharedHistoryGuard: kotlinx.coroutines.flow.Flow<Pair<Long?, com.ultratv.tv.nativeapp.ui.home.HomeGuard>>? = null
+
+    private fun shareGuards(scope: CoroutineScope) {
+        fun share(raw: (Long) -> kotlinx.coroutines.flow.Flow<com.ultratv.tv.nativeapp.ui.home.HomeGuard>) =
+            activeProvider.flatMapLatest { pid -> if (pid == null) flowOf(null to com.ultratv.tv.nativeapp.ui.home.HomeGuard.NONE) else raw(pid).map { pid to it } }
+                .shareIn(scope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000), replay = 1)
+        sharedRowGuard = share(::rawRowGuard)
+        sharedHistoryGuard = share(::rawHistoryGuard)
+    }
+
+    private fun rowGuard(pid: Long): kotlinx.coroutines.flow.Flow<com.ultratv.tv.nativeapp.ui.home.HomeGuard> =
+        sharedRowGuard?.let { f -> f.filter { it.first == pid }.map { it.second }.distinctUntilChanged() } ?: rawRowGuard(pid)
+
+    private fun historyGuard(pid: Long): kotlinx.coroutines.flow.Flow<com.ultratv.tv.nativeapp.ui.home.HomeGuard> =
+        sharedHistoryGuard?.let { f -> f.filter { it.first == pid }.map { it.second }.distinctUntilChanged() } ?: rawHistoryGuard(pid)
+
+    /** Invites « Afficher sur l'accueil » (chaîne activée dans Réglages) : présentées par MainActivity. */
+    private val _browsablePrompts = kotlinx.coroutines.flow.MutableSharedFlow<Intent>(extraBufferCapacity = 4)
+    val browsablePrompts: kotlinx.coroutines.flow.SharedFlow<Intent> = _browsablePrompts
 
     /** Télémétrie « googletv » : émise seulement quand le message change pour sa clé (échecs et changements d'état). */
     private fun report(key: String, message: String, warn: Boolean = false) {
@@ -141,10 +198,16 @@ class GoogleTvSync @Inject constructor(
         started = true
         if (!providerAvailable()) return
         report("start", "sync started")
+        shareGuards(scope)
         // Collecteurs retenus pour être annulés si le fournisseur se révèle indisponible en cours de route.
         fun track(block: suspend CoroutineScope.() -> Unit) { val job = scope.launch(block = block); synchronized(jobs) { jobs += job } }
         track {
-            scope_.flatMapLatest { (prof, pid) -> if (pid == null) { report("skip:wn", "watch next skipped: no active provider"); flowOf(emptyList()) } else history.observeRecent(prof, pid, 40) }
+            scope_.flatMapLatest { (prof, pid) ->
+                if (pid == null) { report("skip:wn", "watch next skipped: no active provider"); flowOf(Triple(emptyList<com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity>(), com.ultratv.tv.nativeapp.ui.home.HomeGuard.NONE, com.ultratv.tv.nativeapp.ui.home.HomeGuard.NONE)) }
+                // Contrôle parental : aucun élément verrouillé (ni masqué pour le profil, comme « Continuer à regarder » de
+                // l'accueil), republié à chaque changement de verrou.
+                else combine(history.observeRecent(prof, pid, 40), historyGuard(pid), rowGuard(pid)) { h, live, vod -> Triple(h, live, vod) }
+            }
                 // 1.2.42 avait mis un debounce de 45 s : tant que l'historique bouge (position enregistrée toutes les 30 s,
                 // synchro d'appareils), RIEN n'était publié, et rien non plus si l'appli était quittée / tuée dans les 45 s
                 // suivant la fin d'une lecture — « Continuer à regarder » restait vide. Maintenant : 2 s de calme, puis
@@ -152,62 +215,249 @@ class GoogleTvSync @Inject constructor(
                 // une écriture toutes les 45 s dans Google TV, mais la première ne se fait jamais attendre).
                 .debounce(2_000).collectLatest { plan ->
                     delay(WatchNextPlan.waitMs(lastWatchNextSync, System.currentTimeMillis()))
-                    runCatching { val sel = WatchNextPlan.select(plan) + WatchNextPlan.selectLive(plan); syncWatchNext(sel, landscapes(sel)) }.onFailure { e -> fail("watchnext", "watch next", e) }
+                    runCatching {
+                        val allowed = guardHistory(plan)
+                        val sel = WatchNextPlan.select(allowed) + WatchNextPlan.selectLive(allowed)
+                        syncWatchNext(sel, landscapes(sel))
+                    }.onFailure { e -> fail("watchnext", "watch next", e) }
                     lastWatchNextSync = System.currentTimeMillis()
                 }
         }
         track {
-            scope_.flatMapLatest { (prof, pid) ->
-                if (pid == null) flowOf(emptyList())
-                else combine(favorites.observeForKind(prof, pid, "LIVE"), history.observeRecent(prof, pid, 40)) { favs, hist ->
-                    val fav = orderedByRemote(pid, favs.map { it.remoteId })
-                    val recent = orderedByRemote(pid, WatchNextPlan.selectLive(hist).map { it.remoteId })
-                    FavoritesChannelPlan.select(fav, recent)
+            enabled(TvHomeChannel.FAVORITES).flatMapLatest { on ->
+                if (!on) flowOf<List<com.ultratv.tv.nativeapp.data.db.ChannelEntity>?>(null)
+                else scope_.flatMapLatest { (prof, pid) ->
+                    if (pid == null) flowOf(emptyList())
+                    else combine(favorites.observeForKind(prof, pid, "LIVE"), history.observeRecent(prof, pid, 40), rowGuard(pid), historyGuard(pid)) { favs, hist, g, hg ->
+                        favoritesSelection(pid, favs.map { it.remoteId }, hist, g, hg)
+                    }
                 }
-            }.debounce(3_000).collect { runCatching { syncFavoritesChannel(it) }.onFailure { e -> fail("favorites", "favorites channel", e) } }
+            }.debounce(3_000).collect { sel ->
+                runCatching {
+                    if (sel == null) removeLegacy(TvHomeChannel.FAVORITES)
+                    else { syncFavoritesChannel(sel); askBrowsableIfPending(TvHomeChannel.FAVORITES.key, prefs.getLong(K_CHANNEL, -1L)) }
+                }.onFailure { e -> fail("favorites", "favorites channel", e) }
+            }
         }
         // Chaîne « Chaînes récentes » : dernières chaînes du direct du profil, distincte de « Favoris ».
         track {
-            scope_.flatMapLatest { (prof, pid) ->
-                if (pid == null) flowOf(emptyList())
-                else combine(history.observeRecentByKind(prof, pid, "LIVE", RecentChannelsPlan.FETCH), profiles.hiddenCategoryKeys) { hist, hidden ->
-                    RecentChannelsPlan.select(orderedByRemote(pid, hist.map { it.remoteId }.distinct()), hidden)
+            enabled(TvHomeChannel.RECENT).flatMapLatest { on ->
+                if (!on) flowOf<List<com.ultratv.tv.nativeapp.data.db.ChannelEntity>?>(null)
+                else scope_.flatMapLatest { (prof, pid) ->
+                    if (pid == null) flowOf(emptyList())
+                    else combine(history.observeRecentByKind(prof, pid, "LIVE", RecentChannelsPlan.FETCH), historyGuard(pid)) { hist, g ->
+                        RecentChannelsPlan.select(orderedByRemote(pid, hist.map { it.remoteId }.distinct()), g)
+                    }
                 }
-            }.debounce(3_000).collect { runCatching { syncRecentChannel(it) }.onFailure { e -> fail("recent", "recent channel", e) } }
+            }.debounce(3_000).collect { sel ->
+                runCatching {
+                    if (sel == null) removeLegacy(TvHomeChannel.RECENT)
+                    else { syncRecentChannel(sel); askBrowsableIfPending(TvHomeChannel.RECENT.key, prefs.getLong(K_RECENT_CHANNEL, -1L)) }
+                }.onFailure { e -> fail("recent", "recent channel", e) }
+            }
         }
         // Chaîne « Nouveautés » : suit la source active ET le profil (catégories masquées, profil enfant). Les tables film /
         // série bougent pendant toute la synchro du catalogue : on attend 5 s de calme (fin de synchro), puis la signature
         // évite toute réécriture inutile.
         track {
-            scope_.flatMapLatest { (_, pid) -> if (pid == null) { report("skip:news", "news channel skipped: no active provider"); flowOf(emptyList()) } else latestFlow(pid) }
-                .debounce(5_000).collect { runCatching { syncNewsChannel(it) }.onFailure { e -> fail("news", "news channel", e) } }
+            enabled(TvHomeChannel.NEWS).flatMapLatest { on ->
+                if (!on) flowOf<List<NewsChannelPlan.Item>?>(null)
+                else scope_.flatMapLatest { (_, pid) -> if (pid == null) { report("skip:news", "news channel skipped: no active provider"); flowOf(emptyList()) } else latestFlow(pid) }
+            }.debounce(5_000).collect { sel ->
+                runCatching {
+                    if (sel == null) removeLegacy(TvHomeChannel.NEWS)
+                    else { syncNewsChannel(sel); askBrowsableIfPending(TvHomeChannel.NEWS.key, prefs.getLong(K_NEWS_CHANNEL, -1L)) }
+                }.onFailure { e -> fail("news", "news channel", e) }
+            }
         }
+        // Chaîne activée dans Réglages : l'invite système « Afficher sur l'accueil » sera présentée une fois la chaîne publiée.
+        track {
+            var last: TvChannelsChoice? = null
+            choice.map { it.first }.distinctUntilChanged().collect { c ->
+                val before = last
+                last = c
+                if (before != null) {
+                    val added = TvChannelsChoice.newlyEnabled(before, c)
+                    if (added.isNotEmpty()) prefs.edit().putStringSet(K_ASK_BROWSABLE, (prefs.getStringSet(K_ASK_BROWSABLE, emptySet()).orEmpty() + added).toSet()).apply()
+                }
+            }
+        }
+        startOptionalChannels(::track)
+    }
+
+    /**
+     * Chaînes activables (Nouveaux films, Nouvelles séries, Top 10, mieux notés, Ma liste, Sport en direct, catégories) :
+     * désactivées par défaut. Rien de lourd juste après le démarrage de la box : premier travail au plus tôt
+     * [TvChannelPlan.BOOT_SETTLE_MS] après le démarrage de l'appareil.
+     */
+    private fun startOptionalChannels(track: (suspend CoroutineScope.() -> Unit) -> Unit) {
+        suspend fun settle() = delay(TvChannelPlan.bootWaitMs(android.os.SystemClock.elapsedRealtime()))
+        fun optional(kind: TvHomeChannel, debounceMs: Long, data: (prof: Long, pid: Long) -> kotlinx.coroutines.flow.Flow<List<TvProgramItem>>) = track {
+            settle()
+            enabled(kind).flatMapLatest { on ->
+                if (!on) flowOf<List<TvProgramItem>?>(null)
+                else scope_.flatMapLatest { (prof, pid) -> if (pid == null) flowOf(emptyList()) else data(prof, pid) }
+            }.debounce(debounceMs).collect { items ->
+                runCatching {
+                    if (items == null) removeOptional(kind.key)
+                    else syncOptional(kind.key, com.ultratv.tv.nativeapp.i18n.DesignStrings(appLang()).tvChannelPublishedName(kind), optionalAppLink(kind), items)
+                }.onFailure { e -> fail(kind.key, "${kind.key} channel", e) }
+            }
+        }
+        fun stamp(pid: Long) = providerDao.observeCatalogStamp(pid).distinctUntilChanged()
+        optional(TvHomeChannel.NEW_MOVIES, 5_000) { _, pid ->
+            combine(stamp(pid), rowGuard(pid)) { _, g -> g }.map { g ->
+                TvChannelPlan.selectVod(movies.latest(pid, TvChannelPlan.FETCH).map(::vodOf), g).map { TvChannelPlan.vodProgram("NEWMOVIES", it) }
+            }
+        }
+        optional(TvHomeChannel.NEW_SERIES, 5_000) { _, pid ->
+            combine(stamp(pid), rowGuard(pid)) { _, g -> g }.map { g ->
+                TvChannelPlan.selectVod(seriesDao.latest(pid, TvChannelPlan.FETCH).map(::vodOf), g).map { TvChannelPlan.vodProgram("NEWSERIES", it) }
+            }
+        }
+        optional(TvHomeChannel.TOP_RATED_MOVIES, 5_000) { _, pid ->
+            combine(stamp(pid), rowGuard(pid)) { _, g -> g }.map { g ->
+                TvChannelPlan.selectVod(movies.observeTopRated(pid, TvChannelPlan.FETCH).first().map(::vodOf), g).map { TvChannelPlan.vodProgram("TOPMOVIES", it) }
+            }
+        }
+        optional(TvHomeChannel.TOP10, 5_000) { _, pid ->
+            combine(traktMatcher.get().rows(flowOf(pid)), stamp(pid), rowGuard(pid)) { rows, _, g -> rows to g }.map { (rows, g) ->
+                val trending = trendingVods(rows.trending)
+                val top = movies.observeTopRated(pid, TvChannelPlan.FETCH).first().map(::vodOf)
+                TvChannelPlan.top10(trending, top, g).map { TvChannelPlan.vodProgram("TOP10", it) }
+            }
+        }
+        optional(TvHomeChannel.MY_LIST, 3_000) { prof, pid ->
+            combine(favorites.observeForKind(prof, pid, "MOVIE"), favorites.observeForKind(prof, pid, "SERIES"), rowGuard(pid)) { fm, fs, g ->
+                val ms = orderedMovies(pid, fm.map { it.remoteId }).map(::vodOf)
+                val ss = orderedSeries(pid, fs.map { it.remoteId }).map(::vodOf)
+                TvChannelPlan.selectVod(TvChannelPlan.interleave(ms, ss), g).map { TvChannelPlan.vodProgram("MYLIST", it) }
+            }
+        }
+        optional(TvHomeChannel.SPORT_LIVE, 3_000) { _, pid ->
+            val tick = kotlinx.coroutines.flow.flow { while (true) { emit(Unit); delay(TvChannelPlan.SPORT_REFRESH_MS) } }
+            combine(tick, rowGuard(pid)) { _, g -> g }.map { g -> sportPrograms(pid, g) }
+        }
+        // Catégories de chaînes choisies (au plus 3) : une chaîne chacune, catégories de la source active seulement.
+        track {
+            settle()
+            combine(choice.map { it.first.categories }.distinctUntilChanged(), scope_) { cats, sc -> cats to sc.second }
+                .flatMapLatest { (cats, pid) ->
+                    val mine = if (pid == null) emptyList() else cats.filter { it.providerId == pid }
+                    if (pid == null || mine.isEmpty()) flowOf(emptyMap<String, Pair<TvCategoryRef, List<TvProgramItem>>>())
+                    else combine(mine.map { ref ->
+                        combine(channels.observeForCategory(pid, ref.categoryId), rowGuard(pid)) { list, g ->
+                            ref to TvChannelPlan.selectChannels(list, g).map { TvChannelPlan.channelProgram("CAT", it, bannerUri()) }
+                        }
+                    }) { arr -> arr.associate { it.first.key to it } }
+                }
+                .debounce(3_000).collect { wanted ->
+                    runCatching {
+                        val published = prefs.getStringSet(K_OPTIONAL_KEYS, emptySet()).orEmpty().filter { it.startsWith("cat:") }.toSet()
+                        TvChannelPlan.stale(published, wanted.keys).forEach { removeOptional(it) }
+                        for ((key, v) in wanted) {
+                            val (ref, items) = v
+                            val name = categoryDao.forProviderKind(ref.providerId, "LIVE").firstOrNull { it.remoteId == ref.categoryId }?.name ?: continue
+                            syncOptional(key, name, com.ultratv.tv.nativeapp.nav.DeepLink.liveCategory(ref.categoryId), items)
+                        }
+                    }.onFailure { e -> fail("categories", "category channels", e) }
+                }
+        }
+    }
+
+    private fun bannerUri() = "android.resource://${ctx.packageName}/drawable/banner"
+
+    private fun optionalAppLink(kind: TvHomeChannel): String = when (kind) {
+        TvHomeChannel.NEW_MOVIES, TvHomeChannel.TOP_RATED_MOVIES -> com.ultratv.tv.nativeapp.nav.DeepLink.section(com.ultratv.tv.nativeapp.nav.Routes.MOVIES)
+        TvHomeChannel.NEW_SERIES -> com.ultratv.tv.nativeapp.nav.DeepLink.section(com.ultratv.tv.nativeapp.nav.Routes.SERIES)
+        TvHomeChannel.SPORT_LIVE, TvHomeChannel.RECENT, TvHomeChannel.FAVORITES -> com.ultratv.tv.nativeapp.nav.DeepLink.section(com.ultratv.tv.nativeapp.nav.Routes.LIVE)
+        else -> "${com.ultratv.tv.nativeapp.nav.DeepLink.SCHEME}://home"
+    }
+
+    private fun vodOf(m: com.ultratv.tv.nativeapp.data.db.MovieEntity) =
+        TvChannelPlan.Vod(NewsChannelPlan.Kind.MOVIE, m.providerId, m.remoteId, m.title, m.poster, m.backdrop, m.categoryId)
+
+    private fun vodOf(s: com.ultratv.tv.nativeapp.data.db.SeriesEntity) =
+        TvChannelPlan.Vod(NewsChannelPlan.Kind.SERIES, s.providerId, s.remoteId, s.title, s.poster, s.backdrop, s.categoryId)
+
+    /** Films dans l'ordre des identifiants donnés (lots de 900, limite SQLite). */
+    private suspend fun orderedMovies(pid: Long, rids: List<String>): List<com.ultratv.tv.nativeapp.data.db.MovieEntity> {
+        if (rids.isEmpty()) return emptyList()
+        val by = rids.distinct().take(TvChannelPlan.FETCH * 5).chunked(900).flatMap { movies.byRemoteIds(pid, it) }.associateBy { it.remoteId }
+        return rids.mapNotNull { by[it] }
+    }
+
+    private suspend fun orderedSeries(pid: Long, rids: List<String>): List<com.ultratv.tv.nativeapp.data.db.SeriesEntity> {
+        if (rids.isEmpty()) return emptyList()
+        val by = rids.distinct().take(TvChannelPlan.FETCH * 5).chunked(900).flatMap { seriesDao.byRemoteIds(pid, it) }.associateBy { it.remoteId }
+        return rids.mapNotNull { by[it] }
+    }
+
+    /** Tendances Trakt (identifiants locaux, déjà rapprochées de la source) dans leur ordre. */
+    private suspend fun trendingVods(cards: List<com.ultratv.tv.nativeapp.data.trakt.TraktCard>): List<TvChannelPlan.Vod> {
+        if (cards.isEmpty()) return emptyList()
+        val ms = cards.filter { !it.isShow }.map { it.id }.distinct().chunked(900).flatMap { movies.byIds(it) }.associateBy { it.id }
+        val ss = cards.filter { it.isShow }.map { it.id }.distinct().chunked(900).flatMap { seriesDao.byIds(it) }.associateBy { it.id }
+        return cards.mapNotNull { c -> if (c.isShow) ss[c.id]?.let(::vodOf) else ms[c.id]?.let(::vodOf) }
+    }
+
+    /** Matchs en cours (rubrique Sport) sur des chaînes que l'accueil peut montrer : une tuile par chaîne. */
+    private suspend fun sportPrograms(pid: Long, g: com.ultratv.tv.nativeapp.ui.home.HomeGuard): List<TvProgramItem> {
+        val now = System.currentTimeMillis()
+        val live = com.ultratv.tv.nativeapp.data.sport.SportLogic.liveNow(sportRepo.get().load(pid, now).entries, now)
+        return live.filter { g.allowsChannel(it.channel) }.distinctBy { it.channel.providerId to it.channel.remoteId }.take(TvChannelPlan.MAX).map { e ->
+            val title = e.prog.title.takeIf { it.isNotBlank() } ?: e.channel.title
+            TvChannelPlan.channelProgram("SPORT", e.channel, bannerUri(), title = title, description = e.channel.title)
+        }
+    }
+
+    /** Favoris (filtre des rangées) complétés par les dernières chaînes regardées (filtre de l'historique). */
+    private suspend fun favoritesSelection(
+        pid: Long, favRemoteIds: List<String>, hist: List<com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity>,
+        g: com.ultratv.tv.nativeapp.ui.home.HomeGuard, hg: com.ultratv.tv.nativeapp.ui.home.HomeGuard,
+    ): List<com.ultratv.tv.nativeapp.data.db.ChannelEntity> {
+        val fav = orderedByRemote(pid, favRemoteIds).filter(g::allowsChannel)
+        val recent = orderedByRemote(pid, WatchNextPlan.selectLive(hist).map { it.remoteId }).filter(hg::allowsChannel)
+        return FavoritesChannelPlan.select(fav, recent)
+    }
+
+    /** Historique filtré pour « Continuer à regarder » (voir [HistoryGuardPlan]) ; catégorie relue dans le catalogue local. */
+    private suspend fun guardHistory(plan: Triple<List<com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity>, com.ultratv.tv.nativeapp.ui.home.HomeGuard, com.ultratv.tv.nativeapp.ui.home.HomeGuard>): List<com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity> {
+        val (list, live, vod) = plan
+        if (list.isEmpty()) return list
+        val cats = HashMap<String, String?>()
+        for ((pk, rows) in list.groupBy { it.providerId to it.kind }) {
+            val (p, kind) = pk
+            val rids = rows.map(HistoryGuardPlan::titleRemoteId).distinct().take(900)
+            val found = runCatching {
+                when (kind) {
+                    "LIVE" -> channels.categoriesByRemote(p, rids)
+                    "MOVIE" -> movies.categoriesByRemote(p, rids)
+                    "EPISODE" -> seriesDao.categoriesByRemote(p, rids)
+                    else -> emptyList()
+                }
+            }.getOrDefault(emptyList())
+            for (f in found) cats["$p:$kind:${f.remoteId}"] = f.categoryId
+        }
+        return list.filter { h -> HistoryGuardPlan.allows(h, cats["${h.providerId}:${h.kind}:${HistoryGuardPlan.titleRemoteId(h)}"], live, vod) }
     }
 
     /**
      * Nouveautés : relues quand l'horodatage de synchro du catalogue CHANGE (fin d'une synchro de films / séries), plus à
      * chaque lot inséré. Avant, observer les tables movie / series relançait deux requêtes (et la sélection) à chaque lot
      * d'une synchro de dizaines de milliers de lignes, sur le même fichier de base que l'interface — le debounce en aval
-     * ne limitait que la publication, pas ce travail.
+     * ne limitait que la publication, pas ce travail. Relues aussi à chaque changement de verrou, de masquage ou de profil.
      */
     private fun latestFlow(pid: Long): kotlinx.coroutines.flow.Flow<List<NewsChannelPlan.Item>> =
-        combine(
-            providerDao.observeCatalogStamp(pid).distinctUntilChanged(),
-            profiles.hiddenCategoryKeys.distinctUntilChanged(),
-            profiles.current.map { it?.isKids == true }.distinctUntilChanged(),
-        ) { _, hidden, kids -> hidden to kids }.map { (hidden, kids) -> latestNow(pid, hidden, kids) }
+        combine(providerDao.observeCatalogStamp(pid).distinctUntilChanged(), rowGuard(pid)) { _, g -> g }.map { g -> latestNow(pid, g) }
 
-    /** Derniers ajouts visibles par le profil actif (avant, tout le catalogue de la source, même pour un profil enfant). */
-    private suspend fun latestNow(pid: Long, hidden: Set<String>? = null, kids: Boolean? = null): List<NewsChannelPlan.Item> {
-        val hiddenKeys = hidden ?: profiles.hiddenCategoryKeys.first()
-        val isKids = kids ?: (profiles.current.value?.isKids == true)
-        val locked = categoryDao.forProviderKind(pid, "MOVIE").filter { it.locked }.map { "MOVIE:$pid:${it.remoteId}" }.toSet() +
-            categoryDao.forProviderKind(pid, "SERIES").filter { it.locked }.map { "SERIES:$pid:${it.remoteId}" }.toSet()
+    /** Derniers ajouts que les rangées de l'accueil montrent au profil actif (ni masqués, ni verrouillés, ni adultes). */
+    private suspend fun latestNow(pid: Long, guard: com.ultratv.tv.nativeapp.ui.home.HomeGuard): List<NewsChannelPlan.Item> {
         val ms = movies.latest(pid, NewsChannelPlan.FETCH)
         val ss = seriesDao.latest(pid, NewsChannelPlan.FETCH)
         return NewsChannelPlan.select(
-            NewsChannelPlan.visible(ms.map { NewsChannelPlan.Item(NewsChannelPlan.Kind.MOVIE, it.providerId, it.remoteId, it.title, it.poster, it.addedKey, it.backdrop, it.categoryId) }, hiddenKeys, locked, isKids),
-            NewsChannelPlan.visible(ss.map { NewsChannelPlan.Item(NewsChannelPlan.Kind.SERIES, it.providerId, it.remoteId, it.title, it.poster, it.addedKey, it.backdrop, it.categoryId) }, hiddenKeys, locked, isKids),
+            NewsChannelPlan.visible(ms.map { NewsChannelPlan.Item(NewsChannelPlan.Kind.MOVIE, it.providerId, it.remoteId, it.title, it.poster, it.addedKey, it.backdrop, it.categoryId) }, guard),
+            NewsChannelPlan.visible(ss.map { NewsChannelPlan.Item(NewsChannelPlan.Kind.SERIES, it.providerId, it.remoteId, it.title, it.poster, it.addedKey, it.backdrop, it.categoryId) }, guard),
         )
     }
 
@@ -246,16 +496,24 @@ class GoogleTvSync @Inject constructor(
         val prof = profiles.currentIdNow
         val hist = history.observeRecent(prof, pid, 40).first()
         report("once", "initialize-programs broadcast received")
-        runCatching { val sel = WatchNextPlan.select(hist) + WatchNextPlan.selectLive(hist); syncWatchNext(sel, landscapes(sel)) }.onFailure { fail("watchnext", "watch next", it) }
+        // Mêmes filtres que la synchro continue : aucun élément verrouillé, chaînes désactivées dans Réglages non publiées.
+        val g = rowGuard(pid).first()
+        val hg = historyGuard(pid).first()
+        val (c, sport) = choice.first()
         runCatching {
+            val allowed = guardHistory(Triple(hist, hg, g))
+            val sel = WatchNextPlan.select(allowed) + WatchNextPlan.selectLive(allowed)
+            syncWatchNext(sel, landscapes(sel))
+        }.onFailure { fail("watchnext", "watch next", it) }
+        if (c.isEffective(TvHomeChannel.FAVORITES, sport)) runCatching {
             val favs = favorites.observeForKind(prof, pid, "LIVE").first()
-            syncFavoritesChannel(FavoritesChannelPlan.select(orderedByRemote(pid, favs.map { it.remoteId }), orderedByRemote(pid, WatchNextPlan.selectLive(hist).map { it.remoteId })))
+            syncFavoritesChannel(favoritesSelection(pid, favs.map { it.remoteId }, hist, g, hg))
         }.onFailure { fail("favorites", "favorites channel", it) }
-        runCatching {
+        if (c.isEffective(TvHomeChannel.RECENT, sport)) runCatching {
             val recent = history.observeRecentByKind(prof, pid, "LIVE", RecentChannelsPlan.FETCH).first()
-            syncRecentChannel(RecentChannelsPlan.select(orderedByRemote(pid, recent.map { it.remoteId }.distinct()), profiles.hiddenCategoryKeys.first()))
+            syncRecentChannel(RecentChannelsPlan.select(orderedByRemote(pid, recent.map { it.remoteId }.distinct()), hg))
         }.onFailure { fail("recent", "recent channel", it) }
-        runCatching { syncNewsChannel(latestNow(pid)) }.onFailure { fail("news", "news channel", it) }
+        if (c.isEffective(TvHomeChannel.NEWS, sport)) runCatching { syncNewsChannel(latestNow(pid, g)) }.onFailure { fail("news", "news channel", it) }
     }
 
     /** Chaînes dans l'ordre des identifiants donnés (la requête par lot ne garantit pas l'ordre). */
@@ -551,7 +809,144 @@ class GoogleTvSync @Inject constructor(
         android.util.Log.i("UltraGoogleTv", "news channel: ${selected.size} (+${diff.insert.size} -${diff.deleteRowIds.size})")
     }
 
+    // ---- Activation / désactivation (Réglages › Affichage › Chaînes sur l'écran d'accueil Android TV) ----------------
+
+    /** Supprime une chaîne publiée de l'écran d'accueil (ses programmes partent avec elle). Toute erreur : ignorée. */
+    private fun deleteChannel(channelId: Long) {
+        if (channelId < 0) return
+        runCatching { PreviewChannelHelper(ctx).deletePreviewChannel(channelId) }
+            .onFailure { runCatching { ctx.contentResolver.delete(TvContractCompat.buildChannelUri(channelId), null, null) } }
+    }
+
+    /** Chaîne historique désactivée : supprimée, ses préférences effacées (recréée à la réactivation). */
+    private suspend fun removeLegacy(kind: TvHomeChannel) {
+        val (lock, keys) = when (kind) {
+            TvHomeChannel.FAVORITES -> null to listOf(K_CHANNEL, K_SIGNATURE)
+            TvHomeChannel.RECENT -> recentLock to listOf(K_RECENT_CHANNEL, K_RECENT_SIGNATURE, K_RECENT_NAME)
+            TvHomeChannel.NEWS -> newsLock to listOf(K_NEWS_CHANNEL, K_NEWS_SIGNATURE, K_NEWS_NAME)
+            else -> return
+        }
+        suspend fun doRemove() {
+            val id = prefs.getLong(keys.first(), -1L)
+            if (id < 0) return
+            if (!providerAvailable()) return
+            deleteChannel(id)
+            prefs.edit().apply { keys.forEach { remove(it) } }.apply()
+            report("${kind.key}:removed", "${kind.key} channel $id removed (disabled in settings)")
+        }
+        if (lock != null) lock.withLock { doRemove() } else doRemove()
+    }
+
+    /**
+     * Chaîne activée à l'instant dans Réglages : invite système « Afficher cette chaîne sur l'accueil ? » (une fois). Sans
+     * invite sur le système, TvContractCompat.requestChannelBrowsable. Déjà affichée : rien.
+     */
+    private fun askBrowsableIfPending(key: String, channelId: Long) {
+        if (channelId < 0) return
+        val pending = prefs.getStringSet(K_ASK_BROWSABLE, emptySet()).orEmpty()
+        if (key !in pending) return
+        val browsable = runCatching {
+            ctx.contentResolver.query(TvContractCompat.buildChannelUri(channelId), arrayOf(TvContractCompat.Channels.COLUMN_BROWSABLE), null, null, null)
+                ?.use { if (it.moveToFirst()) it.getInt(0) == 1 else null }
+        }.getOrNull()
+        fun done() = prefs.edit().putStringSet(K_ASK_BROWSABLE, (pending - key).toSet()).apply()
+        if (browsable == true) { done(); return }
+        val intent = Intent(TvContractCompat.ACTION_REQUEST_CHANNEL_BROWSABLE).putExtra(TvContractCompat.EXTRA_CHANNEL_ID, channelId)
+        if (intent.resolveActivity(ctx.packageManager) != null) {
+            // Invite présentée par l'activité au premier plan ; sans elle (appli fermée), elle attend la prochaine publication.
+            if (_browsablePrompts.subscriptionCount.value == 0 || !_browsablePrompts.tryEmit(intent)) return
+            report("browsable:ask:$key", "browsable prompt requested for $key channel $channelId")
+        } else if (android.os.Build.VERSION.SDK_INT >= 26) {
+            runCatching { TvContractCompat.requestChannelBrowsable(ctx, channelId) }
+                .onFailure { android.util.Log.w("UltraGoogleTv", "requestChannelBrowsable $key", it) }
+        }
+        done()
+    }
+
+    /** Écritures des chaînes activables sérialisées (collecteurs + suppression). */
+    private val optionalLock = kotlinx.coroutines.sync.Mutex()
+
+    private fun kId(key: String) = "opt_id_$key"
+    private fun kSig(key: String) = "opt_sig_$key"
+    private fun kName(key: String) = "opt_name_$key"
+
+    /** Chaîne activable désactivée (ou catégorie retirée) : supprimée de l'écran d'accueil. */
+    private suspend fun removeOptional(key: String) = optionalLock.withLock {
+        val id = prefs.getLong(kId(key), -1L)
+        val keys = prefs.getStringSet(K_OPTIONAL_KEYS, emptySet()).orEmpty()
+        if (id < 0 && key !in keys) return@withLock
+        if (!providerAvailable()) return@withLock
+        deleteChannel(id)
+        prefs.edit().remove(kId(key)).remove(kSig(key)).remove(kName(key)).putStringSet(K_OPTIONAL_KEYS, (keys - key).toSet()).apply()
+        report("$key:removed", "$key channel $id removed")
+    }
+
+    /** Publie (ou met à jour par différence) une chaîne activable ; même logique que « Nouveautés ». */
+    private suspend fun syncOptional(key: String, name: String, appLink: String, items: List<TvProgramItem>) = optionalLock.withLock {
+        if (!providerAvailable()) return@withLock
+        val helper = PreviewChannelHelper(ctx)
+        var channelId = prefs.getLong(kId(key), -1L)
+        if (ChannelPublishPlan.mustRecreate(channelId, channelExists(channelId))) {
+            report("$key:gone", "$key channel $channelId missing in provider: recreating", warn = true)
+            prefs.edit().remove(kId(key)).remove(kSig(key)).apply()
+            channelId = -1L
+        }
+        if (items.isEmpty() && channelId < 0) { report("skip:$key", "$key channel skipped: nothing to show"); return@withLock }
+        if (channelId < 0) {
+            val logo = ContextCompat.getDrawable(ctx, com.ultratv.tv.nativeapp.R.mipmap.ic_launcher)!!.toBitmap(160, 160)
+            val channel = PreviewChannel.Builder().setDisplayName(name).setAppLinkIntentUri(Uri.parse(appLink)).setLogo(logo).build()
+            channelId = publishChannel(helper, channel)
+            if (channelId < 0) { report("$key:publish", "$key channel publish refused by system (id=$channelId)", warn = true); return@withLock }
+            val keys = prefs.getStringSet(K_OPTIONAL_KEYS, emptySet()).orEmpty()
+            prefs.edit().putLong(kId(key), channelId).putString(kName(key), name).remove(kSig(key)).putStringSet(K_OPTIONAL_KEYS, (keys + key).toSet()).apply()
+            report("$key:created", "$key channel created id=$channelId items=${items.size}")
+        } else if (prefs.getString(kName(key), null) != name) {
+            runCatching {
+                val current = helper.getPreviewChannel(channelId)
+                if (current != null) helper.updatePreviewChannel(channelId, PreviewChannel.Builder(current).setDisplayName(name).build())
+            }
+            prefs.edit().putString(kName(key), name).apply()
+        }
+        val cr = ctx.contentResolver
+        val existing = HashMap<String, Long>()
+        cr.query(TvContractCompat.buildPreviewProgramsUriForChannel(channelId), PreviewProgram.PROJECTION, null, null, null)?.use { c ->
+            while (c.moveToNext()) {
+                val p = PreviewProgram.fromCursor(c)
+                p.internalProviderId?.let { existing[it] = p.id }
+            }
+        }
+        val signature = TvChannelPlan.signature(items)
+        if (ChannelPublishPlan.mustRewrite(prefs.getString(kSig(key), null) == signature, existing.size, items.size)) {
+            fun program(i: TvProgramItem, index: Int) = PreviewProgram.Builder()
+                .setChannelId(channelId)
+                .setType(i.type)
+                .setTitle(i.title)
+                .apply { i.description?.let { setDescription(it) } }
+                .setPosterArtUri(Uri.parse(i.image))
+                .setPosterArtAspectRatio(i.aspectRatio)
+                .setLive(i.live)
+                .setWeight(NewsChannelPlan.weight(index, items.size))
+                .setInternalProviderId(i.internalId)
+                .setIntentUri(Uri.parse(i.link))
+                .build()
+            val diff = TvChannelPlan.diff(existing, items)
+            var failed = 0
+            diff.deleteRowIds.forEach { cr.delete(TvContractCompat.buildPreviewProgramUri(it), null, null) }
+            val updates = diff.update.associate { it.second.internalId to it.first }
+            items.forEachIndexed { index, i ->
+                val rowId = updates[i.internalId]
+                if (rowId != null) cr.update(TvContractCompat.buildPreviewProgramUri(rowId), program(i, index).toContentValues(), null, null)
+                else if (helper.publishPreviewProgram(program(i, index)) < 0) failed++
+            }
+            if (failed == 0) prefs.edit().putString(kSig(key), signature).apply()
+            report("$key:programs", "$key channel id=$channelId programs=${items.size} (+${diff.insert.size} -${diff.deleteRowIds.size}) failed=$failed", warn = failed > 0)
+        }
+        askBrowsableIfPending(key, channelId)
+    }
+
     private companion object {
+        const val K_ASK_BROWSABLE = "ask_browsable_keys"
+        const val K_OPTIONAL_KEYS = "optional_channel_keys"
         const val K_NEWS_CHANNEL = "news_channel_id"
         const val K_NEWS_SIGNATURE = "news_signature"
         const val K_NEWS_NAME = "news_name"

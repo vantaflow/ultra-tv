@@ -94,6 +94,14 @@ object RecentChannelsPlan {
             .distinctBy { it.title.trim().uppercase() }
             .take(MAX).toList()
 
+    /**
+     * Même sélection, filtrée comme la rangée « Dernières chaînes regardées » de l'accueil ([com.ultratv.tv.nativeapp.ui.home.HomeGuard.forHistory]) :
+     * ni chaîne verrouillée, ni catégorie verrouillée ; profil Enfants : ni catégorie ni nom adulte. Une chaîne regardée dans
+     * une catégorie masquée ou désactivée reste.
+     */
+    fun select(recent: List<ChannelEntity>, guard: com.ultratv.tv.nativeapp.ui.home.HomeGuard): List<ChannelEntity> =
+        select(recent.filter(guard::allowsChannel), emptySet())
+
     fun internalId(c: ChannelEntity) = "RECENT:LIVE:${c.providerId}:${c.remoteId}"
 
     fun deepLink(c: ChannelEntity) = DeepLink.live(c.providerId, c.remoteId)
@@ -141,6 +149,13 @@ object NewsChannelPlan {
         (key == null || (key !in hiddenKeys && key !in lockedCategoryKeys)) &&
             !(kids && com.ultratv.tv.nativeapp.data.profile.AdultHeuristic.isAdult(i.title))
     }
+
+    /**
+     * Même règle que les rangées de l'accueil ([com.ultratv.tv.nativeapp.ui.home.HomeGuard.of]) : ni catégorie masquée par le
+     * profil, verrouillée, désactivée ou adulte, ni titre adulte.
+     */
+    fun visible(items: List<Item>, guard: com.ultratv.tv.nativeapp.ui.home.HomeGuard): List<Item> =
+        items.filter { i -> guard.allows(i.kind.name, i.providerId, i.categoryId, i.title) }
 
     fun internalId(i: Item) = "NEWS:${i.kind.name}:${i.providerId}:${i.remoteId}"
 

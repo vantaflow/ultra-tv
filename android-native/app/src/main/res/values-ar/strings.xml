@@ -2035,4 +2035,19 @@
     <string name="cat_lock_need_pin">عيّن رمز الرقابة الأبوية أولاً (الإعدادات › الرقابة الأبوية): بدونه لا تكون الفئة المقفلة محمية</string>
     <string name="rail_switch_source">تغيير المصدر</string>
     <string name="source_picker_title">اختيار المصدر</string>
+    <string name="tvch_label">القنوات على الشاشة الرئيسية لـ Android TV</string>
+    <string name="tvch_hint">صفوف Ultra TV على الشاشة الرئيسية للتلفزيون. يطلب النظام التأكيد عند التفعيل.</string>
+    <string name="tvch_count">المفعّلة: %1$d</string>
+    <string name="tvch_favorites">المفضلة (القنوات)</string>
+    <string name="tvch_new_movies">أفلام جديدة</string>
+    <string name="tvch_new_series">مسلسلات جديدة</string>
+    <string name="tvch_top10">الأفضل 10 اليوم</string>
+    <string name="tvch_top_movies">الأفلام الأعلى تقييمًا</string>
+    <string name="tvch_my_list">قائمتي (الأفلام والمسلسلات المفضلة)</string>
+    <string name="tvch_sport">رياضة مباشرة</string>
+    <string name="tvch_sport_needs">فعّل قسم الرياضة لنشر هذه القناة.</string>
+    <string name="tvch_categories">فئات القنوات</string>
+    <string name="tvch_categories_hint">حتى 3 فئات من البث المباشر، كل منها في قناتها الخاصة.</string>
+    <string name="tvch_add_category">إضافة فئة</string>
+    <string name="tvch_no_category">لا توجد فئة متاحة</string>
 </resources>
