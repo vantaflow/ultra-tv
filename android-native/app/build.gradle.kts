@@ -10,17 +10,27 @@ plugins {
 
 // Single source of truth for the app version: the top-level VERSION file
 // (repo root). versionName is read verbatim ("x.y.z") and versionCode is
-// DERIVED deterministically as major*10000 + minor*100 + patch. This matches
-// the packed-int scheme UpdateChecker.kt uses to compare GitHub release tags,
-// so the in-app updater and the build stay in lockstep with one edit.
-// 1.0.29 → versionName "1.0.29", versionCode 10029 (> the legacy code 39, so
-// installs over existing builds stay monotonic).
+// DERIVED deterministically:
+//   major*1_000_000 + minor*10_000 + patch*100 + (rcN pour une pré-version, 99 pour une stable)
+// Une pré-version -rcN a donc un code STRICTEMENT inférieur à la stable du même numéro (avant, les deux avaient le même
+// code : Android ne distinguait plus la RC de la stable). Exemples : 1.3.76-rc1 → 1037601, 1.3.76 → 1037699.
+// Tous ces codes sont > 10375 (ancien schéma major*10000 + minor*100 + patch, dernière version publiée : 1.3.75).
+// Le numéro de RC vient de -PrcNumber=N, sinon de la variable RC_NUMBER, sinon de l'étiquette GITHUB_REF_NAME
+// (« v1.3.76-rc1 ») quand elle correspond à VERSION. Même formule que UpdateVersions.androidVersionCode (testée).
 val versionFile = rootProject.file("../VERSION")
 val appVersionName: String = versionFile.readText().trim()
+val appRcNumber: Int? = run {
+    val explicit = (project.findProperty("rcNumber") as String?)?.trim()?.takeIf { it.isNotEmpty() }
+        ?: System.getenv("RC_NUMBER")?.trim()?.takeIf { it.isNotEmpty() }
+    val fromTag = System.getenv("GITHUB_REF_NAME")?.let { Regex("""^v?(\d+\.\d+\.\d+)-rc(\d+)$""").matchEntire(it.trim()) }
+        ?.takeIf { it.groupValues[1] == appVersionName }?.groupValues?.get(2)
+    (explicit ?: fromTag)?.toInt()
+}
 val appVersionCode: Int = run {
     val parts = appVersionName.split(".").map { it.trim().toInt() }
     require(parts.size >= 3) { "VERSION must be x.y.z, got '$appVersionName'" }
-    parts[0] * 10_000 + parts[1] * 100 + parts[2]
+    val rc = appRcNumber?.also { require(it in 1..98) { "RC number must be 1..98, got $it" } }
+    parts[0] * 1_000_000 + parts[1] * 10_000 + parts[2] * 100 + (rc ?: 99)
 }
 
 val localProps = Properties().apply {

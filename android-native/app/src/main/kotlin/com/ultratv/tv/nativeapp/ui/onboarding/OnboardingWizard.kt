@@ -1,6 +1,7 @@
 package com.ultratv.tv.nativeapp.ui.onboarding
 
 import com.ultratv.tv.nativeapp.data.repo.atMostEvery
+import com.ultratv.tv.nativeapp.ui.startup.catchWithFallback
 import com.ultratv.tv.nativeapp.ui.common.responsiveWidth
 import com.ultratv.tv.nativeapp.ui.common.launchOrToast
 import androidx.activity.compose.BackHandler
@@ -125,7 +126,8 @@ class OnboardingViewModel @Inject constructor(
      */
     val show: StateFlow<Boolean?> = combine(prefs.flow, provider.observeProviders(), started) { p, ps, st ->
         shouldShowOnboarding(p.hasSeenOnboarding, ps.size, st)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    }.catchWithFallback("onboarding.show", false)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val summary: StateFlow<SourceSummary?> = provider.observeProviders().flatMapLatest { ps ->
         val p = ps.lastOrNull() ?: return@flatMapLatest flowOf(null)

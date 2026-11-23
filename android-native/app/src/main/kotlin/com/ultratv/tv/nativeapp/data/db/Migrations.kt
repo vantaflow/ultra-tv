@@ -296,4 +296,19 @@ class DefaultProfileCallback : RoomDatabase.Callback() {
     override fun onCreate(db: SupportSQLiteDatabase) {
         db.execSQL(DEFAULT_PROFILE_SEED_SQL)
     }
+
+    /**
+     * Filet pour les bases reconstruites SANS passer par onCreate : une rétrogradation destructive (pré-version 25 puis
+     * version publiée 24) vide les tables et les recrée, mais Room n'appelle alors pas onCreate. Sans profil, « Qui regarde ? »
+     * et les préférences n'émettent jamais : écran noir permanent (incident 1.3.75-rc1 → 1.3.75). Ne fait rien si un profil existe.
+     */
+    override fun onOpen(db: SupportSQLiteDatabase) {
+        runCatching { db.execSQL(ENSURE_DEFAULT_PROFILE_SQL) }
+    }
 }
+
+/** Même profil que [DEFAULT_PROFILE_SEED_SQL], posé seulement quand la table `profile` est vide (idempotent). */
+const val ENSURE_DEFAULT_PROFILE_SQL =
+    "INSERT INTO `profile` (`id`, `name`, `color`, `initial`, `isKids`, `pinHash`, `createdAt`) " +
+        "SELECT 1, 'Principal', ${0xFF3B82F6.toInt()}, 'P', 0, NULL, CAST(strftime('%s','now') AS INTEGER) * 1000 " +
+        "WHERE NOT EXISTS (SELECT 1 FROM `profile`)"
