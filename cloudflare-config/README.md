@@ -140,7 +140,7 @@ Les anciens `ADMIN_PASSWORD` et `CRASH_TOKEN` ne sont **plus lus**.
 | POST | `/api/admin/migrate` | Bearer `ADMIN_TOKEN` | Migration de l'ancien format (voir ci-dessous) |
 | GET/POST | `/login`, `/signup` | — | Comptes |
 | GET | `/` | session | Tableau de bord |
-| GET | `/donate`, `/donate/merci` | — | Dons PayPal : boutons intégrés si `PAYPAL_CLIENT_ID`, sinon <https://paypal.me/kbenazzouz> |
+| GET | `/donate`, `/donate/merci` | — | Dons PayPal : boutons intégrés si `PAYPAL_CLIENT_ID`, sinon <https://www.paypal.com/ncp/payment/JHPS8RCN35UWA> |
 | POST | `/api/device/profiles`, `/api/device/providers/:id/state` ; PUT `/api/device/providers/:id/prefs` | `Bearer` | Synchro des profils, de l'état partagé et des réglages (voir « Synchro multi-appareils ») |
 | POST | `/pair`, `/providers`, `/providers/:id/delete`, `/devices/:id/revoke`, `/password`, `/account/delete`, `/logout` | session + CSRF + Origin | Mutations |
 | POST | `/providers/:id/account` | session + CSRF | Abonnement du fournisseur (cache 10 min, limite propre 600/h) |

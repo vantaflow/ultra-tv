@@ -38,8 +38,8 @@ import com.ultratv.tv.nativeapp.ui.common.isTelevision
 import com.ultratv.tv.nativeapp.ui.design.*
 
 /**
- * Ligne « Soutenir Ultra TV » de Réglages › À propos. Téléphone / tablette : ouvre la page de dons PayPal dans le navigateur (repli
- * sur le QR code si aucune appli ne gère le lien). TV : QR code de cette page à scanner avec le téléphone.
+ * Ligne « Soutenir Ultra TV » de Réglages › À propos. Téléphone / tablette : ouvre le lien de paiement PayPal (appli PayPal ou navigateur) (repli
+ * sur le QR code si aucune appli ne gère le lien). TV : QR code de ce lien à scanner avec le téléphone.
  */
 @Composable
 fun SupportRow(D: DesignStrings = LocalDs.current) {

@@ -200,7 +200,7 @@ export function offlinePage(n, { lang = "fr", url = "/offline" } = {}) {
 
 /**
  * Page de dons (/donate) : PayPal seul. Avec `clientId` (PAYPAL_CLIENT_ID), boutons PayPal / carte intégrés (SDK JS PayPal,
- * commande créée et encaissée côté navigateur, montant au choix) ; sans, ou si le SDK ne charge pas, lien paypal.me.
+ * commande créée et encaissée côté navigateur, montant au choix) ; sans, ou si le SDK ne charge pas, lien de paiement PayPal.
  */
 export function donatePage(n, { lang = "en", clientId = null } = {}) {
   if (!ENVOYER_LANGS.includes(lang)) lang = "en";

@@ -6,11 +6,11 @@ import { call, freshIp } from "./helpers.js";
 const CID = "AWvl-5adHUdHtB1J4LRwn_testClientId0123456789";
 
 describe("dons : PayPal seul", () => {
-  it("sans PAYPAL_CLIENT_ID : lien paypal.me seul, traduit, sans Ko-fi, Liberapay, formulaire ni script PayPal", async () => {
+  it("sans PAYPAL_CLIENT_ID : lien de paiement PayPal seul, traduit, sans Ko-fi, Liberapay, formulaire ni script PayPal", async () => {
     for (const lang of ["fr", "en", "es", "ar", "pl"]) {
       const r = donatePage("n1", { lang });
       const h = await r.text();
-      expect(h).toContain('href="https://paypal.me/kbenazzouz"');
+      expect(h).toContain('href="https://www.paypal.com/ncp/payment/JHPS8RCN35UWA"');
       expect(h).not.toContain("ko-fi.com");
       expect(h).not.toContain("liberapay.com");
       expect(h).not.toContain("<form");
@@ -27,7 +27,7 @@ describe("dons : PayPal seul", () => {
     expect(h).toContain('data-csp-nonce="n1"');
     expect(h).toContain('id="pp-buttons"');
     expect(h).toContain('name="pp-amt" value="5" checked');
-    expect(h).toContain('href="https://paypal.me/kbenazzouz"');
+    expect(h).toContain('href="https://www.paypal.com/ncp/payment/JHPS8RCN35UWA"');
     const csp = r.headers.get("content-security-policy");
     expect(csp).toContain("script-src 'nonce-n1' https://www.paypal.com");
     expect(csp).toContain("frame-src https://*.paypal.com");
@@ -42,7 +42,7 @@ describe("dons : PayPal seul", () => {
   it("route : GET /donate = 200 ; /donate/merci redirige vers /donate ; POST non géré", async () => {
     const g = await call("/donate?l=en", { ip: freshIp() });
     expect(g.status).toBe(200);
-    expect(await g.text()).toContain("paypal.me/kbenazzouz");
+    expect(await g.text()).toContain("paypal.com/ncp/payment/JHPS8RCN35UWA");
     const old = await call("/donate/merci?l=es", { ip: freshIp() });
     expect(old.status).toBe(302);
     expect(old.headers.get("location")).toBe("/donate");

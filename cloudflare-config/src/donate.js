@@ -1,10 +1,10 @@
 // Dons (facultatifs) : PayPal uniquement.
-// - Toujours : lien direct paypal.me (aucun secret).
+// - Toujours : lien de paiement PayPal Business (montant libre, PayPal ou carte ; aucun secret).
 // - Si la variable PAYPAL_CLIENT_ID est définie (application REST du compte PayPal Business, identifiant public) :
 //   boutons PayPal / carte intégrés à /donate (SDK JS de PayPal), montant au choix, sans secret côté Worker.
 
 /** Don direct sur PayPal (versé tout de suite, sans plateforme intermédiaire). */
-export const PAYPAL_URL = "https://paypal.me/kbenazzouz";
+export const PAYPAL_URL = "https://www.paypal.com/ncp/payment/JHPS8RCN35UWA";
 /** Devise des dons intégrés. */
 export const DONATE_CURRENCY = "EUR";
 /** Montants proposés (euros). */

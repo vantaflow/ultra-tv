@@ -324,7 +324,7 @@ async function route(req, env, ctx) {
     const lang = pickEnvoyerLang({ param: url.searchParams.get("l"), cookie: langFromCookie(req.headers.get("cookie")), acceptLanguage: req.headers.get("accept-language") });
     return envoyerPage(nonce(), { code: normalizeEnvoiCode(url.searchParams.get("c")), lang });
   }
-  // Dons : page publique PayPal (boutons intégrés si PAYPAL_CLIENT_ID, sinon lien paypal.me). /donate/merci ne sert plus : 302 vers /donate pour les vieux liens.
+  // Dons : page publique PayPal (boutons intégrés si PAYPAL_CLIENT_ID, sinon lien de paiement PayPal). /donate/merci ne sert plus : 302 vers /donate pour les vieux liens.
   if (path === "/donate/merci" && (m === "GET" || m === "HEAD")) return redirect("/donate");
   if (path === "/donate" && (m === "GET" || m === "HEAD")) {
     const lang = pickEnvoyerLang({ param: url.searchParams.get("l"), cookie: langFromCookie(req.headers.get("cookie")), acceptLanguage: req.headers.get("accept-language") });
