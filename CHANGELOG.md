@@ -46,6 +46,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Télémétrie : les tests automatiques n'envoient plus rien vers le serveur ; côté serveur, toute adresse est réduite à une empreinte d'hôte et les identifiants, jetons, adresses MAC, IP et e-mails sont masqués.
 
 ### Corrigé
+- Direct : le bouton « Recharger » ne reste plus affiché sur une vidéo qui joue (chaîne dont les horodatages reculent, passage de l'aperçu au plein écran). L'état « chargement » repasse à faux dès que des images sont rendues ou que la lecture avance, et « Recharger » n'est proposé qu'après 3 s de chargement sans aucune progression.
+- « Qui regarde ? » : le focus revient sur le dernier profil utilisé quand il se pose ailleurs sans action de l'utilisateur (profil courant connu un instant après la liste, focus par défaut sur la première tuile) ; jamais après une flèche.
+- Accueil, « Dernières chaînes regardées » : chaque chaîne regardée au moins 5 s y entre, zapping compris (avant : seule la chaîne affichée en quittant le lecteur). Une chaîne lancée depuis l'écran Favoris (une seule source) ou les favoris du mode simple est enregistrée au lieu de l'élément regardé avant. « Ouvrir sur la dernière chaîne » prend la source active.
+- Accueil, « Dernières chaînes regardées » : plus de carte au nom d'une chaîne avec le logo (et l'adresse) d'une autre après une synchro entre appareils ; l'image et l'adresse locales ne sont reprises que pour une chaîne du même nom.
 - Stalker : la synchronisation ne reste plus bloquée vers 23 % ; les films et les séries arrivent dès la première synchronisation, qui est aussi plus rapide.
 - Contrôle parental : un film ou un épisode d'une catégorie verrouillée lancé depuis l'écran d'accueil du système ou depuis « Continuer à regarder » demande le code avant la lecture.
 - Direct : l'aperçu n'est plus noir avec le son à la première entrée, et une chaîne ne reste plus bloquée sur un moteur de lecture choisi à tort.
