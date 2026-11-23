@@ -102,6 +102,9 @@ import com.ultratv.tv.nativeapp.i18n.showAdvancedHint
 import com.ultratv.tv.nativeapp.i18n.uiSizeLabel
 import com.ultratv.tv.nativeapp.i18n.uiSizeName
 import com.ultratv.tv.nativeapp.i18n.screenEdgesHint
+import com.ultratv.tv.nativeapp.i18n.tvChannelsCount
+import com.ultratv.tv.nativeapp.i18n.tvChannelsHint
+import com.ultratv.tv.nativeapp.i18n.tvChannelsLabel
 import com.ultratv.tv.nativeapp.i18n.screenEdgesLabel
 import com.ultratv.tv.nativeapp.i18n.screenEdgesName
 import com.ultratv.tv.nativeapp.i18n.updateChannel
@@ -808,6 +811,11 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         SwitchPrefRow(D.channelNumbers, p.showChannelNumbers) { app.setShowChannelNumbers(it) }
         SwitchPrefRow(D.channelLogos, p.showChannelLogos) { app.setShowChannelLogos(it) }
         SwitchPrefRow(D.sportSectionLabel, p.sportSection, hint = D.sportSectionHint) { app.setSportSection(it) }
+        // TV seulement : chaînes publiées sur l'écran d'accueil Android TV / Google TV.
+        if (!com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
+            val tvch = remember(p.tvHomeChannels) { com.ultratv.tv.nativeapp.data.tv.TvChannelsChoice.parse(p.tvHomeChannels) }
+            PrefRow(D.tvChannelsLabel, D.tvChannelsCount(tvch.count(p.sportSection)), hint = D.tvChannelsHint) { choice = "tvch" }
+        }
         // (« Colonne des chaînes du guide » retiré : largeur normale pour tous, un réglage de moins.)
         SwitchPrefRow(D.launchAtBoot, p.launchAtBoot) { app.setLaunchAtBoot(it) }
         val start = com.ultratv.tv.nativeapp.nav.StartScreen.parse(p.startScreen, p.autoPlayLastOnLaunch)
@@ -840,6 +848,16 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         "edges" -> ChoiceDialog(D.screenEdgesLabel, com.ultratv.tv.nativeapp.ui.design.ScreenEdges.entries.map { it to D.screenEdgesName(it) }, com.ultratv.tv.nativeapp.ui.design.ScreenEdges.parse(p.screenEdges), { app.setScreenEdges(it.key); choice = "" }, { choice = "" })
         "uisize" -> ChoiceDialog(D.uiSizeLabel, com.ultratv.tv.nativeapp.ui.design.UiSize.entries.map { it to D.uiSizeName(it) }, com.ultratv.tv.nativeapp.ui.design.UiSize.parse(p.uiSize), { app.setUiSize(it.key); choice = "" }, { choice = "" })
         "text" -> ChoiceDialog(D.textSizeLabel, TextSize.entries.map { it to D.textSizeName(it) }, TextSize.parse(p.textSize), { app.setTextSize(it.key); choice = "" }, { choice = "" })
+        "tvch" -> {
+            var cats by remember { mutableStateOf<Pair<Long, List<Pair<String, String>>>?>(null) }
+            androidx.compose.runtime.LaunchedEffect(Unit) { cats = panes.tvChannelCategories() ?: (-1L to emptyList()) }
+            cats?.let { (pid, list) ->
+                TvChannelsDialog(
+                    com.ultratv.tv.nativeapp.data.tv.TvChannelsChoice.parse(p.tvHomeChannels), p.sportSection, pid.takeIf { it >= 0 }, list,
+                    onSave = { app.setTvHomeChannels(it) }, onDismiss = { choice = "" },
+                )
+            }
+        }
         "home" -> HomeRowsDialog(com.ultratv.tv.nativeapp.ui.home.HomeLayout.parse(p.homeOrder, p.homeHidden), onSave = { app.setHomeLayout(it) }, onDismiss = { choice = "" })
         "shortcuts" -> ShortcutsDialog(
             com.ultratv.tv.nativeapp.ui.mobile.bottomTabRoutes(p.bottomTabs, p.sportSection), p.sportSection,

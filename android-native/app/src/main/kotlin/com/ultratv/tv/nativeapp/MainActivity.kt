@@ -220,6 +220,17 @@ class MainActivity : ComponentActivity() {
                 @Suppress("DEPRECATION") startActivityForResult(intent, REQ_CHANNEL_BROWSABLE)
             }
         }
+        // Chaîne d'accueil activée dans Réglages : invite système « Afficher sur l'accueil ? » dès sa publication, tant que
+        // l'appli est au premier plan. Rien sur un appareil qui n'est pas une TV.
+        if (com.ultratv.tv.nativeapp.ui.common.isTelevision(this)) lifecycleScope.launch {
+            kotlinx.coroutines.delay(10_000)
+            val sync = runCatching { kotlinx.coroutines.withContext(Dispatchers.IO) { googleTv.get() } }.getOrNull() ?: return@launch
+            repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                sync.browsablePrompts.collect { intent ->
+                    runCatching { @Suppress("DEPRECATION") startActivityForResult(intent, REQ_CHANNEL_BROWSABLE) }
+                }
+            }
+        }
         // Auto-update flow: query GitHub Releases on launch and, if a newer
         // version is found, download + fire the system install Intent without
         // asking the user first. They still get the OS's "Install this app?"

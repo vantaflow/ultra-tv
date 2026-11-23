@@ -2003,4 +2003,19 @@
     <string name="source_edit_exists">Another source already uses this address and this account</string>
     <string name="source_edit_keep_login">Leave the sign-in empty to keep the current one</string>
     <string name="source_edit_pick_file">Choose another file…</string>
+    <string name="tvch_label">Channels on the Android TV home screen</string>
+    <string name="tvch_hint">Ultra TV rows on the TV home screen. The system asks for confirmation when you turn one on.</string>
+    <string name="tvch_count">%1$d on</string>
+    <string name="tvch_favorites">Favourite channels</string>
+    <string name="tvch_new_movies">New movies</string>
+    <string name="tvch_new_series">New series</string>
+    <string name="tvch_top10">Today\'s top 10</string>
+    <string name="tvch_top_movies">Top-rated movies</string>
+    <string name="tvch_my_list">My list (favourite movies and series)</string>
+    <string name="tvch_sport">Live sport</string>
+    <string name="tvch_sport_needs">Turn on the Sport section to publish this channel.</string>
+    <string name="tvch_categories">Channel categories</string>
+    <string name="tvch_categories_hint">Up to 3 Live TV categories, each in its own channel.</string>
+    <string name="tvch_add_category">Add a category</string>
+    <string name="tvch_no_category">No category available</string>
 </resources>

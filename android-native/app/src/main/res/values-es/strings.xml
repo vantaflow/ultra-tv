@@ -1980,4 +1980,19 @@
     <string name="source_edit_exists">Otra fuente ya usa esta dirección y esta cuenta</string>
     <string name="source_edit_keep_login">Deja el inicio de sesión vacío para mantener el actual</string>
     <string name="source_edit_pick_file">Elegir otro archivo…</string>
+    <string name="tvch_label">Canales en la pantalla de inicio de Android TV</string>
+    <string name="tvch_hint">Filas de Ultra TV en la pantalla de inicio del televisor. El sistema pide confirmación al activarlas.</string>
+    <string name="tvch_count">Activados: %1$d</string>
+    <string name="tvch_favorites">Favoritos (canales)</string>
+    <string name="tvch_new_movies">Películas nuevas</string>
+    <string name="tvch_new_series">Series nuevas</string>
+    <string name="tvch_top10">Top 10 de hoy</string>
+    <string name="tvch_top_movies">Películas mejor valoradas</string>
+    <string name="tvch_my_list">Mi lista (películas y series favoritas)</string>
+    <string name="tvch_sport">Deporte en directo</string>
+    <string name="tvch_sport_needs">Activa la sección Deporte para publicar este canal.</string>
+    <string name="tvch_categories">Categorías de canales</string>
+    <string name="tvch_categories_hint">Hasta 3 categorías de TV en directo, cada una en su propio canal.</string>
+    <string name="tvch_add_category">Añadir una categoría</string>
+    <string name="tvch_no_category">Ninguna categoría disponible</string>
 </resources>

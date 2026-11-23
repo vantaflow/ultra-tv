@@ -52,6 +52,16 @@ class SettingsPanesViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     private val pid = provider.map { it?.id }.distinctUntilChanged()
 
+    /**
+     * Catégories du Direct proposées pour les chaînes d'accueil Android TV (source active) : activées et non verrouillées,
+     * (identifiant, nom) ; null sans source.
+     */
+    suspend fun tvChannelCategories(): Pair<Long, List<Pair<String, String>>>? {
+        val id = provider.value?.id ?: return null
+        val cats = runCatching { categoryDao.forProviderKind(id, "LIVE") }.getOrDefault(emptyList())
+        return id to cats.filter { it.enabled && !it.locked }.map { it.remoteId to it.name }
+    }
+
     val counts: StateFlow<Counts> = pid.flatMapLatest { id ->
         if (id == null) flowOf(Counts()) else combine(channelDao.observeCount(id), movieDao.observeCount(id), seriesDao.observeCount(id)) { a, b, c -> Counts(a, b, c) }.atMostEvery(1_000)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Counts())

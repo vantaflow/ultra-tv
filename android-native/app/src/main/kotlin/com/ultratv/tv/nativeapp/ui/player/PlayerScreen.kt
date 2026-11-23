@@ -684,9 +684,24 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     // Code parental à l'ouverture : rien ne se lance (ni flux, ni contexte) avant l'accord ; annuler ferme le lecteur.
     var openAllowed by remember { mutableStateOf<Boolean?>(null) }
     var openLocked by remember { mutableStateOf<com.ultratv.tv.nativeapp.data.db.ChannelEntity?>(null) }
-    LaunchedEffect(Unit) { if (openAllowed == null) { val c = vm.lockedAtOpen(url); openLocked = c; openAllowed = c == null } }
+    // Film ou épisode verrouillé lancé par lien profond (écran d'accueil du système) : code avant toute lecture.
+    var openLockedVod by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        if (openAllowed == null) {
+            val c = vm.lockedAtOpen(url)
+            val vod = if (c == null) com.ultratv.tv.nativeapp.data.parental.DeepLinkLocks.pendingTitle(url) else null
+            openLocked = c; openLockedVod = vod; openAllowed = c == null && vod == null
+        }
+    }
     if (openAllowed != true) {
         Box(Modifier.fillMaxSize().background(Color.Black))
+        openLockedVod?.let { t ->
+            com.ultratv.tv.nativeapp.ui.parental.PinPromptDialog(
+                title = com.ultratv.tv.nativeapp.data.repo.TitleCleaner.tidy(t),
+                onUnlocked = { com.ultratv.tv.nativeapp.data.parental.DeepLinkLocks.grant(url); openLockedVod = null; openAllowed = true },
+                onCancel = { com.ultratv.tv.nativeapp.data.parental.DeepLinkLocks.refuse(url); onBack() },
+            )
+        }
         openLocked?.let { c ->
             com.ultratv.tv.nativeapp.ui.parental.PinPromptDialog(
                 title = c.title,
