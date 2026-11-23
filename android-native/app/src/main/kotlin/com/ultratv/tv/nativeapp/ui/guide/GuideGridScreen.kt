@@ -158,12 +158,27 @@ private const val SLOT_MS = 30 * 60_000L
 /** Début de fenêtre pour le jour [dayOffset] : aujourd'hui = demi-heure courante, ensuite 20:00. */
 fun guideWindowStart(nowMs: Long, dayOffset: Int): Long {
     if (dayOffset == 0) return nowMs / SLOT_MS * SLOT_MS
-    val cal = Calendar.getInstance().apply {
+    // 20:00 à l'heure AFFICHÉE (fuseau de l'appli, celui des libellés et de la ligne « maintenant »), pas celle du système.
+    val cal = Calendar.getInstance(EpgClock.timeZone()).apply {
         timeInMillis = nowMs; add(Calendar.DAY_OF_YEAR, dayOffset)
         set(Calendar.HOUR_OF_DAY, 20); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
     }
     return cal.timeInMillis
 }
+
+/**
+ * Fenêtre à l'ENTRÉE dans le Guide (aujourd'hui) : le modèle de vue survit à la navigation du menu (restoreState) et sa
+ * fenêtre peut dater de plusieurs heures. Gardée si elle contient encore [nowMs], sinon la demi-heure courante.
+ */
+internal fun guideEntryWindow(current: Long, nowMs: Long): Long =
+    if (nowMs >= current && nowMs < current + GUIDE_WINDOW_MS) current else guideWindowStart(nowMs, 0)
+
+/**
+ * Case d'une ligne qui reçoit le focus à l'entrée de la grille : le programme EN COURS s'il est affiché, sinon la première
+ * case affichée ([firstShown]) — jamais un programme terminé quand celui qui passe est dans la fenêtre.
+ */
+internal fun guideEntryIndex(progs: List<EpgEntity>, slots: List<Slot?>, firstShown: Int, nowMs: Long): Int =
+    progs.indices.firstOrNull { slots[it] != null && progs[it].startMs <= nowMs && progs[it].endMs > nowMs } ?: firstShown
 
 /**
  * Certains guides contiennent des programmes qui se chevauchent ou se répètent : on garde l'ordre
@@ -303,6 +318,8 @@ class GuideGridViewModel @Inject constructor(
     private val _windowStart = MutableStateFlow(guideWindowStart(System.currentTimeMillis(), 0))
     val windowStart: StateFlow<Long> = _windowStart.asStateFlow()
     fun setWindowStart(ms: Long) { _windowStart.value = ms }
+    /** Entrée dans l'écran (jour : aujourd'hui) : une fenêtre restée d'une visite précédente qui ne contient plus l'heure actuelle repart de maintenant. */
+    fun enterToday(nowMs: Long) { _windowStart.value = guideEntryWindow(_windowStart.value, nowMs) }
 
     // ── Groupe de chaînes (mêmes groupes que la colonne de gauche du Direct) ──
     private val syncing = syncBus.status.map { it != null }.distinctUntilChanged()
@@ -431,6 +448,9 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
     // État non délégué : lu SEULEMENT là où il sert (ligne par ligne sur la TV, grille entière sur le tactile), jamais ici.
     val programmesState = vm.programmes.collectAsState()
     val readyWindow = vm.readyWindow.collectAsState()
+    // Le jour repart à « aujourd'hui » à chaque entrée (état non sauvegardé) : la fenêtre aussi, AVANT la première lecture
+    // (le modèle de vue gardé par le menu latéral rendait la fenêtre de la visite précédente, 20:30 à 23:54).
+    remember(vm) { vm.enterToday(System.currentTimeMillis()); true }
     val windowStart by vm.windowStart.collectAsState()
     var day by remember { mutableStateOf(0) }
     val firstDay by vm.firstDay.collectAsState()
@@ -945,6 +965,9 @@ private fun GuideRow(
         val probe = LocalGuideProbe.current
         // La liste peut dépasser la fenêtre (cache par plage) : la « première » case est la première AFFICHÉE.
         val firstShown = remember(slots) { slots.indexOfFirst { it != null } }
+        // Case d'entrée (focus initial, ▼ depuis les jours) : le programme en cours s'il est affiché, sinon la première case.
+        // Relue quand un programme se termine ([nowStart]), pas à chaque minute.
+        val entryIdx = remember(slots, nowStart) { guideEntryIndex(progs, slots, firstShown, nowProvider()) }
         // Cible de focus posée avant un changement de la grille (lue seulement quand elle vise cette chaîne).
         val planIdx = plan.targetIndex(c.id, progs, slots, firstShown, windowStart)
         Box(Modifier.width(gridW).fillMaxHeight()) {
@@ -961,7 +984,7 @@ private fun GuideRow(
                     // Fonction à part, aux paramètres stables : une ligne recomposée (case qui entre au bord de la fenêtre, arrivée de
                     // programmes) saute les cases qui n'ont pas changé.
                     GuideCell(
-                        c.id, p, isNow, replay, isFirst = idx == firstShown, targetGen = if (idx == planIdx) planGen else -1, plan, window, gridW, probe, D, clock,
+                        c.id, p, isNow, replay, isFirst = idx == entryIdx, targetGen = if (idx == planIdx) planGen else -1, plan, window, gridW, probe, D, clock,
                         firstModifier, onSelect, onRemind, onFocusProg, onFocusRefresh, nowProvider,
                     )
                 }
@@ -1115,7 +1138,7 @@ internal fun GuideTvContent(
                         // Même heure, l'autre jour (calendrier : changement d'heure compris). La grille garde la fenêtre affichée, et la
                         // case focalisée, jusqu'à l'arrivée des programmes de ce jour ; le focus va alors sur le programme de la même
                         // chaîne à la même heure (à défaut sa première case affichée, ou la ligne voisine la plus proche).
-                        val w = java.util.Calendar.getInstance().apply { timeInMillis = windowStart; add(java.util.Calendar.DAY_OF_YEAR, d - day) }.timeInMillis
+                        val w = java.util.Calendar.getInstance(EpgClock.timeZone()).apply { timeInMillis = windowStart; add(java.util.Calendar.DAY_OF_YEAR, d - day) }.timeInMillis
                         if (inGrid && gridFocusKind[0] == FOCUS_CELL) focusedProg.value?.let { (ch, p) ->
                             // Instant visé : celui du ⏪ ⏩ précédent tant que le focus est resté sur le programme qui le couvre (un aller-
                             // retour revient sur le même programme), sinon le début visible du programme focalisé.
