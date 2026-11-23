@@ -286,12 +286,16 @@ internal fun SettingsLevelRow(level: SettingsLevel, onClick: () -> Unit) {
                 Text(D.settingsLevelLabel, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 Text(D.settingsLevelName(level), color = if (f) Ux.TextOnLight else Ux.Accent, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1)
             }
-            Text(D.settingsLevelHint(level), color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 17.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            // Interligne explicite : sans lui, le texte (17 px) prenait celui du style par défaut du thème (près de deux fois sa taille), d'où un grand
+            // vide entre les deux lignes. Hauteur libre : la phrase passe sur autant de lignes qu'il faut (langue, taille du texte).
+            Text(D.settingsLevelHint(level), color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 17.spx, lineHeight = 23.spx, modifier = Modifier.testTag(SETTINGS_LEVEL_HINT_TAG))
         }
     }
 }
 
 internal const val SETTINGS_LEVEL_TAG = "settings-level"
+internal const val SETTINGS_LEVEL_HINT_TAG = "settings-level-hint"
+internal const val SETTINGS_TITLE_TAG = "settings-title"
 
 /** Une rubrique de la liste de gauche : icône (chemin SVG), libellé et résumé d'état d'une ligne. */
 internal class SettingsRubUi(val icon: String, val label: String, val sub: String)
@@ -316,18 +320,24 @@ internal fun SettingsTvLayout(
     Row(Modifier.fillMaxSize()) {
         // ← depuis le volet : le focus revient sur la rubrique OUVERTE, pas sur celle qui se trouve en face de la ligne
         // focalisée (« À propos » depuis le bas d'Affichage) — et comme la rubrique suit le focus, le volet changeait.
+        // Titre et niveau des réglages FIXES en tête de colonne (marge du haut de la page) ; seules les rubriques défilent.
+        // Avant, toute la colonne défilait : dès qu'une rubrique basse prenait le focus, le titre sortait de l'écran et la carte
+        // « Niveau des réglages » se retrouvait collée au bord haut.
         Column(
             Modifier.width(520.design).fillMaxHeight().background(Ux.Rail)
                 // Entrée dans l'écran (ouverture des Réglages) : les rubriques, dans toutes les langues. En arabe, l'entrée par défaut
                 // de Compose part du coin haut gauche, où se trouve le volet : le focus tombait sur le premier réglage.
                 .then(com.ultratv.tv.nativeapp.ui.common.screenEntryTarget())
                 .focusProperties { enter = { rubFocus[selected] } }.focusGroup()
-                .verticalScroll(rememberScrollState())
-                .padding(start = 32.design, end = 32.design, top = 48.design, bottom = 32.design), // même marge que le Direct (72 laissait un vide après le menu)
-            verticalArrangement = Arrangement.spacedBy(6.design),
+                .padding(start = 32.design, end = 32.design, top = 48.design), // même marge que le Direct (72 laissait un vide après le menu)
         ) {
-            Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, maxLines = 1, modifier = Modifier.padding(bottom = 14.design))
+            Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, maxLines = 1, modifier = Modifier.padding(bottom = 20.design).testTag(SETTINGS_TITLE_TAG))
             header()
+            Column(
+                // Le focus fait défiler (rubrique amenée à l'écran) ; la dernière (« À propos ») reste atteignable.
+                Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = 32.design),
+                verticalArrangement = Arrangement.spacedBy(6.design),
+            ) {
             rubs.forEachIndexed { i, r ->
                 val sel = selected == i
                 FocusSurface(
@@ -344,6 +354,7 @@ internal fun SettingsTvLayout(
                         }
                     }
                 }
+            }
             }
         }
         // → depuis une rubrique : le focus entre sur la PREMIÈRE ligne du volet (et le volet revient en haut), pas sur la
