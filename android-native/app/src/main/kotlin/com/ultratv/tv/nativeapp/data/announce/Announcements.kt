@@ -84,25 +84,40 @@ object AnnouncementPlan {
 /** Lecture des alertes sur le Worker (route publique, sans appairage) et mémoire des alertes déjà vues. */
 @Singleton
 class AnnouncementRepository @Inject constructor(
-    @ApplicationContext ctx: Context,
+    @ApplicationContext private val appCtx: Context,
     private val http: OkHttpClient,
     private val prefs: UserPreferencesStore,
 ) {
-    private val sp = ctx.getSharedPreferences(com.ultratv.tv.nativeapp.data.config.InstallId.PREFS, Context.MODE_PRIVATE)
+    private val sp = appCtx.getSharedPreferences(com.ultratv.tv.nativeapp.data.config.InstallId.PREFS, Context.MODE_PRIVATE)
 
     /** null : réseau ou Worker indisponible (on garde l'état, on réessaiera). */
-    suspend fun fetch(audience: String): List<Announcement>? = withContext(Dispatchers.IO) {
+    suspend fun fetch(audience: String): List<Announcement>? = (fetchOutcome(audience) as? FetchOutcome.Ok)?.items
+
+    /**
+     * Lecture des alertes (route publique : ni appairage ni compte, aucun en-tête d'identification), avec la cause d'un
+     * échec : [FetchOutcome.Offline] sans réseau sur l'appareil, sinon [FetchOutcome.Unreachable].
+     */
+    suspend fun fetchOutcome(audience: String): FetchOutcome = withContext(Dispatchers.IO) {
         val p = prefs.flow.first()
-        val base = WorkerUrl.normalize(WorkerUrl.resolve(p.workerBaseUrl), BuildConfig.DEBUG) ?: return@withContext null
-        runCatching {
+        val base = WorkerUrl.normalize(WorkerUrl.resolve(p.workerBaseUrl), BuildConfig.DEBUG) ?: return@withContext FetchOutcome.Unreachable
+        try {
             val version = AnnouncementPlan.versionParam(BuildConfig.VERSION_NAME)
             // Langue effective de l'appli : le Worker renvoie l'alerte traduite quand elle existe.
             val lang = com.ultratv.tv.nativeapp.i18n.I18n.resolve(com.ultratv.tv.nativeapp.i18n.AppLang.fromCode(p.language)).code
             http.newCall(Request.Builder().url("$base/api/announcements?audience=$audience&version=$version&lang=$lang").get().build()).execute().use { r ->
-                if (!r.isSuccessful) null else AnnouncementPlan.parse(r.body?.string().orEmpty())
+                if (!r.isSuccessful) FetchOutcome.Unreachable else FetchOutcome.Ok(AnnouncementPlan.parse(r.body?.string().orEmpty()))
             }
-        }.getOrNull()
+        } catch (e: java.io.IOException) {
+            if (online()) FetchOutcome.Unreachable else FetchOutcome.Offline
+        } catch (e: Exception) {
+            FetchOutcome.Unreachable
+        }
     }
+
+    private fun online(): Boolean = runCatching {
+        val cm = appCtx.getSystemService(android.net.ConnectivityManager::class.java)
+        cm?.getNetworkCapabilities(cm.activeNetwork)?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+    }.getOrDefault(true)
 
     /**
      * Statistique de l'alerte [id] ([kind] : shown, dismissed, action) avec l'identifiant d'installation aléatoire de
@@ -119,6 +134,10 @@ class AnnouncementRepository @Inject constructor(
     /** Identifiant aléatoire propre à cette installation (aucun lien avec le compte ni le matériel). */
     private fun installId(): String = com.ultratv.tv.nativeapp.data.config.InstallId.of(sp)
 
+    private val _historyFlow by lazy { kotlinx.coroutines.flow.MutableStateFlow(history()) }
+    /** Historique observable : la rubrique « Messages » se met à jour dès qu'une alerte est montrée. */
+    val historyFlow: kotlinx.coroutines.flow.StateFlow<List<ReceivedAnnouncement>> get() = _historyFlow
+
     fun history(): List<ReceivedAnnouncement> = runCatching {
         val arr = org.json.JSONArray(sp.getString("history", "[]"))
         (0 until arr.length()).map { i ->
@@ -133,6 +152,7 @@ class AnnouncementRepository @Inject constructor(
             arr.put(JSONObject().put("id", it.id).put("title", it.title).put("message", it.message).put("level", it.level).put("at", it.at))
         }
         sp.edit().putString("history", arr.toString()).apply()
+        _historyFlow.value = history()
     }
 
     fun seen(): Set<String> = sp.getStringSet("seen", emptySet()).orEmpty().toSet()

@@ -223,6 +223,12 @@
     <string name="ds_announcement_update">Mettre à jour</string>
     <string name="ds_rub_messages">Messages</string>
     <string name="ds_no_messages">Aucun message pour l’instant. Les annonces du service apparaîtront ici.</string>
+    <string name="ds_messages_refresh">Rafraîchir</string>
+    <string name="ds_messages_refreshing">Actualisation…</string>
+    <string name="ds_messages_retry">Réessayer</string>
+    <string name="ds_messages_offline">Vous êtes hors ligne. Vérifiez la connexion, puis réessayez.</string>
+    <string name="ds_messages_unreachable">Le serveur est injoignable pour le moment. Réessayez dans un instant.</string>
+    <string name="ds_messages_last_check">Dernière vérification : %1$s</string>
     <string name="ds_lang_system">Système (auto)</string>
     <string name="ds_guide_no_data_yet">Pas encore de programmes pour ce jour : le fournisseur ne publie que les prochaines heures.</string>
     <string name="ds_guide_no_data">Le guide des programmes se charge encore. Il apparaîtra ici dès qu’il sera prêt.</string>

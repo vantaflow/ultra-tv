@@ -226,6 +226,12 @@
     <string name="ds_announcement_update">Update</string>
     <string name="ds_rub_messages">Messages</string>
     <string name="ds_no_messages">No messages yet. Service notices will appear here.</string>
+    <string name="ds_messages_refresh">Refresh</string>
+    <string name="ds_messages_refreshing">Refreshing…</string>
+    <string name="ds_messages_retry">Try again</string>
+    <string name="ds_messages_offline">You’re offline. Check your connection, then try again.</string>
+    <string name="ds_messages_unreachable">The server can’t be reached right now. Try again in a moment.</string>
+    <string name="ds_messages_last_check">Last checked: %1$s</string>
     <string name="ds_lang_system">System (auto)</string>
     <string name="ds_guide_no_data_yet">No programmes for this day yet: the provider only publishes the next few hours.</string>
     <string name="ds_guide_no_data">The programme guide is still loading. It will appear here as soon as it is ready.</string>

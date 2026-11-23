@@ -226,6 +226,12 @@
     <string name="ds_announcement_update">تحديث</string>
     <string name="ds_rub_messages">الرسائل</string>
     <string name="ds_no_messages">لا توجد رسائل بعد. ستظهر هنا إشعارات الخدمة.</string>
+    <string name="ds_messages_refresh">تحديث</string>
+    <string name="ds_messages_refreshing">جارٍ التحديث…</string>
+    <string name="ds_messages_retry">إعادة المحاولة</string>
+    <string name="ds_messages_offline">أنت غير متصل. تحقّق من الاتصال ثم أعد المحاولة.</string>
+    <string name="ds_messages_unreachable">تعذّر الوصول إلى الخادم حاليًا. أعد المحاولة بعد قليل.</string>
+    <string name="ds_messages_last_check">آخر تحقّق: %1$s</string>
     <string name="ds_lang_system">النظام (تلقائي)</string>
     <string name="ds_guide_no_data_yet">لا توجد برامج لهذا اليوم بعد: المزوّد ينشر الساعات القادمة فقط.</string>
     <string name="ds_guide_no_data">لا يزال دليل البرامج قيد التحميل.</string>

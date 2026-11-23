@@ -55,6 +55,12 @@ class ArabicDigitsTest {
         assertEquals("latn", D.locale.getUnicodeLocaleType("nu"))
     }
 
+    @Test fun derniereVerificationDesMessages_enChiffresLatins() {
+        val s = DesignStrings(AppLang.Arabic).messagesLastCheck(com.ultratv.tv.nativeapp.ui.common.EpgClock.wall(nowMs))
+        assertLatin("Messages › dernière vérification", s)
+        assertTrue(s, s.any { it in '0'..'9' })
+    }
+
     @Test fun nombresFormates_parLesPorteursDeTextes() {
         val D = DesignStrings(AppLang.Arabic)
         assertLatin("channels", D.channels(1698))
