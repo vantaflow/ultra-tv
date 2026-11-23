@@ -6,15 +6,6 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 
 ## [Non publié]
 
-### Ajouté
-- Rubrique « Replay » (Android) dans le menu latéral, après le Guide (téléphone et tablette : rail latéral et « Plus ») : les chaînes de la source active qui ont une archive (Xtream, M3U avec rattrapage), filtrables par catégorie, puis le jour (aujourd'hui, hier… jusqu'à la durée d'archive de la chaîne, 7 jours au plus) et la liste des programmes passés de ce jour (heure, titre, durée, description). OK lit le programme depuis le début ; un programme sorti de l'archive est grisé « Indisponible ». Le profil est respecté : catégories masquées ou désactivées absentes, chaînes et catégories verrouillées derrière le code parental, adultes exclus du profil Enfants. L'entrée n'apparaît que si la source propose une archive ; sinon l'écran l'explique. Lien direct `ultratv://replay`.
-- Assistant de première configuration : nouvelle étape « Apparence » (étape 2 sur 4) pour choisir le thème parmi les 10 par tuiles d'aperçu, la couleur d'accent et la taille de l'interface, à la télécommande comme au toucher. Chaque choix s'applique aussitôt ; « Passer pour l'instant » rétablit l'apparence d'avant. Un utilisateur existant ne revoit pas l'assistant.
-
-### Modifié
-- Démarrage : juste après l'écran système (gardé le plus court possible), un écran de chargement sobre affiche « ULTRA TV » dans la typographie de la marque et trois points animés tant que l'appli prépare l'accueil (préférences, profils, catalogue), puis disparaît aussitôt, sans durée minimale. Plus de second logo ni d'animation d'ouverture de 700 ms par-dessus l'accueil, plus d'écran vide entre les deux ; points immobiles quand les animations sont réduites ou désactivées ; fond de fenêtre aligné sur celui de l'appli (plus d'éclair bleu nuit).
-- Tablette (à partir de 600 dp de large, portrait et paysage) : Réglages en deux volets proportionnés, rubriques à gauche et contenu à droite, avec des marges, des interlignes et des cibles tactiles agrandis (rubriques et lignes d'au moins 56 dp, texte nettement plus grand, libellés sur deux lignes au lieu d'être coupés) ; les fenêtres de choix ouvertes depuis les Réglages suivent la même taille. L'agrandissement se réduit de lui-même en portrait avec une grande taille d'interface. Téléphone et TV inchangés.
-- Réglages › Affichage : le thème se choisit en tête de la rubrique, directement sur les tuiles d'aperçu des 10 thèmes (avant : une ligne « Thème » qui ouvrait une liste de noms).
-
 ### Bureau (prochaine version)
 - Accueil : aucune rangée (à la une, en direct, reprises, nouveautés, mieux notés, Trakt, nouveaux épisodes, sport) ne montre plus de contenu d'une catégorie masquée, verrouillée ou adulte ; un profil Enfants ne voit les catégories adultes nulle part (case « Profil Enfants » dans Réglages › Profils).
 - Contrôle parental : verrou par catégorie entière (Réglages › Catégories, Direct, Films et Séries), code exigé partout où un contenu peut s'ouvrir (listes, guide, panneau des chaînes, recherche, favoris, fiches, reprise, zapping qui la saute) ; déverrouillé pour la session seulement.
@@ -25,6 +16,26 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 - Réglages : niveaux Essentiel / Standard / Expert ; Expert d'office pour un utilisateur existant, Standard pour une installation neuve ; un réglage modifié reste toujours affiché.
 - Rail latéral : sélecteur de source rapide quand le profil voit plusieurs sources.
 
+## [1.3.75] — 2026-11-23 (Android, pré-version)
+
+### Ajouté
+- Rubrique « Replay » (Android) dans le menu latéral, après le Guide (téléphone et tablette : rail latéral et « Plus ») : les chaînes de la source active qui ont une archive (Xtream, M3U avec rattrapage), filtrables par catégorie, puis le jour (aujourd'hui, hier… jusqu'à la durée d'archive de la chaîne, 7 jours au plus) et la liste des programmes passés de ce jour (heure, titre, durée, description). OK lit le programme depuis le début ; un programme sorti de l'archive est grisé « Indisponible ». Le profil est respecté : catégories masquées ou désactivées absentes, chaînes et catégories verrouillées derrière le code parental, adultes exclus du profil Enfants. L'entrée n'apparaît que si la source propose une archive ; sinon l'écran l'explique. Lien direct `ultratv://replay`.
+- Assistant de première configuration : nouvelle étape « Apparence » (étape 2 sur 4) pour choisir le thème parmi les 10 par tuiles d'aperçu, la couleur d'accent et la taille de l'interface, à la télécommande comme au toucher. Chaque choix s'applique aussitôt ; « Passer pour l'instant » rétablit l'apparence d'avant. Un utilisateur existant ne revoit pas l'assistant.
+- Groupes de chaînes personnalisés : créer, renommer, supprimer un groupe et y ranger des chaînes depuis le menu de la chaîne (appui long sur OK ou touche Menu dans le Direct et la recherche ; touche Menu ou dialogue du programme dans le Guide ; bouton « Groupes » du bandeau du lecteur). Les groupes s'affichent juste après « Favoris » dans le Direct, le Guide et la liste des chaînes du lecteur ; « Changer l'ordre » monte ou descend une chaîne dans le groupe. Par profil et par source, supprimés avec le profil ; un groupe vide explique comment y ajouter une chaîne ; une chaîne verrouillée demande toujours le code et un profil Enfants ne voit aucune chaîne adulte. Les groupes restent sur l'appareil (pas encore de synchronisation entre appareils).
+- Lecteur (direct et vidéos) : entrée « Qualité » dans le panneau des pistes, avec « Auto » (par défaut) puis les résolutions réellement proposées par le flux ; le choix s'applique sans relancer la lecture et vaut pour la session de l'application. Les qualités au-dessus de la « Qualité maximale » des Réglages sont grisées ; un flux à une seule qualité affiche « Qualité unique ».
+
+### Modifié
+- Démarrage : juste après l'écran système (gardé le plus court possible), un écran de chargement sobre affiche « ULTRA TV » dans la typographie de la marque et trois points animés tant que l'appli prépare l'accueil (préférences, profils, catalogue), puis disparaît aussitôt, sans durée minimale. Plus de second logo ni d'animation d'ouverture de 700 ms par-dessus l'accueil, plus d'écran vide entre les deux ; points immobiles quand les animations sont réduites ou désactivées ; fond de fenêtre aligné sur celui de l'appli (plus d'éclair bleu nuit).
+- Tablette (à partir de 600 dp de large, portrait et paysage) : Réglages en deux volets proportionnés, rubriques à gauche et contenu à droite, avec des marges, des interlignes et des cibles tactiles agrandis (rubriques et lignes d'au moins 56 dp, texte nettement plus grand, libellés sur deux lignes au lieu d'être coupés) ; les fenêtres de choix ouvertes depuis les Réglages suivent la même taille. L'agrandissement se réduit de lui-même en portrait avec une grande taille d'interface. Téléphone et TV inchangés.
+- Réglages › Affichage : le thème se choisit en tête de la rubrique, directement sur les tuiles d'aperçu des 10 thèmes (avant : une ligne « Thème » qui ouvrait une liste de noms).
+
+### In English
+- Replay: new section in the side menu listing channels with catch-up, then the day and its past programmes; OK plays a programme from the start (profile and parental rules respected).
+- First-run setup: new "Appearance" step to pick the theme, accent colour and interface size, applied instantly.
+- Startup: a plain "ULTRA TV" loading screen with three dots replaces the second logo and opening animation.
+- Tablets: Settings in two proportioned panes with larger text, spacing and touch targets; themes are picked from preview tiles.
+- Custom channel groups shown after Favourites in Live TV, the Guide and the player channel list (long press OK or Menu on a channel), per profile and per source.
+- Player: new "Quality" entry in the tracks panel (Auto or a resolution offered by the stream) for live TV and videos, kept for the app session.
 
 ## [1.3.74] — 2026-11-23 (Android)
 

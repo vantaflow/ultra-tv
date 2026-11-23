@@ -121,6 +121,13 @@ interface ProfileDao {
     @Query("DELETE FROM channel_order WHERE profileId = :id")
     suspend fun deleteChannelOrderOf(id: Long)
 
+    /** Groupes de chaînes du profil (chaînes d'abord, puis les groupes). */
+    @Query("DELETE FROM channel_group_member WHERE groupId IN (SELECT id FROM channel_group WHERE profileId = :id)")
+    suspend fun deleteChannelGroupMembersOf(id: Long)
+
+    @Query("DELETE FROM channel_group WHERE profileId = :id")
+    suspend fun deleteChannelGroupsOf(id: Long)
+
     @Query("DELETE FROM profile_hidden_channel WHERE profileId = :id")
     suspend fun deleteHiddenChannelsOf(id: Long)
 

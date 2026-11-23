@@ -539,10 +539,50 @@ class PlaybackSession(
         if (lang != null) key?.let { memory.rememberAudioLang(it, lang) }
     }
 
+    // ── Qualité pendant la lecture (panneau des pistes) ──
+    /** Piste vidéo choisie à la main pour le flux en cours (identifiant du moteur) ; null = Auto. */
+    @Volatile private var manualQuality: String? = null
+    /** La qualité choisie plus tôt dans la session a été (ré)essayée sur ce flux : une seule fois par flux. */
+    private var sessionQualityApplied = false
+
+    /** Plafond « Qualité maximale » des Réglages (hauteur) ; null = aucun. */
+    private fun qualityCap(): Int? = settings().maxVideoHeight.takeIf { it in 1 until Int.MAX_VALUE }
+
+    /** Entrée « Qualité » du panneau : Auto + variantes réellement disponibles, ou « Qualité unique ». */
+    fun qualityMenu(): QualityChoice.Menu = QualityChoice.menu(engine?.videoQualities().orEmpty(), qualityCap(), manualQuality)
+
+    /**
+     * Choix de la qualité : appliqué au moteur sans relancer le flux, retenu pour la session de l'application (jamais
+     * enregistré). null = Auto. Une variante au-dessus du plafond des Réglages est refusée.
+     */
+    fun selectQuality(id: String?) {
+        val e = engine ?: return
+        if (id == null) {
+            if (e.selectVideoQuality(null)) { manualQuality = null; QualitySession.height = null }
+            return
+        }
+        val t = e.videoQualities().firstOrNull { it.id == id } ?: return
+        val cap = qualityCap()
+        if (cap != null && t.height > cap) return
+        if (e.selectVideoQuality(id)) { manualQuality = id; QualitySession.height = t.height.takeIf { it > 0 } }
+    }
+
+    /** Flux prêt : la qualité choisie plus tôt dans la session est reprise (même hauteur, sinon en dessous), une fois. */
+    private fun applySessionQuality(e: PlayerEngine) {
+        if (sessionQualityApplied || manualQuality != null) return
+        val h = QualitySession.height ?: return
+        val tracks = e.videoQualities()
+        if (tracks.size < 2) return   // pistes pas encore connues (HLS) : nouvel essai au prochain « prêt »
+        sessionQualityApplied = true
+        val t = QualityChoice.matchHeight(tracks, h, qualityCap()) ?: return
+        if (e.selectVideoQuality(t.id)) manualQuality = t.id
+    }
+
     fun setBufferPreset(p: BufferPreset) { presetOverride = p; key?.let { memory.remember(it, null, p) }; armOpenDeadline(); launch(combo) }
 
     /** Ouvre [u] sur [e] : en flux protégé, avec ses propriétés de licence. */
     private fun loadOn(e: PlayerEngine, u: String = url, resume: Long = resumeMs) {
+        manualQuality = null; sessionQualityApplied = false   // nouveau flux : ses pistes vidéo sont à redécouvrir
         val p = props
         if (p != null && p.isProtected) e.loadProtected(u, resume, p) else e.load(u, resume)
     }
@@ -636,7 +676,7 @@ class PlaybackSession(
                 armStall()
                 if (bufferingWatchJob?.isActive != true) armBufferingWatch(e)
             } else if (e.hasVideo && startupJob?.isActive != true) armStartup(e)   // rechargement avant toute image (après Ready) : même garde-fou
-            EngineEvent.Ready -> { bufferingWatchJob?.cancel(); diagEndBuffering(); if (_state.value.buffering) _state.value = _state.value.copy(buffering = false); confirmAudioOnly(e); stallJob?.cancel(); startupJob?.cancel(); if (!firstFrame && watchdog?.isActive != true) armPictureWatchdog(e) }
+            EngineEvent.Ready -> { bufferingWatchJob?.cancel(); applySessionQuality(e); diagEndBuffering(); if (_state.value.buffering) _state.value = _state.value.copy(buffering = false); confirmAudioOnly(e); stallJob?.cancel(); startupJob?.cancel(); if (!firstFrame && watchdog?.isActive != true) armPictureWatchdog(e) }
             EngineEvent.FirstFrame -> {
                 // Déjà vue pour ce lancement : le moteur la resignale quand sa surface change (aperçu → plein écran) ;
                 // la durée depuis le lancement n'aurait plus de sens (41 s affichées pour 1,7 s réelles).

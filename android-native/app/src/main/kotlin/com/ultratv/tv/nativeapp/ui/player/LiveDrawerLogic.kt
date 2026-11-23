@@ -30,7 +30,7 @@ object LiveDrawerLogic {
      * dans leur ordre. Si une entrée « Tout » / « Favoris » existe déjà dans [cats] (même identifiant), elle est déplacée
      * en tête au lieu d'être dupliquée.
      */
-    fun categories(allLabel: String, favoritesLabel: String, allCount: Int?, favoritesCount: Int, cats: List<CategoryRow>): List<DrawerCategory> {
+    fun categories(allLabel: String, favoritesLabel: String, allCount: Int?, favoritesCount: Int, cats: List<CategoryRow>, groups: List<DrawerCategory> = emptyList()): List<DrawerCategory> {
         val existingAll = cats.firstOrNull { it.remoteId == CATEGORY_ALL }
         val existingFav = cats.firstOrNull { it.remoteId == CATEGORY_FAVORITES }
         val rows = cats.filter { it.remoteId != CATEGORY_ALL && it.remoteId != CATEGORY_FAVORITES }
@@ -38,6 +38,8 @@ object LiveDrawerLogic {
             add(DrawerCategory(CATEGORY_ALL, existingAll?.label ?: allLabel, allCount ?: existingAll?.count))
             val favCount = if (favoritesCount > 0) favoritesCount else existingFav?.count ?: 0
             if (favCount > 0) add(DrawerCategory(CATEGORY_FAVORITES, existingFav?.label ?: favoritesLabel, favCount))
+            // Groupes personnels du profil juste après Favoris (comme dans le Direct).
+            addAll(groups)
             rows.mapTo(this) { DrawerCategory(it.remoteId, it.label, it.count) }
         }
     }

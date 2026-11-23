@@ -131,6 +131,10 @@ interface PlayerEngine {
     fun selectAudio(id: String)
     /** null = sous-titres désactivés. */
     fun selectSubtitle(id: String?)
+    /** Pistes vidéo (qualités) du flux en cours ; vide si le moteur ne les expose pas. */
+    fun videoQualities(): List<VideoQuality> = emptyList()
+    /** Force une piste vidéo de [videoQualities] sans relancer le flux ; null = Auto. Faux si non pris en charge. */
+    fun selectVideoQuality(id: String?): Boolean = false
     fun setAspect(mode: AspectMode)
     fun setSpeed(speed: Float)
     /** Vrai si le flux contient une piste vidéo (sinon : radio, pas d'alerte « aucune image »). */

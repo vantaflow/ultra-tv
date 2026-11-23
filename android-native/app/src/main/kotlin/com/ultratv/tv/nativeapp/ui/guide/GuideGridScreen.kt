@@ -255,6 +255,7 @@ class GuideGridViewModel @Inject constructor(
     @dagger.hilt.android.qualifiers.ApplicationContext private val appCtx: android.content.Context,
     private val zapQueue: com.ultratv.tv.nativeapp.data.repo.LivePlaybackQueue,
     private val playback: com.ultratv.tv.nativeapp.data.repo.PlaybackContext,
+    private val channelGroups: com.ultratv.tv.nativeapp.data.repo.ChannelGroupRepository,
 ) : ViewModel() {
     /**
      * Prépare la lecture en DIRECT comme l'écran Direct : contexte LIVE (fiche Info, bandeau, pause en différé) et file de
@@ -265,7 +266,9 @@ class GuideGridViewModel @Inject constructor(
             runCatching {
                 val g = selectedGroup.value
                 val cat = if (g == com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL) ch.categoryId else g
+                val gid = com.ultratv.tv.nativeapp.data.repo.ChannelGroups.idOf(g)
                 val window = when {
+                    gid != null -> channelGroups.channels(ch.providerId, gid, channelGroups.excluded(hiddenStore.hidden.first(), ch.providerId))
                     g == com.ultratv.tv.nativeapp.ui.live.CATEGORY_FAVORITES -> channelDao.favoritesList(ch.providerId, profiles.currentIdNow)
                     cat.isNullOrEmpty() -> listOf(ch)
                     else -> {
@@ -333,7 +336,8 @@ class GuideGridViewModel @Inject constructor(
                     catalog.categories(id, "LIVE"),
                     channelDao.observeCategoryCounts(id).atMostEvery(1_000).snapshotWhile(syncing),
                     catalog.favoriteCount(id, "LIVE"),
-                ) { cats, counts, fav -> com.ultratv.tv.nativeapp.ui.live.buildDirectCategories(cats, counts, fav, id, hidden) }
+                    channelGroups.observe(id, channelGroups.excluded(hidden, id)).atMostEvery(1_000).snapshotWhile(syncing),
+                ) { cats, counts, fav, grp -> com.ultratv.tv.nativeapp.ui.live.buildDirectCategories(cats, counts, fav, id, hidden, grp) }
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -364,7 +368,11 @@ class GuideGridViewModel @Inject constructor(
             .flatMapLatest { a ->
                 @Suppress("UNCHECKED_CAST") val id = a[0] as Long?; val range = a[1] as Pair<Long, Long>; val g = a[2] as String; val hidden = a[3] as Set<String>; val prof = a[4] as Long
                 val from = range.first; val to = range.second
+                val gid = com.ultratv.tv.nativeapp.data.repo.ChannelGroups.idOf(g)
                 if (id == null) flowOf(PagingData.empty())
+                else if (gid != null) Pager(com.ultratv.tv.nativeapp.data.repo.PagingMemory.config(20, 10, 30)) {
+                    channelGroups.pagedWithEpg(id, gid, from, to, channelGroups.excluded(hidden, id))
+                }.flow
                 else Pager(com.ultratv.tv.nativeapp.data.repo.PagingMemory.config(20, 10, 30)) {
                     when (g) {
                         com.ultratv.tv.nativeapp.ui.live.CATEGORY_FAVORITES -> channelDao.pagedWithEpgFavorites(id, from, to, prof)
@@ -463,13 +471,14 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
     val clock = com.ultratv.tv.nativeapp.ui.common.rememberEpgClock()
     val shared = com.ultratv.tv.nativeapp.ui.player.engine.LocalSharedLive.current
     var actionTarget by remember { mutableStateOf<Pair<ChannelEntity, EpgEntity>?>(null) }
+    var groupsFor by remember { mutableStateOf<ChannelEntity?>(null) }
     val recordingRunning by vm.recordingRunning.collectAsState()
     val guideLoad by vm.guideLoad.collectAsState()
     val groups by vm.groups.collectAsState()
     val group by vm.selectedGroup.collectAsState()
     var groupOpen by remember { mutableStateOf(false) }
     val groupName = { g: com.ultratv.tv.nativeapp.ui.live.DirectCategory ->
-        when (g.id) { com.ultratv.tv.nativeapp.ui.live.CATEGORY_FAVORITES -> D.catFavorites; com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL -> D.catAll; else -> com.ultratv.tv.nativeapp.ui.common.prettyCategoryName(g.name.orEmpty()) }
+        com.ultratv.tv.nativeapp.ui.live.directCategoryLabel(g, g.id, D)
     }
     val groupLabel = guideGroupName(groups, group, groupName)
     // Réglage d'aperçu : LA MÊME préférence que Réglages › Lecture › « Aperçu vidéo dans le Direct » (mode Auto / Activé / Désactivé).
@@ -551,8 +560,10 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
             onRemind = { actionTarget = null; vm.addReminder(ch, pr); askNotifications(); Toaster.ok(D.remindSet) },
             onRecord = { series -> actionTarget = null; recordProgramme(ch, pr, series) },
             onDismiss = { actionTarget = null },
+            onGroups = { actionTarget = null; groupsFor = ch },
         )
     }
+    groupsFor?.let { ch -> com.ultratv.tv.nativeapp.ui.live.ChannelGroupsDialog(ch, onClose = { groupsFor = null }) }
 }
 
 /**
@@ -1028,7 +1039,9 @@ private fun GuideCell(
         bg = if (isNow) Ux.NowTint else Ux.Card,
         ringWidth = 0.dp, focusedScale = 1f,
         // Sélection écrite PENDANT le passage du focus (même image que les cases) : un LaunchedEffect la décalait d'une image.
+        // Touche Menu : dialogue du programme (dont « Ajouter à un groupe »), jamais un rappel posé par erreur.
         modifier = Modifier.onFocusChanged { if (it.isFocused) onFocusProg(p) }
+            .onPreviewKeyEvent { e -> if (e.key == androidx.compose.ui.input.key.Key.Menu) { if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) onSelect(p); true } else false }
             .then(GuideSlotElement(p.startMs, p.endMs, window, gridW, probe))
             .then(if (taker != null) Modifier.focusRequester(taker) else Modifier)
             .then(if (isFirst) firstModifier else Modifier),
@@ -1250,7 +1263,10 @@ internal fun GuideTvContent(
             if (channelCount == 0) {
                 // Jour à venir sans aucun programme : ce n'est pas un chargement en cours (le guide n'est publié que sur
                 // quelques dizaines d'heures) ; « se charge encore » faisait attendre pour rien.
-                if (group != com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL && guideLoad is GuideLoad.Idle) Text(if (day > 0) D.guideNoDataYet else D.guideGroupEmpty, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 33.spx, maxLines = 3)
+                // Groupe personnel sans aucune chaîne : on explique comment en ajouter une.
+                val emptyMine = com.ultratv.tv.nativeapp.data.repo.ChannelGroups.isScope(group) && groups.firstOrNull { it.id == group }?.count == 0
+                if (emptyMine) Text(com.ultratv.tv.nativeapp.ui.live.ChannelGroupStrings(D.lang).empty, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 33.spx, maxLines = 3)
+                else if (group != com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL && guideLoad is GuideLoad.Idle) Text(if (day > 0) D.guideNoDataYet else D.guideGroupEmpty, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 33.spx, maxLines = 3)
                 else if (day > 0 && guideLoad is GuideLoad.Idle) Text(D.guideNoDataYet, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 33.spx, maxLines = 3)
                 else GuideEmptyState(guideLoad, D, onRetry = onRetry, touch = false)
                 return@Column

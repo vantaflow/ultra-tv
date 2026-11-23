@@ -33,6 +33,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -222,6 +225,13 @@ fun FocusSurface(
             .then(if (focused && ringWidth.value > 0f) Modifier.border(ringWidth, Ux.Accent, shape) else Modifier)
             .clip(shape)
             .background(if (focused) focusedBg else bg)
+            // Touche Menu de la télécommande = appui long (menu de la chaîne dans le Direct, le Guide, la recherche…).
+            .then(if (onLongClick != null) Modifier.onKeyEvent { e ->
+                if (e.key == androidx.compose.ui.input.key.Key.Menu) {
+                    if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) { com.ultratv.tv.nativeapp.ui.common.ModalOpener.mark(self); onLongClick() }
+                    true
+                } else false
+            } else Modifier)
             .combinedClickable(
                 interactionSource = interaction, indication = null,
                 onClick = { com.ultratv.tv.nativeapp.ui.common.ModalOpener.mark(self); onClick() },

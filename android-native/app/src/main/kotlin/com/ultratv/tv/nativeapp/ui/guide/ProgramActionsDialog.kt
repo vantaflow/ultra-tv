@@ -77,6 +77,8 @@ fun ProgramActionsDialog(
     onRemind: () -> Unit,
     onRecord: (wholeSeries: Boolean) -> Unit,
     onDismiss: () -> Unit,
+    /** « Ajouter à un groupe » (groupes de chaînes personnels) ; null = bouton absent. */
+    onGroups: (() -> Unit)? = null,
 ) {
     var choosingRecord by remember { mutableStateOf(false) }
     // Le choix « ce programme / série » remplace les 4 boutons : sans focus explicite, il filerait dans la barre latérale.
@@ -99,6 +101,13 @@ fun ProgramActionsDialog(
                     Row(horizontalArrangement = Arrangement.spacedBy(14.design)) {
                         ActionButton(D.actRemind, D.actRemindHint, BELL, state.remindEnabled, Modifier.weight(1f), onRemind)
                         ActionButton(D.actRecord, D.actRecordHint, Icons.Record, state.recordEnabled, Modifier.weight(1f)) { choosingRecord = true }
+                    }
+                    if (onGroups != null) {
+                        val G = remember(D.lang) { com.ultratv.tv.nativeapp.ui.live.ChannelGroupStrings(D.lang) }
+                        Row(horizontalArrangement = Arrangement.spacedBy(14.design)) {
+                            ActionButton(G.addTo, channel.title, Icons.List, true, Modifier.weight(1f), onGroups)
+                            androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+                        }
                     }
                 }
             } else {

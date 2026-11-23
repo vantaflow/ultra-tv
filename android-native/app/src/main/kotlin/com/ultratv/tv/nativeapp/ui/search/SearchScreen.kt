@@ -919,7 +919,18 @@ private fun ChannelCard(c: ChannelEntity, modifier: Modifier, onClick: () -> Uni
     val fav = LocalSearchFav.current
     val isFav = fav?.has(c.providerId, "LIVE", c.remoteId) == true
     val badge = LocalSearchSources.current?.get(c.providerId)
-    FocusSurface(onClick = onClick, onLongClick = fav?.let { f -> { f.toggle(c.providerId, "LIVE", c.remoteId, c.title) } }, shape = RoundedCornerShape(18.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1f, modifier = modifier.height(96.design)) { f ->
+    // Appui long OK / touche Menu : menu de la chaîne (favori, groupes personnels).
+    var menu by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    if (menu == 1) {
+        val D = com.ultratv.tv.nativeapp.i18n.LocalDs.current
+        val G = androidx.compose.runtime.remember(D.lang) { com.ultratv.tv.nativeapp.ui.live.ChannelGroupStrings(D.lang) }
+        com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(
+            c.title, listOfNotNull(fav?.let { "fav" to (if (isFav) D.removeFavorite else D.addFavorite) }, "grp" to G.addTo), null,
+            { k -> if (k == "fav") { fav?.toggle(c.providerId, "LIVE", c.remoteId, c.title); menu = 0 } else menu = 2 }, { menu = 0 },
+        )
+    }
+    if (menu == 2) com.ultratv.tv.nativeapp.ui.live.ChannelGroupsDialog(c, onClose = { menu = 0 })
+    FocusSurface(onClick = onClick, onLongClick = { menu = 1 }, shape = RoundedCornerShape(18.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1f, modifier = modifier.height(96.design)) { f ->
         Row(Modifier.fillMaxSize().padding(horizontal = 22.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.design)) {
             LogoBox(c.logo, c.title, Modifier.width(64.design).height(44.design), radius = 10, pad = 4, bg = if (f) Ux.Surface else Ux.Surface2)
             Text(c.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, lineHeight = 28.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))

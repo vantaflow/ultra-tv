@@ -173,6 +173,7 @@ class ProfileRepository(
         dao.byId(id)?.let { log?.tombstone(it.name) }
         dao.deleteFavoritesOf(id); dao.deleteHistoryOf(id); dao.deletePrefsOf(id); dao.deleteHiddenOf(id); dao.deleteChannelOrderOf(id)
         dao.deleteHiddenChannelsOf(id); dao.deleteCategoryOrderOf(id)
+        dao.deleteChannelGroupMembersOf(id); dao.deleteChannelGroupsOf(id)
         dao.deleteProfile(id)
         val remaining = dao.observeAllOnce()
         if (current.value?.id == id) remaining.firstOrNull()?.let { runCatching { hook?.onSwitch(it.id) }; state.setCurrentId(it.id) }

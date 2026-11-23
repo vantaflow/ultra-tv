@@ -31,8 +31,10 @@ import androidx.room.RoomDatabase
         ProfileHiddenChannelEntity::class,
         ChannelHiddenNowEntity::class,
         ProfileCategoryOrderEntity::class,
+        ChannelGroupEntity::class,
+        ChannelGroupMemberEntity::class,
     ],
-    version = 24,
+    version = 25,
     exportSchema = true,
 )
 abstract class UltraDb : RoomDatabase() {
@@ -55,4 +57,5 @@ abstract class UltraDb : RoomDatabase() {
     abstract fun channelOrderDao(): ChannelOrderDao
     abstract fun manualChannelDao(): ManualChannelDao
     abstract fun profileViewDao(): ProfileViewDao
+    abstract fun channelGroupDao(): ChannelGroupDao
 }

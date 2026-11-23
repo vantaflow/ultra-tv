@@ -2038,4 +2038,25 @@
     <string name="replay_empty_body">Tu proveedor no ofrece repetición.</string>
     <string name="replay_hidden_body">Los canales con repetición están ocultos para este perfil.</string>
     <string name="replay_no_source">Añade una fuente para ver la repetición.</string>
+    <string name="pq_title">Calidad</string>
+    <string name="pq_single">Calidad única</string>
+    <string name="pq_above_cap">Por encima de la calidad máxima de Ajustes</string>
+    <string name="grp_groups">Mis grupos</string>
+    <string name="grp_new">Nuevo grupo</string>
+    <string name="grp_new_ellipsis">Nuevo grupo…</string>
+    <string name="grp_name">Nombre del grupo</string>
+    <string name="grp_rename">Cambiar el nombre del grupo</string>
+    <string name="grp_delete">Eliminar el grupo</string>
+    <string name="grp_delete_sure">¿Eliminar el grupo «%1$s»? Los canales siguen en sus categorías.</string>
+    <string name="grp_add_to">Añadir a un grupo</string>
+    <string name="grp_remove_from">Quitar de «%1$s»</string>
+    <string name="grp_added">Añadido a «%1$s»</string>
+    <string name="grp_removed">Quitado de «%1$s»</string>
+    <string name="grp_empty">Este grupo está vacío: mantén pulsado OK (o pulsa Menú) en un canal para añadirlo.</string>
+    <string name="grp_button">Grupos</string>
+    <string name="grp_menu">Acciones del canal</string>
+    <string name="grp_limit">Puedes crear hasta 50 grupos.</string>
+    <string name="grp_save">Guardar</string>
+    <string name="grp_cancel">Cancelar</string>
+    <string name="grp_move">Cambiar el orden</string>
 </resources>
