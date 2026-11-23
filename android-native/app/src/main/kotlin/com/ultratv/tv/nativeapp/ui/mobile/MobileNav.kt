@@ -49,6 +49,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.i18n.sportNav
+import com.ultratv.tv.nativeapp.i18n.replayNav
 import com.ultratv.tv.nativeapp.nav.Routes
 import com.ultratv.tv.nativeapp.ui.design.DIcon
 import com.ultratv.tv.nativeapp.ui.design.Icons
@@ -92,6 +93,7 @@ private val routeDefs = listOf(
     TabDef(Routes.MOVIES, Icons.Movies) { s, _, _ -> s.navMovies },
     TabDef(Routes.SERIES, Icons.Series) { s, _, _ -> s.navSeries },
     TabDef(Routes.SPORT, com.ultratv.tv.nativeapp.ui.sport.SportIcons.Trophy) { _, d, _ -> d.sportNav },
+    TabDef(Routes.REPLAY, com.ultratv.tv.nativeapp.ui.replay.ReplayIcons.Replay) { _, d, _ -> d.replayNav },
     TabDef(Routes.FAVORITES, Icons.Heart) { s, _, _ -> s.navFavorites },
     TabDef("recordings", Icons.Record) { s, _, _ -> s.navRecordings },
     TabDef(Routes.DOWNLOADS, MobileIcons.Download) { _, d, _ -> com.ultratv.tv.nativeapp.ui.downloads.DownloadStrings(d.lang).navTitle },
@@ -180,6 +182,7 @@ private fun Spacer4() = androidx.compose.foundation.layout.Spacer(Modifier.heigh
 private data class MoreDef(val route: String, val icon: String, val label: (com.ultratv.tv.nativeapp.i18n.Strings, com.ultratv.tv.nativeapp.i18n.DesignStrings, MobileStrings) -> String)
 
 private val sportRailDef get() = RailDef(Routes.SPORT, com.ultratv.tv.nativeapp.ui.sport.SportIcons.Trophy) { _, d -> d.sportNav }
+private val replayRailDef get() = RailDef(Routes.REPLAY, com.ultratv.tv.nativeapp.ui.replay.ReplayIcons.Replay) { _, d -> d.replayNav }
 
 
 /** Feuille « Plus » : Séries, Recherche, Favoris, Enregistrements, Réglages, Profils. Retour système = fermer. */
@@ -208,7 +211,8 @@ fun MoreSheet(navController: NavController, onDismiss: () -> Unit, onProfiles: (
             val sportOn = com.ultratv.tv.nativeapp.ui.sport.LocalSportEnabled.current
             // Les rubriques non retenues dans la barre du bas (réglage « Barre du bas »), puis Réglages et Profils.
             val chosen = bottomTabRoutes(LocalBottomTabs.current, sportOn)
-            val shownMore = moreRoutesFor(chosen, sportOn).mapNotNull { r -> routeDefs[r]?.let { MoreDef(it.route, it.icon, it.label) } }
+            val replayOn = com.ultratv.tv.nativeapp.ui.replay.LocalReplayEnabled.current
+            val shownMore = moreRoutesFor(chosen, sportOn, replayOn).mapNotNull { r -> routeDefs[r]?.let { MoreDef(it.route, it.icon, it.label) } }
             shownMore.forEach { item ->
                 val label = item.label(S, D, M)
                 Row(
@@ -270,7 +274,8 @@ fun TouchRail(navController: NavController, profile: ProfileChip?, onProfile: ()
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             val sportOn = com.ultratv.tv.nativeapp.ui.sport.LocalSportEnabled.current
-            val shownRail = if (sportOn) railDefs.flatMap { if (it.route == Routes.GUIDE) listOf(it, sportRailDef) else listOf(it) } else railDefs
+            val replayOn = com.ultratv.tv.nativeapp.ui.replay.LocalReplayEnabled.current
+            val shownRail = railDefs.flatMap { if (it.route == Routes.GUIDE) listOfNotNull(it, sportRailDef.takeIf { sportOn }, replayRailDef.takeIf { replayOn }) else listOf(it) }
             shownRail.forEach { r ->
                 val selected = r.route == active
                 val label = r.label(S, D)

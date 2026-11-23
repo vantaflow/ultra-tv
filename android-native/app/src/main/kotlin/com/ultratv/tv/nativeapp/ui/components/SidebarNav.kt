@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.i18n.sportNav
+import com.ultratv.tv.nativeapp.i18n.replayNav
 import com.ultratv.tv.nativeapp.i18n.mlibHubTitle
 import com.ultratv.tv.nativeapp.ui.common.LocalLowRam
 import com.ultratv.tv.nativeapp.ui.design.Manrope
@@ -101,11 +102,14 @@ private val sportRailItem = RailItem("sport", com.ultratv.tv.nativeapp.ui.sport.
 /** Entrée « Mes bibliothèques » : seulement si une source Jellyfin, Emby, Plex ou NAS existe ; dans « Mes listes », après Favoris. */
 private val librariesRailItem = RailItem(com.ultratv.tv.nativeapp.nav.Routes.LIBRARIES, Icons.Series, labelD = { it.mlibHubTitle }, group = RailGroup.MINE) { "" }
 
-/** Rail avec (ou sans) la rubrique Sport et l'entrée « Mes bibliothèques ». */
-internal fun railItemsFor(sport: Boolean, libraries: Boolean = false): List<RailItem> =
+/** Entrée « Replay » : seulement si la source active a au moins une chaîne avec archive ; après le Guide (et le Sport). */
+private val replayRailItem = RailItem(com.ultratv.tv.nativeapp.nav.Routes.REPLAY, com.ultratv.tv.nativeapp.ui.replay.ReplayIcons.Replay, labelD = { it.replayNav }) { "" }
+
+/** Rail avec (ou sans) la rubrique Sport, la rubrique Replay et l'entrée « Mes bibliothèques ». */
+internal fun railItemsFor(sport: Boolean, libraries: Boolean = false, replay: Boolean = false): List<RailItem> =
     railItems.flatMap {
         when {
-            sport && it.route == "guide" -> listOf(it, sportRailItem)
+            it.route == "guide" && (sport || replay) -> listOfNotNull(it, sportRailItem.takeIf { sport }, replayRailItem.takeIf { replay })
             libraries && it.route == "favorites" -> listOf(it, librariesRailItem)
             else -> listOf(it)
         }
@@ -141,7 +145,8 @@ fun SidebarNav(navController: NavController, menu: RailMenuState = remember { Ra
     val favCount by badgesVm.favorites.collectAsState()
     val recCount by badgesVm.recording.collectAsState()
     val hasLibraries by badgesVm.hasLibraries.collectAsState()
-    val items = remember(sportOn, hasLibraries) { railItemsFor(sportOn, hasLibraries) }
+    val replayOn = com.ultratv.tv.nativeapp.ui.replay.LocalReplayEnabled.current
+    val items = remember(sportOn, hasLibraries, replayOn) { railItemsFor(sportOn, hasLibraries, replayOn) }
     val lowRam = LocalLowRam.current
     // État hissé : Retour (racine) ouvre le menu par [RailMenuState.open].
     var expanded by menu::expanded
