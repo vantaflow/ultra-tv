@@ -40,7 +40,8 @@ class LiveOsdStrings(val lang: AppLang) {
 
     // Réutilisés tels quels (une seule source de vérité par texte).
     val pip get() = tx(R.string.mob_pip)
-    val myList get() = tx(R.string.mob_my_list)
+    // Libellé = rubrique de destination (Routes.FAVORITES) ; mob_my_list reste pour les fiches film/série.
+    val myList get() = tx(R.string.str_nav_favorites)
     val play get() = tx(R.string.mob_a11y_play)
     val pause get() = tx(R.string.mob_a11y_pause)
 
