@@ -41,6 +41,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Télémétrie : les tests automatiques n'envoient plus rien vers le serveur ; côté serveur, toute adresse est réduite à une empreinte d'hôte et les identifiants, jetons, adresses MAC, IP et e-mails sont masqués.
 
 ### Corrigé
+- Accueil : « Dernières chaînes regardées » montre de nouveau toutes les chaînes regardées, même celles d'une catégorie masquée ou désactivée ; seules les chaînes verrouillées (et l'adulte pour un profil Enfants) en sont exclues.
 - Contrôle parental : effacer ou changer le code demande d'abord le code actuel (mêmes essais limités que le déverrouillage) ; sans lui, rien ne change.
 - Télémétrie : plus aucun journal, plantage, blocage ni relevé anonyme n'est envoyé pendant les tests automatiques (interrupteur général coupé sous Robolectric) ; aucun changement sur un vrai appareil.
 - Lecteur VLC : l'arrêt du flux au changement de chaîne et la coupure de la piste vidéo au changement d'écran ne bloquent plus l'interface (blocages « l'application ne répond pas » sur certaines TV TCL) : ils passent par un fil dédié au moteur.

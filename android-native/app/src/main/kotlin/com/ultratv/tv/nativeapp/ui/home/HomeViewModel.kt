@@ -188,6 +188,16 @@ class HomeViewModel @Inject constructor(
         ) { hidden, live, movies, series, locked -> HomeGuard.of(hidden, live + movies + series, locked) }
     }.distinctUntilChanged().shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
 
+    /** Filtre de l'historique (dernières chaînes regardées) : verrou parental, et adulte pour un profil Enfants seulement. */
+    private val historyGuard: Flow<HomeGuard> = pid.flatMapLatest { id ->
+        if (id == null) flowOf(HomeGuard.NONE)
+        else combine(
+            categoryDao.observeForProviderKind(id, "LIVE"),
+            lockedStore.locked,
+            profileRepo.current.map { it?.isKids == true },
+        ) { live, locked, kids -> HomeGuard.forHistory(live, locked, kids) }
+    }.distinctUntilChanged()
+
     /** Serveurs multimédias / NAS visibles pour le profil courant, dans l'ordre des sources ; vide = aucune rangée de serveur. */
     private val libraryProviders: Flow<List<ProviderEntity>> = combine(providers, profileRepo.currentSources) { ps, names ->
         com.ultratv.tv.nativeapp.data.profile.ProfileSourcesRules.visible(ps, names)
@@ -265,11 +275,15 @@ class HomeViewModel @Inject constructor(
         .map { r -> if (r == null) "" to emptyList() else r.first to r.second.map { com.ultratv.tv.nativeapp.ui.catalog.PosterItem(it.id, it.title, it.poster, it.year, it.rating) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "" to emptyList())
 
-    /** Dernières chaînes regardées (historique du profil). */
+    /**
+     * Dernières chaînes regardées (historique du profil). Filtre de l'historique ([HomeGuard.forHistory]) et non celui des
+     * autres rangées : une chaîne regardée dans une catégorie masquée ou désactivée y reste. Lot plus large lu puis coupé à
+     * 12 APRÈS le filtre (avant : 12 lues puis filtrées, la rangée se vidait).
+     */
     val recentChannels: StateFlow<List<WatchHistoryEntity>> = pid
-        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else history.recentByKind(id, "LIVE", 12) }
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else history.recentByKind(id, "LIVE", RECENT_CHANNELS_READ) }
         .map { l -> l.filter { it.streamUrl.isNotBlank() } }
-        .combine(guard) { l, g -> l to g }.mapLatest { (l, g) -> guardHistory(l, g) }
+        .combine(historyGuard) { l, g -> l to g }.mapLatest { (l, g) -> guardHistory(l, g).take(RECENT_CHANNELS_SHOWN) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /**
@@ -545,3 +559,7 @@ class HomeViewModel @Inject constructor(
         syncCoordinator.request(id, force = true)
     }
 }
+
+/** « Dernières chaînes regardées » : entrées lues dans l'historique avant filtre, puis affichées. */
+private const val RECENT_CHANNELS_READ = 60
+private const val RECENT_CHANNELS_SHOWN = 12

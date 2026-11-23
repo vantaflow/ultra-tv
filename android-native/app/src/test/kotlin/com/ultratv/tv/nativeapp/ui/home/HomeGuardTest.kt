@@ -60,4 +60,19 @@ class HomeGuardTest {
         assertEquals(true, HomeGuard.NONE.allows("MOVIE", 1, null, "Film"))
         assertEquals(false, HomeGuard.NONE.allows("MOVIE", 1, null, "Porn"))
     }
+
+    /** Dernières chaînes regardées : masquée / désactivée = gardée ; verrouillée = exclue ; adulte = exclue pour Enfants seulement. */
+    @Test fun historique_garde_lesCategoriesMasqueesEtDesactivees() {
+        val live = listOf(cat("LIVE", "30", "Sport", enabled = false), cat("LIVE", "31", "Nuit", locked = true), cat("LIVE", "32", "XXX Adult"))
+        val adult = HomeGuard.forHistory(live, setOf("1:99"), kids = false)
+        assertTrue("désactivée", adult.allows("LIVE", 1, "30", "beIN Sports"))
+        assertFalse("verrouillée", adult.allows("LIVE", 1, "31", "Canal"))
+        assertTrue("adulte, profil adulte", adult.allows("LIVE", 1, "32", "XXX chaîne"))
+        assertTrue("1:99" in adult.lockedChannels)
+        val kids = HomeGuard.forHistory(live, emptySet(), kids = true)
+        assertFalse("adulte, profil Enfants", kids.allows("LIVE", 1, "32", "Chaîne"))
+        assertFalse("titre adulte, profil Enfants", kids.allows("LIVE", 1, "30", "XXX chaîne"))
+        // Les autres rangées gardent le filtre complet.
+        assertFalse(HomeGuard.of(emptySet(), live, emptySet()).allows("LIVE", 1, "30", "beIN Sports"))
+    }
 }
