@@ -20,7 +20,7 @@
     "dexie-react-hooks": "^4.4.0",
     "hls.js": "^1.7.4",
     "mpegts.js": "^1.8.2",
-    "qrcode-generator": "1.4.4",
+    "qrcode-generator": "2.0.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-router-dom": "^7.18.6",
