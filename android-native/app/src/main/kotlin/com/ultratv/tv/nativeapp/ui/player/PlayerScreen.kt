@@ -1608,7 +1608,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         } else {
         // takeVideoView : la vue vidéo peut venir de l'aperçu du Direct (changement de parent sans recharger le flux).
         // Bords de l'écran (overscan) : la vidéo reste bord à bord, les bandeaux du lecteur respectent la marge.
-        AndroidView(factory = { session.takeVideoView() }, modifier = Modifier.fillMaxSize().bleedScreenEdges())
+        AndroidView(factory = { session.takeVideoView("player") }, modifier = Modifier.fillMaxSize().bleedScreenEdges())
 
         // Chargement : visuel de la chaîne avec anneau de progression.
         if (state.phase == Phase.LOADING) LoadingVisual(item?.poster, item?.title ?: title)

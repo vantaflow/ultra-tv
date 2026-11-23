@@ -164,6 +164,11 @@ interface PlayerEngine {
     fun onVideoDetaching() {}
     /** La vue vidéo est rattachée à son nouveau parent (après la création de la nouvelle surface). */
     fun onVideoReattached() {}
+    /**
+     * Rebranche la sortie vidéo sur la surface de la vue (débranchement puis rebranchement, sans recharger le flux) : filet
+     * de sécurité quand le son avance sans aucune image alors que la vue est à l'écran. Sans effet par défaut (LibVLC).
+     */
+    fun refreshVideoSurface() {}
     /** Vue vidéo à l'écran avec une surface de rendu créée (voir [FrameProbe.surfaceReady]). */
     val surfaceReady: Boolean get() = FrameProbe.surfaceReady(view)
     fun release()

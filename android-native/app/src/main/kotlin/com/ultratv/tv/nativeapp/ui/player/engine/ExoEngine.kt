@@ -406,6 +406,20 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
     }
     override fun setSpeed(speed: Float) { player.playbackParameters = PlaybackParameters(speed) }
     // PlayerView suit seule la destruction / recréation de sa surface au changement de parent : rien d'autre à faire.
+    override fun refreshVideoSurface() {
+        if (released) return
+        val v = playerView.videoSurfaceView ?: return
+        // Débranchement (surface factice de Media3), puis rebranchement de la surface de la vue : même séquence que celle qui
+        // débloquait l'image sur la box après ~30 s.
+        player.clearVideoSurface()
+        mainHandler.postDelayed({
+            if (released) return@postDelayed
+            when (v) {
+                is android.view.SurfaceView -> player.setVideoSurfaceView(v)
+                is android.view.TextureView -> player.setVideoTextureView(v)
+            }
+        }, REFRESH_SURFACE_GAP_MS)
+    }
     override fun setMuted(muted: Boolean) { player.volume = if (muted) 0f else 1f }
     override val hasVideo get() = player.currentTracks.groups.any { it.type == C.TRACK_TYPE_VIDEO && it.length > 0 }
     override fun limitQuality(maxHeight: Int, maxBitrateBps: Int?) {
@@ -526,6 +540,12 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
  * reste aux décodeurs matériels / logiciels de MediaCodec.
  */
 @UnstableApi
+/** Écart entre le débranchement et le rebranchement de la surface ([ExoEngine.refreshVideoSurface]). */
+private const val REFRESH_SURFACE_GAP_MS = 150L
+
+/** Valeur de Media3 (DefaultRenderersFactory.MAX_DROPPED_VIDEO_FRAME_COUNT_TO_NOTIFY). */
+private const val MAX_DROPPED_FRAMES_TO_NOTIFY = 50
+
 private class AudioOnlyFfmpegRenderersFactory(ctx: android.content.Context) : DefaultRenderersFactory(ctx) {
     /** Sortie audio de Media3, avec le recul de position des flux aux horodatages qui repartent en arrière (voir [JumpTolerantAudioSink]). */
     override fun buildAudioSink(context: android.content.Context, enableFloatOutput: Boolean, enableAudioOutputPlaybackParams: Boolean): androidx.media3.exoplayer.audio.AudioSink? =
@@ -543,5 +563,18 @@ private class AudioOnlyFfmpegRenderersFactory(ctx: android.content.Context) : De
     ) {
         super.buildVideoRenderers(context, extensionRendererMode, mediaCodecSelector, enableDecoderFallback, eventHandler, eventListener, allowedVideoJoiningTimeMs, out)
         out.removeAll { it.javaClass.name.contains("FfmpegVideoRenderer") }
+        // Rendu MediaCodec remplacé par [HostSurfaceVideoRenderer] (mêmes paramètres que Media3) : le décodeur vidéo n'est
+        // jamais configuré sur la surface factice avant la première vraie surface (image absente ~30 s sur Amlogic).
+        val i = out.indexOfFirst { it.javaClass == androidx.media3.exoplayer.video.MediaCodecVideoRenderer::class.java }
+        if (i >= 0) out[i] = HostSurfaceVideoRenderer(
+            androidx.media3.exoplayer.video.MediaCodecVideoRenderer.Builder(context)
+                .setCodecAdapterFactory(codecAdapterFactory)
+                .setMediaCodecSelector(mediaCodecSelector)
+                .setAllowedJoiningTimeMs(allowedVideoJoiningTimeMs)
+                .setEnableDecoderFallback(enableDecoderFallback)
+                .setEventHandler(eventHandler)
+                .setEventListener(eventListener)
+                .setMaxDroppedFramesToNotify(MAX_DROPPED_FRAMES_TO_NOTIFY),
+        )
     }
 }
