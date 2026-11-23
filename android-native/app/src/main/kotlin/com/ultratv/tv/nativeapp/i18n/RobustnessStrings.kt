@@ -6,6 +6,9 @@ import com.ultratv.tv.nativeapp.R
 
 /** En-tête de la colonne « verrou par code » de Gérer les catégories. */
 val DesignStrings.catLockCol get() = tx(R.string.cat_lock_col)
+/** Étoile d'une catégorie (favorite, issue #249) : descriptions pour lecteur d'écran. */
+val DesignStrings.catFav get() = tx(R.string.cat_fav)
+val DesignStrings.catUnfav get() = tx(R.string.cat_unfav)
 /** Description du cadenas d'une catégorie libre (lecteur d'écran). */
 val DesignStrings.catLock get() = tx(R.string.cat_lock)
 /** Description du cadenas d'une catégorie verrouillée (lecteur d'écran). */

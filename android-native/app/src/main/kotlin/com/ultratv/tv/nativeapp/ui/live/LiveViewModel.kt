@@ -10,6 +10,7 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.ultratv.tv.nativeapp.data.db.CategoryEntity
+import com.ultratv.tv.nativeapp.data.prefs.FavoriteCategoriesStore
 import com.ultratv.tv.nativeapp.data.db.ChannelDao
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
 import com.ultratv.tv.nativeapp.data.db.EpgDao
@@ -52,7 +53,7 @@ const val CATEGORY_ALL = "__all__"
 const val CATEGORY_FAVORITES = "__fav__"
 
 /** Entrée de la colonne de catégories : nom, compteur réel, verrouillage parental. */
-data class DirectCategory(val id: String, val name: String?, val count: Int, val locked: Boolean = false, val sections: Int = 0)
+data class DirectCategory(val id: String, val name: String?, val count: Int, val locked: Boolean = false, val sections: Int = 0, val fav: Boolean = false)
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 @HiltViewModel
@@ -60,6 +61,7 @@ class LiveViewModel @Inject constructor(
     private val provider: ProviderRepository,
     private val catalog: CatalogRepository,
     private val hiddenStore: HiddenCategoriesStore,
+    private val favCats: com.ultratv.tv.nativeapp.data.prefs.FavoriteCategoriesStore,
     lockedStore: LockedChannelsStore,
     parentalLocks: com.ultratv.tv.nativeapp.data.parental.ParentalLocks,
     private val playback: PlaybackContext,
@@ -100,15 +102,15 @@ class LiveViewModel @Inject constructor(
     fun selectCategory(id: String) { _selected.value = id; if (id != CATEGORY_ALL) landing.edit().putString("last", id).apply() }
 
     /** Favoris, Tout, puis les catégories NON vides avec leur compteur réel (SQL, servi par l'index). */
-    val categories: StateFlow<List<DirectCategory>> = combine(pid, hiddenStore.hidden) { id, hidden -> id to hidden }
-        .flatMapLatest { (id, hidden) ->
+    val categories: StateFlow<List<DirectCategory>> = combine(pid, hiddenStore.hidden, favCats.keys) { id, hidden, fk -> Triple(id, hidden, fk) }
+        .flatMapLatest { (id, hidden, fk) ->
             if (id == null) flowOf(emptyList())
             else combine(
                 catalog.categories(id, "LIVE"),
                 channelDao.observeCategoryCounts(id).atMostEvery(1_000).snapshotWhile(busy),
                 catalog.favoriteCount(id, "LIVE"),
             ) { cats: List<CategoryEntity>, counts, favCount ->
-                buildDirectCategories(cats, counts, favCount, id, hidden)
+                buildDirectCategories(cats, counts, favCount, id, hidden, FavoriteCategoriesStore.idsOf(fk, id, "LIVE"))
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -389,12 +391,16 @@ class LiveViewModel @Inject constructor(
  */
 fun buildDirectCategories(
     cats: List<CategoryEntity>, counts: List<com.ultratv.tv.nativeapp.data.db.CategoryCount>, favCount: Int,
-    providerId: Long, hidden: Set<String>,
+    providerId: Long, hidden: Set<String>, favs: Set<String> = emptySet(),
 ): List<DirectCategory> {
     val byId = counts.associate { it.categoryId to it.n }
     val secById = counts.associate { it.categoryId to it.sections }
-    val visible = cats.filter { "LIVE:$providerId:${it.remoteId}" !in hidden }
-        .mapNotNull { c -> byId[c.remoteId]?.takeIf { it > 0 }?.let { DirectCategory(c.remoteId, c.name, it, c.locked, secById[c.remoteId] ?: 0) } }
+    // Catégories favorites (issue #249) en tête, avec leur étoile ; les autres gardent l'ordre personnalisé.
+    val visible = FavoriteCategoriesStore.favoritesFirst(
+        cats.filter { "LIVE:$providerId:${it.remoteId}" !in hidden }
+            .mapNotNull { c -> byId[c.remoteId]?.takeIf { it > 0 }?.let { DirectCategory(c.remoteId, c.name, it, c.locked, secById[c.remoteId] ?: 0, c.remoteId in favs) } },
+        favs,
+    ) { it.id }
     val total = visible.sumOf { it.count }
     return listOf(DirectCategory(CATEGORY_FAVORITES, null, favCount), DirectCategory(CATEGORY_ALL, null, total)) + visible
 }

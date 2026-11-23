@@ -16,6 +16,9 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 - Réglages : niveaux Essentiel / Standard / Expert ; Expert d'office pour un utilisateur existant, Standard pour une installation neuve ; un réglage modifié reste toujours affiché.
 - Rail latéral : sélecteur de source rapide quand le profil voit plusieurs sources.
 
+### Android (prochaine version)
+- Catégories favorites (#249, avec la modification depuis le tableau de bord web) : une étoile dans Réglages › Catégories marque ou démarque une catégorie du Direct, des Films ou des Séries ; les favorites remontent en tête des listes de catégories (avec ★), les autres gardent leur ordre personnalisé. Partagées entre appareils par le champ `favCats` des réglages d'affichage ; un appareil qui ne l'a pas lu n'efface jamais les favorites du compte.
+
 
 ## [1.3.74] — 2026-11-23 (Android)
 

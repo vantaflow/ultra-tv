@@ -14,6 +14,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.platform.testTag
 import com.ultratv.tv.nativeapp.i18n.catLock
 import com.ultratv.tv.nativeapp.i18n.catUnlock
+import com.ultratv.tv.nativeapp.i18n.catFav
+import com.ultratv.tv.nativeapp.i18n.catUnfav
 import com.ultratv.tv.nativeapp.i18n.catLockCol
 import com.ultratv.tv.nativeapp.i18n.catLockNeedPin
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -110,6 +112,7 @@ class CategoriesViewModel @Inject constructor(
     private val channelOrder: com.ultratv.tv.nativeapp.data.repo.ChannelOrderRepository,
     private val profileCats: com.ultratv.tv.nativeapp.data.repo.ProfileCategories,
     private val hiddenStore: com.ultratv.tv.nativeapp.data.prefs.HiddenCategoriesStore,
+    private val favCats: com.ultratv.tv.nativeapp.data.prefs.FavoriteCategoriesStore,
     private val manual: com.ultratv.tv.nativeapp.data.repo.ManualChannelRepository,
 ) : ViewModel() {
     val kind = MutableStateFlow("LIVE")
@@ -137,6 +140,10 @@ class CategoriesViewModel @Inject constructor(
             },
         pending,
     ) { list, over -> if (over.isEmpty()) list else list.map { r -> over[r.remoteId]?.let { e -> r.copy(enabled = e, count = if (e) r.count ?: 0 else null) } ?: r } }
+        // Étoile des catégories favorites (issue #249) : marque seulement la ligne, l'ordre affiché reste l'ordre réel.
+        .combine(combine(pid, kind, favCats.keys) { p, k, fk -> if (p == null) emptySet() else com.ultratv.tv.nativeapp.data.prefs.FavoriteCategoriesStore.idsOf(fk, p, k) }) { list, favs ->
+            if (favs.isEmpty()) list else list.map { r -> if (r.remoteId in favs) r.copy(fav = true) else r }
+        }
         .distinctUntilChanged()
         .map { stable(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -169,6 +176,10 @@ class CategoriesViewModel @Inject constructor(
         val ids = listOf(r.remoteId); val v = !r.enabled
         markPending(ids, v)
         viewModelScope.launch { try { providerId()?.let { profileCats.setVisible(it, kind.value, ids, v, downloaded); com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed(it) } } finally { clearPending(ids) } }
+    }
+    /** Marque / démarque la catégorie comme favorite (remonte en tête des listes) et publie le changement. */
+    fun setFavorite(r: CategoryRow, fav: Boolean) {
+        viewModelScope.launch { providerId()?.let { favCats.setFavorite(it, kind.value, r.remoteId, fav); publish(it) } }
     }
     /** Verrou parental de la catégorie (le code est vérifié par l'écran avant l'appel). */
     fun setLocked(r: CategoryRow, locked: Boolean) {
@@ -329,6 +340,8 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
                 Box(Modifier.width(110.design), contentAlignment = Alignment.Center) { Text(D.catChannels, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1) }
             }
             Spacer(Modifier.width(12.design))
+            Box(Modifier.width(110.design), contentAlignment = Alignment.Center) { Text("★", color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1) }
+            Spacer(Modifier.width(12.design))
             Box(Modifier.width(110.design), contentAlignment = Alignment.Center) { Text(D.catLockCol, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1) }
         }
         val state = rememberLazyListState()
@@ -360,6 +373,7 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
                     onConfirmMove = { vm.saveOrder(local.map { it.remoteId }); moving = null },
                     onChannels = if (kind == "LIVE") ({ channelsOf = r.remoteId to r.label }) else null,
                     onLock = { askLock(r) },
+                    onFav = { vm.setFavorite(r, !r.fav) },
                     movePos = if (moving == r.remoteId) "${local.indexOfFirst { it.remoteId == r.remoteId } + 1} / ${local.size}" else null,
                 )
             }
@@ -412,6 +426,7 @@ private fun CategoryLine(
     onToggle: () -> Unit, onStartMove: () -> Unit, onMove: (Int) -> Unit, onConfirmMove: () -> Unit, onChannels: (() -> Unit)? = null,
     movePos: String? = null,
     onLock: (() -> Unit)? = null,
+    onFav: (() -> Unit)? = null,
 ) {
     // Activée mais pas encore téléchargée : « Chargement… » plutôt que « 0 chaîne » (le contenu arrive après la synchro en cours).
     val count = if (r.enabled && r.count == 0) D.categoryLoading
@@ -457,6 +472,15 @@ private fun CategoryLine(
         ) { f ->
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 DIcon("M4 6h16M4 12h16M4 18h10", 28.design, if (f) Ux.TextOnLight else Ux.Text2, strokeWidth = 2.4f)
+            }
+        }
+        // Étoile : catégorie favorite (remonte en tête de la liste, sur tous les appareils).
+        if (onFav != null) FocusSurface(
+            onClick = onFav, shape = RoundedCornerShape(18.design), bg = if (r.fav) Ux.Accent.copy(alpha = 0.22f) else Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1.0f,
+            modifier = Modifier.width(110.design).fillMaxHeight().testTag("cat-fav-${r.remoteId}").semantics { contentDescription = if (r.fav) D.catUnfav else D.catFav },
+        ) { f ->
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(if (r.fav) "★" else "☆", color = if (f) Ux.TextOnLight else if (r.fav) Ux.AccentInk else Ux.Text3, fontSize = 30.spx, maxLines = 1)
             }
         }
         // Cadenas : catégorie entière verrouillée par le code parental (fermé et sur fond d'accent quand elle l'est).
@@ -624,6 +648,9 @@ private fun TouchCategories(
                         }
                         if (kind == "LIVE") Box(Modifier.size44().clip(RoundedCornerShape(22.dpT)).clickableT { onChannels(r.remoteId, r.label) }, contentAlignment = Alignment.Center) {
                             DIcon("M4 6h16M4 12h16M4 18h10", 20.dpT, Ux.Text3, strokeWidth = 2.2f)
+                        }
+                        Box(Modifier.size44().clip(RoundedCornerShape(22.dpT)).clickableT { if (moving == null) vm.setFavorite(r, !r.fav) }.testTag("cat-fav-${r.remoteId}").semantics { contentDescription = if (r.fav) D.catUnfav else D.catFav }, contentAlignment = Alignment.Center) {
+                            Text(if (r.fav) "★" else "☆", color = if (r.fav) Ux.AccentInk else Ux.Text3, fontSize = 20.sp, maxLines = 1)
                         }
                         Box(Modifier.size44().clip(RoundedCornerShape(22.dpT)).clickableT { if (moving == null) onLock(r) }.testTag("cat-lock-${r.remoteId}").semantics { contentDescription = if (r.locked) D.catUnlock else D.catLock }, contentAlignment = Alignment.Center) {
                             DIcon(if (r.locked) LOCK_CLOSED else LOCK_OPEN, 20.dpT, if (r.locked) Ux.AccentInk else Ux.Text3, strokeWidth = 2.2f)
