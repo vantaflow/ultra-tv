@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.simple
 
+import com.ultratv.tv.nativeapp.ui.common.uniqueItems
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
@@ -270,7 +271,7 @@ fun SimpleSeriesDetailScreen(seriesId: Long, onPlayEpisode: (url: String, title:
                 items(seasons) { n -> SimplePill("$n", active == n) { season = n } }
             }
             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.design), contentPadding = PaddingValues(bottom = 16.design)) {
-                items(seasonEps, key = { it.id }) { ep ->
+                uniqueItems(seasonEps, key = { it.id }) { ep ->
                     val p = progress[ep.remoteId]
                     val seen = com.ultratv.tv.nativeapp.data.trakt.TraktLibrary.episodeKey(ep.season, ep.episode) in traktSeen ||
                         (p != null && p.durationMs > 0 && p.positionMs >= p.durationMs * 9 / 10)

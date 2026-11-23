@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.common
 
+import com.ultratv.tv.nativeapp.ui.common.uniqueItems
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -57,7 +58,7 @@ fun LangViewPanel(counts: List<LangCount>, view: LangView, onToggle: (String) ->
             Text(D.langPanelHint, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 32.spx, maxLines = 3)
             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.design)) {
                 item(key = "all") { CheckRow(D.langAll, "", view.useLang == 0) { onClear() } }
-                items(rows, key = { it.lang }) { r ->
+                uniqueItems(rows, key = { it.lang }) { r ->
                     CheckRow(langLabel(r.lang, D), java.text.NumberFormat.getIntegerInstance(D.locale).format(r.n), view.selected?.contains(r.lang) == true) { onToggle(r.lang) }
                 }
             }

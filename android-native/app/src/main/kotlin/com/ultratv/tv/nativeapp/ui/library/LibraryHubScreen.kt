@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.library
 
+import com.ultratv.tv.nativeapp.ui.common.uniqueItems
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -118,7 +119,7 @@ internal fun androidx.compose.foundation.layout.ColumnScope.LibraryHubContent(
             )
             // Retour au contenu par ▼ : le focus revient sur l'élément quitté (focusRestorer), pas sur la première affiche.
             else LazyColumn(Modifier.weight(1f).focusRestorer().focusGroup().testTag("library-content"), verticalArrangement = Arrangement.spacedBy(if (touch) 18.dp else 30.design)) {
-                items(v.rows, key = { it.provider.id }) { r -> LibrarySection(r, touch, onOpenMovie, onOpenSeries, onSeeAll) { onOpenNas(r) } }
+                uniqueItems(v.rows, key = { it.provider.id }) { r -> LibrarySection(r, touch, onOpenMovie, onOpenSeries, onSeeAll) { onOpenNas(r) } }
             }
         }
     }

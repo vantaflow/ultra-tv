@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.parental
 
+import com.ultratv.tv.nativeapp.ui.common.uniqueItems
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -110,7 +111,7 @@ fun LockedChannelsScreen(onBack: () -> Unit = {}, vm: LockedChannelsViewModel = 
             Text(if (q.isBlank()) D.lockedNone else S.searchNoMatches, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx)
         }
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.design), contentPadding = PaddingValues(vertical = 6.design)) {
-            items(chans, key = { it.id }) { c ->
+            uniqueItems(chans, key = { it.id }) { c ->
                 val isOn = "${c.providerId}:${c.remoteId}" in locked
                 FocusSurface(onClick = { vm.toggle(c, !isOn) }, shape = RoundedCornerShape(18.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1f, modifier = Modifier.fillMaxWidth().height(76.design)) { f ->
                     Row(Modifier.fillMaxSize().padding(horizontal = 28.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.design)) {

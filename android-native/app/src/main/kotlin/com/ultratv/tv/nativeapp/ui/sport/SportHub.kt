@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.sport
 
+import com.ultratv.tv.nativeapp.ui.common.uniqueItems
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
@@ -208,7 +209,7 @@ private fun LeaguePills(D: DesignStrings, hub: HubState, modifier: Modifier = Mo
     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.design)) {
         LazyRow(Modifier.weight(1f).focusRestorer().focusGroup(), horizontalArrangement = Arrangement.spacedBy(12.design)) {
             item(key = "all") { LeaguePill(D.catAll, hub.all, hub.onAll) }
-            items(hub.lg.visible, key = { it.key }) { l -> LeaguePill(l.name, !hub.all && l.key == hub.lg.selected) { hub.onSelect(l.key) } }
+            uniqueItems(hub.lg.visible, key = { it.key }) { l -> LeaguePill(l.name, !hub.all && l.key == hub.lg.selected) { hub.onSelect(l.key) } }
         }
         // « Mes ligues » reste visible au bout de la rangée, même quand les pastilles défilent.
         LeaguePill(D.sportMyLeagues, false, hub.onCustomize)
@@ -486,7 +487,7 @@ internal fun SportTvContent(
                         SectionHead(D.sportLgLive, if (lists.live.isNotEmpty()) D.sportLiveCount(lists.live.size) else null, dot = true)
                         if (lists.live.isEmpty()) Text(D.sportEmptyLive, color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx)
                         else LazyRow(Modifier.focusRestorer().focusGroup(), horizontalArrangement = Arrangement.spacedBy(20.design), contentPadding = PaddingValues(vertical = 8.design, horizontal = 6.design)) {
-                            items(lists.live, key = { it.key }, contentType = { "live" }) { m ->
+                            uniqueItems(lists.live, key = { it.key }, contentType = { "live" }) { m ->
                                 HubLiveCard(m, D, hub.lg.noSpoiler, hub.lg.revealed, Modifier.width(360.design).height(LIVE_CARD_H)) { open(m) }
                             }
                         }
@@ -552,7 +553,7 @@ internal fun SportTouchContent(
                 item(key = "pills") { LeaguePills(D, hub, Modifier.fillMaxWidth()) }
                 item(key = "live-h") { SectionHead(D.sportLgLive, if (lists.live.isNotEmpty()) D.sportLiveCount(lists.live.size) else null, dot = true) }
                 if (lists.live.isEmpty()) item(key = "live-empty") { Text(D.sportEmptyLive, color = Ux.Text2, fontFamily = Manrope, fontSize = 26.spx) }
-                else items(lists.live, key = { it.key }, contentType = { "live" }) { m -> HubLiveCard(m, D, hub.lg.noSpoiler, hub.lg.revealed, Modifier.fillMaxWidth()) { open(m) } }
+                else uniqueItems(lists.live, key = { it.key }, contentType = { "live" }) { m -> HubLiveCard(m, D, hub.lg.noSpoiler, hub.lg.revealed, Modifier.fillMaxWidth()) { open(m) } }
                 item(key = "up-h") { SectionHead(D.sportUpcomingShort, D.sportUpcomingSub) }
                 when {
                     !st.hasGuide -> item(key = "noguide") { StateCard(D.sportNoGuideTitle, D.sportNoGuideBody, SportIcons.Trophy, D.sportOpenSync, onGoSettings, Modifier.fillMaxWidth()) }

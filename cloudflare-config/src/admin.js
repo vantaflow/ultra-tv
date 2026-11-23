@@ -135,7 +135,9 @@ export function fixedInOf(stack, versionCode) {
 
 /** Journaux (kind = 'event') ou plantages (kind = 'crash') : filtres version, pays, niveau, période, recherche. */
 export function eventsQuery(kind, params, now = Date.now()) {
-  const cond = ["kind = ?"], args = [kind];
+  // Appareil de test (Robolectric) : jamais montré. Refusé à l'arrivée depuis le 21/11, mais les lignes d'avant restent
+  // jusqu'à expiration et gonflaient les plantages des 1.3.71 à 1.3.73.
+  const cond = ["kind = ?", "coalesce(device, '') NOT LIKE 'robolectric%'"], args = [kind];
   const { q, p, f } = params;
   if (f.version) { cond.push("version = ?"); args.push(f.version); }
   if (f.country) { cond.push("country = ?"); args.push(f.country.toUpperCase()); }

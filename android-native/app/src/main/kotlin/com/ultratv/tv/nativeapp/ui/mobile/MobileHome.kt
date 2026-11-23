@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.mobile
 
+import com.ultratv.tv.nativeapp.ui.common.uniqueItems
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -203,7 +204,7 @@ fun MobileHomeScreen(
                         SectionHeader(D.continueWatching, null, {}, onTitleLongPress = rowMenu(id))
                         val resume = androidx.compose.runtime.remember(rows.resume) { rows.resume.withUniqueKeys() }
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
-                            items(resume, key = { it.key }, contentType = { "resume" }) { c -> ResumeCard(c, D) { onPlayHistory(c.entry) } }
+                            uniqueItems(resume, key = { it.key }, contentType = { "resume" }) { c -> ResumeCard(c, D) { onPlayHistory(c.entry) } }
                         }
                     }
                     HomeSectionId.TRAKT_AVAILABLE -> TraktPosterRow(D.traktAvailable, rows.availableNow, wide, openPoster, rowMenu(id))
@@ -223,7 +224,7 @@ fun MobileHomeScreen(
                         SectionHeader(D.recentlyWatched, null, {}, onTitleLongPress = rowMenu(id))
                         val recent = androidx.compose.runtime.remember(rows.recentChannels) { rows.recentChannels.withUniqueKeys() }
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
-                            items(recent, key = { it.key }, contentType = { "resume" }) { c -> ResumeCard(c, D) { onPlayHistory(c.entry) } }
+                            uniqueItems(recent, key = { it.key }, contentType = { "resume" }) { c -> ResumeCard(c, D) { onPlayHistory(c.entry) } }
                         }
                     }
                     HomeSectionId.TOP_SERIES -> TraktPosterRow(D.topRatedSeries, rows.topSeries, wide, openPoster, rowMenu(id))
@@ -480,7 +481,7 @@ private fun MobileShortcuts(items: List<ShortcutUi>, onSelect: (ShortcutId) -> U
     val D = LocalDs.current
     val S = LocalStrings.current
     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
-        items(items, key = { it.id }, contentType = { "shortcut" }) { sc ->
+        uniqueItems(items, key = { it.id }, contentType = { "shortcut" }) { sc ->
             val (title, sub) = remember(sc.id, sc.count, D, S) {
                 val n = sc.count ?: 0
                 val c = formatCount(n, D.locale)

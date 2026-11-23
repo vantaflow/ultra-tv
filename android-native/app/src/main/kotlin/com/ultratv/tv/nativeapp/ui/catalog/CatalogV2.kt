@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.catalog
 
+import com.ultratv.tv.nativeapp.ui.common.uniqueItems
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -112,7 +113,7 @@ internal fun CatalogRowsTv(
         item(key = "tabs", contentType = "tabs") {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.design), contentPadding = PaddingValues(start = 72.design, end = 96.design)) {
                 if (onSearch != null) item(key = "__search", contentType = "search") { SearchChip(onSearch) }
-                items(tabs, key = { it.key ?: "__all" }, contentType = { "tab" }) { t -> Chip(t.label, selectedKey == t.key) { onTab(t.key) } }
+                uniqueItems(tabs, key = { it.key ?: "__all" }, contentType = { "tab" }) { t -> Chip(t.label, selectedKey == t.key) { onTab(t.key) } }
             }
         }
         item(key = "filters", contentType = "filters") { Box(Modifier.padding(start = 72.design, end = 96.design)) { filters() } }

@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.categories
 
+import com.ultratv.tv.nativeapp.ui.common.uniqueItems
 import com.ultratv.tv.nativeapp.i18n.doneLabel
 import com.ultratv.tv.nativeapp.i18n.catSortAz
 import com.ultratv.tv.nativeapp.i18n.catChannels
@@ -529,7 +530,7 @@ private fun CategoryChannelsDialog(vm: CategoriesViewModel, cat: String, label: 
             var firstFocused by remember { mutableStateOf(false) }
             com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus(first, hasFocus = { firstFocused }, key = list?.isNotEmpty() == true)
             LazyColumn(Modifier.heightIn(max = 600.design), verticalArrangement = Arrangement.spacedBy(8.design)) {
-                items(list.orEmpty(), key = { it.id }) { ch ->
+                uniqueItems(list.orEmpty(), key = { it.id }) { ch ->
                     val visible = ch.id !in hidden
                     val idx = list.orEmpty().indexOf(ch)
                     // Chaînes présentes (non masquées) : ▲ ▼ changent leur place dans la catégorie.

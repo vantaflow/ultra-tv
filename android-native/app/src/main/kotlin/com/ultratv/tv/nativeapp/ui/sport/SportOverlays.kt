@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.sport
 
+import com.ultratv.tv.nativeapp.ui.common.uniqueItems
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
@@ -374,7 +375,7 @@ private fun TablePane(D: DesignStrings, lg: LeaguesState, vm: LeagueActions, key
                     TableHead(D, touch)
                     if (touch) Column { for (r in rows) FullRow(r, StandingZones.of(key, r.rank, rows.size, grouped), touch) }
                     else LazyColumn(Modifier.fillMaxSize().focusRestorer().focusGroup()) {
-                        items(rows, key = { "${it.group}-${it.rank}-${it.team}" }) { r -> FullRow(r, StandingZones.of(key, r.rank, rows.size, grouped), touch) }
+                        uniqueItems(rows, key = { "${it.group}-${it.rank}-${it.team}" }) { r -> FullRow(r, StandingZones.of(key, r.rank, rows.size, grouped), touch) }
                     }
                 }
                 if (StandingZones.hasZones(key)) Row(horizontalArrangement = Arrangement.spacedBy(28.design)) {
