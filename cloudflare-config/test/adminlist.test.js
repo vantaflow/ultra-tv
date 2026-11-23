@@ -87,7 +87,9 @@ describe("requêtes SQL (D1)", () => {
   it("journaux et plantages : type, niveau, recherche selon le type", () => {
     const o = { sorts: EVENT_SORTS, sort: "ts", dir: "desc", filters: ["version", "country", "level"] };
     const ev = eventsQuery("event", parseListParams(sp("level=ERROR&q=boom&p=24h"), o), NOW);
-    expect(ev.where).toContain("kind = ? AND level = ? AND ts >= ? AND (message LIKE");
+    expect(ev.where).toContain("kind = ? AND coalesce(device, '') NOT LIKE 'robolectric%' AND level = ? AND ts >= ? AND (message LIKE");
+    // Appareils de test (Robolectric) jamais montrés.
+    expect(eventsQuery("crash", parseListParams(sp(""), o), NOW).where).toContain("NOT LIKE 'robolectric%'");
     expect(ev.args.slice(0, 3)).toEqual(["event", "error", NOW - DAY_MS]);
     const cr = eventsQuery("crash", parseListParams(sp("q=NullPointer"), o), NOW);
     expect(cr.where).toContain("stack LIKE");

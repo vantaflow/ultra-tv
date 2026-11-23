@@ -40,3 +40,18 @@ private fun dupKey(base: Any, n: Int): String = "\u0000dup\u0000$base\u0000$n"
 /** [uniqueKeys] calculées une fois par liste (aucun calcul ajouté à chaque recomposition). */
 @Composable
 fun <T> rememberUniqueKeys(items: List<T>, id: (T) -> Any): List<Any> = remember(items) { uniqueKeys(items, id) }
+
+/**
+ * `items(list, key = …)` dont les clés passent par [uniqueKeys] : même signature qu'`items`, à utiliser pour toute liste
+ * dont la clé vient des données (identifiant distant, épisode, catégorie, ligue…). Plantage évité :
+ * « Key "2" was already used » (1.3.76, liste non identifiée faute de table de correspondance R8).
+ */
+inline fun <T> androidx.compose.foundation.lazy.LazyListScope.uniqueItems(
+    items: List<T>,
+    noinline key: (T) -> Any,
+    noinline contentType: (T) -> Any? = { null },
+    crossinline itemContent: @Composable androidx.compose.foundation.lazy.LazyItemScope.(T) -> Unit,
+) {
+    val keys = uniqueKeys(items, key)
+    items(items.size, key = { keys[it] }, contentType = { contentType(items[it]) }) { itemContent(items[it]) }
+}

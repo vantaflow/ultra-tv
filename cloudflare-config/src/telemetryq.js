@@ -45,7 +45,7 @@ export async function anonOverview(env, now = Date.now()) {
 export async function countEvents(env, kind, since) {
   // Plantages : seulement ceux qui ne sont pas déjà corrigés (tuile « plantages (24 h) »).
   const fx = kind === "crash" ? fixedCrashCond() : null;
-  const sql = `SELECT COUNT(*) AS n FROM events WHERE kind = ? AND ts >= ?${fx ? ` AND NOT ${fx.sql}` : ""}`;
+  const sql = `SELECT COUNT(*) AS n FROM events WHERE kind = ? AND ts >= ? AND coalesce(device, '') NOT LIKE 'robolectric%'${fx ? ` AND NOT ${fx.sql}` : ""}`;
   return safe(env, async (db) => (await db.prepare(sql).bind(kind, since, ...(fx ? fx.args : [])).first())?.n || 0, 0);
 }
 
