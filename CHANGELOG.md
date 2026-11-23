@@ -14,7 +14,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Réglages : niveaux Essentiel / Standard / Expert ; Expert d'office pour un utilisateur existant, Standard pour une installation neuve ; un réglage modifié reste toujours affiché.
 - Rail latéral : sélecteur de source rapide quand le profil voit plusieurs sources.
 
-## [1.3.73] — 2026-11-22 (Android)
+## [1.3.73] — 2026-11-23 (Android)
 
 ### Ajouté
 - Réglages › Affichage › Bords de l'écran : Aucun / Petit (2,5 %, par défaut) / Moyen (5 %) / Grand (7,5 %), pour les téléviseurs qui coupent les bords de l'image (barre latérale tronquée). Toute l'interface tient dans la zone visible ; la vidéo plein écran reste bord à bord.
