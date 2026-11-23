@@ -44,13 +44,25 @@ describe("dons : PayPal seul", () => {
     expect(paypalClientId({ PAYPAL_CLIENT_ID: 'x"><script>' })).toBeNull();
     expect(donateCsp("z")).toContain("'nonce-z'");
   });
-  it("route : GET /donate = 200 ; /donate/merci redirige vers /donate ; POST non géré", async () => {
+  it("route : GET /donate = 200 ; /donate/merci = page de remerciement ; POST non géré", async () => {
     const g = await call("/donate?l=en", { ip: freshIp() });
     expect(g.status).toBe(200);
-    expect(await g.text()).toContain("paypal.com/ncp/payment/JHPS8RCN35UWA");
-    const old = await call("/donate/merci?l=es", { ip: freshIp() });
-    expect(old.status).toBe(302);
-    expect(old.headers.get("location")).toBe("/donate");
+    const gh = await g.text();
+    expect(gh).toContain("paypal.com/ncp/payment/JHPS8RCN35UWA");
+    expect(gh).toContain("/donate/merci?m=1&l=en");
+    expect(gh).toContain('href="https://paypal.me/pitivi"');
+    const once = await call("/donate/merci?l=es", { ip: freshIp() });
+    expect(once.status).toBe(200);
+    expect(once.headers.get("x-robots-tag")).toBe("noindex");
+    const oh = await once.text();
+    expect(oh).toContain("¡Gracias por tu donación!");
+    expect(oh).toContain("https://vantaflow.github.io/ultra-tv/");
+    expect(oh).toContain('href="/donate?l=es"');
+    expect(oh).not.toContain("Tu donación mensual está activa");
+    const mon = await (await call("/donate/merci?l=fr&m=1", { ip: freshIp() })).text();
+    expect(mon).toContain("Merci pour votre don !");
+    expect(mon).toContain("Votre don mensuel est actif");
+    expect(mon).toContain("/donate/merci?l=ar&amp;m=1");
     expect((await call("/donate", { method: "POST", ip: freshIp(), form: { amount: "50" } })).status).not.toBe(303);
   });
 });

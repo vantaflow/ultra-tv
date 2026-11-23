@@ -4,6 +4,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 Chaque version Android peut finir par une sous-section `### In English` : quelques puces courtes en anglais, reprises en tête des notes de la release GitHub (« English summary ») par `.github/release-notes.sh` ; le reste de la section y figure en français. Uniquement des puces sous ce titre, sans autre sous-titre.
 
+## [Worker et site] — 2026-11-23
+
+### Ajouté
+- Dons : page de remerciement `/donate/merci` (fr, en, es, ar, pl ; non indexée). Le don mensuel y mène après l'accord PayPal, depuis `/donate` et depuis le site vitrine (`?m=1` ajoute la ligne sur la résiliation) ; elle sert aussi d'URL de retour au bouton PayPal et au lien de paiement. Liens « Retour au site Ultra TV » et « Faire un autre don ».
+- Dons ponctuels : la carte bancaire est signalée clairement. Le bouton hébergé la propose sous le nom « Checkout » ; une ligne l'indique, et le lien de secours devient « Payer par carte bancaire ou PayPal » (sa page affiche « Carte bancaire »).
+- Dons : lien PayPal.Me (paypal.me/pitivi) en plus, sur `/donate` et dans la section Soutenir du site.
+
 ## [Non publié] (Android)
 
 ### Ajouté
