@@ -168,6 +168,10 @@ class HomeViewModel @Inject constructor(
     val syncPercent: StateFlow<Int?> = bus.status.map { it?.percent }.distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /** Une synchro est-elle en cours ? (carte « catalogue en chargement » de l'accueil TV) */
+    val isSyncing: StateFlow<Boolean> = bus.status.map { it != null }.distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     /** Synchro en cours : les requêtes de l'accueil ne sont lues qu'une fois (instantané) au lieu d'être relancées à chaque lot inséré. */
     private val syncing: Flow<Boolean> = bus.status.map { it != null }.distinctUntilChanged()
 

@@ -172,6 +172,7 @@ fun HomeScreen(
     // Lecture DIFFÉRÉE : seul l'encart de chargement lit le pourcentage (State non déballé ici), l'écran entier
     // n'est plus recomposé à chaque pour-cent de synchro.
     val syncPct = vm.syncPercent.collectAsStateWithLifecycle()
+    val isSyncing by vm.isSyncing.collectAsStateWithLifecycle()
     // Retour au premier plan : relecture de la bibliothèque Trakt si elle a plus de 15 min (sinon sans effet).
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
@@ -214,8 +215,8 @@ fun HomeScreen(
 
     val h = hero
     val f = failure
-    val slot = remember(h != null, loaded, providers, f != null) {
-        homeTopSlot(h != null, loaded, providers.map { it.kind }, com.ultratv.tv.nativeapp.ui.settings.SUPPORTED_KINDS, f != null)
+    val slot = remember(h != null, loaded, providers, f != null, isSyncing) {
+        homeTopSlot(h != null, loaded, providers.map { it.kind }, com.ultratv.tv.nativeapp.ui.settings.SUPPORTED_KINDS, f != null, isSyncing)
     }
     // Focus initial sur « Regarder » UNE fois par visite de l'accueil (état sauvegardé dans l'entrée de navigation) :
     // au retour d'une fiche ou du lecteur, le hero recomposé ne vole plus le focus que ScreenFocusHost (focusRestorer)
