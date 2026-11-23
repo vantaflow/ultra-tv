@@ -1752,7 +1752,7 @@
     <string name="shortcuts_hint">أقسام الشريط السفلي. المس قسمًا لتغييره، و▲ ▼ لنقله.</string>
     <string name="support_title">ادعم Ultra TV</string>
     <string name="support_sub">مجاني وبلا إعلانات: يساعد التبرع في دفع تكاليف الخوادم.</string>
-    <string name="support_scan">امسح رمز QR بهاتفك للتبرع عبر Ko-fi (بطاقة أو PayPal).</string>
+    <string name="support_scan">امسح رمز QR بهاتفك للتبرع عبر PayPal.</string>
     <string name="simple_back_full">العودة إلى الوضع الكامل</string>
     <string name="simple_all_settings">كل الإعدادات</string>
     <string name="simple_full_hint">يعرض الوضع الكامل كل الأقسام: الدليل والرياضة والفئات والتسجيلات…</string>

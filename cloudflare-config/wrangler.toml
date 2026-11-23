@@ -91,3 +91,5 @@ ACCOUNT_RELAY_URL = "https://utv-relay.vercel.app/api/xtream"
 ADMIN_LOGINS = "khalilbenaz"
 # Application Trakt « UTV » (PKCE, client public : l'identifiant n'est pas un secret, et il n'y a pas de secret client).
 TRAKT_CLIENT_ID = "L6UakaCWI9VuQZevNkAOzKV77d4ob9XRnfLZOPds9Bs"
+# Dons : identifiant client public du bouton hébergé PayPal Business (pas un secret) ; active le bouton PayPal de /donate.
+PAYPAL_CLIENT_ID = "BAAJpALsjVI4UKcJ1QcxYWilvj4yiEtMWBFMbknLBEgJCc72XlRLW2oD1bTqloBUQbPduy5rjwOk9ID80A"

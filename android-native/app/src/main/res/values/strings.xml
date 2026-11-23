@@ -1711,7 +1711,7 @@
     <string name="shortcuts_hint">Sections of the bottom bar. Tap one to change it, ▲ ▼ to move it.</string>
     <string name="support_title">Support Ultra TV</string>
     <string name="support_sub">Free and ad-free: a donation helps pay for the servers.</string>
-    <string name="support_scan">Scan the QR code with your phone to donate on Ko-fi (card or PayPal).</string>
+    <string name="support_scan">Scan the QR code with your phone to donate with PayPal.</string>
     <string name="simple_back_full">Back to full mode</string>
     <string name="simple_all_settings">All settings</string>
     <string name="simple_full_hint">Full mode shows every section: guide, sport, categories, recordings…</string>

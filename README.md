@@ -13,8 +13,7 @@
   <a href="https://github.com/vantaflow/ultra-tv/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/vantaflow/ultra-tv?label=release" /></a>
   <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-0284c7" /></a>
   <a href="https://vantaflow.github.io/ultra-tv/en/"><img alt="Site" src="https://img.shields.io/badge/site-GitHub%20Pages-d91e2b" /></a>
-  <a href="https://ko-fi.com/ultratv"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/Ko--fi-ultratv-ff5e5b?logo=ko-fi&logoColor=white" /></a>
-  <a href="https://liberapay.com/ultratv/"><img alt="Support on Liberapay" src="https://img.shields.io/liberapay/receives/ultratv.svg?logo=liberapay" /></a>
+  <a href="https://www.paypal.com/ncp/payment/JHPS8RCN35UWA"><img alt="Donate with PayPal" src="https://img.shields.io/badge/PayPal-donate-003087?logo=paypal&logoColor=white" /></a>
 </p>
 
 <p align="center">
@@ -341,9 +340,7 @@ On first launch, the **`AdaptiveProfile`** measures the device (memory, heap, mi
 
 ## Support the project
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/A2F42AM3QY)
-
-Ultra TV is free and ad-free, and will stay that way. To help pay for the servers and the time spent improving it: <https://ko-fi.com/ultratv> (card or PayPal, from any country) or <https://liberapay.com/ultratv/> (recurring), also reachable from the repository's "Sponsor" button, from <https://ultratv.dpdns.org/donate> and in the app (Settings › About › Support Ultra TV, QR code on TV). No card details ever go through Ultra TV.
+Ultra TV is free and ad-free, and will stay that way. To help pay for the servers and the time spent improving it: <https://www.paypal.com/ncp/payment/JHPS8RCN35UWA> (direct donation, PayPal account or card), also reachable from the repository's "Sponsor" button, from <https://ultratv.dpdns.org/donate> and in the app (Settings › About › Support Ultra TV, QR code on TV). No card details ever go through Ultra TV.
 
 ## Help translate
 
@@ -396,7 +393,7 @@ wrangler secret put ACCOUNT_RELAY_KEY              # optional: subscription rela
 npm test && wrangler deploy --dry-run
 ```
 
-TMDB and OpenSubtitles are optional: without their secrets, the app hides the matching features. Ko-fi and Liberapay need no secret. The `SITE_HOST` variable (`wrangler.toml`) names the main site address: the old addresses redirect their pages to it, except `/api/*`. Trakt uses `TRAKT_CLIENT_ID` (`wrangler.toml`, Trakt app in PKCE mode: no client secret). For a fork, build with `-PULTRA_WORKER_URL=https://your-worker.workers.dev`.
+TMDB and OpenSubtitles are optional: without their secrets, the app hides the matching features. PayPal needs no secret: the `PAYPAL_CLIENT_ID` variable (public client ID of a PayPal Business REST app) turns on the embedded PayPal / card buttons on `/donate`; without it, the page links to the PayPal payment link. The `SITE_HOST` variable (`wrangler.toml`) names the main site address: the old addresses redirect their pages to it, except `/api/*`. Trakt uses `TRAKT_CLIENT_ID` (`wrangler.toml`, Trakt app in PKCE mode: no client secret). For a fork, build with `-PULTRA_WORKER_URL=https://your-worker.workers.dev`.
 
 ## Known limitations
 

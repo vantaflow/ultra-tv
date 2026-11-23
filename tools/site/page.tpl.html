@@ -230,7 +230,17 @@ adb install -r UltraTV.apk</code></pre>
 <section id="soutenir">
   <h2><span lang="fr">Soutenir le projet</span><span lang="en">Support the project</span></h2>
   <p><span lang="fr">Ultra TV est gratuit, sans publicité, et le restera. Un don aide à payer les serveurs (synchronisation cloud, guide, affiches) et le temps passé à l'améliorer. Carte bancaire ou PayPal, depuis n'importe quel pays ; aucune donnée bancaire ne passe par Ultra TV.</span><span lang="en">Ultra TV is free and ad-free, and will stay that way. A donation helps pay for the servers (cloud sync, guide, artwork) and the time spent improving it. Card or PayPal, from any country; no card details ever go through Ultra TV.</span></p>
-  <p class="cta"><a class="btn" href="https://ko-fi.com/ultratv" rel="noopener">♥ <span lang="fr">Faire un don sur Ko-fi</span><span lang="en">Donate on Ko-fi</span></a> <a class="btn alt" href="https://liberapay.com/ultratv/" rel="noopener"><span lang="fr">Don régulier sur Liberapay</span><span lang="en">Recurring on Liberapay</span></a></p>
+  <div class="pp-tabs"><label class="pp-amt"><input type="radio" name="pp-mode" value="once" checked/><span><span lang="fr">Une fois</span><span lang="en">One time</span></span></label><label class="pp-amt"><input type="radio" name="pp-mode" value="monthly"/><span><span lang="fr">Chaque mois</span><span lang="en">Monthly</span></span></label></div>
+  <div id="pp-once"><div id="paypal-container-JHPS8RCN35UWA" class="pp-hosted"></div></div>
+  <div id="pp-monthly" hidden>
+    <div class="pp-tabs"><label class="pp-amt"><input type="radio" name="pp-plan" value="P-0VY777380G390052WNMCJY6A"/><span>3 €</span></label><label class="pp-amt"><input type="radio" name="pp-plan" value="P-73H946429U469760TNMCJZXQ" checked/><span>5 €</span></label><label class="pp-amt"><input type="radio" name="pp-plan" value="P-70934607BP2820041NMCJ2RI"/><span>10 €</span></label></div>
+    <div id="pp-sub" class="pp-hosted"></div>
+    <p><span lang="fr">Don mensuel, résiliable à tout moment depuis votre compte PayPal.</span><span lang="en">Monthly donation, cancel anytime from your PayPal account.</span></p>
+    <p id="pp-sub-msg" role="status" aria-live="polite"></p>
+    <span hidden id="pp-error"><span lang="fr">Le paiement n'a pas abouti. Vous pouvez réessayer ou passer par le lien ci-dessous.</span><span lang="en">The payment did not go through. You can try again or use the link below.</span></span>
+    <span hidden id="pp-sub-thanks"><span lang="fr">Merci ! Votre don mensuel est actif.</span><span lang="en">Thank you! Your monthly donation is active.</span></span>
+  </div>
+  <p class="cta"><a class="btn alt" href="https://www.paypal.com/ncp/payment/JHPS8RCN35UWA" rel="noopener"><span lang="fr">Ou par le lien PayPal direct</span><span lang="en">Or use the direct PayPal link</span></a></p>
 </section>
 
 <section id="faq">
@@ -249,27 +259,29 @@ adb install -r UltraTV.apk</code></pre>
 </footer>
 </div>
 <script src="{{ROOT}}app.js" defer></script>
-<!-- Dons : bouton flottant Ko-fi -->
-<script src='https://storage.ko-fi.com/cdn/scripts/overlay-widget.js'></script>
+<!-- Dons : bouton PayPal hébergé (compte Business ; montant libre, PayPal ou carte, réglé dans le tableau de bord PayPal) -->
+<script src="https://www.paypal.com/sdk/js?client-id=BAAJpALsjVI4UKcJ1QcxYWilvj4yiEtMWBFMbknLBEgJCc72XlRLW2oD1bTqloBUQbPduy5rjwOk9ID80A&components=hosted-buttons&disable-funding=venmo&currency=EUR" crossorigin="anonymous" async></script>
+<!-- Dons mensuels : plans d'abonnement PayPal (SDK dans l'espace de noms paypalSub, application REST « UTV ») -->
+<script src="https://www.paypal.com/sdk/js?client-id=BAAj_4Phky4o6zEklDhdQHbghPjUbv14ymR4CsSdaLRNOrgd1jEx6zu6h_VYqCQbBVqtb_gk3HYMPHs_JQ&vault=true&intent=subscription&components=buttons&disable-funding=venmo&currency=EUR" data-namespace="paypalSub" async></script>
 <script>
-  kofiWidgetOverlay.draw('ultratv', {
-    'type': 'floating-chat',
-    'floating-chat.donateButton.text': '{{KOFI}}',
-    'floating-chat.donateButton.background-color': '#d9534f',
-    'floating-chat.donateButton.text-color': '#fff'
-  });
-  // Cadre du bouton Ko-fi : même color-scheme sur le cadre ET son document, sinon le navigateur le peint en blanc opaque.
-  (function () {
-    function fix() {
-      document.querySelectorAll('iframe[id^="kofi-wo-container"]').forEach(function (f) {
-        f.style.setProperty('color-scheme', 'light', 'important');
-        try { var d = f.contentDocument; if (d && d.documentElement) d.documentElement.style.colorScheme = 'light'; } catch (e) {}
-      });
-    }
-    fix();
-    new MutationObserver(fix).observe(document.body, { childList: true, subtree: true });
-    var n = 0, t = setInterval(function () { fix(); if (++n > 20) clearInterval(t); }, 500);
-  })();
+(function () {
+  function go() { if (!window.paypal || !window.paypal.HostedButtons) return; window.paypal.HostedButtons({ hostedButtonId: 'JHPS8RCN35UWA' }).render('#paypal-container-JHPS8RCN35UWA'); }
+  function sub() {
+    if (!window.paypalSub || !window.paypalSub.Buttons) return;
+    var msg = document.getElementById('pp-sub-msg');
+    window.paypalSub.Buttons({
+      style: { layout: 'vertical', label: 'subscribe' },
+      createSubscription: function (d, a) { var p = document.querySelector('input[name="pp-plan"]:checked'); return a.subscription.create({ plan_id: p ? p.value : 'P-73H946429U469760TNMCJZXQ' }); },
+      onApprove: function () { msg.textContent = (document.getElementById('pp-sub-thanks') || {}).textContent || ''; document.getElementById('pp-sub').hidden = true; },
+      onError: function () { msg.textContent = (document.getElementById('pp-error') || {}).textContent || ''; }
+    }).render('#pp-sub');
+  }
+  document.querySelectorAll('input[name="pp-mode"]').forEach(function (r) { r.addEventListener('change', function () { var m = r.value === 'monthly'; document.getElementById('pp-monthly').hidden = !m; document.getElementById('pp-once').hidden = m; }); });
+  function all() { go(); sub(); }
+  if (document.readyState === 'complete') all(); else window.addEventListener('load', all);
+})();
 </script>
+<!-- Dons : bouton flottant vers la section Soutenir (boutons PayPal intégrés) -->
+<a class="donate-float" href="#soutenir">♥ {{DONATE}}</a>
 </body>
 </html>
