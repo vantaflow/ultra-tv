@@ -1935,8 +1935,6 @@
   "DesignStrings/PersonalizationStringsKt.getRowMenuSettings()": "Réglages des rangées…",
   "DesignStrings/PersonalizationStringsKt.getRowMenuUp()": "Monter la rangée",
   "DesignStrings/PersonalizationStringsKt.rowHideTitle(Zed)": "Masquer « Zed » ?",
-  "DesignStrings/DesignStringsB1Kt.getShowAdvanced()": "Afficher les réglages avancés",
-  "DesignStrings/DesignStringsB1Kt.getShowAdvancedHint()": "Moteur, décodage, tampon, qualité, fréquence d'image. Un réglage modifié reste toujours visible.",
   "DesignStrings/PersonalizationStringsKt.getTvChannelsLabel()": "Chaînes sur l'écran d'accueil Android TV",
   "DesignStrings/PersonalizationStringsKt.getTvChannelsHint()": "Rangées d'Ultra TV sur l'écran d'accueil du téléviseur. Le système demande confirmation à l'activation.",
   "DesignStrings/PersonalizationStringsKt.getTvChannelsSportNeeds()": "Activez la rubrique Sport pour publier cette chaîne.",

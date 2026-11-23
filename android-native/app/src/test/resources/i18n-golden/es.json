@@ -1935,8 +1935,6 @@
   "DesignStrings/PersonalizationStringsKt.getRowMenuSettings()": "Ajustes de las filas…",
   "DesignStrings/PersonalizationStringsKt.getRowMenuUp()": "Subir la fila",
   "DesignStrings/PersonalizationStringsKt.rowHideTitle(Zed)": "¿Ocultar «Zed»?",
-  "DesignStrings/DesignStringsB1Kt.getShowAdvanced()": "Mostrar ajustes avanzados",
-  "DesignStrings/DesignStringsB1Kt.getShowAdvancedHint()": "Motor, decodificación, búfer, calidad, frecuencia de imagen. Un ajuste modificado siempre queda visible.",
   "DesignStrings/PersonalizationStringsKt.getTvChannelsLabel()": "Canales en la pantalla de inicio de Android TV",
   "DesignStrings/PersonalizationStringsKt.getTvChannelsHint()": "Filas de Ultra TV en la pantalla de inicio del televisor. El sistema pide confirmación al activarlas.",
   "DesignStrings/PersonalizationStringsKt.getTvChannelsSportNeeds()": "Activa la sección Deporte para publicar este canal.",

@@ -1935,8 +1935,6 @@
   "DesignStrings/PersonalizationStringsKt.getRowMenuSettings()": "Row settings…",
   "DesignStrings/PersonalizationStringsKt.getRowMenuUp()": "Move row up",
   "DesignStrings/PersonalizationStringsKt.rowHideTitle(Zed)": "Hide “Zed”?",
-  "DesignStrings/DesignStringsB1Kt.getShowAdvanced()": "Show advanced settings",
-  "DesignStrings/DesignStringsB1Kt.getShowAdvancedHint()": "Engine, decoding, buffer, quality, frame rate. A changed setting always stays visible.",
   "DesignStrings/PersonalizationStringsKt.getTvChannelsLabel()": "Channels on the Android TV home screen",
   "DesignStrings/PersonalizationStringsKt.getTvChannelsHint()": "Ultra TV rows on the TV home screen. The system asks for confirmation when you turn one on.",
   "DesignStrings/PersonalizationStringsKt.getTvChannelsSportNeeds()": "Turn on the Sport section to publish this channel.",

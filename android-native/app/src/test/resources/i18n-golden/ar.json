@@ -1935,8 +1935,6 @@
   "DesignStrings/PersonalizationStringsKt.getRowMenuSettings()": "إعدادات الصفوف…",
   "DesignStrings/PersonalizationStringsKt.getRowMenuUp()": "رفع الصف",
   "DesignStrings/PersonalizationStringsKt.rowHideTitle(Zed)": "إخفاء «Zed»؟",
-  "DesignStrings/DesignStringsB1Kt.getShowAdvanced()": "إظهار الإعدادات المتقدمة",
-  "DesignStrings/DesignStringsB1Kt.getShowAdvancedHint()": "المشغّل وفك الترميز والتخزين المؤقت والجودة ومعدل الإطارات. يبقى الإعداد المعدَّل ظاهرًا دائمًا.",
   "DesignStrings/PersonalizationStringsKt.getTvChannelsLabel()": "القنوات على الشاشة الرئيسية لـ Android TV",
   "DesignStrings/PersonalizationStringsKt.getTvChannelsHint()": "صفوف Ultra TV على الشاشة الرئيسية للتلفزيون. يطلب النظام التأكيد عند التفعيل.",
   "DesignStrings/PersonalizationStringsKt.getTvChannelsSportNeeds()": "فعّل قسم الرياضة لنشر هذه القناة.",
