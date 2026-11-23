@@ -106,8 +106,10 @@ fun activeBottomTab(route: String?, tabs: List<String>): String? {
 }
 
 /** Contenu de « Plus » : les rubriques non retenues dans la barre, puis Réglages et Profils. */
-fun moreRoutesFor(tabs: List<String>, sportOn: Boolean): List<String> =
-    BOTTOM_TAB_CHOICES.filter { it !in tabs && (sportOn || it != Routes.SPORT) } + listOf(Routes.SETTINGS, "profiles")
+fun moreRoutesFor(tabs: List<String>, sportOn: Boolean, replayOn: Boolean = false): List<String> =
+    // Replay (seulement si la source active propose une archive) en tête : rubrique de visionnage, pas un réglage.
+    (if (replayOn) listOf(Routes.REPLAY) else emptyList()) +
+        BOTTOM_TAB_CHOICES.filter { it !in tabs && (sportOn || it != Routes.SPORT) } + listOf(Routes.SETTINGS, "profiles")
 
 /** Le lecteur est plein écran : ni barre d'onglets, ni rail. */
 fun isFullscreenRoute(route: String?): Boolean = route?.startsWith("player") == true

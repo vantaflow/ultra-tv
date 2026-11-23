@@ -516,6 +516,14 @@ interface ChannelDao {
     /** Chaînes avec archive et leur durée (jours) : programmes passés gardés pour elles seules (#248). */
     @Query("SELECT id, catchupDays FROM channel WHERE providerId = :pid AND catchupDays > 0")
     suspend fun archiveDays(pid: Long): List<ChannelArchive>
+
+    /** Rubrique Replay : chaînes de la source avec archive, hors chaînes masquées du profil, dans l'ordre de « Tout » du Direct. */
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND catchupDays > 0 AND junk = 0 AND isSeparator = 0 AND ${Hid.T} ORDER BY catRank, num, id")
+    suspend fun archivedChannels(pid: Long): List<ChannelEntity>
+
+    /** La source a-t-elle au moins une chaîne avec archive (entrée « Replay » du menu) ? */
+    @Query("SELECT EXISTS(SELECT 1 FROM channel WHERE providerId = :pid AND catchupDays > 0 AND junk = 0 AND isSeparator = 0)")
+    suspend fun hasArchive(pid: Long): Boolean
 }
 
 /** Durée d'archive d'une chaîne (jours de rattrapage). */

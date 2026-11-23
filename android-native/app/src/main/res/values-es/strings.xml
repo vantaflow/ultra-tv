@@ -2020,4 +2020,19 @@
     <string name="tvch_categories_hint">Hasta 3 categorías de TV en directo, cada una en su propio canal.</string>
     <string name="tvch_add_category">Añadir una categoría</string>
     <string name="tvch_no_category">Ninguna categoría disponible</string>
+    <string name="replay_nav">Repetición</string>
+    <string name="replay_all_channels">Todos los canales</string>
+    <string name="replay_category">Categoría</string>
+    <string name="replay_today">Hoy</string>
+    <string name="replay_yesterday">Ayer</string>
+    <string name="replay_archive_days">Archivo: %1$d d</string>
+    <string name="replay_minutes">%1$d min</string>
+    <string name="replay_unavailable">No disponible</string>
+    <string name="replay_on_now">En emisión</string>
+    <string name="replay_pick_channel">Elige un canal</string>
+    <string name="replay_no_programmes">No hay programas conocidos para este día.</string>
+    <string name="replay_empty_title">Sin repetición</string>
+    <string name="replay_empty_body">Tu proveedor no ofrece repetición.</string>
+    <string name="replay_hidden_body">Los canales con repetición están ocultos para este perfil.</string>
+    <string name="replay_no_source">Añade una fuente para ver la repetición.</string>
 </resources>

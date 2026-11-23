@@ -27,7 +27,7 @@ sealed interface StartupTarget {
  */
 fun rememberableScreen(route: String?): String? = route?.takeIf { it in REMEMBERABLE }
 
-private val REMEMBERABLE = setOf(Routes.HOME, Routes.LIVE, Routes.MOVIES, Routes.SERIES, Routes.GUIDE, Routes.SIMPLE_CHANNELS, Routes.FAVORITES, Routes.SPORT, Routes.RECORDINGS, Routes.DOWNLOADS)
+private val REMEMBERABLE = setOf(Routes.HOME, Routes.LIVE, Routes.MOVIES, Routes.SERIES, Routes.GUIDE, Routes.SIMPLE_CHANNELS, Routes.FAVORITES, Routes.SPORT, Routes.REPLAY, Routes.RECORDINGS, Routes.DOWNLOADS)
 
 /** Correspondance écran d'ouverture → action. L'accueil reste toujours sous la rubrique ouverte (Retour y ramène). */
 fun startupTarget(s: StartScreen, lastScreen: String? = null): StartupTarget = when (s) {

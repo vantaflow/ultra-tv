@@ -11,7 +11,7 @@ import java.net.URLEncoder
  *   ultratv://series/{providerId}/{remoteId}    fiche d'une série
  *   ultratv://moviedetail/{providerId}/{remoteId} fiche d'un film (sans lancer la lecture)
  *   ultratv://search?q=…                        écran Recherche
- *   ultratv://home|live|guide|movies|series     rubrique (launcher Kairo) ; ultratv://live?category=… ouvre le direct
+ *   ultratv://home|live|guide|movies|series|replay rubrique (launcher Kairo) ; ultratv://live?category=… ouvre le direct
  *                                               sur cette catégorie si elle existe (et n'est ni masquée ni verrouillée)
  * Un lien `ultratv:` inconnu ou mal formé ouvre l'accueil ([resolve]), jamais un écran vide.
  * Les identifiants distants sont encodés (ils peuvent contenir « / », espaces…). Un lien ne désigne
@@ -31,7 +31,7 @@ sealed interface DeepLink {
         const val SCHEME = "ultratv"
 
         /** Rubriques ouvrables par lien : hôte du lien = route de navigation. */
-        val SECTIONS = setOf(Routes.HOME, Routes.LIVE, Routes.GUIDE, Routes.MOVIES, Routes.SERIES)
+        val SECTIONS = setOf(Routes.HOME, Routes.LIVE, Routes.GUIDE, Routes.MOVIES, Routes.SERIES, Routes.REPLAY)
         fun isSectionRoute(route: String) = route in SECTIONS
 
         private fun enc(s: String) = URLEncoder.encode(s, "UTF-8").replace("+", "%20")
