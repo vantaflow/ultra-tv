@@ -6,6 +6,9 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 
 ## [Site] — 2026-11-23
 
+### Ajouté
+- Maquettes de la refonte façon streaming (24 écrans, export autonome) en ligne sur `/maquettes/`.
+
 ### Modifié
 - Bouton flottant « Me soutenir » : la section Soutenir s'ouvre en fenêtre par-dessus la page (Fermer, Échap ou clic à côté), sans faire défiler jusqu'en bas. Rien n'est déplacé ni dupliqué : les boutons PayPal déjà chargés servent tels quels. Sans JavaScript, le lien mène toujours à la section.
 
