@@ -63,9 +63,13 @@ class ParentalViewModel @Inject constructor(
         .map<String?, Boolean?> { it != null }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /** Premier code (aucun code en place). Effacer ou remplacer passe par [clearWith] / [changeWith]. */
     fun setPin(pin: String, onDone: () -> Unit) {
-        viewModelScope.launch { store.setPin(pin); onDone() }
+        viewModelScope.launch { if (!store.isSet()) store.setPin(pin); onDone() }
     }
+
+    suspend fun clearWith(current: String): Boolean = store.clearWith(current)
+    suspend fun changeWith(current: String, newPin: String): Boolean = store.changeWith(current, newPin)
 
     suspend fun check(pin: String): Boolean = store.check(pin)
 }
@@ -78,14 +82,39 @@ fun ParentalSection(
 ) {
     val set by vm.pinSet.collectAsState()
     var dialog by remember { mutableStateOf(false) }
+    // Effacer / changer : le code ACTUEL est demandé d'abord ; sans lui, rien ne change.
+    var askClear by remember { mutableStateOf(false) }
+    var askChange by remember { mutableStateOf(false) }
+    var verified by remember { mutableStateOf<String?>(null) }
     val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     com.ultratv.tv.nativeapp.ui.design.SettingsCard {
-        com.ultratv.tv.nativeapp.ui.design.PrefRow(S.parentalChangePin.takeIf { set } ?: S.parentalSetPin, if (set) S.parentalPinEnabled else S.parentalPinNotSet) { dialog = true }
+        com.ultratv.tv.nativeapp.ui.design.PrefRow(S.parentalChangePin.takeIf { set } ?: S.parentalSetPin, if (set) S.parentalPinEnabled else S.parentalPinNotSet) { if (set) askChange = true else dialog = true }
         val forced by vm.parentalForced.collectAsState()
-        if (set && !forced) com.ultratv.tv.nativeapp.ui.design.PrefRow(S.parentalClearPin, "") { vm.setPin("") {} }
+        if (set && !forced) com.ultratv.tv.nativeapp.ui.design.PrefRow(S.parentalClearPin, "") { askClear = true }
         com.ultratv.tv.nativeapp.ui.design.PrefRow(S.parentalManageLocked, "", onClick = onManageLockedChannels)
     }
-    if (dialog) PinSetDialog(onCancel = { dialog = false }, onConfirm = { pin -> vm.setPin(pin) { dialog = false } })
+    if (askClear) CurrentPinDialog(S.parentalClearPin, onCancel = { askClear = false }, verify = { pin -> vm.clearWith(pin) }, onOk = { askClear = false })
+    if (askChange) CurrentPinDialog(S.parentalChangePin, onCancel = { askChange = false }, verify = { pin -> vm.check(pin) }, onOk = { pin -> verified = pin; askChange = false; dialog = true })
+    if (dialog) PinSetDialog(onCancel = { dialog = false; verified = null }, onConfirm = { pin ->
+        val cur = verified
+        if (cur == null) vm.setPin(pin) { dialog = false }
+        else scope.launch { vm.changeWith(cur, pin); verified = null; dialog = false }
+    })
+}
+
+/** Saisie du code actuel sur le pavé, même gestion d'erreurs et d'essais que le déverrouillage ([ParentalStore.check]). */
+@Composable
+private fun CurrentPinDialog(title: String, onCancel: () -> Unit, verify: suspend (String) -> Boolean, onOk: (String) -> Unit) {
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
+    var attempt by remember { mutableStateOf(0) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    PinPad(
+        title = title, subtitle = S.parentalPinHint,
+        onComplete = { pin -> scope.launch { if (verify(pin)) onOk(pin) else { error = S.parentalWrongPin; attempt++ } } },
+        onCancel = onCancel, error = error, resetKey = attempt,
+    )
 }
 
 /** Création du code : saisie puis confirmation sur le pavé de la maquette. */

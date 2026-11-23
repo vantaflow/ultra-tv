@@ -37,6 +37,20 @@ class ParentalStore @Inject constructor(@ApplicationContext private val ctx: Con
 
     suspend fun isSet(): Boolean = current() != null
 
+    /** Efface le code seulement si [current] est le code actuel (même limitation des essais que [check]). */
+    suspend fun clearWith(current: String): Boolean {
+        if (current() == null) return true
+        if (!check(current)) return false
+        setPin(""); return true
+    }
+
+    /** Remplace le code par [newPin] seulement si [current] est le code actuel ; un nouveau code vide est refusé. */
+    suspend fun changeWith(current: String, newPin: String): Boolean {
+        if (newPin.isBlank()) return false
+        if (current() != null && !check(current)) return false
+        setPin(newPin); return true
+    }
+
     /**
      * Validate a typed PIN. Rate-limited: after 3 wrong attempts in a row we
      * sleep an increasing amount (1s → 4s → 16s) before answering, defeating
