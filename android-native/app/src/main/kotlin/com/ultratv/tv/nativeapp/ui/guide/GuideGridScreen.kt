@@ -699,11 +699,14 @@ private fun GuidePreviewPane(
     val channel = rememberFocusedChannel(sel, firstChannel).value
     // Retour du lecteur plein écran : la liste restaurée désignera la chaîne regardée, la première ne doit pas démarrer avant elle.
     val returning = remember(shared) { booleanArrayOf(shared != null && com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.returningFromPlayer(shared.owner)) }
-    val target = {
+    // Chaîne visée et son statut : la première de la liste, faute de sélection, n'est qu'un choix d'attente (focus initial
+    // pas encore posé) ; le focus qui arrive pendant l'attente la remplace : une seule ouverture du flux à l'entrée.
+    val pick = {
         val selected = sel.value?.first
         if (selected != null) returning[0] = false
-        com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.guideTarget(selected, firstNow, returning[0])
+        com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.guidePick(selected, firstNow, returning[0])
     }
+    val target = { pick()?.first }
     // Son seulement tant que l'encadré montre la vidéo de la chaîne sélectionnée : jamais l'audio d'une chaîne sous son logo
     // (avant la première image, flux sans image décodée, ancien flux pendant le délai après un changement de programme).
     if (shared != null) DisposableEffect(shared) {
@@ -721,7 +724,12 @@ private fun GuidePreviewPane(
             val lifecycle = lifecycleOwner.lifecycle
             val foreground = lifecycle.currentStateFlow.map { it.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED) }
             with(com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy) {
-                runInForeground(foreground, { snapshotFlow { target() }.immediateThenSettled(guideSettledDelayMs(pv.delayMs), guideDelayMs(pv.delayMs)) }) { c ->
+                runInForeground(foreground, {
+                    snapshotFlow { pick() }.immediateThenSettled(
+                        guideSettledDelayMs(pv.delayMs), guideDelayMs(pv.delayMs),
+                        provisionalMs = GUIDE_ENTRY_FOCUS_WAIT_MS, isProvisional = { it.second },
+                    )
+                }) { (c, _) ->
                     val row = com.ultratv.tv.nativeapp.ui.live.channelKey(c)
                     // Flux de cette chaîne tombé en erreur : y revenir le relance (sinon l'encadré restait sur le logo sans fin).
                     val failed = shared.session?.state?.value?.phase == com.ultratv.tv.nativeapp.ui.player.engine.Phase.ERROR

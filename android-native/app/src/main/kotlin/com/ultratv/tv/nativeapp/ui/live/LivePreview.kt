@@ -97,11 +97,19 @@ object LivePreviewPolicy {
     fun <T : Any> Flow<T?>.immediateThenSettled(
         settledMs: Long, browsingMs: Long, windowMs: Long = GUIDE_MIN_DELAY_MS,
         now: () -> Long = { android.os.SystemClock.uptimeMillis() },
+        /**
+         * Première valeur PROVISOIRE ([isProvisional] : première chaîne faute de sélection, focus initial pas encore posé) :
+         * elle attend [provisionalMs] ; une vraie sélection arrivée entre-temps la remplace et part tout de suite (une seule
+         * ouverture du flux à l'entrée de l'écran).
+         */
+        provisionalMs: Long = 0L,
+        isProvisional: (T) -> Boolean = { false },
     ): Flow<T> = flow {
         var first = true   // par collecte : un aperçu réactivé repart tout de suite
         val moves = ArrayDeque<Long>()
         emitAll(this@immediateThenSettled.distinctUntilChanged().transformLatest { v ->
             if (v == null) return@transformLatest
+            if (first && isProvisional(v)) { delay(provisionalMs); first = false; emit(v); return@transformLatest }
             val t = now()
             moves.addLast(t)
             while (moves.isNotEmpty() && t - moves.first() > windowMs) moves.removeFirst()
@@ -142,6 +150,13 @@ object LivePreviewPolicy {
      * pour rien (connexion unique) et un son qui n'est pas celui attendu.
      */
     fun <T : Any> guideTarget(selected: T?, first: T?, returningFromPlayer: Boolean): T? = selected ?: first.takeUnless { returningFromPlayer }
+
+    /** [guideTarget] avec son statut : vrai = provisoire (première chaîne faute de sélection, voir [immediateThenSettled]). */
+    fun <T : Any> guidePick(selected: T?, first: T?, returningFromPlayer: Boolean): Pair<T, Boolean>? =
+        selected?.let { it to false } ?: guideTarget(null, first, returningFromPlayer)?.let { it to true }
+
+    /** Ouverture du Guide : attente maximale du focus initial avant de lancer la première chaîne de la liste. */
+    const val GUIDE_ENTRY_FOCUS_WAIT_MS = 2_000L
 
     /** Le lecteur plein écran possède encore la session quand le Guide se recompose à son retour (le passage à l'aperçu vient après). */
     fun returningFromPlayer(owner: LiveOwner): Boolean = owner == LiveOwner.FULLSCREEN
