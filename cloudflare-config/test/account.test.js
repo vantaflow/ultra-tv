@@ -73,12 +73,13 @@ describe("xtreamAccount", () => {
 });
 
 describe("tableau de bord : soutien", () => {
-  it("encart Ko-fi / Liberapay en simples liens (aucun script tiers)", async () => {
+  it("encart Soutenir : lien vers /donate (PayPal), plus de Ko-fi ni Liberapay, aucun script tiers", async () => {
     const { newAccount, call } = await import("./helpers.js");
     const a = await newAccount();
     const html = await (await call("/", { cookie: a.cookie, ip: a.ip })).text();
-    expect(html).toContain('href="https://ko-fi.com/ultratv"');
-    expect(html).toContain('href="https://liberapay.com/ultratv/"');
-    expect(html).not.toContain("ko-fi.com/cdn/scripts");
+    expect(html).toContain('href="/donate"');
+    expect(html).not.toContain("ko-fi.com");
+    expect(html).not.toContain("liberapay.com");
+    expect(html).not.toContain("paypal.com/sdk");
   });
 });

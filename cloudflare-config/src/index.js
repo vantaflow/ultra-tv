@@ -59,6 +59,7 @@ import { loadAnnouncements, saveAnnouncements, activeAnnouncements, parseAnnounc
 import { pickEnvoyerLang, langFromCookie, fromAcceptLanguage } from "./i18n/envoyer.js";
 import { pickSiteLang, TOO_MANY_TEXT } from "./i18n/site.js";
 import { apkPage, envoyerPage, loginPage, signupPage, pairPage, dashboardPage, offlinePage, donatePage } from "./pages.js";
+import { paypalClientId } from "./donate.js";
 import { pwaResponse } from "./pwa.js";
 import { legacyDecision, PRIMARY_HOST, LEGACY_HOST, LEGACY_HOSTS, API_HOST } from "./legacyhost.js";
 
@@ -323,11 +324,11 @@ async function route(req, env, ctx) {
     const lang = pickEnvoyerLang({ param: url.searchParams.get("l"), cookie: langFromCookie(req.headers.get("cookie")), acceptLanguage: req.headers.get("accept-language") });
     return envoyerPage(nonce(), { code: normalizeEnvoiCode(url.searchParams.get("c")), lang });
   }
-  // Dons : page publique (liens Ko-fi et Liberapay). /donate/merci ne sert plus : 302 vers /donate pour les vieux liens.
+  // Dons : page publique PayPal (boutons intégrés si PAYPAL_CLIENT_ID, sinon lien paypal.me). /donate/merci ne sert plus : 302 vers /donate pour les vieux liens.
   if (path === "/donate/merci" && (m === "GET" || m === "HEAD")) return redirect("/donate");
   if (path === "/donate" && (m === "GET" || m === "HEAD")) {
     const lang = pickEnvoyerLang({ param: url.searchParams.get("l"), cookie: langFromCookie(req.headers.get("cookie")), acceptLanguage: req.headers.get("accept-language") });
-    return donatePage(nonce(), { lang });
+    return donatePage(nonce(), { lang, clientId: paypalClientId(env) });
   }
   if (path === "/login" && m === "GET") { const n = nonce(); return loginPage(n, url.searchParams.get("e"), safeNext(url.searchParams.get("next")), { lang: siteLangOf(req, url), url: req.url }); }
   if (path === "/login" && m === "POST") return doLogin(req, env);

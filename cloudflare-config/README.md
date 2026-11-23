@@ -18,7 +18,7 @@ cloudflare-config/
 ├── src/turso.js      stockage Turso présenté avec les interfaces D1 et KV (STORAGE_MODE : d1 / tee / turso)
 ├── src/docs.js       stockage des documents (comptes, appareils, jetons, caches), table kv_docs
 ├── scripts/turso-migrate.mjs  migration D1 + KV → Turso (schema / sync / verify) ; scripts/e2e-prod.mjs : parcours complet en production
-├── src/donate.js     page /donate (liens Ko-fi et Liberapay)
+├── src/donate.js     page /donate (PayPal)
 ├── migrations/       schéma D1 (télémétrie, activité, état partagé, kv_docs)
 ├── test/             113+ tests vitest (attaques rejouées, parcours, migration)
 └── scripts/e2e.sh    rejeu des attaques contre `wrangler dev`
@@ -140,7 +140,7 @@ Les anciens `ADMIN_PASSWORD` et `CRASH_TOKEN` ne sont **plus lus**.
 | POST | `/api/admin/migrate` | Bearer `ADMIN_TOKEN` | Migration de l'ancien format (voir ci-dessous) |
 | GET/POST | `/login`, `/signup` | — | Comptes |
 | GET | `/` | session | Tableau de bord |
-| GET | `/donate`, `/donate/merci` | — | Dons : Ko-fi (<https://ko-fi.com/ultratv>), Liberapay (<https://liberapay.com/ultratv/>) |
+| GET | `/donate`, `/donate/merci` | — | Dons PayPal : boutons intégrés si `PAYPAL_CLIENT_ID`, sinon <https://paypal.me/kbenazzouz> |
 | POST | `/api/device/profiles`, `/api/device/providers/:id/state` ; PUT `/api/device/providers/:id/prefs` | `Bearer` | Synchro des profils, de l'état partagé et des réglages (voir « Synchro multi-appareils ») |
 | POST | `/pair`, `/providers`, `/providers/:id/delete`, `/devices/:id/revoke`, `/password`, `/account/delete`, `/logout` | session + CSRF + Origin | Mutations |
 | POST | `/providers/:id/account` | session + CSRF | Abonnement du fournisseur (cache 10 min, limite propre 600/h) |

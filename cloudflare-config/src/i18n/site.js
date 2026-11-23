@@ -236,8 +236,6 @@ export const SITE_DICT = {
         title: "Soutenir Ultra TV",
         sub: "Ultra TV est gratuit, sans publicité, et le restera. Un don aide à payer les serveurs (synchronisation, guide, affiches) et le temps passé à l'améliorer. Carte bancaire ou PayPal ; aucune donnée bancaire ne passe par Ultra TV.",
         paypal: "♥ Faire un don avec PayPal",
-        kofi: "Faire un don sur Ko-fi",
-        liberapay: "Don régulier sur Liberapay",
       },
       devs: {
         title: "Appareils",
@@ -607,8 +605,6 @@ export const SITE_DICT = {
         title: "Support Ultra TV",
         sub: "Ultra TV is free, ad-free, and will stay that way. A donation helps pay for servers (sync, guide, posters) and development time. Card or PayPal; no banking data passes through Ultra TV.",
         paypal: "♥ Donate with PayPal",
-        kofi: "Donate on Ko-fi",
-        liberapay: "Recurring donation on Liberapay",
       },
       devs: {
         title: "Devices",
@@ -978,8 +974,6 @@ export const SITE_DICT = {
         title: "Apoyar Ultra TV",
         sub: "Ultra TV es gratuito, sin publicidad y lo seguirá siendo. Una donación ayuda a pagar los servidores y el desarrollo. Tarjeta o PayPal.",
         paypal: "♥ Donar con PayPal",
-        kofi: "Donar en Ko-fi",
-        liberapay: "Donación periódica en Liberapay",
       },
       devs: {
         title: "Dispositivos",
@@ -1349,8 +1343,6 @@ export const SITE_DICT = {
         title: "ادعم Ultra TV",
         sub: "Ultra TV مجاني وخالٍ من الإعلانات وسيبقى كذلك. يساعد تبرعك في دفع تكاليف الخوادم والوقت المخصص لتطويره. بطاقة بنكية أو PayPal.",
         paypal: "♥ تبرّع عبر PayPal",
-        kofi: "تبرّع عبر Ko-fi",
-        liberapay: "تبرّع دوري عبر Liberapay",
       },
       devs: {
         title: "الأجهزة",
@@ -1720,8 +1712,6 @@ export const SITE_DICT = {
         title: "Wesprzyj Ultra TV",
         sub: "Ultra TV jest darmowe, bez reklam i takie pozostanie. Darowizna pomaga opłacić serwery i czas rozwoju. Karta lub PayPal.",
         paypal: "♥ Wesprzyj przez PayPal",
-        kofi: "Wesprzyj na Ko-fi",
-        liberapay: "Stała darowizna na Liberapay",
       },
       devs: {
         title: "Urządzenia",

@@ -1,5 +1,4 @@
 // Tableau de bord utilisateur (/) : vue d'ensemble, sources, appareils, intégrations, compte.
-import { KOFI_URL, LIBERAPAY_URL, PAYPAL_URL } from "../donate.js";
 import { escapeHtml as e } from "../http.js";
 import { SITE_DICT } from "../i18n/site.js";
 import { displayUrl, maskMac, xtreamCredsOf, MEDIA_KINDS } from "../store.js";
@@ -238,7 +237,7 @@ ${isPro ? `<div class="tile${nextLic && nextLic < Date.now() ? " bad" : nextLic 
 ${gettingStarted}</section>
 
 <section class="panel" id="soutenir" aria-labelledby="h-support"><h2 id="h-support">${e(t.support.title)}</h2><p class="sub">${e(t.support.sub)}</p>
-<div class="row"><a class="button" href="${e(PAYPAL_URL)}" target="_blank" rel="noopener noreferrer">${e(t.support.paypal)}</a><a class="button alt-btn" href="${e(KOFI_URL)}" target="_blank" rel="noopener noreferrer">${e(t.support.kofi)}</a><a class="button alt-btn" href="${e(LIBERAPAY_URL)}" target="_blank" rel="noopener noreferrer">${e(t.support.liberapay)}</a></div></section>
+<div class="row"><a class="button" href="/donate">${e(t.support.paypal)}</a></div></section>
 <div class="section-h" id="appareils"><div class="sh-t"><h2 id="h-dev">${e(t.devs.title)} <span class="count">${devices.length}</span></h2><p class="muted small">${e(t.devs.sub)}</p></div></div>
 <section class="panel" id="appairer" aria-labelledby="h-pair"><h2 id="h-pair">${e(t.devs.pairTitle)}</h2><p class="sub">${e(t.devs.pairSub)}</p>
 <ol class="steps"><li>${e(t.devs.pairStep1)}</li><li>${e(t.devs.pairStep2)}</li><li>${e(t.devs.pairStep3)}</li></ol>

@@ -5,7 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** « Soutenir Ultra TV » : don direct sur PayPal (plus de passage par Ko-fi), QR généré sur l'appareil. */
+/** « Soutenir Ultra TV » : don direct sur PayPal (seul moyen de don), QR généré sur l'appareil. */
 class SupportUrlTest {
     @Test fun lienPayPalDirect() = assertEquals("https://paypal.me/kbenazzouz", SUPPORT_URL)
 
