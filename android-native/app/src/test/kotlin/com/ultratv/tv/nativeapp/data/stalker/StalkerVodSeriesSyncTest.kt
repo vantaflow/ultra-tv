@@ -23,6 +23,7 @@ import com.ultratv.tv.nativeapp.data.xmltv.XmltvParser
 import com.ultratv.tv.nativeapp.data.xtream.XtreamClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.ResponseBody.Companion.toResponseBody
@@ -119,6 +120,50 @@ class StalkerVodSeriesSyncTest {
         assertEquals(40, series.size)
     }
 
+    // ───────────── Pagination bornée (synchro bloquée vers 23 %) ─────────────
+
+    private fun listCalls(fake: FakeVodPortal) = fake.urls.count { it.queryParameter("action") == "get_ordered_list" }
+
+    @Test fun portailQuiIgnoreLeNumeroDePage_totalAnnonce_arretApresLaPageRepetee() = runBlocking {
+        val fake = FakeVodPortal(seriesCategories = emptyMap(), vodCategories = mapOf("9" to ("FR Films" to 50_000))).apply { ignorePage = true }
+        val split = client(fake).vodOfCategory(provider(), "9")
+        assertEquals(14, split.movies.size)                           // la seule page réellement servie
+        assertTrue("pas 3 572 requêtes de la même page : ${listCalls(fake)}", listCalls(fake) <= 2 + 3)
+    }
+
+    @Test fun totalGonfle_arretSurLesPagesVides() = runBlocking {
+        val fake = FakeVodPortal(seriesCategories = emptyMap(), vodCategories = mapOf("9" to ("FR Films" to 30))).apply { fakeTotal = 1_000_000 }
+        val split = client(fake).vodOfCategory(provider(), "9")
+        assertEquals(30, split.movies.size)
+        assertTrue("pas 71 429 pages demandées : ${listCalls(fake)}", listCalls(fake) <= 3 + 3)
+    }
+
+    @Test fun totalTropPetit_pagesSuivantesLuesQuandMemeSiLaPageEstPleine() = runBlocking {
+        val fake = FakeVodPortal(seriesCategories = emptyMap(), vodCategories = mapOf("9" to ("FR Films" to 40))).apply { fakeTotal = 14 }
+        val split = client(fake).vodOfCategory(provider(), "9")
+        assertEquals(40, split.movies.size)
+    }
+
+    @Test fun paginationSansFin_bornee_parLeBudgetDeTemps() = runBlocking {
+        val fake = FakeVodPortal(seriesCategories = emptyMap(), vodCategories = mapOf("9" to ("FR Films" to 0))).apply { infinite = true }
+        val c = client(fake).also { it.listBudgetMs = 300 }
+        val t0 = System.currentTimeMillis()
+        try { c.vodOfCategory(provider(), "9"); fail("liste sans fin : arrêt attendu") } catch (e: StalkerListTooLongException) { /* attendu */ }
+        assertTrue("arrêt rapide", System.currentTimeMillis() - t0 < 10_000)
+    }
+
+    @Test fun vodLente_premieresPagesHorsDelai_nouvellesTentatives_toutEstLu() = runBlocking {
+        val fake = FakeVodPortal(seriesCategories = emptyMap(), vodCategories = mapOf("9" to ("FR Films" to 40))).apply { slowCategory = "9"; slowAttempts.set(2) }
+        val split = client(fake).vodOfCategory(provider(), "9")
+        assertEquals(40, split.movies.size)
+    }
+
+    @Test fun listesDuCatalogue_delaiDeLectureLongPourLesPortailsLents() {
+        val c = client(FakeVodPortal())
+        assertTrue("au moins 60 s d'inactivité tolérés sur une page de liste", c.listReadTimeoutMs >= 60_000)
+        assertEquals("délais courts du lecteur inchangés (I4)", Triple(5_000, 11_000, 12_000), c.shortTimeoutsMs)
+    }
+
     // ───────────── Synchro complète (dépôt) ─────────────
 
     private class Rig(val db: UltraDb, val repo: ProviderRepository, val bus: SyncStatusBus, val providerId: Long)
@@ -142,6 +187,7 @@ class StalkerVodSeriesSyncTest {
             hiddenChannels = com.ultratv.tv.nativeapp.data.prefs.HiddenChannelsStore(ctx),
             stalker = stalker,
         )
+        repo.stalkerRetryPauseMs = 1
         val id = runBlocking { db.providerDao().upsert(provider(0).copy(active = true)) }
         return Rig(db, repo, bus, id)
     }
@@ -182,6 +228,41 @@ class StalkerVodSeriesSyncTest {
         assertEquals(200, r.db.n("SELECT COUNT(*) FROM series"))
         assertEquals(null, r.bus.partial.value)
         assertTrue(fake.handshakes.get() >= 2)
+    }
+
+    @Test fun synchro_vodLente_categorieRelueEnFinDePartie_filmsDesLaPremiereSynchro() = runBlocking {
+        val fake = FakeVodPortal(seriesCategories = emptyMap(), vodCategories = mapOf("8" to ("FR Action" to 20), "9" to ("FR Films" to 30)))
+            .apply { slowCategory = "9"; slowAttempts.set(StalkerClient.PAGE_ATTEMPTS + 1) }   // la 1re lecture échoue en entier
+        val r = rig(fake, "vodlente")
+        r.repo.syncAll(r.providerId, force = true)
+        assertEquals("films de la catégorie lente chargés dès la 1re synchro", 50, r.db.n("SELECT COUNT(*) FROM movie"))
+        assertEquals(null, r.bus.partial.value)
+        assertEquals(null, r.bus.failure.value)
+    }
+
+    @Test fun synchro_portailQuiIgnoreLaPage_seTermine() = runBlocking {
+        val fake = FakeVodPortal(seriesCategories = emptyMap(), vodCategories = mapOf("9" to ("FR Films" to 50_000))).apply { ignorePage = true }
+        val r = rig(fake, "ignorepage")
+        r.repo.syncAll(r.providerId, force = true)
+        assertEquals(14, r.db.n("SELECT COUNT(*) FROM movie"))
+        assertTrue(fake.listRequests.get() < 50)
+    }
+
+    @Test fun synchro_progressionAvancePendantLaLectureDesFilms_etNeReculeJamais() = runBlocking {
+        val cats = (1..6).associate { "$it" to ("FR Cat $it" to 30) }
+        val fake = FakeVodPortal(seriesCategories = emptyMap(), vodCategories = cats)
+        val r = rig(fake, "progression")
+        val seen = java.util.concurrent.CopyOnWriteArrayList<SyncStatusBus.Status>()
+        fake.onList = { r.bus.status.value?.let(seen::add) }
+        val all = java.util.concurrent.CopyOnWriteArrayList<Int>()
+        val watcher = CoroutineScope(Dispatchers.Default).launch { r.bus.status.collect { s -> s?.let { all += it.percent } } }
+        r.repo.syncAll(r.providerId, force = true)
+        watcher.cancel()
+        val vod = seen.filter { it.part == com.ultratv.tv.nativeapp.data.db.SyncPart.VOD }
+        assertTrue("la partie Films s'annonce pendant la lecture des pages : ${seen.map { it.part to it.percent }}", vod.isNotEmpty())
+        assertTrue("le pourcentage avance pendant la lecture : ${vod.map { it.percent }}", vod.map { it.percent }.distinct().size >= 2)
+        assertEquals("jamais de recul : $all", all.filter { it < 100 }, all.filter { it < 100 }.sorted())
+        assertEquals(180, r.db.n("SELECT COUNT(*) FROM movie"))
     }
 
     @Test fun synchro_listeDesCategoriesVodEnErreur_partieSauteeSansEchecGlobal() = runBlocking {

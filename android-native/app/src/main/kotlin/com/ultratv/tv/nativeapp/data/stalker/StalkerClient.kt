@@ -15,9 +15,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -36,6 +34,12 @@ class StalkerLinkException(val reason: String) : java.io.IOException("Stalker: n
  * Device ID). Levée seulement à l'ajout ([StalkerClient.probe]) ; ailleurs le comportement reste celui d'avant.
  */
 class StalkerDeviceConflictException : java.io.IOException("Stalker: device conflict")
+
+/**
+ * Liste paginée qui ne finit pas dans le temps imparti ([StalkerClient.listBudgetMs]) : portail qui invente des pages sans
+ * fin ou répond trop lentement. La catégorie est sautée (son contenu précédent est gardé) au lieu de bloquer la synchro.
+ */
+class StalkerListTooLongException(val pages: Int) : java.io.IOException("Stalker: list too long ($pages pages)")
 
 /**
  * Point d'entrée de l'API retenu pour chaque portail (sondé à l'ajout, puis réutilisé) : `…/portal.php` ou
@@ -96,11 +100,31 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
         .callTimeout(12, java.util.concurrent.TimeUnit.SECONDS)
         .build()
 
+    /**
+     * Pages des listes du catalogue (`get_ordered_list`, `get_all_channels`) : 90 s d'inactivité tolérées en lecture. Un
+     * portail lent calcule la première page d'une grosse catégorie (tri par date) en 40 à 60 s ; à 30 s, chaque nouvel
+     * essai relançait ce calcul et la catégorie finissait sautée (films absents jusqu'à une 2e synchro, cache du portail
+     * alors chaud). Jamais utilisé par le lecteur (délais courts ci-dessus, I4).
+     */
+    private val okList: OkHttpClient = ok.newBuilder()
+        .readTimeout(90, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
+
+    /** Délai d'inactivité en lecture (ms) des pages de liste (vérifié par les tests). */
+    internal val listReadTimeoutMs: Int get() = okList.readTimeoutMillis
+
     /** Marque de contexte : les requêtes faites dessous (session comprise) passent par [okShort]. */
     internal object ShortCalls : kotlin.coroutines.AbstractCoroutineContextElement(ShortCallsKey)
     internal object ShortCallsKey : kotlin.coroutines.CoroutineContext.Key<ShortCalls>
 
-    private suspend fun client(): OkHttpClient = if (kotlinx.coroutines.currentCoroutineContext()[ShortCallsKey] != null) okShort else ok
+    /** Marque de contexte : pages de liste du catalogue, lues avec [okList] (sauf sous [ShortCalls], prioritaire). */
+    internal object ListCalls : kotlin.coroutines.AbstractCoroutineContextElement(ListCallsKey)
+    internal object ListCallsKey : kotlin.coroutines.CoroutineContext.Key<ListCalls>
+
+    private suspend fun client(): OkHttpClient {
+        val ctx = kotlinx.coroutines.currentCoroutineContext()
+        return if (ctx[ShortCallsKey] != null) okShort else if (ctx[ListCallsKey] != null) okList else ok
+    }
 
     /** Délais (ms) du client des petits appels de lecture : connexion, lecture, appel complet (vérifiés par les tests). */
     internal val shortTimeoutsMs: Triple<Int, Int, Int> get() = Triple(okShort.connectTimeoutMillis, okShort.readTimeoutMillis, okShort.callTimeoutMillis)
@@ -329,7 +353,7 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
             val s = session(a)
             val f = java.io.File.createTempFile("stalker-", ".json")
             try {
-                ok.newCall(request(a, s.api, s.token, params)).execute().use { resp ->
+                okList.newCall(request(a, s.api, s.token, params)).execute().use { resp ->
                     if (!resp.isSuccessful) throw HttpStatusException(resp.code)
                     f.outputStream().buffered().use { out -> resp.body?.byteStream()?.copyTo(out) }
                 }
@@ -375,37 +399,52 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
             .mapNotNull { StalkerParse.channel(p.id, p.baseUrl, it) }
 
     /**
-     * Toutes les pages d'une liste `get_ordered_list` : la page 1 donne `total_items` et `max_page_items`, les suivantes
-     * sont lues à 3 en parallèle. Plafond de sécurité : [MAX_PAGES] pages (14 éléments par page sur la plupart des
-     * portails : 50 000 titres = 3 572 pages). Portail qui ne donne pas `total_items` : pages lues une à une jusqu'à une
-     * page vide ou déjà vue. Chaque page a ses propres nouvelles tentatives ([pageWithRetry]) ; une page toujours en échec
-     * fait échouer la liste (la synchro saute alors la catégorie et garde son contenu précédent).
+     * Toutes les pages d'une liste `get_ordered_list`, lecture BORNÉE. La page 1 donne `total_items` et `max_page_items` ;
+     * les pages annoncées sont lues par fenêtres de [PAGE_PARALLELISM] en parallèle. Arrêt dès qu'une page revient vide ou
+     * ne contient que des éléments déjà vus (portail qui ignore `p` et renvoie toujours la même page : avant, ses 3 572
+     * « pages » annoncées étaient toutes demandées), ce qui coupe aussi un `total_items` gonflé. Total trop petit : tant
+     * que la dernière page est pleine, les suivantes sont lues une à une. Portail sans `total_items` : pages lues une à
+     * une jusqu'à une page vide ou déjà vue. Plafonds : [MAX_PAGES] pages et [listBudgetMs] de temps (au-delà :
+     * [StalkerListTooLongException], la catégorie est sautée et garde son contenu). Chaque page a ses propres nouvelles
+     * tentatives ([pageWithRetry]) ; une page toujours en échec fait échouer la liste.
      */
-    internal suspend fun pagedItems(a: Account, params: List<Pair<String, String>>): List<JMap> {
-        val first = pageWithRetry(a, params + ("p" to "1")) ?: return emptyList()
-        if (first.items.isEmpty()) return emptyList()
+    internal suspend fun pagedItems(a: Account, params: List<Pair<String, String>>): List<JMap> = withContext(ListCalls) {
+        val deadline = System.currentTimeMillis() + listBudgetMs
+        val first = pageWithRetry(a, params + ("p" to "1")) ?: return@withContext emptyList()
+        if (first.items.isEmpty()) return@withContext emptyList()
         val idOf = { o: JMap -> o.s("id") ?: o.hashCode().toString() }
-        if (!first.totalKnown) {
-            val out = LinkedHashMap<String, JMap>()
-            first.items.forEach { out.putIfAbsent(idOf(it), it) }
-            var n = 2
-            while (n <= MAX_PAGES) {
-                val items = pageWithRetry(a, params + ("p" to n.toString()))?.items.orEmpty()
-                // Page vide, ou portail qui ignore `p` et renvoie toujours la même page : fin de la liste.
-                if (items.isEmpty() || items.all { idOf(it) in out }) break
-                items.forEach { out.putIfAbsent(idOf(it), it) }
-                n++
+        val out = LinkedHashMap<String, JMap>()
+        first.items.forEach { out.putIfAbsent(idOf(it), it) }
+        val perPage = maxOf(first.perPage, first.items.size, 1)
+        val announced = if (first.totalKnown) first.pages.coerceIn(1, MAX_PAGES) else 1
+        var lastFull = first.items.size >= perPage
+        var n = 2
+        while (n <= MAX_PAGES) {
+            val inAnnounced = n <= announced
+            // Au-delà des pages annoncées (total connu) : seulement si la dernière page était pleine (total trop petit).
+            if (!inAnnounced && first.totalKnown && !lastFull) break
+            if (System.currentTimeMillis() > deadline) {
+                com.ultratv.tv.nativeapp.RemoteLog.info("StalkerSync", StalkerSyncLog.tooLong(params.firstOrNull { it.first == "type" }?.second ?: "-", n - 1))
+                throw StalkerListTooLongException(n - 1)
             }
-            return out.values.toList()
+            val last = if (inAnnounced) minOf(announced, n + PAGE_PARALLELISM - 1) else n
+            val window = if (last == n) listOf(pageWithRetry(a, params + ("p" to n.toString()))?.items.orEmpty())
+                else coroutineScope { (n..last).map { k -> async { pageWithRetry(a, params + ("p" to k.toString()))?.items.orEmpty() } }.awaitAll() }
+            var end = false
+            for (items in window) {
+                // Page vide, ou déjà vue en entier : fin de la liste (les pages suivantes de la fenêtre n'apportent rien).
+                if (items.isEmpty() || items.all { idOf(it) in out }) { end = true; break }
+                items.forEach { out.putIfAbsent(idOf(it), it) }
+                lastFull = items.size >= perPage
+            }
+            if (end) break
+            n = last + 1
         }
-        val pages = first.pages.coerceIn(1, MAX_PAGES)
-        if (pages == 1) return first.items
-        val gate = Semaphore(PAGE_PARALLELISM)
-        val rest = coroutineScope {
-            (2..pages).map { n -> async { gate.withPermit { pageWithRetry(a, params + ("p" to n.toString()))?.items.orEmpty() } } }.awaitAll()
-        }
-        return (listOf(first.items) + rest).flatten().distinctBy(idOf)
+        out.values.toList()
     }
+
+    /** Temps maximal de lecture d'UNE liste paginée (catégorie) ; réduit dans les tests. */
+    @Volatile internal var listBudgetMs = 20 * 60_000L
 
     /**
      * Une page de liste, avec [PAGE_ATTEMPTS] essais au plus sur délai dépassé, coupure, 429 ou 5xx (délai croissant).

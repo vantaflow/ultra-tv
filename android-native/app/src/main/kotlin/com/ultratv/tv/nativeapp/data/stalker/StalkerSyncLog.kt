@@ -40,6 +40,14 @@ object StalkerSyncLog {
     fun retry(type: String, attempt: Int, t: Throwable?): String =
         LogSanitizer.sanitize("stalker sync retry step=$STEP_PAGE type=$type attempt=$attempt http=${httpOf(t) ?: "-"} error=${errorClass(t)}")
 
+    /** Liste paginée arrêtée faute de fin dans le temps imparti. */
+    fun tooLong(type: String, pages: Int): String =
+        LogSanitizer.sanitize("stalker sync list_too_long type=$type pages=$pages")
+
+    /** Seconde lecture, en fin de partie, des catégories sautées : relues, toujours en échec. */
+    fun retried(type: String, recovered: Int, still: Int): String =
+        LogSanitizer.sanitize("stalker sync retry_pass type=$type recovered=$recovered still_failed=$still")
+
     /** Bilan d'une partie : catégories lues, sautées, éléments écrits. */
     fun summary(type: String, read: Int, skipped: Int, items: Int): String =
         LogSanitizer.sanitize("stalker sync done type=$type categories=$read skipped=$skipped items=$items")

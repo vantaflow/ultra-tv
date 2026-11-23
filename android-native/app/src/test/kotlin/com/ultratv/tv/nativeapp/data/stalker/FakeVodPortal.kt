@@ -29,6 +29,17 @@ class FakeVodPortal(
     @Volatile var omitTotal = false
     @Volatile var expireAfterListRequests = -1
     @Volatile var vodCreateLinkFails = false
+    /** Portail qui ignore `p` : toujours la page 1, quel que soit le numéro demandé (avec `total_items` annoncé). */
+    @Volatile var ignorePage = false
+    /** `total_items` annoncé à la place du vrai nombre (faux total, trop grand ou trop petit). */
+    @Volatile var fakeTotal: Int? = null
+    /** Pagination sans fin : chaque page renvoie de nouveaux éléments, sans `total_items`. */
+    @Volatile var infinite = false
+    /** Catégorie lente : ses [slowAttempts] premières pages dépassent le délai (SocketTimeoutException). */
+    @Volatile var slowCategory: String? = null
+    val slowAttempts = AtomicInteger()
+    /** Appelé à chaque page de liste (observation de la progression pendant la lecture). */
+    @Volatile var onList: (() -> Unit)? = null
     val handshakes = AtomicInteger()
     val listRequests = AtomicInteger()
     val urls = CopyOnWriteArrayList<okhttp3.HttpUrl>()
@@ -70,14 +81,16 @@ class FakeVodPortal(
         val movieId = u.queryParameter("movie_id")
         if (movieId != null) return body(200, seasonsOrEpisodes(movieId, u.queryParameter("season_id") ?: "0"), req)
         val cat = u.queryParameter("category") ?: return body(200, """{"js":[]}""", req)
+        onList?.invoke()
         if (cat in failingCategories) return body(500, "", req)
-        val count = (if (type == "series") seriesCategories else vodCategories)[cat]?.second ?: 0
-        val from = (page - 1) * perPage
+        if (cat == slowCategory && slowAttempts.getAndDecrement() > 0) throw java.net.SocketTimeoutException("lent")
+        val count = if (infinite) Int.MAX_VALUE else (if (type == "series") seriesCategories else vodCategories)[cat]?.second ?: 0
+        val from = ((if (ignorePage) 1 else page) - 1) * perPage
         val items = (from until minOf(count, from + perPage)).joinToString(",") { i ->
             if (type == "series") """{"id":"$cat-$i","name":"FR Série $cat-$i","category_id":"$cat","added":"2026-01-0${1 + i % 9} 10:00:00"}"""
             else """{"id":"$cat-$i","name":"FR Film $cat-$i","cmd":"/media/$cat-$i.mpg","category_id":"$cat"}"""
         }
-        val total = if (omitTotal) "" else """"total_items":$count,"""
+        val total = if (omitTotal || infinite) "" else """"total_items":${fakeTotal ?: count},"""
         return body(200, """{"js":{$total"max_page_items":$perPage,"data":[$items]}}""", req)
     }
 
