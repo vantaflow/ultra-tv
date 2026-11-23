@@ -39,6 +39,8 @@ class PrefsChannelPlaybackMemory @Inject constructor(@ApplicationContext ctx: Co
         // Une fois : oubli des combinaisons retenues jusqu'à la 1.3.61. Une bascule de fréquence de l'écran (noir HDMI)
         // passait pour « aucune image » et faisait retenir décodage logiciel ou VLC pour la chaîne : lent ensuite pour
         // toujours. Les langues audio retenues sont gardées.
+        // Refait une fois en 1.3.73 : l'aperçu du Direct jugeait « aucune image » avant que sa vidéo ait une surface et
+        // retenait VLC ou le décodage logiciel pour la chaîne (image noire ensuite dans l'aperçu et le Guide).
         if (!sp.getBoolean(RESET_KEY, false)) {
             val e = sp.edit()
             sp.all.keys.filter { it.startsWith("c:") }.forEach { e.remove(it) }
@@ -72,5 +74,5 @@ class PrefsChannelPlaybackMemory @Inject constructor(@ApplicationContext ctx: Co
         e.apply()
     }
 
-    private companion object { const val MAX = 500; const val RESET_KEY = "combo_reset_1361" }
+    private companion object { const val MAX = 500; const val RESET_KEY = "combo_reset_1373" }
 }

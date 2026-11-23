@@ -61,6 +61,9 @@ class SharedLiveSessionTest {
         override fun limitQuality(maxHeight: Int, maxBitrateBps: Int?) {}
         override fun stats() = EngineStats()
         override fun setMuted(muted: Boolean) { this.muted = muted }
+        /** Vue vidéo à l'écran avec sa surface (faux : vue pas encore placée dans l'encadré). */
+        var surface = false
+        override val surfaceReady: Boolean get() = surface
         override fun release() { released = true }
     }
 
@@ -532,6 +535,78 @@ class SharedLiveSessionTest {
         assertFalse(shared.session!!.previewMode)
         shared.demote()
         assertTrue(shared.session!!.previewMode)
+    }
+
+    // ── Aperçu du Direct (constat box rc8) : vidéo pas encore dans l'encadré à la première entrée → « aucune image » au bout de
+    // 8 s, replis Exo → Exo logiciel → VLC, combinaison retenue pour la chaîne : image noire ensuite sur cette chaîne. ──
+
+    private val memory = InMemoryChannelPlaybackMemory()
+    private val createWithMemory: () -> PlaybackSession = {
+        sessionsCreated++
+        PlaybackSession(
+            ctx, scope, FrameLayout(ctx), { settings }, memory, NetworkMonitor(ctx),
+            isLive = true, autoFrameRate = false, userAgent = "test",
+            engineFactory = { k, c -> FakeEngine(k, c, engines).also { engines += it } },
+        )
+    }
+
+    @Test
+    fun apercuDuDirect_vueSansSurface_aucunRepliTantQueLaVideoNEstPasAffichee() {
+        shared.preview("1:a", "1:a", "http://a", true, create)
+        engines.single().flow.tryEmit(EngineEvent.Ready)
+        scope.advanceTimeBy(40_000)
+        assertEquals("pas de surface : ce n'est pas une panne du décodeur", 1, engines.size)
+        assertFalse(engines.single().released)
+    }
+
+    @Test
+    fun apercuDuDirect_surfaceTardive_delaiDeGracePuisReplisHabituels() {
+        shared.preview("1:a", "1:a", "http://a", true, create)
+        val e = engines.single()
+        e.flow.tryEmit(EngineEvent.Ready)
+        scope.advanceTimeBy(20_000)
+        e.surface = true                                    // la vidéo arrive enfin dans l'encadré
+        scope.advanceTimeBy(3_000)
+        assertEquals("le décodeur a le temps de rendre sa première image sur la nouvelle surface", 1, engines.size)
+        scope.advanceTimeBy(8_000)
+        assertEquals("toujours aucune image avec une surface : repli habituel du Direct", 2, engines.size)
+    }
+
+    @Test
+    fun apercuDuDirect_surfacePresente_garde_les_replis() {
+        shared.preview("1:a", "1:a", "http://a", true, create)
+        engines.single().surface = true
+        engines.single().flow.tryEmit(EngineEvent.Ready)
+        scope.advanceTimeBy(9_000)
+        assertEquals(2, engines.size)
+    }
+
+    @Test
+    fun apercuDuDirect_combinaisonDeRepli_jamaisRetenuePourLaChaine() {
+        shared.preview("1:a", "1:a", "http://a", true, createWithMemory)
+        engines.single().surface = true
+        engines.single().flow.tryEmit(EngineEvent.Ready)
+        scope.advanceTimeBy(9_000)                          // repli
+        assertEquals(2, engines.size)
+        engines.last().surface = true
+        firstFrame()
+        scope.advanceTimeBy(10_000)
+        assertNull("repli trouvé dans l'aperçu : pas retenu (le plein écran garde sa mémoire)", memory.combo("1:a"))
+    }
+
+    @Test
+    fun pleinEcran_combinaisonDeRepli_toujoursRetenue() {
+        shared.openFullscreen("1:a", createWithMemory)
+        val adoption = shared.adopt("1:a")!!
+        adoption.session.start("http://a", "1:a")
+        engines.single().surface = true
+        engines.single().flow.tryEmit(EngineEvent.Ready)
+        scope.advanceTimeBy(9_000)
+        assertEquals(2, engines.size)
+        engines.last().surface = true
+        firstFrame()
+        scope.advanceTimeBy(10_000)
+        assertNotNull(memory.combo("1:a"))
     }
 
     @Test

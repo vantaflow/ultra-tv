@@ -37,6 +37,19 @@ object FrameProbe {
         return all.firstOrNull { it is TextureView } ?: all.firstOrNull()
     }
 
+    /**
+     * La vidéo a une surface où s'afficher : vue à l'écran, et surface de rendu créée (SurfaceView : surface valide ;
+     * TextureView : texture disponible). Sans elle, aucune image ne peut sortir — ce n'est pas une panne du décodeur.
+     */
+    fun surfaceReady(root: View): Boolean {
+        if (!root.isShown) return false
+        return when (val v = videoView(root)) {
+            is SurfaceView -> v.holder.surface?.isValid == true
+            is TextureView -> v.isAvailable
+            else -> true
+        }
+    }
+
     /** Vignette de l'image vidéo (pixels ARGB), ou null si la copie n'est pas possible (surface pas prête, Android < 7). */
     suspend fun sample(root: View): IntArray? {
         val v = videoView(root) ?: return null

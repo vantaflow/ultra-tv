@@ -90,6 +90,39 @@ class LivePreviewPolicyTest {
         return out
     }
 
+    // ── Ouverture du Guide (constat box rc8) : la première chaîne partait avant le focus initial, puis la chaîne focalisée :
+    // deux ouvertures du flux. La première chaîne SANS sélection n'est qu'un choix d'attente. ──
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private fun collectProvisional(vararg steps: Pair<Long, String?>): List<Pair<Long, String>> {
+        val out = mutableListOf<Pair<Long, String>>()
+        kotlinx.coroutines.test.runTest {
+            with(LivePreviewPolicy) {
+                timed(*steps).immediateThenSettled(700, 1_500, now = { testScheduler.currentTime }, provisionalMs = 2_000, isProvisional = { it.startsWith("~") })
+                    .collect { out += testScheduler.currentTime to it }
+            }
+        }
+        return out
+    }
+
+    @Test fun guide_ouverture_focusInitialPendantLAttente_uneSeuleOuverture() {
+        assertEquals(listOf(800L to "2"), collectProvisional(0L to "~1", 800L to "2"))
+    }
+
+    @Test fun guide_ouverture_aucunFocus_premiereChaineApresLAttente() {
+        assertEquals(listOf(2_000L to "~1"), collectProvisional(0L to "~1"))
+    }
+
+    @Test fun guide_ouverture_selectionApresLAttente_delaiHabituel() {
+        assertEquals(listOf(2_000L to "~1", 5_700L to "2"), collectProvisional(0L to "~1", 5_000L to "2"))
+    }
+
+    @Test fun guide_cible_sansSelection_estProvisoire() {
+        assertEquals("1" to true, LivePreviewPolicy.guidePick(selected = null, first = "1", returningFromPlayer = false))
+        assertEquals("37" to false, LivePreviewPolicy.guidePick(selected = "37", first = "1", returningFromPlayer = false))
+        assertEquals(null, LivePreviewPolicy.guidePick(selected = null, first = "1", returningFromPlayer = true))
+    }
+
     @Test fun guide_delaiAdaptatif_bornes() {
         assertEquals(700L, LivePreviewPolicy.guideSettledDelayMs(LivePreviewPolicy.DEFAULT_DELAY_MS))
         assertEquals(1_000L, LivePreviewPolicy.guideSettledDelayMs(1_000))

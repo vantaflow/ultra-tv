@@ -61,6 +61,8 @@ internal const val AUDIO_ONLY_CONFIRM_MS = 1_500L
 
 /** Direct bloqué en chargement après avoir joué : délai avant reconnexion. */
 private const val STALL_MS = 12_000L
+/** Aperçu : délai laissé au décodeur pour rendre sa première image après l'arrivée tardive de la surface. */
+internal const val PICTURE_AFTER_SURFACE_MS = 5_000L
 
 /**
  * Démarrage figé : délai sans première image ni progrès de chargement avant de traiter le lancement comme une erreur
@@ -238,6 +240,12 @@ class PlaybackSession(
      * une panne. Fixé par [SharedLiveSession] (vrai pour l'aperçu, faux dès que le plein écran reprend la session).
      */
     var previewMode: Boolean = false
+    /**
+     * Session affichée dans un APERÇU (Direct comme Guide) : « aucune image » n'est jugé qu'une fois la vidéo dotée d'une
+     * surface à l'écran, et un repli trouvé ici n'est pas retenu pour la chaîne. Indépendant de [previewMode] : le Direct garde
+     * ses replis. Fixé par [SharedLiveSession] (vrai en aperçu, faux en plein écran).
+     */
+    var waitForSurface: Boolean = false
     private var hdrDiagJob: Job? = null
     private val reconnectAllowed get() = isLive && liveReconnect
 
@@ -569,7 +577,10 @@ class PlaybackSession(
                 armBlackPictureCheck(e)
                 // La combinaison est retenue pour la chaîne si elle a demandé un repli ou un choix manuel et tient 5 s.
                 rememberJob?.cancel()
-                rememberJob = scope.launch { delay(5_000); if ((tried.size > 1 || manualSwitch) && !vlcBySession) key?.let { memory.remember(it, combo, null) } }
+                // Jamais depuis un aperçu (Direct, Guide) : vidéo dans un petit encadré, surface tardive ou partagée — un repli
+                // trouvé là n'est pas un défaut de la chaîne (constat box : VLC retenu, image noire ensuite sur la chaîne).
+                val fromPreview = waitForSurface || previewMode
+                rememberJob = scope.launch { delay(5_000); if ((tried.size > 1 || manualSwitch) && !vlcBySession && !fromPreview) key?.let { memory.remember(it, combo, null) } }
                 sameRetries = 0
             }
             // Direct : une « fin » est une session fermée par le serveur, pas la fin du programme → on se reconnecte.
@@ -644,9 +655,13 @@ class PlaybackSession(
     private fun armPictureWatchdog(e: PlayerEngine) {
         watchdog = scope.launch {
             delay(8_000)
-            // Aperçu dont la vidéo n'est pas à l'écran : aucune surface où rendre, ce n'est pas une panne du décodeur.
-            while (previewMode && !firstFrame && e.hasVideo && !e.view.isShown && engine === e) delay(2_000)
-            if (!firstFrame && e.hasVideo) onError(PlayErrorKind.NO_PICTURE)
+            // Aperçu (Direct ou Guide) dont la vidéo n'a pas encore de surface (vue absente de l'encadré, surface pas créée) :
+            // aucune image ne peut sortir, ce n'est pas une panne du décodeur. Le jugement attend la surface, puis laisse au
+            // décodeur [PICTURE_AFTER_SURFACE_MS] pour y rendre sa première image.
+            var waited = false
+            while ((previewMode || waitForSurface) && !firstFrame && e.hasVideo && !e.surfaceReady && engine === e) { waited = true; delay(2_000) }
+            if (waited) delay(PICTURE_AFTER_SURFACE_MS)
+            if (engine === e && !firstFrame && e.hasVideo) onError(PlayErrorKind.NO_PICTURE)
         }
     }
 
