@@ -230,7 +230,16 @@ adb install -r UltraTV.apk</code></pre>
 <section id="soutenir">
   <h2>Support the project</h2>
   <p>Ultra TV is free and ad-free, and will stay that way. A donation helps pay for the servers (cloud sync, guide, artwork) and the time spent improving it. Card or PayPal, from any country; no card details ever go through Ultra TV.</p>
-  <div id="paypal-container-JHPS8RCN35UWA" class="pp-hosted"></div>
+  <div class="pp-tabs"><label class="pp-amt"><input type="radio" name="pp-mode" value="once" checked/><span>One time</span></label><label class="pp-amt"><input type="radio" name="pp-mode" value="monthly"/><span>Monthly</span></label></div>
+  <div id="pp-once"><div id="paypal-container-JHPS8RCN35UWA" class="pp-hosted"></div></div>
+  <div id="pp-monthly" hidden>
+    <div class="pp-tabs"><label class="pp-amt"><input type="radio" name="pp-plan" value="P-0VY777380G390052WNMCJY6A"/><span>3 €</span></label><label class="pp-amt"><input type="radio" name="pp-plan" value="P-73H946429U469760TNMCJZXQ" checked/><span>5 €</span></label><label class="pp-amt"><input type="radio" name="pp-plan" value="P-70934607BP2820041NMCJ2RI"/><span>10 €</span></label></div>
+    <div id="pp-sub" class="pp-hosted"></div>
+    <p>Monthly donation, cancel anytime from your PayPal account.</p>
+    <p id="pp-sub-msg" role="status" aria-live="polite"></p>
+    <span hidden id="pp-error">The payment did not go through. You can try again or use the link below.</span>
+    <span hidden id="pp-sub-thanks">Thank you! Your monthly donation is active.</span>
+  </div>
   <p class="cta"><a class="btn alt" href="https://www.paypal.com/ncp/payment/JHPS8RCN35UWA" rel="noopener">Or use the direct PayPal link</a></p>
 </section>
 
@@ -252,10 +261,24 @@ adb install -r UltraTV.apk</code></pre>
 <script src="../app.js" defer></script>
 <!-- Dons : bouton PayPal hébergé (compte Business ; montant libre, PayPal ou carte, réglé dans le tableau de bord PayPal) -->
 <script src="https://www.paypal.com/sdk/js?client-id=BAAJpALsjVI4UKcJ1QcxYWilvj4yiEtMWBFMbknLBEgJCc72XlRLW2oD1bTqloBUQbPduy5rjwOk9ID80A&components=hosted-buttons&disable-funding=venmo&currency=EUR" crossorigin="anonymous" async></script>
+<!-- Dons mensuels : plans d'abonnement PayPal (SDK dans l'espace de noms paypalSub, application REST « UTV ») -->
+<script src="https://www.paypal.com/sdk/js?client-id=BAAj_4Phky4o6zEklDhdQHbghPjUbv14ymR4CsSdaLRNOrgd1jEx6zu6h_VYqCQbBVqtb_gk3HYMPHs_JQ&vault=true&intent=subscription&components=buttons&disable-funding=venmo&currency=EUR" data-namespace="paypalSub" async></script>
 <script>
 (function () {
   function go() { if (!window.paypal || !window.paypal.HostedButtons) return; window.paypal.HostedButtons({ hostedButtonId: 'JHPS8RCN35UWA' }).render('#paypal-container-JHPS8RCN35UWA'); }
-  if (window.paypal) go(); else window.addEventListener('load', go);
+  function sub() {
+    if (!window.paypalSub || !window.paypalSub.Buttons) return;
+    var msg = document.getElementById('pp-sub-msg');
+    window.paypalSub.Buttons({
+      style: { layout: 'vertical', label: 'subscribe' },
+      createSubscription: function (d, a) { var p = document.querySelector('input[name="pp-plan"]:checked'); return a.subscription.create({ plan_id: p ? p.value : 'P-73H946429U469760TNMCJZXQ' }); },
+      onApprove: function () { msg.textContent = (document.getElementById('pp-sub-thanks') || {}).textContent || ''; document.getElementById('pp-sub').hidden = true; },
+      onError: function () { msg.textContent = (document.getElementById('pp-error') || {}).textContent || ''; }
+    }).render('#pp-sub');
+  }
+  document.querySelectorAll('input[name="pp-mode"]').forEach(function (r) { r.addEventListener('change', function () { var m = r.value === 'monthly'; document.getElementById('pp-monthly').hidden = !m; document.getElementById('pp-once').hidden = m; }); });
+  function all() { go(); sub(); }
+  if (document.readyState === 'complete') all(); else window.addEventListener('load', all);
 })();
 </script>
 <!-- Dons : bouton flottant vers la section Soutenir (boutons PayPal intégrés) -->

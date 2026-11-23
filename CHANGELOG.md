@@ -7,7 +7,7 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 ## [Non publié]
 
 ### Android et site (prochaine version)
-- Dons : PayPal seul (Ko-fi et Liberapay retirés partout). Réglages › À propos › Soutenir Ultra TV ouvre le lien de paiement PayPal (montant libre, PayPal ou carte) sur téléphone et tablette ; sur TV, le QR code (généré sur l'appareil) y mène. Cette page et le site vitrine (section Soutenir) : bouton PayPal hébergé du compte Business (montant libre, PayPal ou carte bancaire, réglé dans le tableau de bord PayPal), lien de paiement PayPal en secours. Tableau de bord, README et bouton Sponsor : PayPal seul.
+- Dons : PayPal seul (Ko-fi et Liberapay retirés partout). Réglages › À propos › Soutenir Ultra TV ouvre le lien de paiement PayPal (montant libre, PayPal ou carte) sur téléphone et tablette ; sur TV, le QR code (généré sur l'appareil) y mène. Cette page et le site vitrine (section Soutenir) : bouton PayPal hébergé du compte Business (montant libre, PayPal ou carte bancaire, réglé dans le tableau de bord PayPal), lien de paiement PayPal en secours ; choix « Une fois / Chaque mois » : dons mensuels de 3, 5 ou 10 € par abonnement PayPal (résiliables depuis le compte PayPal). Tableau de bord, README et bouton Sponsor : PayPal seul.
 
 ### Bureau (prochaine version)
 - Accueil : aucune rangée (à la une, en direct, reprises, nouveautés, mieux notés, Trakt, nouveaux épisodes, sport) ne montre plus de contenu d'une catégorie masquée, verrouillée ou adulte ; un profil Enfants ne voit les catégories adultes nulle part (case « Profil Enfants » dans Réglages › Profils).

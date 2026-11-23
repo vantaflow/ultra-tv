@@ -3,7 +3,7 @@ import { escapeHtml as e } from "../http.js";
 import { ENVOYER_DICT, ENVOYER_DIR, ENVOYER_LANGS, ENVOYER_LANG_NAMES } from "../i18n/envoyer.js";
 import { SITE_DICT } from "../i18n/site.js";
 import { ico, jsonForScript, notice } from "../ui/components.js";
-import { DONATE_DICT, DONATE_CURRENCY, PAYPAL_HOSTED_BUTTON_ID, PAYPAL_URL, donateCsp } from "../donate.js";
+import { DONATE_DICT, DONATE_CURRENCY, PAYPAL_HOSTED_BUTTON_ID, PAYPAL_PLANS, PAYPAL_SUB_CLIENT_ID, PAYPAL_URL, donateCsp } from "../donate.js";
 import { shell } from "../ui/layout.js";
 
 const nextField = (next) => (next && next !== "/" ? `<input type="hidden" name="next" value="${e(next)}"/>` : "");
@@ -210,11 +210,21 @@ export function donatePage(n, { lang = "en", clientId = null } = {}) {
   const langLinks = ENVOYER_LANGS.map((l) => `<a href="${e(`/donate?l=${l}`)}" data-lang="${l}" lang="${l}" hreflang="${l}"${l === lang ? ` aria-current="true"` : ""}>${e(ENVOYER_LANG_NAMES[l])}</a>`).join("");
   const direct = `<div class="row"><a class="button${clientId ? " alt-btn" : ""} block" id="pp-direct" href="${e(PAYPAL_URL)}" rel="noopener"${clientId ? "" : " autofocus"}>${e(clientId ? t.direct : t.paypal)}</a></div>`;
   const box = `pp-${PAYPAL_HOSTED_BUTTON_ID}`;
-  const hosted = clientId ? `<div id="${box}" class="pp-hosted"></div>` : "";
+  const plans = PAYPAL_PLANS.map((p, i) => `<label class="pp-amt"><input type="radio" name="pp-plan" value="${e(p.id)}"${i === 1 ? " checked" : ""}/><span>${p.amount} €</span></label>`).join("");
+  const hosted = clientId ? `<div class="pp-tabs" role="radiogroup"><label class="pp-amt"><input type="radio" name="pp-mode" value="once" checked/><span>${e(t.once)}</span></label><label class="pp-amt"><input type="radio" name="pp-mode" value="monthly"/><span>${e(t.monthly)}</span></label></div>
+<div id="pp-once"><div id="${box}" class="pp-hosted"></div></div>
+<div id="pp-monthly" hidden><div class="pp-amts">${plans}</div><div id="pp-sub" class="pp-hosted"></div><p class="hint">${e(t.monthlyNote)}</p><p class="hint" id="pp-sub-msg" role="status" aria-live="polite"></p></div>` : "";
   const body = `<div class="panel"><h1>${e(t.title)}</h1><p class="sub">${e(t.sub)}</p>${hosted}${direct}<p class="hint">${e(t.paypalNote)}</p></div>`;
-  const css = `<style nonce="${n}">.pp-hosted{background:#fff;border-radius:14px;padding:12px;margin:12px 0;color-scheme:light}.pp-hosted:empty{display:none}.pp-hosted{color:#1a1a1a}.pp-hosted label{color:#4a4a4a}.pp-hosted input{background:#fff!important;color:#1a1a1a!important;border:1px solid #c9ccd1!important;box-shadow:none!important}</style>`;
+  const css = `<style nonce="${n}">.pp-tabs,.pp-amts{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.pp-amt{position:relative}.pp-amt input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}.pp-amt span{display:inline-block;min-width:64px;text-align:center;padding:9px 14px;border-radius:999px;border:1px solid currentColor;opacity:.75;font-weight:600}.pp-amt input:checked+span{opacity:1;background:#d9534f;border-color:#d9534f;color:#fff}.pp-amt input:focus-visible+span{outline:2px solid currentColor;outline-offset:2px}.pp-hosted{background:#fff;border-radius:14px;padding:12px;margin:12px 0;color-scheme:light}.pp-hosted:empty{display:none}.pp-hosted{color:#1a1a1a}.pp-hosted label{color:#4a4a4a}.pp-hosted input{background:#fff!important;color:#1a1a1a!important;border:1px solid #c9ccd1!important;box-shadow:none!important}</style>`;
   const extra = clientId ? `<script nonce="${n}" src="https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&components=hosted-buttons&disable-funding=venmo&currency=${DONATE_CURRENCY}" data-csp-nonce="${n}" crossorigin="anonymous" defer></script>
-<script nonce="${n}">(function(){function go(){if(!window.paypal||!window.paypal.HostedButtons)return;window.paypal.HostedButtons({hostedButtonId:"${PAYPAL_HOSTED_BUTTON_ID}"}).render("#${box}");}if(window.paypal)go();else window.addEventListener("load",go);})();</script>${css}` : "";
+<script nonce="${n}" src="https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(PAYPAL_SUB_CLIENT_ID)}&vault=true&intent=subscription&components=buttons&disable-funding=venmo&currency=${DONATE_CURRENCY}" data-namespace="paypalSub" data-csp-nonce="${n}" defer></script>
+<script nonce="${n}">(function(){var subMsg=document.getElementById("pp-sub-msg"),T=${JSON.stringify({ thanks: t.subThanks, error: t.error }).replace(/</g, "\\u003c")};
+function go(){if(!window.paypal||!window.paypal.HostedButtons)return;window.paypal.HostedButtons({hostedButtonId:"${PAYPAL_HOSTED_BUTTON_ID}"}).render("#${box}");}
+function sub(){if(!window.paypalSub||!window.paypalSub.Buttons)return;window.paypalSub.Buttons({style:{layout:"vertical",label:"subscribe"},
+createSubscription:function(d,a){var p=document.querySelector('input[name="pp-plan"]:checked');return a.subscription.create({plan_id:p?p.value:"${PAYPAL_PLANS[1].id}"});},
+onApprove:function(){subMsg.textContent=T.thanks;document.getElementById("pp-sub").hidden=true;},onError:function(){subMsg.textContent=T.error;}}).render("#pp-sub");}
+document.querySelectorAll('input[name="pp-mode"]').forEach(function(r){r.addEventListener("change",function(){var m=r.value==="monthly";document.getElementById("pp-monthly").hidden=!m;document.getElementById("pp-once").hidden=m;});});
+function all(){go();sub();}if(document.readyState==="complete")all();else window.addEventListener("load",all);})();</script>${css}` : "";
   const res = shell(n, { title: t.title, ctx: "public", width: "narrow", body, extra,
     loc: { lang, dir, skip: c.skip, themeBtn: c.themeBtn, themeLabels: { auto: c.themeAuto, light: c.themeLight, dark: c.themeDark }, themeChange: c.themeChange,
       foot: { github: c.footGithub, privacy: c.footPrivacy, navLabel: c.langLabel, langs: `<nav class="langs" aria-label="${e(c.langLabel)}">${langLinks}</nav>` } } });

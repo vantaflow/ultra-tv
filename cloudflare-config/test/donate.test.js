@@ -27,6 +27,11 @@ describe("dons : PayPal seul", () => {
     expect(h).toContain('hostedButtonId:"JHPS8RCN35UWA"');
     expect(h).toContain('data-csp-nonce="n1"');
     expect(h).toContain('id="pp-JHPS8RCN35UWA"');
+    // Dons mensuels : SDK abonnements dans son propre espace de noms, un choix par plan.
+    expect(h).toContain('data-namespace="paypalSub"');
+    expect(h).toContain("vault=true&intent=subscription");
+    for (const id of ["P-0VY777380G390052WNMCJY6A", "P-73H946429U469760TNMCJZXQ", "P-70934607BP2820041NMCJ2RI"]) expect(h).toContain(`value="${id}"`);
+    expect(h).toContain('name="pp-mode" value="monthly"');
     expect(h).toContain('href="https://www.paypal.com/ncp/payment/JHPS8RCN35UWA"');
     const csp = r.headers.get("content-security-policy");
     expect(csp).toContain("script-src 'nonce-n1' https://www.paypal.com");

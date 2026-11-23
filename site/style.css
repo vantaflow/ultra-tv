@@ -56,3 +56,4 @@ footer{padding:32px 0 56px;border-top:1px solid var(--line);color:var(--text2);f
 
 /* Dons : bouton PayPal hébergé (section Soutenir) */
 .pp-hosted{max-width:420px;background:#fff;border-radius:14px;padding:12px;margin:16px 0;color-scheme:light}.pp-hosted:empty{display:none}.pp-hosted{color:#1a1a1a}.pp-hosted label{color:#4a4a4a}.pp-hosted input{background:#fff!important;color:#1a1a1a!important;border:1px solid #c9ccd1!important;box-shadow:none!important}
+.pp-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.pp-amt{position:relative}.pp-amt input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}.pp-amt>span{display:inline-block;min-width:64px;text-align:center;padding:9px 14px;border-radius:999px;border:1px solid currentColor;opacity:.75;font-weight:600}.pp-amt input:checked+span{opacity:1;background:#d9534f;border-color:#d9534f;color:#fff}.pp-amt input:focus-visible+span{outline:2px solid currentColor;outline-offset:2px}
