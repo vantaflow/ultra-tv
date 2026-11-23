@@ -25,7 +25,7 @@ object FrameProbe {
     fun isBlack(px: IntArray, threshold: Int = 20): Boolean = maxLuma(px) < threshold
 
     /** Vue de rendu vidéo du moteur : la première TextureView, sinon la première SurfaceView (VLC ajoute la vidéo avant les sous-titres). */
-    private fun videoView(root: View): View? {
+    internal fun videoView(root: View): View? {
         if (root is TextureView || root is SurfaceView) return root
         if (root !is ViewGroup) return null
         val all = ArrayList<View>()
@@ -38,17 +38,26 @@ object FrameProbe {
     }
 
     /**
-     * La vidéo a une surface où s'afficher : vue à l'écran, et surface de rendu créée (SurfaceView : surface valide ;
-     * TextureView : texture disponible). Sans elle, aucune image ne peut sortir — ce n'est pas une panne du décodeur.
+     * La vidéo a une surface où s'afficher : vue (et vue vidéo) attachée à la fenêtre, visible, de taille non nulle — donc
+     * dans l'hôte actuellement à l'écran, pas dans un hôte retiré ou caché — et surface de rendu créée (SurfaceView :
+     * surface valide ; TextureView : texture disponible). Sans elle, aucune image ne peut sortir — ce n'est pas une panne
+     * du décodeur.
      */
     fun surfaceReady(root: View): Boolean {
-        if (!root.isShown) return false
-        return when (val v = videoView(root)) {
+        if (!shownIn(root)) return false
+        val v = videoView(root)
+        if (v != null && v !== root && !shownIn(v)) return false
+        return when (v) {
             is SurfaceView -> v.holder.surface?.isValid == true
             is TextureView -> v.isAvailable
             else -> true
         }
     }
+
+    /** Vue attachée à la fenêtre, visible (elle et ses parents) et mise en page avec une taille non nulle. Pur, testé. */
+    fun shownIn(v: View): Boolean = shown(v.isAttachedToWindow, v.isShown, v.width, v.height)
+
+    fun shown(attached: Boolean, visible: Boolean, width: Int, height: Int): Boolean = attached && visible && width > 0 && height > 0
 
     /** Vignette de l'image vidéo (pixels ARGB), ou null si la copie n'est pas possible (surface pas prête, Android < 7). */
     suspend fun sample(root: View): IntArray? {

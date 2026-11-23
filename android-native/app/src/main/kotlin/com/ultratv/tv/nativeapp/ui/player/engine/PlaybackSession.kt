@@ -67,6 +67,17 @@ internal const val BUFFERING_PROBE_MS = 1_000L
 internal const val PICTURE_AFTER_SURFACE_MS = 5_000L
 
 /**
+ * Filet de sécurité de la surface : la vue vidéo est à l'écran dans l'hôte courant, le son avance, et toujours aucune image
+ * au bout de ce délai → la sortie vidéo est rebranchée sur la surface affichée (une fois par hôte et par flux ; jamais
+ * de repli de décodeur ici, le contrôle « aucune image » de 8 s reste en place).
+ */
+internal const val SURFACE_REATTACH_MS = 2_000L
+/** Relevés de la surface de l'hôte courant tant qu'aucune image n'est arrivée. */
+internal const val SURFACE_POLL_MS = 250L
+/** Durée maximale de la surveillance de la surface d'un même lancement. */
+internal const val SURFACE_WATCH_MAX_MS = 30_000L
+
+/**
  * Démarrage figé : délai sans première image ni progrès de chargement avant de traiter le lancement comme une erreur
  * (repli vers la combinaison suivante, puis panneau d'erreur). Plus long avec le tampon « Stable » (démarrage plus large).
  */
@@ -262,8 +273,16 @@ class PlaybackSession(
      * en prévenant le moteur (LibVLC coupe sa sortie vidéo avant la destruction de la surface), puis relancée une fois
      * rattachée — sans recharger le flux.
      */
-    fun takeVideoView(): android.view.View {
+    fun takeVideoView(host: String = "?"): android.view.View {
         val old = container.parent as? android.view.ViewGroup
+        // Hôte précédent (accueil, plein écran, Guide…) encore attaché ou non : la vue le quitte ici, explicitement, et
+        // la surface ne compte plus que dans le nouvel hôte (voir [FrameProbe.surfaceReady]).
+        android.util.Log.i("UltraPlay", "surface host=$host take previous=$hostName")
+        if (old != null) android.util.Log.i("UltraPlay", "surface detach host=$hostName (view moved)")
+        hostName = host
+        hostGeneration++
+        // Nouvel hôte avant toute image : nouveau délai du filet de sécurité, compté depuis la surface de CET hôte.
+        engine?.let { if (!firstFrame) armSurfaceWatch(it) }
         // Premier hôte : rien à prévenir. Ensuite, la vue a déjà été affichée ailleurs (même si son ancien hôte a déjà
         // quitté l'écran) : la surface a été ou va être détruite.
         if (!hostedOnce) old?.removeView(container)
@@ -284,6 +303,66 @@ class PlaybackSession(
         return container
     }
     private var hostedOnce = false
+
+    /** Hôte qui affiche la vue vidéo (« direct », « guide », « player »…) : journal seulement. */
+    var hostName: String = "none"
+        private set
+    /** Incrémenté à chaque changement d'hôte ([takeVideoView]). */
+    private var hostGeneration = 0
+    /** Filet de sécurité de la surface ([armSurfaceWatch]). */
+    private var surfaceWatchJob: Job? = null
+    /** Rebranchements de la surface faits par le filet de sécurité (diagnostic, tests). */
+    var surfaceReattaches = 0
+        private set
+    private var surfaceLog: Pair<android.view.SurfaceView, android.view.SurfaceHolder.Callback>? = null
+
+    /**
+     * Tant qu'aucune image n'est arrivée : dès que la surface de l'hôte courant est à l'écran et que le son avance, laisse
+     * [SURFACE_REATTACH_MS] au décodeur, puis rebranche la sortie vidéo sur cette surface (une fois par hôte). Un changement
+     * d'hôte pendant l'attente repart de zéro.
+     */
+    private fun armSurfaceWatch(e: PlayerEngine) {
+        surfaceWatchJob?.cancel()
+        surfaceWatchJob = scope.launch {
+            var reattachedGen = -1
+            var elapsed = 0L
+            while (elapsed < SURFACE_WATCH_MAX_MS) {
+                if (engine !== e || firstFrame || _state.value.audioOnly) return@launch
+                if (!e.surfaceReady || reattachedGen == hostGeneration) { delay(SURFACE_POLL_MS); elapsed += SURFACE_POLL_MS; continue }
+                val gen = hostGeneration
+                delay(SURFACE_REATTACH_MS); elapsed += SURFACE_REATTACH_MS
+                if (engine !== e || firstFrame) return@launch
+                if (SurfaceWatch.shouldReattach(gen == hostGeneration, e.surfaceReady, e.hasVideo, e.isPlaying, firstFrame)) {
+                    android.util.Log.i("UltraPlay", "surface reattach host=$hostName reason=no-picture engine=${combo.engine}")
+                    surfaceReattaches++
+                    e.refreshVideoSurface()
+                    reattachedGen = gen
+                }
+            }
+        }
+    }
+
+    /** Journal des surfaces de la vue vidéo (SurfaceView) : création et destruction, avec l'hôte courant. Aucune adresse. */
+    private fun watchSurfaceLog(e: PlayerEngine) {
+        unwatchSurfaceLog()
+        val sv = FrameProbe.videoView(e.view) as? android.view.SurfaceView ?: return
+        val cb = object : android.view.SurfaceHolder.Callback {
+            override fun surfaceCreated(holder: android.view.SurfaceHolder) {
+                android.util.Log.i("UltraPlay", "surface attach host=$hostName id=${Integer.toHexString(System.identityHashCode(holder.surface))} shown=${FrameProbe.shownIn(sv)}")
+            }
+            override fun surfaceChanged(holder: android.view.SurfaceHolder, format: Int, width: Int, height: Int) {}
+            override fun surfaceDestroyed(holder: android.view.SurfaceHolder) {
+                android.util.Log.i("UltraPlay", "surface detach host=$hostName id=${Integer.toHexString(System.identityHashCode(holder.surface))}")
+            }
+        }
+        sv.holder.addCallback(cb)
+        surfaceLog = sv to cb
+    }
+
+    private fun unwatchSurfaceLog() {
+        surfaceLog?.let { (sv, cb) -> runCatching { sv.holder.removeCallback(cb) } }
+        surfaceLog = null
+    }
 
     /** Ouvre [url]. [channelKey] = « fournisseur:chaîne » pour la mémoire par chaîne (null = pas de mémoire). */
     fun start(url: String, channelKey: String?, resumeMs: Long = 0, props: com.ultratv.tv.nativeapp.data.m3u.StreamProps? = null) {
@@ -340,6 +419,7 @@ class PlaybackSession(
             watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel()
             tried = mutableSetOf(combo); firstFrame = false; launchedAtNs = System.nanoTime()
             _state.value = SessionState(Phase.LOADING, null, combo, presetOverride ?: s.bufferPreset, false, protectedNow)
+            armSurfaceWatch(e)
             if (!isStalkerUrl) { loadOn(e); armStartup(e) }
             else openJob = scope.launch {
                 // Lien frais à chaque ouverture ; en-têtes d'un autre portail (zap entre sources) : moteur recréé.
@@ -505,6 +585,8 @@ class PlaybackSession(
         }
         engine = e
         container.removeAllViews(); container.addView(e.view, FrameLayout.LayoutParams(-1, -1))
+        watchSurfaceLog(e)
+        armSurfaceWatch(e)
         if (muted) e.setMuted(true)
         // Masqué en quittant le lecteur (couche vidéo retirée tout de suite) : toujours réaffiché au lancement suivant.
         container.visibility = android.view.View.VISIBLE
@@ -895,6 +977,8 @@ class PlaybackSession(
 
     private fun releaseEngine() {
         audioOnlyJob?.cancel()
+        surfaceWatchJob?.cancel()
+        unwatchSurfaceLog()
         engine?.let { runCatching { it.release() } }
         engine = null
         launchedBuffer = null

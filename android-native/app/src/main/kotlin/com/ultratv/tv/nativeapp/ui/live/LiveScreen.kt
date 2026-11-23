@@ -718,12 +718,12 @@ internal fun oneLine(s: String): String = s.replace(WS_RUN, " ").trim()
  */
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
-internal fun SharedVideo(session: com.ultratv.tv.nativeapp.ui.player.engine.PlaybackSession, shared: com.ultratv.tv.nativeapp.ui.player.engine.SharedLiveSession, logo: @Composable () -> Unit) {
+internal fun SharedVideo(session: com.ultratv.tv.nativeapp.ui.player.engine.PlaybackSession, shared: com.ultratv.tv.nativeapp.ui.player.engine.SharedLiveSession, logo: @Composable () -> Unit, host: String = "direct") {
     val st by session.state.collectAsState()
     DisposableEffect(session) { shared.hostAttached(); onDispose { shared.hostDetached() } }
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         androidx.compose.runtime.key(session) {
-            androidx.compose.ui.viewinterop.AndroidView(factory = { session.takeVideoView() }, modifier = Modifier.fillMaxSize())
+            androidx.compose.ui.viewinterop.AndroidView(factory = { session.takeVideoView(host) }, modifier = Modifier.fillMaxSize())
         }
         if (st.phase != com.ultratv.tv.nativeapp.ui.player.engine.Phase.PLAYING || !st.hasPicture) logo()
     }

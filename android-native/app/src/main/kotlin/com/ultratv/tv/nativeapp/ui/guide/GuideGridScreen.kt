@@ -801,7 +801,7 @@ internal fun GuidePreviewVideo(
             if (live != null && shared != null) {
                 // Ancienne chaîne encore à l'écran sous la nouvelle sélection : le logo opaque de la chaîne montrée la recouvre
                 // (un seul logo : celui de la vidéo n'est demandé que pour la chaîne qu'elle lit).
-                com.ultratv.tv.nativeapp.ui.live.SharedVideo(live, shared, if (matches) logo else NO_LOGO)
+                com.ultratv.tv.nativeapp.ui.live.SharedVideo(live, shared, if (matches) logo else NO_LOGO, host = "guide")
                 if (!matches) logo()
             } else logo()
         }
