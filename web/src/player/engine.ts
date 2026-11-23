@@ -32,6 +32,23 @@ export interface Tracks {
   text: TrackInfo[]; activeText: number;
   levels: { id: number; label: string }[]; activeLevel: number;
 }
+/**
+ * Réglages mpegts.js. Flux continu = conversion du bureau : jamais de rattrapage de latence (le convertisseur écrit plus vite
+ * que le temps réel, le rattrapage sauterait des scènes). Direct : rattrapage DOUX. Avant, au-delà de 8 s de retard, le lecteur
+ * sautait en avant en ne gardant que 1,5 s de réserve ; les serveurs IPTV envoyant par à-coups, la moindre irrégularité du réseau
+ * provoquait une coupure (« mises en mémoire tampon » signalées sur Mac, alors qu'ExoPlayer sur TV Android garde une large réserve).
+ * Désormais : saut seulement au-delà de 30 s de retard, en gardant 6 s de réserve.
+ */
+export function mpegtsConfig(a: { live: boolean; continuous?: boolean }) {
+  return {
+    enableWorker: true,
+    liveBufferLatencyChasing: !a.continuous && a.live,
+    liveBufferLatencyMaxLatency: 30,
+    liveBufferLatencyMinRemain: 6,
+    lazyLoadMaxDuration: 60,
+  };
+}
+
 export interface Stats { engine: string; width: number; height: number; bitrate: number; buffer: number; dropped: number; codec: string }
 
 export interface EngineEvents {
@@ -201,7 +218,7 @@ export class PlayerEngine {
       { type: "mpegts", isLive: !!a.continuous || a.live, url: wrapUrl(t, a.url), headers } as never,
       // Flux continu = conversion du bureau : jamais de rattrapage de latence (le convertisseur écrit plus vite
       // que le temps réel, le chasing sauterait des scènes). Le direct garde son comportement.
-      { enableWorker: true, liveBufferLatencyChasing: !a.continuous && a.live, liveBufferLatencyMaxLatency: 8, liveBufferLatencyMinRemain: 1.5, lazyLoadMaxDuration: 60 } as never,
+      mpegtsConfig(a) as never,
     );
     this.engineName = "mpegts.js";
     player.on(mod.Events.ERROR, (_t: unknown, _d: unknown, info: unknown) => this.fail("mpegts", (info as { code?: number } | undefined)?.code));
