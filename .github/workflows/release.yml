@@ -120,6 +120,13 @@ jobs:
       # AGP emits app-release.apk; the release artifact / in-app updater both
       # expect UltraTV-debug.apk (debug-suffixed applicationId lineage). Rename
       # and emit the sibling .sha256 the updater verifies (UltraTV-debug.apk.sha256).
+      # Fichiers publiés et qui les lit (ne rien retirer sans vérifier les versions encore en circulation) :
+      #   UltraTV-<v>-<abi>.apk + SHA256SUMS.txt      mise à jour intégrée ≥ 1.2.0 (UpdateAssets), firmware KM2 (v7a)
+      #   UltraTV-<v>-<abi>.dm                       mise à jour intégrée ≥ 1.2.80 (profil de démarrage, Android 12+)
+      #   UltraTV-<v>-armeabi-v7a-android7.apk       mise à jour intégrée ≥ 1.3.40 sous Android 7.x (Fire OS 6)
+      #   UltraTV-debug.apk + .sha256                mise à jour intégrée, repli (x86, versions ≤ 1.1.0)
+      #   UltraTV-<abi>.apk, UltraTV-android7.apk    liens stables : Worker /download/android*, README, site, Kairo
+      #   UltraTV.apk                                Worker /download/android-universal, README, site (adb), liens anciens
       - name: Stage release assets
         working-directory: ${{ github.workspace }}
         run: |
@@ -153,33 +160,32 @@ jobs:
           PROFGEN=$(ls "$ANDROID_HOME"/cmdline-tools/*/bin/profgen 2>/dev/null | sort -V | tail -1)
           if [ -n "$PROFGEN" ]; then
             for f in dist/UltraTV-"$V"-*.apk; do
+              # APK android7 : pas de .dm (format Android 12+, jamais lu sur Android 7 ; la mise à jour intégrée ne le
+              # cherche pas pour cet APK).
+              case "$f" in *-android7.apk) continue ;; esac
               "$PROFGEN" extractProfile -a "$f" -odm "${f%.apk}.dm" -pf v0_1_5_s || echo "::warning::.dm non généré pour $f"
             done
           else
             echo "::warning::profgen introuvable : pas de .dm"
           fi
           cd dist
+          # Condensat seul de l'universel : lu par la mise à jour intégrée quand aucun APK par processeur ne convient
+          # (et par les versions ≤ 1.1.0). Seul .sha256 publié : UltraTV.apk et les noms fixes n'en ont plus (aucun lecteur ; SHA256SUMS.txt les couvre).
           sha256sum UltraTV-debug.apk | awk '{print $1}' > UltraTV-debug.apk.sha256
-          sha256sum UltraTV.apk | awk '{print $1}' > UltraTV.apk.sha256
-          # Condensat des copies à nom fixe par processeur (même format que UltraTV.apk.sha256).
-          for abi in arm64-v8a armeabi-v7a android7; do
-            [ -f "UltraTV-$abi.apk" ] && sha256sum "UltraTV-$abi.apk" | awk '{print $1}' > "UltraTV-$abi.apk.sha256"
-          done
+          # Copies à nom fixe (UltraTV-<abi>.apk, UltraTV-android7.apk) : pas de .sha256 séparé (aucun lecteur), SHA256SUMS.txt les couvre.
           sha256sum *.apk $(ls *.dm 2>/dev/null) > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
-      # Notes de la release = en-tête « Which file should I download? / Quel fichier télécharger ? »
-      # (.github/release-notes-header.md, {{VERSION}} = version des fichiers publiés) puis section de la version dans
-      # le CHANGELOG : l'appli en tire le résumé des nouveautés affiché dans l'invite de mise à jour (UpdateNotes),
-      # l'en-tête n'y change rien (ReleaseNotesHeaderTest).
+      # Notes de la release (.github/release-notes.sh, même script pour un essai à blanc local) : en-tête « Which file
+      # should I download? / Quel fichier télécharger ? » (.github/release-notes-header.md), résumé anglais (« ### In
+      # English » de la version dans le CHANGELOG), puis la section de la version dans le CHANGELOG en français. L'appli
+      # en tire le résumé des nouveautés affiché dans l'invite de mise à jour (UpdateNotes), l'en-tête et le résumé
+      # anglais n'y changent rien (ReleaseNotesHeaderTest).
       - name: Release notes from CHANGELOG
         working-directory: ${{ github.workspace }}
         run: |
-          V="$(cat VERSION)"
-          FV="${GITHUB_REF_NAME#v}"
-          sed "s/{{VERSION}}/$FV/g" .github/release-notes-header.md > "$RUNNER_TEMP/notes.md"
-          awk -v v="$V" 'index($0, "## [" v "]") == 1 { on = 1; next } on && /^## \[/ { exit } on' CHANGELOG.md >> "$RUNNER_TEMP/notes.md"
-          echo "---- notes ($(wc -l < "$RUNNER_TEMP/notes.md") lignes)"; head -40 "$RUNNER_TEMP/notes.md"
+          bash .github/release-notes.sh "${GITHUB_REF_NAME#v}" "$(cat VERSION)" > "$RUNNER_TEMP/notes.md"
+          echo "---- notes ($(wc -l < "$RUNNER_TEMP/notes.md") lignes)"; head -60 "$RUNNER_TEMP/notes.md"
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
@@ -195,8 +201,4 @@ jobs:
             dist/*.apk
             dist/*.dm
             dist/UltraTV-debug.apk.sha256
-            dist/UltraTV.apk.sha256
-            dist/UltraTV-arm64-v8a.apk.sha256
-            dist/UltraTV-armeabi-v7a.apk.sha256
-            dist/UltraTV-android7.apk.sha256
             dist/SHA256SUMS.txt

@@ -14,6 +14,7 @@ import java.io.File
 class ReleaseNotesHeaderTest {
     private val header = File("../../.github/release-notes-header.md")
     private val workflow = File("../../.github/workflows/release.yml")
+    private val script = File("../../.github/release-notes.sh")
     private fun rendered(v: String) = header.readText().replace("{{VERSION}}", v)
 
     @Test
@@ -45,10 +46,42 @@ class ReleaseNotesHeaderTest {
     }
 
     @Test
+    fun resume_anglais_sans_effet_sur_le_resume_de_mise_a_jour() {
+        // Même structure que la sortie de release-notes.sh : en-tête, résumé anglais (titre de niveau 2), notes en français.
+        val francais = """
+            ### Ajouté
+            - Lecteur : bouton « Passer l'intro ».
+
+            ### Corrigé
+            - Fenêtre trop petite.
+        """.trimIndent()
+        val notes = rendered("1.3.80") + "\n## Changes in 1.3.80 (English summary)\n\n" +
+            "- Player: new \"Skip intro\" button, fixed window size.\n\n## Notes de version 1.3.80 (français)\n\n" + francais
+        assertEquals(UpdateNotes.summary(francais), UpdateNotes.summary(notes))
+        val s = script.readText()
+        assertTrue("le script écrit ce titre anglais", s.contains("## Changes in \$FV (English summary)"))
+        assertTrue("le script écrit ce titre français", s.contains("## Notes de version \$FV (français)"))
+    }
+
+    @Test
     fun workflow_place_l_en_tete_avant_le_changelog() {
         val wf = workflow.readText()
-        assertTrue("release.yml lit l'en-tête", wf.contains(".github/release-notes-header.md"))
-        assertTrue("release.yml remplace {{VERSION}}", wf.contains("{{VERSION}}"))
-        assertTrue("les notes sont toujours tirées du CHANGELOG", wf.contains("CHANGELOG.md"))
+        assertTrue("release.yml appelle le script des notes", wf.contains(".github/release-notes.sh"))
+        val s = script.readText()
+        assertTrue("le script lit l'en-tête", s.contains(".github/release-notes-header.md"))
+        assertTrue("le script remplace {{VERSION}}", s.contains("{{VERSION}}"))
+        assertTrue("les notes sont toujours tirées du CHANGELOG", s.contains("CHANGELOG.md"))
+        assertTrue("le résumé anglais vient de « ### In English »", s.contains("### In English"))
+    }
+
+    @Test
+    fun workflow_publie_seulement_les_sommes_lues() {
+        val wf = workflow.readText()
+        // Lus par la mise à jour intégrée : à garder.
+        assertTrue(wf.contains("dist/UltraTV-debug.apk.sha256"))
+        assertTrue(wf.contains("SHA256SUMS.txt"))
+        // Lus par personne (couverts par SHA256SUMS.txt) : plus publiés.
+        listOf("UltraTV.apk.sha256", "UltraTV-arm64-v8a.apk.sha256", "UltraTV-armeabi-v7a.apk.sha256", "UltraTV-android7.apk.sha256")
+            .forEach { assertTrue("« $it » n'est plus publié", !wf.contains("dist/$it")) }
     }
 }

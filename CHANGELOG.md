@@ -2,7 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+Chaque version Android peut finir par une sous-section `### In English` : quelques puces courtes en anglais, reprises en tête des notes de la release GitHub (« English summary ») par `.github/release-notes.sh` ; le reste de la section y figure en français. Uniquement des puces sous ce titre, sans autre sous-titre.
+
 ## [Non publié]
+
+### Modifié
+- Releases GitHub : cinq fichiers de moins à chaque version (12 au lieu de 17) et des notes plus claires. Le tableau « Which file should I download? / Quel fichier télécharger ? » en tête dit quel APK prendre selon l'appareil, quels noms sont les mêmes fichiers (noms fixes pour les liens) et lesquels ignorer (mise à jour intégrée, sommes de contrôle) ; un résumé en anglais (`### In English` du CHANGELOG) précède les notes en français. Retirés : `UltraTV.apk.sha256` et les `.sha256` des noms fixes `UltraTV-arm64-v8a.apk`, `UltraTV-armeabi-v7a.apk`, `UltraTV-android7.apk` (lus par personne, couverts par `SHA256SUMS.txt`), et le `.dm` de l'APK android7 (profil Android 12+, jamais lu sous Android 7). Tous les autres noms restent publiés : la mise à jour intégrée de chaque version encore en circulation, Kairo, le Worker et les liens existants en dépendent.
 
 ### Corrigé
 - Aperçu du Direct et du Guide : à l'entrée de l'écran, la première chaîne montre son image dans l'encadré en ~1 s au lieu du son seul pendant ~30 s (box Amlogic). Le décodeur vidéo n'est plus configuré sur une surface factice avant que l'encadré ne soit à l'écran : il attend la surface de l'encadré et s'y configure directement (le son démarre tout de suite). Filet de sécurité : surface de l'encadré affichée, son qui avance et toujours aucune image au bout de 2 s → la sortie vidéo est rebranchée sur cette surface (une fois par écran, sans recharger le flux ni changer de décodeur). Une surface n'est jugée prête que si sa vue est attachée à la fenêtre, visible et dimensionnée. Journal `UltraPlay` : `surface host=… take`, `surface attach host=… id=…`, `surface detach host=…`, `surface reattach host=…`.
@@ -10,6 +15,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - « Qui regarde ? » : le focus revient sur le dernier profil utilisé quand il se pose ailleurs sans action de l'utilisateur (profil courant connu un instant après la liste, focus par défaut sur la première tuile) ; jamais après une flèche.
 - Accueil, « Dernières chaînes regardées » : chaque chaîne regardée au moins 5 s y entre, zapping compris (avant : seule la chaîne affichée en quittant le lecteur). Une chaîne lancée depuis l'écran Favoris (une seule source) ou les favoris du mode simple est enregistrée au lieu de l'élément regardé avant. « Ouvrir sur la dernière chaîne » prend la source active.
 - Accueil, « Dernières chaînes regardées » : plus de carte au nom d'une chaîne avec le logo (et l'adresse) d'une autre après une synchro entre appareils ; l'image et l'adresse locales ne sont reprises que pour une chaîne du même nom.
+
+### In English
+- GitHub releases: clearer notes, starting with a "Which file should I download?" table (which APK for which device, which files are identical copies, which to ignore), then this English summary, then the full notes in French. Four unused checksum files and one unused startup profile are no longer published (12 files instead of 17).
 
 ### Bureau (prochaine version)
 - Accueil : aucune rangée (à la une, en direct, reprises, nouveautés, mieux notés, Trakt, nouveaux épisodes, sport) ne montre plus de contenu d'une catégorie masquée, verrouillée ou adulte ; un profil Enfants ne voit les catégories adultes nulle part (case « Profil Enfants » dans Réglages › Profils).
@@ -96,6 +104,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Recherche : les titres arabes sont trouvés quelle que soit la graphie (hamza, ة/ه, ى/ي, voyelles), pour les chaînes, films, séries et programmes du guide, en respectant les catégories masquées, désactivées et verrouillées et le profil Enfants. Le texte injecté d'un coup par une télécommande n'est plus ignoré (#247).
 - Direct : une chaîne dont le fournisseur relance le flux (horodatages qui repartent en arrière) tournait en boucle entre passages répétés, image figée et reconnexions. Le lecteur suit maintenant le retour en arrière et continue de lire. Une position immobile n'est plus prise pour un gel tant que les images ou les données arrivent encore.
 - Direct : les reconnexions ne repartent plus à zéro au bout de 30 s. Les délais s'allongent sur 2 minutes, avec un plafond de 8 reconnexions en 2 minutes ou 16 en 10 minutes, puis l'écran d'erreur s'affiche. Après 3 pannes d'ExoPlayer en 2 minutes sur une même chaîne, la lecture passe sur VLC pour cette chaîne jusqu'à la fermeture de l'appli, sauf si ExoPlayer est imposé dans les réglages, si le flux est protégé ou s'il vient d'un portail Stalker.
+
+### In English
+- Settings › Display: screen-edge margin (None / Small / Medium / Large) for TVs that crop the picture, and an interface size setting (Small to Extra large).
+- Update channel in Settings › About: Stable (default) or Pre-release (test builds, installed over the current app).
+- Settings level Simple / Expert, a one-click "Clean everything" in Storage, and editing an existing source without deleting it.
+- Android TV / Google TV home screen: Continue watching, New releases, Recent channels and optional channels (Top 10, My list, live sport, chosen live categories).
+- Parental control: lock whole categories; the PIN is asked everywhere a locked item can start, and to change or remove a PIN.
+- TV Guide: past days from the channel archive, smoother remote navigation, instant preview with sound in sync.
+- Remote: Back opens the side menu on the main screens; Arabic search keyboard and system keyboard key.
+- Many fixes: Stalker sync stuck at 23 %, an expired subscription no longer wipes channels, fewer freezes on slow boxes and TCL TVs, crash on duplicate items, Arabic digits, Fire TV keyboard.
 
 ## [1.3.72] — 2026-11-21 (Android)
 
