@@ -111,6 +111,10 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
     var langPanel by remember { mutableStateOf(false) }
     var pinPrompt by remember { mutableStateOf<ChannelEntity?>(null) }
     var actionsFor by remember { mutableStateOf<ChannelEntity?>(null) }
+    // Groupes : menu « Ajouter à un groupe » d'une chaîne, gestion d'un groupe (appui long / Menu sur la liste des catégories).
+    var groupsFor by remember { mutableStateOf<ChannelEntity?>(null) }
+    var manageCat by remember { mutableStateOf<DirectCategory?>(null) }
+    val G = remember(D.lang) { ChannelGroupStrings(D.lang) }
     val orderStrings = remember(D.lang) { ChannelOrderStrings(D.lang) }
     val customScopes by vm.customScopes.collectAsState()
     val moving by vm.moveState.collectAsState()
@@ -211,7 +215,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
     }
     val current = cats.firstOrNull { it.id == selected }
     // Aucune chaîne en local : « hors ligne » / « erreur de source » en carte pleine (sinon l'écran vide habituel).
-    val noLocalData = cats.none { it.id != CATEGORY_FAVORITES && it.id != CATEGORY_ALL && it.count > 0 }
+    val noLocalData = cats.none { it.id != CATEGORY_FAVORITES && it.id != CATEGORY_ALL && !it.group && it.count > 0 }
     if (noLocalData && com.ultratv.tv.nativeapp.ui.common.NoDataStateCard(Modifier.padding(start = 72.design))) return
 
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
@@ -226,6 +230,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
         },
         onWatch = { c -> if ("${c.providerId}:${c.remoteId}" in locked) pinPrompt = c else play(c) },
         onActions = { actionsFor = it },
+        onManageCat = { manageCat = it },
     ) else Row(Modifier.fillMaxSize()) {
         // Retour depuis les chaînes ou l'aperçu : focus sur la catégorie en cours (puis Retour racine : menu latéral).
         val selectedCatFocus = remember { FocusRequester() }
@@ -251,11 +256,12 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
                 items(cats.size, key = { catKeys[it] }, contentType = { "cat" }) { ci ->
                     val c = cats[ci]
                     CategoryRow(
-                        label = when (c.id) { CATEGORY_FAVORITES -> D.catFavorites; CATEGORY_ALL -> D.catAll; else -> prettyCategoryName(c.name.orEmpty()) },
+                        label = directCategoryLabel(c, c.id, D),
                         count = c.count, selected = c.id == selected, locked = c.locked,
                         modifier = if (c.id == selected) Modifier.focusRequester(selectedCatFocus) else Modifier,
                         onFocus = { if (userMoved) vm.selectCategory(c.id) },
                         onClick = { vm.selectCategory(c.id); focus.moveFocus(towardChannels) },
+                        onLongClick = { manageCat = c },
                     )
                 }
             }
@@ -271,7 +277,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
                 .onPreviewKeyEvent { e -> if (holdAfterReturn && e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && (e.key == androidx.compose.ui.input.key.Key.DirectionUp || e.key == androidx.compose.ui.input.key.Key.DirectionDown)) holdAfterReturn = false; false },
             verticalArrangement = Arrangement.spacedBy(12.design),
         ) {
-            val name = when (selected) { CATEGORY_FAVORITES -> D.catFavorites; CATEGORY_ALL -> D.catAll; else -> prettyCategoryName(current?.name.orEmpty()) }
+            val name = directCategoryLabel(current, selected, D)
             // « <Catégorie> · <N> chaînes » : le nom (tel quel, éventuellement dans une autre écriture) et le compteur (langue
             // de l'interface) sont deux textes distincts — jamais de mélange d'écritures dans une même ligne de texte, le
             // nom long est coupé (…) sans jamais masquer le compteur. Sections affichées seulement s'il y en a plusieurs.
@@ -290,7 +296,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
                 onFocusChannel = { focusedChannel.value = it },
                 onPlay = { c -> if ("${c.providerId}:${c.remoteId}" in locked) pinPrompt = c else play(c) },
                 onActions = { actionsFor = it },
-                emptyText = if (selected == CATEGORY_FAVORITES) D.noFavorites else D.noChannels, categoryName = name, first = firstChannel,
+                emptyText = liveEmptyText(selected, D), categoryName = name, first = firstChannel,
                 returnToKey = refocusKey ?: if (holdAfterReturn) playingKey else null)
         }
 
@@ -362,24 +368,56 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
                 PillButton(if (isFav) D.removeFavorite else D.addFavorite, onClick = { vm.toggleFavorite(ch); actionsFor = null }, bg = Ux.Surface2, modifier = Modifier.width(560.design))
                 PillButton(if (isLocked) D.unlockChannel else D.lockChannel, onClick = { vm.toggleLock(ch); actionsFor = null }, bg = Ux.Surface2, modifier = Modifier.width(560.design))
                 if (variants.size > 1) PillButton(D.otherQualities, onClick = { variantPicker = true }, bg = Ux.Surface2, modifier = Modifier.width(560.design))
+                PillButton(G.addTo, onClick = { groupsFor = ch; actionsFor = null }, bg = Ux.Surface2, modifier = Modifier.width(560.design))
+                val shownGroup = cats.firstOrNull { it.id == selected && it.group }
+                val shownGroupId = com.ultratv.tv.nativeapp.data.repo.ChannelGroups.idOf(selected)
+                if (shownGroup != null && shownGroupId != null) {
+                    PillButton(G.removeFrom(shownGroup.name.orEmpty()), onClick = { vm.removeFromGroup(shownGroupId, ch); com.ultratv.tv.nativeapp.ui.common.Toaster.ok(G.removed(shownGroup.name.orEmpty())); actionsFor = null }, bg = Ux.Surface2, modifier = Modifier.width(560.design))
+                    PillButton(G.rename + " / " + G.delete, onClick = { manageCat = shownGroup; actionsFor = null }, bg = Ux.Surface2, modifier = Modifier.width(560.design))
+                }
                 // Ordre personnel du profil : pas dans « Tout » (liste mélangée de toutes les catégories) ni sous un filtre de langue
                 // (le rang d'un déplacement serait faussé par les chaînes masquées).
                 if (selected != CATEGORY_ALL && langView.useLang == 0) {
-                    PillButton(orderStrings.move, onClick = { vm.startMove(ch); actionsFor = null }, bg = Ux.Surface2, modifier = Modifier.width(560.design))
+                    PillButton(if (com.ultratv.tv.nativeapp.data.repo.ChannelGroups.isScope(selected)) G.move else orderStrings.move, onClick = { vm.startMove(ch); actionsFor = null }, bg = Ux.Surface2, modifier = Modifier.width(560.design))
                     if (selected in customScopes) PillButton(orderStrings.reset, onClick = { vm.resetOrder(); actionsFor = null }, bg = Ux.Surface2, modifier = Modifier.width(560.design))
                 }
                 PillButton(D.close, onClick = { actionsFor = null }, bg = Ux.Surface, modifier = Modifier.width(560.design))
             }
         }
     }
+    groupsFor?.let { ch -> ChannelGroupsDialog(ch, onClose = { groupsFor = null }) }
+    manageCat?.let { c ->
+        val pid = vm.activeProviderId
+        if (pid != null) GroupManageDialog(
+            groupId = com.ultratv.tv.nativeapp.data.repo.ChannelGroups.idOf(c.id), groupName = c.name, providerId = pid,
+            onClose = { manageCat = null },
+            onDeleted = { gid -> vm.groupDeleted(gid) },
+            onCreated = { gid -> vm.selectCategory(com.ultratv.tv.nativeapp.data.repo.ChannelGroups.scope(gid)) },
+        )
+    }
+}
+
+/** Libellé d'une entrée de la liste des catégories : Favoris, Tout, nom du groupe tel quel, ou nom de catégorie mis en forme. */
+internal fun directCategoryLabel(c: DirectCategory?, id: String, D: DesignStrings): String = when {
+    id == CATEGORY_FAVORITES -> D.catFavorites
+    id == CATEGORY_ALL -> D.catAll
+    c?.group == true -> c.name.orEmpty()
+    else -> prettyCategoryName(c?.name.orEmpty())
+}
+
+/** Liste vide : Favoris, groupe personnel (comment y ajouter une chaîne) ou catégorie. */
+internal fun liveEmptyText(selected: String, D: DesignStrings): String = when {
+    selected == CATEGORY_FAVORITES -> D.noFavorites
+    com.ultratv.tv.nativeapp.data.repo.ChannelGroups.isScope(selected) -> ChannelGroupStrings(D.lang).empty
+    else -> D.noChannels
 }
 
 private fun Float.dp1() = androidx.compose.ui.unit.Dp(this)
 
 @Composable
-private fun CategoryRow(label: String, count: Int, selected: Boolean, locked: Boolean, onFocus: () -> Unit, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun CategoryRow(label: String, count: Int, selected: Boolean, locked: Boolean, onFocus: () -> Unit, onClick: () -> Unit, modifier: Modifier = Modifier, onLongClick: (() -> Unit)? = null) {
     FocusSurface(
-        onClick = onClick, shape = RoundedCornerShape(16.design),
+        onClick = onClick, onLongClick = onLongClick, shape = RoundedCornerShape(16.design),
         bg = if (selected) Ux.Surface2 else Color.Transparent,
         ringWidth = 5.design,
         // Hauteur minimale : un nom de catégorie long passe sur 2 lignes au lieu d'être coupé par « … ».
@@ -834,9 +872,10 @@ private fun MobileLiveLayout(
     locked: Set<String>, favs: Set<String>, nowNext: Map<Long, Pair<EpgEntity?, EpgEntity?>>, vm: LiveViewModel, clock: androidx.compose.runtime.State<Long>,
     langView: com.ultratv.tv.nativeapp.data.repo.LangView, onLang: () -> Unit, twoPane: Boolean, D: DesignStrings,
     selectedChannel: ChannelEntity?, onTapChannel: (ChannelEntity) -> Unit, onWatch: (ChannelEntity) -> Unit, onActions: (ChannelEntity) -> Unit,
+    onManageCat: (DirectCategory) -> Unit = {},
 ) {
     val current = cats.firstOrNull { it.id == selected }
-    val name = when (selected) { CATEGORY_FAVORITES -> D.catFavorites; CATEGORY_ALL -> D.catAll; else -> prettyCategoryName(current?.name.orEmpty()) }
+    val name = directCategoryLabel(current, selected, D)
     val shown = selectedChannel ?: channels.itemSnapshotList.firstOrNull { it?.isSeparator == false }
     Row(Modifier.fillMaxSize()) {
         Column(Modifier.then(if (twoPane) Modifier.width(420.dp) else Modifier.weight(1f)).fillMaxHeight().padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -846,17 +885,17 @@ private fun MobileLiveLayout(
                     com.ultratv.tv.nativeapp.ui.mobile.SearchAction()
                 }
             }
-            val chipLabel = { c: DirectCategory -> (if (c.locked) "🔒 " else "") + when (c.id) { CATEGORY_FAVORITES -> D.catFavorites; CATEGORY_ALL -> D.catAll; else -> prettyCategoryName(c.name.orEmpty()) } }
+            val chipLabel = { c: DirectCategory -> (if (c.locked) "🔒 " else "") + directCategoryLabel(c, c.id, D) }
             if (twoPane) androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.heightIn(max = 120.dp).verticalScroll(androidx.compose.foundation.rememberScrollState())) {
-                cats.forEach { c -> CatChip(chipLabel(c), c.id == selected) { onSelect(c.id) } }
+                cats.forEach { c -> CatChip(chipLabel(c), c.id == selected, { onManageCat(c) }) { onSelect(c.id) } }
             } else androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 // Même règle commune que sur TV : une catégorie répétée par le fournisseur ne fait jamais planter.
                 val chipKeys = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(cats) { it.id }
-                items(cats.size, key = { chipKeys[it] }, contentType = { "chip" }) { i -> val c = cats[i]; CatChip(chipLabel(c), c.id == selected) { onSelect(c.id) } }
+                items(cats.size, key = { chipKeys[it] }, contentType = { "chip" }) { i -> val c = cats[i]; CatChip(chipLabel(c), c.id == selected, { onManageCat(c) }) { onSelect(c.id) } }
             }
             com.ultratv.tv.nativeapp.ui.mobile.TouchRefresh(Modifier.weight(1f).fillMaxWidth()) {
                 ChannelList(channels, locked, favs, nowNext, selected, vm, clock, onFocusChannel = {}, onPlay = onTapChannel, onActions = onActions,
-                    emptyText = if (selected == CATEGORY_FAVORITES) D.noFavorites else D.noChannels, categoryName = name, highlightId = if (twoPane) shown?.id else null)
+                    emptyText = liveEmptyText(selected, D), categoryName = name, highlightId = if (twoPane) shown?.id else null)
             }
         }
         if (twoPane) {
@@ -867,8 +906,8 @@ private fun MobileLiveLayout(
 }
 
 @Composable
-private fun CatChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(20.dp), bg = if (selected) Ux.Cta else Ux.Surface, modifier = Modifier.height(40.dp).semantics { this.selected = selected; role = androidx.compose.ui.semantics.Role.Tab }) { _ ->
+private fun CatChip(label: String, selected: Boolean, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
+    FocusSurface(onClick = onClick, onLongClick = onLongClick, shape = RoundedCornerShape(20.dp), bg = if (selected) Ux.Cta else Ux.Surface, modifier = Modifier.height(40.dp).semantics { this.selected = selected; role = androidx.compose.ui.semantics.Role.Tab }) { _ ->
         Box(Modifier.padding(horizontal = 14.dp).height(40.dp), contentAlignment = Alignment.Center) {
             Text(label, color = if (selected) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }

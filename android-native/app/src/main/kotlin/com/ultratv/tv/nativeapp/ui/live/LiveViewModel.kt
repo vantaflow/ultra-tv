@@ -52,7 +52,7 @@ const val CATEGORY_ALL = "__all__"
 const val CATEGORY_FAVORITES = "__fav__"
 
 /** Entrée de la colonne de catégories : nom, compteur réel, verrouillage parental. */
-data class DirectCategory(val id: String, val name: String?, val count: Int, val locked: Boolean = false, val sections: Int = 0)
+data class DirectCategory(val id: String, val name: String?, val count: Int, val locked: Boolean = false, val sections: Int = 0, val group: Boolean = false)
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 @HiltViewModel
@@ -75,6 +75,7 @@ class LiveViewModel @Inject constructor(
     private val backfill: com.ultratv.tv.nativeapp.data.repo.LiveOrderBackfill,
     private val db: com.ultratv.tv.nativeapp.data.db.UltraDb,
     private val channelOrder: com.ultratv.tv.nativeapp.data.repo.ChannelOrderRepository,
+    private val groups: com.ultratv.tv.nativeapp.data.repo.ChannelGroupRepository,
     @dagger.hilt.android.qualifiers.ApplicationContext private val appCtx: android.content.Context,
 ) : ViewModel() {
 
@@ -107,8 +108,9 @@ class LiveViewModel @Inject constructor(
                 catalog.categories(id, "LIVE"),
                 channelDao.observeCategoryCounts(id).atMostEvery(1_000).snapshotWhile(busy),
                 catalog.favoriteCount(id, "LIVE"),
-            ) { cats: List<CategoryEntity>, counts, favCount ->
-                buildDirectCategories(cats, counts, favCount, id, hidden)
+                groups.observe(id, groups.excluded(hidden, id)).atMostEvery(1_000).snapshotWhile(busy),
+            ) { cats: List<CategoryEntity>, counts, favCount, grp ->
+                buildDirectCategories(cats, counts, favCount, id, hidden, grp)
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -143,6 +145,8 @@ class LiveViewModel @Inject constructor(
     private var moveKeys: List<String> = emptyList()
     private var movePid: Long = 0
     private var moveBefore: Map<String, Int> = emptyMap()
+    private var moveGroupRest: List<String> = emptyList()
+    private var moveGroupBefore: List<String> = emptyList()
     private val moveLock = kotlinx.coroutines.sync.Mutex()
 
     /** « Déplacer » : la liste affichée (catégorie ou favoris, pas « Tout ») devient modifiable. */
@@ -152,8 +156,17 @@ class LiveViewModel @Inject constructor(
         viewModelScope.launch {
             moveLock.withLock {
                 movePid = channel.providerId
-                moveKeys = channelOrder.orderedKeys(movePid, scope)
-                moveBefore = channelOrder.positions(movePid, scope)
+                val gid = com.ultratv.tv.nativeapp.data.repo.ChannelGroups.idOf(scope)
+                if (gid != null) {
+                    // Groupe : on déplace parmi les chaînes AFFICHÉES ; les chaînes absentes de la source restent notées, à la fin.
+                    val all = groups.keys(gid)
+                    moveKeys = groups.channels(movePid, gid, groups.excluded(hiddenStore.hidden.first(), movePid)).map { it.remoteId }
+                    moveGroupRest = all - moveKeys.toSet()
+                    moveGroupBefore = all
+                } else {
+                    moveKeys = channelOrder.orderedKeys(movePid, scope)
+                    moveBefore = channelOrder.positions(movePid, scope)
+                }
                 _move.value = MoveState(scope, channel.remoteId, channel.title, channel.providerId)
             }
         }
@@ -167,20 +180,28 @@ class LiveViewModel @Inject constructor(
                 val next = com.ultratv.tv.nativeapp.data.repo.ChannelOrder.move(moveKeys, m.key, delta)
                 if (next == moveKeys) return@withLock
                 moveKeys = next
-                channelOrder.save(movePid, m.scope, next)
+                val gid = com.ultratv.tv.nativeapp.data.repo.ChannelGroups.idOf(m.scope)
+                if (gid != null) groups.setOrder(gid, next + moveGroupRest) else channelOrder.save(movePid, m.scope, next)
             }
         }
     }
 
     /** OK : garde le nouvel ordre. */
-    fun commitMove() { viewModelScope.launch { moveLock.withLock { _move.value = null }; com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed(movePid) } }
+    fun commitMove() {
+        viewModelScope.launch {
+            val scope = moveLock.withLock { val s = _move.value?.scope; _move.value = null; s }
+            // Groupes : locaux, rien à publier.
+            if (!com.ultratv.tv.nativeapp.data.repo.ChannelGroups.isScope(scope)) com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed(movePid)
+        }
+    }
 
     /** Retour : remet l'ordre d'avant le déplacement. */
     fun cancelMove() {
         viewModelScope.launch {
             moveLock.withLock {
                 val m = _move.value ?: return@withLock
-                channelOrder.restore(movePid, m.scope, moveBefore)
+                val gid = com.ultratv.tv.nativeapp.data.repo.ChannelGroups.idOf(m.scope)
+                if (gid != null) groups.setOrder(gid, moveGroupBefore) else channelOrder.restore(movePid, m.scope, moveBefore)
                 _move.value = null
             }
         }
@@ -189,7 +210,7 @@ class LiveViewModel @Inject constructor(
     /** « Réinitialiser l'ordre » de la liste affichée (catégorie ou favoris) : retour à l'ordre naturel. */
     fun resetOrder() {
         val scope = selectedCategory.value
-        if (scope == CATEGORY_ALL) return
+        if (scope == CATEGORY_ALL || com.ultratv.tv.nativeapp.data.repo.ChannelGroups.isScope(scope)) return
         val id = providers.value.let { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id } ?: return
         viewModelScope.launch { channelOrder.reset(id, scope); com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed(id) }
     }
@@ -202,9 +223,11 @@ class LiveViewModel @Inject constructor(
         .distinctUntilChanged()
         .flatMapLatest { arr ->
             @Suppress("UNCHECKED_CAST") val id = arr[0] as Long?; val cat = arr[1] as String; val hidden = arr[2] as Set<String>; val lv = arr[3] as com.ultratv.tv.nativeapp.data.repo.LangView; val custom = arr[6] as Set<String>
+            val gid = com.ultratv.tv.nativeapp.data.repo.ChannelGroups.idOf(cat)
             if (id == null) flowOf(PagingData.empty())
             else Pager(com.ultratv.tv.nativeapp.data.repo.PagingMemory.config(40, 24, 60)) {
                 when {
+                    gid != null -> groups.paged(id, gid, lv.useLang, lv.langs, groups.excluded(hidden, id))
                     cat == CATEGORY_FAVORITES -> if (com.ultratv.tv.nativeapp.data.repo.ChannelOrder.FAVORITES_SCOPE in custom) channelDao.pagedFavoritesOrdered(id, lv.useLang, lv.langs, profiles.currentIdNow) else channelDao.pagedFavorites(id, lv.useLang, lv.langs, profiles.currentIdNow)
                     cat == CATEGORY_ALL -> {
                         val hiddenIds = hidden.filter { it.startsWith("LIVE:$id:") }.map { it.substringAfterLast(':') }
@@ -357,7 +380,9 @@ class LiveViewModel @Inject constructor(
             try {
                 val channel = if (exact) channel0 else preferredVariant(channel0)
                 val cat = selectedCategory.value
-                val window = when (cat) {
+                val gid = com.ultratv.tv.nativeapp.data.repo.ChannelGroups.idOf(cat)
+                val window = if (gid != null) groups.channels(channel.providerId, gid, groups.excluded(hiddenStore.hidden.first(), channel.providerId))
+                else when (cat) {
                     CATEGORY_FAVORITES -> channelOrder.favorites(channel.providerId)
                     CATEGORY_ALL -> if (ranked.value && channel.catRank > 0) com.ultratv.tv.nativeapp.data.repo.LiveAllPagingSource.window(channelDao, channel)
                     else {
@@ -377,6 +402,19 @@ class LiveViewModel @Inject constructor(
         }
     }
 
+    // ── Groupes de chaînes personnels (profil courant, source active) ──
+    val activeProviderId: Long? get() = providers.value.let { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }
+
+    /** Groupe supprimé : s'il était affiché (ou mémorisé), le Direct retombe sur la liste d'ouverture habituelle. */
+    fun groupDeleted(gid: Long) {
+        val scope = com.ultratv.tv.nativeapp.data.repo.ChannelGroups.scope(gid)
+        if (landing.getString("last", null) == scope) landing.edit().remove("last").apply()
+        if (_selected.value == scope) _selected.value = null
+    }
+
+    /** Retire la chaîne du groupe [gid]. */
+    fun removeFromGroup(gid: Long, channel: ChannelEntity) { viewModelScope.launch { groups.remove(gid, channel.remoteId) } }
+
     fun refresh() {
         val id = providers.value.firstOrNull { it.active }?.id ?: providers.value.firstOrNull()?.id ?: return
         syncCoordinator.request(id, force = true)
@@ -389,26 +427,28 @@ class LiveViewModel @Inject constructor(
  */
 fun buildDirectCategories(
     cats: List<CategoryEntity>, counts: List<com.ultratv.tv.nativeapp.data.db.CategoryCount>, favCount: Int,
-    providerId: Long, hidden: Set<String>,
+    providerId: Long, hidden: Set<String>, groups: List<com.ultratv.tv.nativeapp.data.db.ChannelGroupRow> = emptyList(),
 ): List<DirectCategory> {
     val byId = counts.associate { it.categoryId to it.n }
     val secById = counts.associate { it.categoryId to it.sections }
     val visible = cats.filter { "LIVE:$providerId:${it.remoteId}" !in hidden }
         .mapNotNull { c -> byId[c.remoteId]?.takeIf { it > 0 }?.let { DirectCategory(c.remoteId, c.name, it, c.locked, secById[c.remoteId] ?: 0) } }
     val total = visible.sumOf { it.count }
-    return listOf(DirectCategory(CATEGORY_FAVORITES, null, favCount), DirectCategory(CATEGORY_ALL, null, total)) + visible
+    // Groupes personnels juste après Favoris, même vides (l'écran l'explique) ; avant Tout et les catégories du fournisseur.
+    val mine = groups.map { DirectCategory(com.ultratv.tv.nativeapp.data.repo.ChannelGroups.scope(it.id), it.name, it.n, group = true) }
+    return listOf(DirectCategory(CATEGORY_FAVORITES, null, favCount)) + mine + DirectCategory(CATEGORY_ALL, null, total) + visible
 }
 
 /** Catégorie demandée par lien : seulement une catégorie visible (non masquée), non vide et non verrouillée. */
 fun requestedCategory(cats: List<DirectCategory>, requested: String): String? =
-    cats.firstOrNull { it.id == requested && it.id != CATEGORY_ALL && it.id != CATEGORY_FAVORITES && it.count > 0 && !it.locked }?.id
+    cats.firstOrNull { it.id == requested && it.id != CATEGORY_ALL && it.id != CATEGORY_FAVORITES && !it.group && it.count > 0 && !it.locked }?.id
 
 /** Catégorie d'ouverture du Direct : dernière utilisée (si elle existe encore), sinon Favoris (s'il y en a), sinon la première non vide. */
 fun pickLanding(cats: List<DirectCategory>, last: String?): String {
     if (cats.isEmpty()) return CATEGORY_ALL
     last?.let { l -> if (cats.any { it.id == l && it.count > 0 }) return l }
     cats.firstOrNull { it.id == CATEGORY_FAVORITES && it.count > 0 }?.let { return it.id }
-    return cats.firstOrNull { it.id != CATEGORY_FAVORITES && it.id != CATEGORY_ALL && it.count > 0 }?.id ?: CATEGORY_ALL
+    return cats.firstOrNull { it.id != CATEGORY_FAVORITES && it.id != CATEGORY_ALL && !it.group && it.count > 0 }?.id ?: CATEGORY_ALL
 }
 
 /**

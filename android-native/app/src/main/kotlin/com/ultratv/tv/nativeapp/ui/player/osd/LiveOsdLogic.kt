@@ -123,6 +123,8 @@ enum class OsdActionId {
     MY_LIST, MOVIES, SERIES, RECORDINGS, SETTINGS,
     // Replay : sauts d'une minute, programme précédent / suivant ; direct : retour arrière dans l'archive du fournisseur.
     JUMP_BACK_MIN, JUMP_FORWARD_MIN, PREV_PROGRAMME, NEXT_PROGRAMME, LIVE_REWIND,
+    // Groupes de chaînes personnels : « Ajouter à un groupe » pour la chaîne regardée.
+    GROUPS,
 }
 
 /** Un bouton de la barre : libellé, tracé d'icône (grille 24), état actif visible, complément de libellé (format courant). */
@@ -139,6 +141,7 @@ data class OsdLabels(
     val aspectNames: Map<AspectMode, String>, val channels: String, val history: String, val addFavorite: String, val removeFavorite: String,
     val record: String, val pip: String, val sleep: String, val player: String,
     val myList: String, val movies: String, val series: String, val recordings: String, val settings: String,
+    val groups: String = "",
 )
 
 /** État qui décide des boutons proposés. */
@@ -154,6 +157,8 @@ data class OsdActionInputs(
     val prevProgrammeLabel: String = "", val nextProgrammeLabel: String = "",
     /** Libellé du retour arrière depuis le direct (chaîne avec archive) ; null = indisponible. */
     val rewindLabel: String? = null,
+    /** Bouton « Groupes » (chaîne du direct connue). */
+    val groups: Boolean = false,
 )
 
 object OsdIcons {
@@ -202,6 +207,7 @@ object OsdActions {
         add(OsdAction(OsdActionId.CHANNELS, L.channels, OsdIcons.CHANNELS))
         add(OsdAction(OsdActionId.HISTORY, L.history, OsdIcons.HISTORY))
         add(OsdAction(OsdActionId.FAVORITE, if (i.isFavorite) L.removeFavorite else L.addFavorite, OsdIcons.HEART, active = i.isFavorite, fillIcon = i.isFavorite))
+        if (i.groups) add(OsdAction(OsdActionId.GROUPS, L.groups, OsdIcons.CHANNELS))
         add(OsdAction(OsdActionId.RECORD, L.record, OsdIcons.RECORD))
         if (i.pipSupported) add(OsdAction(OsdActionId.PIP, L.pip, OsdIcons.PIP))
         if (i.replayLabel != null) add(OsdAction(OsdActionId.REPLAY, i.replayLabel, OsdIcons.REPLAY, active = i.replayActive))

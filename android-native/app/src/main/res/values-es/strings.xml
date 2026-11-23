@@ -2014,4 +2014,22 @@
     <string name="tvch_categories_hint">Hasta 3 categorías de TV en directo, cada una en su propio canal.</string>
     <string name="tvch_add_category">Añadir una categoría</string>
     <string name="tvch_no_category">Ninguna categoría disponible</string>
+    <string name="grp_groups">Mis grupos</string>
+    <string name="grp_new">Nuevo grupo</string>
+    <string name="grp_new_ellipsis">Nuevo grupo…</string>
+    <string name="grp_name">Nombre del grupo</string>
+    <string name="grp_rename">Cambiar el nombre del grupo</string>
+    <string name="grp_delete">Eliminar el grupo</string>
+    <string name="grp_delete_sure">¿Eliminar el grupo «%1$s»? Los canales siguen en sus categorías.</string>
+    <string name="grp_add_to">Añadir a un grupo</string>
+    <string name="grp_remove_from">Quitar de «%1$s»</string>
+    <string name="grp_added">Añadido a «%1$s»</string>
+    <string name="grp_removed">Quitado de «%1$s»</string>
+    <string name="grp_empty">Este grupo está vacío: mantén pulsado OK (o pulsa Menú) en un canal para añadirlo.</string>
+    <string name="grp_button">Grupos</string>
+    <string name="grp_menu">Acciones del canal</string>
+    <string name="grp_limit">Puedes crear hasta 50 grupos.</string>
+    <string name="grp_save">Guardar</string>
+    <string name="grp_cancel">Cancelar</string>
+    <string name="grp_move">Cambiar el orden</string>
 </resources>

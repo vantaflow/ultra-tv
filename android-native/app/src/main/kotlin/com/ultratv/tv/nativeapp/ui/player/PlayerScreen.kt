@@ -206,6 +206,8 @@ class PlayerViewModel @Inject constructor(
     private val recScheduler: com.ultratv.tv.nativeapp.data.recording.RecordingScheduler,
     private val handoffSender: com.ultratv.tv.nativeapp.data.config.HandoffSender,
     private val mediaServer: com.ultratv.tv.nativeapp.data.mediaserver.MediaServerClient,
+    private val channelGroups: com.ultratv.tv.nativeapp.data.repo.ChannelGroupRepository,
+    private val hiddenCategories: com.ultratv.tv.nativeapp.data.prefs.HiddenCategoriesStore,
 ) : ViewModel() {
 
     /**
@@ -334,6 +336,13 @@ class PlayerViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     /** Ajoute la chaîne regardée aux favoris, ou l'en retire (bouton de l'OSD du Direct). */
+    /** Chaîne du direct en cours (bouton « Groupes » du bandeau) ; null hors direct. */
+    suspend fun currentLiveChannel(): com.ultratv.tv.nativeapp.data.db.ChannelEntity? {
+        val c = playback.current.value ?: return null
+        if (c.kind != "LIVE") return null
+        return channelDao.byRemoteId(c.providerId, c.remoteId)
+    }
+
     fun toggleFavorite() {
         val c = playback.current.value ?: return
         if (c.kind != "LIVE") return
@@ -457,6 +466,12 @@ class PlayerViewModel @Inject constructor(
 
     val activeCategory: StateFlow<String?> = browsedCategory
 
+    /** Groupes personnels du profil pour la source en cours (colonne des catégories du tiroir, après Favoris). */
+    val drawerGroups: StateFlow<List<com.ultratv.tv.nativeapp.data.db.ChannelGroupRow>> = playback.current.map { it?.providerId }.distinctUntilChanged().flatMapLatest { pid ->
+        if (pid == null) flowOf(emptyList())
+        else hiddenCategories.hidden.flatMapLatest { h -> channelGroups.observe(pid, channelGroups.excluded(h, pid)) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     /** Tiroir : complète les lignes sans programme (chaînes visibles ou focalisée) via le programme court du fournisseur. */
     fun fillProgrammes(channels: List<com.ultratv.tv.nativeapp.data.db.ChannelEntity>) {
         if (channels.isEmpty()) return
@@ -482,7 +497,9 @@ class PlayerViewModel @Inject constructor(
     private suspend fun loadCategory(categoryId: String) {
         val cur = playback.current.value ?: return
         val pid = cur.providerId
-        val channels = when (categoryId) {
+        val gid = com.ultratv.tv.nativeapp.data.repo.ChannelGroups.idOf(categoryId)
+        val channels = if (gid != null) channelGroups.channels(pid, gid, channelGroups.excluded(hiddenCategories.hidden.first(), pid))
+        else when (categoryId) {
             com.ultratv.tv.nativeapp.ui.live.CATEGORY_FAVORITES -> channelOrder.favorites(pid)
             com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL -> {
                 // Fenêtre centrée sur la chaîne en cours (comme le zapping depuis « Tout » dans le Direct).
@@ -719,6 +736,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     var infoOpen by remember { mutableStateOf(false) }
     /** Choix de la durée d'un enregistrement du direct (null = fermé). */
     var recordChoice by remember { mutableStateOf<List<LiveRecordOption>?>(null) }
+    // Bouton « Groupes » du bandeau : menu « Ajouter à un groupe » de la chaîne regardée.
+    var groupsChannel by remember { mutableStateOf<com.ultratv.tv.nativeapp.data.db.ChannelEntity?>(null) }
     var overlayVisible by remember { mutableStateOf(true) }
     var lastInteraction by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var aspect by remember { mutableStateOf(AspectMode.FIT) }
@@ -1272,6 +1291,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             pipSupported = pipSupported, shortcuts = onNavigate != null,
             replayBar = replayProg != null, prevProgrammeLabel = X.prevProgramme, nextProgrammeLabel = X.nextProgramme,
             rewindLabel = if (canReplay && replayProg == null) X.rewindLive else null,
+            groups = true,
         ),
         osdLabels,
     )
@@ -1295,6 +1315,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             // Historique : pas d'écran « regardé récemment » pour le Direct ; on place le focus sur la rangée des chaînes récentes.
             OsdActionId.HISTORY -> if (osdRecents.isNotEmpty()) runCatching { osdFocus.recents.requestFocus() } else Toaster.show(O.historyEmpty)
             OsdActionId.FAVORITE -> vm.toggleFavorite()
+            OsdActionId.GROUPS -> scope.launch { groupsChannel = vm.currentLiveChannel() }
             OsdActionId.RECORD -> recordChoice = vm.recordOptions()
             OsdActionId.PIP -> if (!context.enterPip()) Toaster.show(M.pipUnavailable)
             OsdActionId.REPLAY -> if (tsActive) tsBackToLive() else toggleReplay()
@@ -1663,6 +1684,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             com.ultratv.tv.nativeapp.ui.player.zap.ZapNumberBox(pv, X, Modifier.align(Alignment.TopEnd).padding(top = 54.design, end = 96.design))
             com.ultratv.tv.nativeapp.ui.player.zap.ZapRecentStrip(zapRecent, item?.remoteId, X, Modifier.align(Alignment.BottomStart))
         }
+        groupsChannel?.let { ch -> com.ultratv.tv.nativeapp.ui.live.ChannelGroupsDialog(ch, onClose = { groupsChannel = null }) }
         recordChoice?.let { opts ->
             val Dr = com.ultratv.tv.nativeapp.i18n.LocalDs.current
             val hm = { ms: Long -> com.ultratv.tv.nativeapp.ui.common.EpgClock.hm(ms) }

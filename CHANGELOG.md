@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Ajouté (Android)
+- Groupes de chaînes personnalisés : créer, renommer, supprimer un groupe et y ranger des chaînes depuis le menu de la chaîne (appui long sur OK ou touche Menu dans le Direct et la recherche ; touche Menu ou dialogue du programme dans le Guide ; bouton « Groupes » du bandeau du lecteur). Les groupes s'affichent juste après « Favoris » dans le Direct, le Guide et la liste des chaînes du lecteur ; « Changer l'ordre » monte ou descend une chaîne dans le groupe. Par profil et par source, supprimés avec le profil ; un groupe vide explique comment y ajouter une chaîne ; une chaîne verrouillée demande toujours le code et un profil Enfants ne voit aucune chaîne adulte. Les groupes restent sur l'appareil (pas encore de synchronisation entre appareils).
+
 ### Bureau (prochaine version)
 - Accueil : aucune rangée (à la une, en direct, reprises, nouveautés, mieux notés, Trakt, nouveaux épisodes, sport) ne montre plus de contenu d'une catégorie masquée, verrouillée ou adulte ; un profil Enfants ne voit les catégories adultes nulle part (case « Profil Enfants » dans Réglages › Profils).
 - Contrôle parental : verrou par catégorie entière (Réglages › Catégories, Direct, Films et Séries), code exigé partout où un contenu peut s'ouvrir (listes, guide, panneau des chaînes, recherche, favoris, fiches, reprise, zapping qui la saute) ; déverrouillé pour la session seulement.

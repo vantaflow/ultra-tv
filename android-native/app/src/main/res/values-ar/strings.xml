@@ -2083,4 +2083,22 @@
     <string name="tvch_categories_hint">حتى 3 فئات من البث المباشر، كل منها في قناتها الخاصة.</string>
     <string name="tvch_add_category">إضافة فئة</string>
     <string name="tvch_no_category">لا توجد فئة متاحة</string>
+    <string name="grp_groups">مجموعاتي</string>
+    <string name="grp_new">مجموعة جديدة</string>
+    <string name="grp_new_ellipsis">مجموعة جديدة…</string>
+    <string name="grp_name">اسم المجموعة</string>
+    <string name="grp_rename">إعادة تسمية المجموعة</string>
+    <string name="grp_delete">حذف المجموعة</string>
+    <string name="grp_delete_sure">هل تريد حذف المجموعة «%1$s»؟ تبقى القنوات في فئاتها.</string>
+    <string name="grp_add_to">إضافة إلى مجموعة</string>
+    <string name="grp_remove_from">إزالة من «%1$s»</string>
+    <string name="grp_added">أُضيفت إلى «%1$s»</string>
+    <string name="grp_removed">أُزيلت من «%1$s»</string>
+    <string name="grp_empty">هذه المجموعة فارغة: اضغط مطولًا على OK (أو زر القائمة) على قناة لإضافتها.</string>
+    <string name="grp_button">المجموعات</string>
+    <string name="grp_menu">إجراءات القناة</string>
+    <string name="grp_limit">يمكنك إنشاء 50 مجموعة كحد أقصى.</string>
+    <string name="grp_save">حفظ</string>
+    <string name="grp_cancel">إلغاء</string>
+    <string name="grp_move">تغيير الترتيب</string>
 </resources>

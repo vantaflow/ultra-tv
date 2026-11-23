@@ -87,10 +87,14 @@ internal fun LiveDrawer(
     val activeCat by vm.activeCategory.collectAsState()
     val pending by vm.pendingCategory.collectAsState()
     val totals by vm.drawerTotals.collectAsState()
+    val myGroups by vm.drawerGroups.collectAsState()
     val D = LocalDs.current
     val O = liveOsdStrings()
     // « Toutes les chaînes » en tête, puis Favoris (s'il y en a), puis les catégories.
-    val cats = remember(rawCats, totals, D.lang) { LiveDrawerLogic.categories(O.drawerAll, D.catFavorites, totals.all, totals.favorites, rawCats) }
+    val cats = remember(rawCats, totals, myGroups, D.lang) {
+        LiveDrawerLogic.categories(O.drawerAll, D.catFavorites, totals.all, totals.favorites, rawCats,
+            myGroups.map { DrawerCategory(com.ultratv.tv.nativeapp.data.repo.ChannelGroups.scope(it.id), it.name, it.n) })
+    }
     val current = entries.firstOrNull { it.isCurrent }
     // Catégorie de la chaîne regardée à l'ouverture : celle dont la liste est affichée tant que rien n'a été parcouru.
     val initialCat = remember(current != null) { current?.channel?.categoryId }
@@ -178,7 +182,8 @@ internal fun LiveDrawer(
             showCats = catsOpen || rows.isEmpty(), catState = catListState,
             onRowFocus = { k -> catsOpen = false; entries.getOrNull(k)?.let { e -> if (e.now == null) vm.fillProgrammes(listOf(e.channel)) } },
             onRowClick = { k -> entries.getOrNull(k)?.let { onPick(it.channel) } },
-            onAirLabel = D.onAirPill, emptyText = if (rows.isEmpty() && currentCat == CATEGORY_FAVORITES && pending == null) D.noFavorites else null,
+            onAirLabel = D.onAirPill, emptyText = if (rows.isEmpty() && pending == null && currentCat == CATEGORY_FAVORITES) D.noFavorites
+                else if (rows.isEmpty() && pending == null && com.ultratv.tv.nativeapp.data.repo.ChannelGroups.isScope(currentCat)) com.ultratv.tv.nativeapp.ui.live.ChannelGroupStrings(D.lang).empty else null,
         )
     }
 }

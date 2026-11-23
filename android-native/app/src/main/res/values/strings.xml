@@ -2036,4 +2036,22 @@
     <string name="tvch_categories_hint">Up to 3 Live TV categories, each in its own channel.</string>
     <string name="tvch_add_category">Add a category</string>
     <string name="tvch_no_category">No category available</string>
+    <string name="grp_groups">My groups</string>
+    <string name="grp_new">New group</string>
+    <string name="grp_new_ellipsis">New group…</string>
+    <string name="grp_name">Group name</string>
+    <string name="grp_rename">Rename group</string>
+    <string name="grp_delete">Delete group</string>
+    <string name="grp_delete_sure">Delete the group “%1$s”? The channels stay in their categories.</string>
+    <string name="grp_add_to">Add to a group</string>
+    <string name="grp_remove_from">Remove from “%1$s”</string>
+    <string name="grp_added">Added to “%1$s”</string>
+    <string name="grp_removed">Removed from “%1$s”</string>
+    <string name="grp_empty">This group is empty: hold OK (or press Menu) on a channel to add it.</string>
+    <string name="grp_button">Groups</string>
+    <string name="grp_menu">Channel actions</string>
+    <string name="grp_limit">You can create up to 50 groups.</string>
+    <string name="grp_save">Save</string>
+    <string name="grp_cancel">Cancel</string>
+    <string name="grp_move">Change order</string>
 </resources>

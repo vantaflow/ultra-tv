@@ -2022,4 +2022,22 @@
     <string name="tvch_categories_hint">Jusqu\'à 3 catégories du Direct, chacune dans sa propre chaîne.</string>
     <string name="tvch_add_category">Ajouter une catégorie</string>
     <string name="tvch_no_category">Aucune catégorie disponible</string>
+    <string name="grp_groups">Mes groupes</string>
+    <string name="grp_new">Nouveau groupe</string>
+    <string name="grp_new_ellipsis">Nouveau groupe…</string>
+    <string name="grp_name">Nom du groupe</string>
+    <string name="grp_rename">Renommer le groupe</string>
+    <string name="grp_delete">Supprimer le groupe</string>
+    <string name="grp_delete_sure">Supprimer le groupe « %1$s » ? Les chaînes restent dans leurs catégories.</string>
+    <string name="grp_add_to">Ajouter à un groupe</string>
+    <string name="grp_remove_from">Retirer de « %1$s »</string>
+    <string name="grp_added">Ajoutée à « %1$s »</string>
+    <string name="grp_removed">Retirée de « %1$s »</string>
+    <string name="grp_empty">Ce groupe est vide : appui long sur OK (ou touche Menu) sur une chaîne pour l’y ajouter.</string>
+    <string name="grp_button">Groupes</string>
+    <string name="grp_menu">Actions sur la chaîne</string>
+    <string name="grp_limit">Vous pouvez créer jusqu’à 50 groupes.</string>
+    <string name="grp_save">Enregistrer</string>
+    <string name="grp_cancel">Annuler</string>
+    <string name="grp_move">Changer l’ordre</string>
 </resources>

@@ -50,7 +50,7 @@ class LiveOsdStrings(val lang: AppLang) {
         aspectNames = aspectNames(D), channels = D.pChannels, history = history,
         addFavorite = D.addFavorite, removeFavorite = D.removeFavorite, record = D.pRecord, pip = pip,
         sleep = X.sleepPill, player = D.pPlayer, myList = myList, movies = S.navMovies, series = S.navSeries,
-        recordings = S.navRecordings, settings = D.settingsTitle,
+        recordings = S.navRecordings, settings = D.settingsTitle, groups = com.ultratv.tv.nativeapp.ui.live.ChannelGroupStrings(D.lang).button,
     )
 
     fun aspectNames(D: DesignStrings): Map<AspectMode, String> = mapOf(
