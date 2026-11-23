@@ -28,6 +28,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.nativeKeyCode
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -48,6 +54,17 @@ import com.ultratv.tv.nativeapp.ui.design.Ux
 import com.ultratv.tv.nativeapp.ui.design.spx
 import com.ultratv.tv.nativeapp.ui.parental.PinPad
 import kotlinx.coroutines.launch
+
+/** Focus initial de « Qui regarde ? » (logique pure, testée). */
+object ProfileFocus {
+    /** Ramener le focus sur [targetId] : tant que l'utilisateur n'a pas bougé et que le focus n'y est pas. */
+    fun shouldRefocus(targetId: Long?, focusedId: Long?, userMoved: Boolean): Boolean =
+        targetId != null && !userMoved && focusedId != targetId
+
+    /** Touches qui déplacent le focus (flèches, Tab) : après l'une d'elles, le focus appartient à l'utilisateur. */
+    fun isNavigationKey(code: Int): Boolean = code == android.view.KeyEvent.KEYCODE_DPAD_LEFT || code == android.view.KeyEvent.KEYCODE_DPAD_RIGHT ||
+        code == android.view.KeyEvent.KEYCODE_DPAD_UP || code == android.view.KeyEvent.KEYCODE_DPAD_DOWN || code == android.view.KeyEvent.KEYCODE_TAB
+}
 
 /** Avatar carré arrondi de la maquette (200 px, initiale Sora 88). */
 @Composable
@@ -72,28 +89,37 @@ fun WhoIsWatchingContent(
     val S = ProfileStrings(LocalDs.current.lang)
     val focus = remember { FocusRequester() }
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
-    LaunchedEffect(profiles.size, focusId) {
-        if (touch) return@LaunchedEffect
+    val target = profiles.firstOrNull { it.id == focusId } ?: profiles.firstOrNull()
+    // Tuile réellement focalisée et « l'utilisateur a déjà bougé » : tant qu'il n'a touché à rien, le focus initial est
+    // ramené sur le dernier profil utilisé s'il se pose ailleurs (profil courant connu un instant après la liste, focus
+    // par défaut du système sur la première tuile au retour du focus dans la fenêtre — box rc9 : « Principal » focalisé,
+    // « Dernier utilisé » sur un autre profil). Jamais après une flèche : aucun vol de focus.
+    var focusedId by remember { mutableStateOf<Long?>(null) }
+    var userMoved by remember { mutableStateOf(false) }
+    LaunchedEffect(target?.id, focusedId, userMoved) {
+        if (touch || !ProfileFocus.shouldRefocus(target?.id, focusedId, userMoved)) return@LaunchedEffect
         androidx.compose.runtime.withFrameNanos { }
         runCatching { focus.requestFocus() }
     }
     Column(
         Modifier.fillMaxSize().background(Ux.Bg)
+            .onPreviewKeyEvent { if (it.type == KeyEventType.KeyDown && ProfileFocus.isNavigationKey(it.key.nativeKeyCode)) userMoved = true; false }
             .then(if (touch) Modifier.windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.safeDrawing).verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 20.dp, vertical = 24.dp) else Modifier.padding(horizontal = 96.design, vertical = 54.design)),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(if (touch) 32.dp else 64.design, Alignment.CenterVertically),
     ) {
         Text(S.whoWatching, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (touch) 28.sp else 72.spx, maxLines = 2, textAlign = TextAlign.Center)
         @Composable fun tiles() {
-            val target = profiles.firstOrNull { it.id == focusId } ?: profiles.firstOrNull()
             profiles.forEach { p ->
                 ProfileTile(
                     initial = p.initial, color = p.color, label = p.name,
                     hint = when { p.pinHash != null -> S.protectedHint; p.isKids -> S.kidsHint; p.id == focusId -> S.lastHint; else -> "" },
-                    modifier = Modifier.testTag("profile-${p.id}").then(if (p.id == target?.id) Modifier.focusRequester(focus) else Modifier),
+                    modifier = Modifier.testTag("profile-${p.id}")
+                        .onFocusChanged { f -> if (f.isFocused) focusedId = p.id else if (focusedId == p.id) focusedId = null }
+                        .then(if (p.id == target?.id) Modifier.focusRequester(focus) else Modifier),
                     onClick = { onPick(p) },
                 )
             }
-            if (onAdd != null) ProfileTile("+", 0xFF26262D.toInt(), S.add, "", Modifier.testTag("profile-add"), onAdd)
+        if (onAdd != null) ProfileTile("+", 0xFF26262D.toInt(), S.add, "", Modifier.testTag("profile-add"), onAdd)
         }
         if (touch) androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(16.dp)) { tiles() }
         else Row(horizontalArrangement = Arrangement.spacedBy(48.design)) { tiles() }
