@@ -1969,4 +1969,15 @@
     <string name="cat_lock_need_pin">Define primero un código parental (Ajustes › Control parental): sin él, una categoría bloqueada no está protegida</string>
     <string name="rail_switch_source">Cambiar de fuente</string>
     <string name="source_picker_title">Elegir la fuente</string>
+    <string name="source_edit">Editar</string>
+    <string name="source_edit_title">Editar la fuente</string>
+    <string name="source_edit_save">Guardar y sincronizar</string>
+    <string name="source_edit_replace_title">¿Reemplazar el catálogo?</string>
+    <string name="source_edit_replace_body">Esta dirección o cuenta corresponde a otro proveedor: sus canales, películas y series reemplazarán el catálogo actual. Los favoritos, el historial y tus ajustes de categorías se mantienen en esta fuente.</string>
+    <string name="source_edit_replace_confirm">Reemplazar</string>
+    <string name="source_edit_saved">Fuente actualizada: sincronizando…</string>
+    <string name="source_edit_failed">No se pudo guardar: comprueba la dirección y las credenciales</string>
+    <string name="source_edit_exists">Otra fuente ya usa esta dirección y esta cuenta</string>
+    <string name="source_edit_keep_login">Deja el inicio de sesión vacío para mantener el actual</string>
+    <string name="source_edit_pick_file">Elegir otro archivo…</string>
 </resources>

@@ -654,6 +654,61 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    // ───────────── « Modifier » une source ─────────────
+
+    /** Textes affichés à la fin d'une modification (traduits par l'écran). */
+    data class EditTexts(val saved: String, val failed: String, val exists: String)
+
+    /** Formulaire prérempli de la source [p] (voir [com.ultratv.tv.nativeapp.data.repo.SourceEdit.prefill]). */
+    fun editPrefill(p: ProviderEntity) = com.ultratv.tv.nativeapp.data.repo.SourceEdit.prefill(p)
+
+    /** La modification remplacerait-elle le catalogue (autre fournisseur) ? L'écran demande alors confirmation. */
+    fun editReplacesCatalog(p: ProviderEntity, url: String, user: String) = com.ultratv.tv.nativeapp.data.repo.SourceEdit.changesProvider(p, url, user)
+
+    /**
+     * Enregistre une modification ([block] : une des fonctions `edit…` du dépôt), MÊME source (identifiant local gardé),
+     * puis : envoi au compte si la source est partagée, synchro relancée. Échec : rien n'est enregistré, message clair.
+     */
+    fun applyEdit(texts: EditTexts, onDone: (Boolean) -> Unit, block: suspend ProviderRepository.() -> ProviderRepository.EditResult) {
+        viewModelScope.launch {
+            _syncing.value = true
+            try {
+                val r = repo.block()
+                runCatching { cloudSync.pushEdited(r.id) }
+                sync.request(r.id, force = true)
+                com.ultratv.tv.nativeapp.ui.common.Toaster.ok(texts.saved)
+                onDone(true)
+            } catch (c: kotlinx.coroutines.CancellationException) {
+                throw c
+            } catch (e: com.ultratv.tv.nativeapp.data.repo.SourceExistsException) {
+                com.ultratv.tv.nativeapp.ui.common.Toaster.err(texts.exists)
+                onDone(false)
+            } catch (t: Throwable) {
+                com.ultratv.tv.nativeapp.ui.common.Toaster.err(texts.failed)
+                onDone(false)
+            } finally {
+                _syncing.value = false
+            }
+        }
+    }
+
+    /** Playlist locale : un autre fichier relu dans la MÊME source. */
+    fun replaceLocalFile(id: Long, label: String, text: String, savedText: String) {
+        viewModelScope.launch {
+            _syncing.value = true
+            try {
+                repo.replaceM3uLocal(id, label, text)
+                com.ultratv.tv.nativeapp.ui.common.Toaster.ok(savedText)
+            } catch (c: kotlinx.coroutines.CancellationException) {
+                throw c
+            } catch (t: Throwable) {
+                _message.value = ""
+            } finally {
+                _syncing.value = false
+            }
+        }
+    }
+
     fun delete(id: Long) {
         viewModelScope.launch {
             // Suppression propagée au compte (et donc aux autres appareils) quand la source est liée.

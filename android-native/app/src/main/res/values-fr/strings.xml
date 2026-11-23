@@ -1977,4 +1977,15 @@
     <string name="cat_lock_need_pin">Définissez d’abord un code parental (Réglages › Contrôle parental) : sans lui, une catégorie verrouillée n’est pas protégée</string>
     <string name="rail_switch_source">Changer de source</string>
     <string name="source_picker_title">Choisir la source</string>
+    <string name="source_edit">Modifier</string>
+    <string name="source_edit_title">Modifier la source</string>
+    <string name="source_edit_save">Enregistrer et synchroniser</string>
+    <string name="source_edit_replace_title">Remplacer le catalogue ?</string>
+    <string name="source_edit_replace_body">Cette adresse ou ce compte correspond à un autre fournisseur : ses chaînes, films et séries remplaceront le catalogue actuel. Les favoris, l’historique et vos réglages de catégories restent attachés à cette source.</string>
+    <string name="source_edit_replace_confirm">Remplacer</string>
+    <string name="source_edit_saved">Source modifiée : synchronisation…</string>
+    <string name="source_edit_failed">Enregistrement impossible : vérifiez l’adresse et les identifiants</string>
+    <string name="source_edit_exists">Une autre source utilise déjà cette adresse et ce compte</string>
+    <string name="source_edit_keep_login">Laissez la connexion vide pour garder l’actuelle</string>
+    <string name="source_edit_pick_file">Choisir un autre fichier…</string>
 </resources>

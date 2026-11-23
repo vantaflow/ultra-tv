@@ -145,17 +145,29 @@ class ProviderRepository @Inject constructor(
                 active = false,    // explicit default is set in Settings; see setDefault
             ),
         )
+        importLocalText(pid, text)
+        return pid
+    }
+
+    /**
+     * Lit une playlist locale dans la source [pid]. Réimport (« Modifier › Choisir un autre fichier ») : les chaînes déjà
+     * connues gardent leur identifiant (favoris, historique et guide restent rattachés), l'état des catégories est fusionné.
+     */
+    private suspend fun importLocalText(pid: Long, text: String) {
         val res = m3u.parse(text, pid)
         limits.setEpgUrls(pid, res.epgUrls)
         val pinSet = parental.isSet()
-        val cats = if (!pinSet) res.categories
-        else res.categories.map { it.copy(locked = adultRegex.containsMatchIn(it.name)) }
+        val before = categoryDao.forProviderKind(pid, "LIVE").associateBy { it.remoteId }
+        val cats = (if (!pinSet) res.categories
+        else res.categories.map { it.copy(locked = adultRegex.containsMatchIn(it.name)) })
+            .map { c -> before[c.remoteId]?.let { o -> c.copy(enabled = o.enabled, locked = o.locked || c.locked) } ?: c }
+        val keep = channelDao.idsByRemote(pid).associate { it.remoteId to it.id }
         categoryDao.deleteForProviderKind(pid, "LIVE")
         categoryDao.upsertAll(cats)
         channelDao.deleteForProvider(pid)
+        val rows = withoutHidden(res.channels).map { c -> keep[c.remoteId]?.let { c.copy(id = it) } ?: c }
         // Rang de catégorie lu APRÈS l'écriture des catégories : les non placées se départagent par leur nouvel id.
-        channelDao.upsertAll(LiveOrder.ranks(categoryDao.forProviderKind(pid, LiveOrder.KIND)).stamp(withoutHidden(res.channels)))
-        return pid
+        channelDao.upsertAll(LiveOrder.ranks(categoryDao.forProviderKind(pid, LiveOrder.KIND)).stamp(rows))
     }
 
     /** Syncs an M3U provider. Channels-only (M3U has no movies/series schema). */
@@ -528,6 +540,100 @@ class ProviderRepository @Inject constructor(
     }
 
     private fun hostOf(url: String): String? = runCatching { java.net.URI(if (url.contains("://")) url else "http://$url").host }.getOrNull()
+
+    // ───────────── « Modifier » une source (Réglages › Sources) ─────────────
+    //
+    // La source garde son identifiant local : favoris, historique, catégories masquées ou verrouillées, numéros et profils
+    // restent attachés. Les identifiants sont vérifiés quand l'ajout les vérifie (portail Stalker, NAS, serveur multimédia) ;
+    // une erreur remonte à l'appelant et RIEN n'est enregistré. La synchro est relancée par l'appelant ; la garde
+    // anti-effacement ([CatalogGuard]) s'applique au nouveau catalogue comme à toute synchro.
+
+    /** Résultat d'une modification : [providerChanged] = autre fournisseur (catalogue remplacé à la synchro). */
+    data class EditResult(val id: Long, val providerChanged: Boolean)
+
+    private suspend fun editable(id: Long, vararg kinds: String): ProviderEntity =
+        providerDao.byId(id)?.takeIf { it.kind in kinds } ?: throw IllegalArgumentException("source")
+
+    /** Une AUTRE source a déjà cette identité : refus (deux lignes pour le même compte se marcheraient dessus). */
+    private suspend fun noDuplicate(p: ProviderEntity, kind: String, url: String, user: String) {
+        providerDao.findByIdentity(kind, url, user)?.let { if (it.id != p.id) throw SourceExistsException() }
+    }
+
+    /** Enregistre [next] (même id). Autre fournisseur : dates de synchro remises à zéro et filtre par catégorie à redécouvrir. */
+    private suspend fun saveEdit(old: ProviderEntity, next: ProviderEntity, providerChanged: Boolean): EditResult {
+        val row = if (providerChanged) next.copy(categoryFilter = -1) else next
+        if (row != old) providerDao.upsert(row)
+        if (providerChanged) providerDao.resetSyncAt(old.id)
+        return EditResult(old.id, providerChanged)
+    }
+
+    private fun editedName(old: ProviderEntity, name: String) = name.trim().take(64).ifEmpty { old.name }
+
+    suspend fun editXtream(id: Long, name: String, baseUrl: String, username: String, password: String): EditResult {
+        val p = editable(id, "XTREAM")
+        val url = baseUrl.trim().trimEnd('/')
+        val user = username.trim()
+        noDuplicate(p, "XTREAM", url, user)
+        return saveEdit(p, p.copy(name = editedName(p, name), baseUrl = url, username = user, password = password), SourceEdit.changesProvider(p, url, user))
+    }
+
+    /** Liste M3U par lien. Une adresse Xtream (get.php…) est convertie en Xtream Codes à la synchro, comme à l'ajout. */
+    suspend fun editM3u(id: Long, name: String, url: String): EditResult {
+        val p = editable(id, "M3U")
+        val u = url.trim()
+        noDuplicate(p, "M3U", u, "")
+        return saveEdit(p, p.copy(name = editedName(p, name), baseUrl = u), SourceEdit.changesProvider(p, u, ""))
+    }
+
+    /** Playlist locale : nom seulement (le fichier se remplace avec [replaceM3uLocal]). */
+    suspend fun editM3uLocal(id: Long, name: String): EditResult {
+        val p = editable(id, "M3U_LOCAL")
+        return saveEdit(p, p.copy(name = editedName(p, name)), false)
+    }
+
+    /** Playlist locale : nouveau fichier lu dans la MÊME source (chaînes connues gardées, voir [importLocalText]). */
+    suspend fun replaceM3uLocal(id: Long, label: String, text: String) {
+        val p = editable(id, "M3U_LOCAL")
+        if (label.isNotBlank() && label != p.baseUrl) providerDao.upsert(p.copy(baseUrl = label))
+        importLocalText(p.id, text)
+    }
+
+    /** Portail Stalker : connexion vérifiée d'abord (comme à l'ajout) ; l'identité de boîtier saisie est reprise. */
+    suspend fun editStalker(id: Long, name: String, portal: String, mac: String, login: String, password: String, identity: com.ultratv.tv.nativeapp.data.stalker.StalkerIdentity): EditResult {
+        val p = editable(id, "STALKER")
+        val m = com.ultratv.tv.nativeapp.data.stalker.StalkerMac.normalize(mac) ?: throw IllegalArgumentException("mac")
+        val url = portal.trim().trimEnd('/')
+        noDuplicate(p, "STALKER", url, m)
+        stalker.probe(com.ultratv.tv.nativeapp.data.stalker.StalkerClient.Account(url, m, login, password, identity))
+        val packed = com.ultratv.tv.nativeapp.data.stalker.StalkerCreds.pack(login, password, identity)
+        return saveEdit(p, p.copy(name = editedName(p, name), baseUrl = url, username = m, password = packed), SourceEdit.changesProvider(p, url, m))
+    }
+
+    /** Partage NAS : connexion vérifiée d'abord. */
+    suspend fun editNas(id: Long, name: String, address: String, username: String, password: String): EditResult {
+        val p = editable(id, Nas.KIND)
+        val a = Nas.parseAddress(address) ?: throw IllegalArgumentException("url")
+        val user = username.trim()
+        nas.test(a, user, password)
+        noDuplicate(p, Nas.KIND, a.url(), user)
+        return saveEdit(p, p.copy(name = editedName(p, name), baseUrl = a.url(), username = user, password = password), SourceEdit.changesProvider(p, a.url(), user))
+    }
+
+    /**
+     * Serveur Jellyfin / Emby. Identifiant, mot de passe et clé vides : la connexion actuelle (jeton) est gardée, seuls le nom
+     * et l'adresse changent. Sinon : nouvelle connexion vérifiée, nouvel utilisateur et nouveau jeton.
+     */
+    suspend fun editMediaServer(id: Long, name: String, server: String, username: String, password: String, apiKey: String = ""): EditResult {
+        val p = editable(id, MediaServer.JELLYFIN, MediaServer.EMBY)
+        val base = MediaServer.normalizeServerUrl(server) ?: throw IllegalArgumentException("url")
+        if (username.isBlank() && password.isEmpty() && apiKey.isBlank()) {
+            return saveEdit(p, p.copy(name = editedName(p, name), baseUrl = base), SourceEdit.changesProvider(p, base, p.username))
+        }
+        val login = mediaServer.login(base, username.trim(), password, apiKey)
+        noDuplicate(p, p.kind, base, login.userId)
+        val changed = SourceEdit.changesProvider(p, base, p.username) || login.userId != p.username
+        return saveEdit(p, p.copy(name = editedName(p, name), baseUrl = base, username = login.userId, password = login.token), changed)
+    }
 
     /**
      * Marks one provider as the default and deactivates the others. Every

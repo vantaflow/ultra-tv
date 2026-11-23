@@ -65,6 +65,13 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.i18n.LocalDs
+import com.ultratv.tv.nativeapp.i18n.sourceEditTitle
+import com.ultratv.tv.nativeapp.i18n.sourceEditSave
+import com.ultratv.tv.nativeapp.i18n.sourceEditKeepLogin
+import com.ultratv.tv.nativeapp.i18n.sourceEditPickFile
+import com.ultratv.tv.nativeapp.i18n.sourceEditReplaceTitle
+import com.ultratv.tv.nativeapp.i18n.sourceEditReplaceBody
+import com.ultratv.tv.nativeapp.i18n.sourceEditReplaceConfirm
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.i18n.fieldMac
 import com.ultratv.tv.nativeapp.i18n.fieldMediaKey
@@ -453,22 +460,24 @@ fun FormField(
 }
 
 @Composable
-fun XtreamDialog(onDismiss: () -> Unit, onSubmit: (name: String, url: String, user: String, pass: String) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var url by remember { mutableStateOf("") }
-    var user by remember { mutableStateOf("") }
-    var pass by remember { mutableStateOf("") }
+fun XtreamDialog(onDismiss: () -> Unit, initial: com.ultratv.tv.nativeapp.data.repo.SourceEdit.Prefill? = null, busy: Boolean = false, onSubmit: (name: String, url: String, user: String, pass: String) -> Unit) {
+    // [initial] : « Modifier » une source existante (formulaire prérempli, mot de passe masqué).
+    var name by remember { mutableStateOf(initial?.name.orEmpty()) }
+    var url by remember { mutableStateOf(initial?.url.orEmpty()) }
+    var user by remember { mutableStateOf(initial?.user.orEmpty()) }
+    var pass by remember { mutableStateOf(initial?.password.orEmpty()) }
     val S = LocalStrings.current
     val D = LocalDs.current
     val urlOk = url.isBlank() || isValidHttpUrl(url)
-    val canSubmit = isValidHttpUrl(url) && user.isNotBlank() && pass.isNotBlank()
+    val canSubmit = isValidHttpUrl(url) && user.isNotBlank() && pass.isNotBlank() && !busy
     AddProviderDialog(
         title = "Xtream Codes",
-        subtitle = D.formSubXtream,
+        subtitle = if (initial != null) D.sourceEditTitle else D.formSubXtream,
         icon = Icons.Monitor,
         onDismiss = onDismiss,
-        onSubmit = { onSubmit(name, url.trim(), user, pass) },
+        onSubmit = { if (!busy) onSubmit(name, url.trim(), user, pass) },
         canSubmit = canSubmit,
+        submitLabel = if (initial != null) D.sourceEditSave else null,
     ) {
         // Ordre de la maquette : nom (facultatif), serveur, identifiant, mot de passe. Le focus initial est sur le serveur.
         FormField(S.fieldNameOptional, name, { name = it }, placeholder = D.formNamePh, testTag = "field-name")
@@ -481,20 +490,21 @@ fun XtreamDialog(onDismiss: () -> Unit, onSubmit: (name: String, url: String, us
 }
 
 @Composable
-fun M3uDialog(onDismiss: () -> Unit, onSubmit: (name: String, url: String) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var url by remember { mutableStateOf("") }
+fun M3uDialog(onDismiss: () -> Unit, initial: com.ultratv.tv.nativeapp.data.repo.SourceEdit.Prefill? = null, busy: Boolean = false, onSubmit: (name: String, url: String) -> Unit) {
+    var name by remember { mutableStateOf(initial?.name.orEmpty()) }
+    var url by remember { mutableStateOf(initial?.url.orEmpty()) }
     val S = LocalStrings.current
     val D = LocalDs.current
     val urlOk = url.isBlank() || isValidHttpUrl(url)
     val recognized = com.ultratv.tv.nativeapp.data.net.XtreamUrl.parse(url) != null
     AddProviderDialog(
         title = "M3U",
-        subtitle = D.formSubM3u,
+        subtitle = if (initial != null) D.sourceEditTitle else D.formSubM3u,
         icon = Icons.List,
         onDismiss = onDismiss,
-        onSubmit = { onSubmit(name, url.trim()) },
-        canSubmit = isValidHttpUrl(url),
+        onSubmit = { if (!busy) onSubmit(name, url.trim()) },
+        canSubmit = isValidHttpUrl(url) && !busy,
+        submitLabel = if (initial != null) D.sourceEditSave else null,
     ) {
         FormField(S.fieldNameOptional, name, { name = it }, placeholder = D.formNamePh, testTag = "field-name")
         FormField(S.fieldPlaylistUrl, url, { url = it }, keyboardType = KeyboardType.Uri,
@@ -536,18 +546,19 @@ internal fun macDigits(input: String): String {
  * ([busy]) et se ferme quand l'appelant a fini.
  */
 @Composable
-fun StalkerDialog(onDismiss: () -> Unit, busy: Boolean = false, onBack: (() -> Unit)? = null, onSubmit: (name: String, portal: String, mac: String, login: String, pass: String, identity: com.ultratv.tv.nativeapp.data.stalker.StalkerIdentity) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var url by remember { mutableStateOf("") }
-    var mac by remember { mutableStateOf(com.ultratv.tv.nativeapp.data.stalker.StalkerMac.DEFAULT_PREFIX.filter { it != ':' }) }
-    var login by remember { mutableStateOf("") }
-    var pass by remember { mutableStateOf("") }
+fun StalkerDialog(onDismiss: () -> Unit, busy: Boolean = false, onBack: (() -> Unit)? = null, initial: com.ultratv.tv.nativeapp.data.repo.SourceEdit.Prefill? = null, onSubmit: (name: String, portal: String, mac: String, login: String, pass: String, identity: com.ultratv.tv.nativeapp.data.stalker.StalkerIdentity) -> Unit) {
+    var name by remember { mutableStateOf(initial?.name.orEmpty()) }
+    var url by remember { mutableStateOf(initial?.url.orEmpty()) }
+    var mac by remember { mutableStateOf(initial?.mac?.let(::macDigits)?.takeIf { it.isNotEmpty() } ?: com.ultratv.tv.nativeapp.data.stalker.StalkerMac.DEFAULT_PREFIX.filter { it != ':' }) }
+    var login by remember { mutableStateOf(initial?.login.orEmpty()) }
+    var pass by remember { mutableStateOf(initial?.password.orEmpty()) }
     // Identité de boîtier (facultative, repliée) : à recopier d'un autre lecteur quand le portail y lie l'abonnement.
-    var showIdentity by remember { mutableStateOf(false) }
-    var sn by remember { mutableStateOf("") }
-    var devId by remember { mutableStateOf("") }
-    var devId2 by remember { mutableStateOf("") }
-    var signature by remember { mutableStateOf("") }
+    val id0 = initial?.identity
+    var showIdentity by remember { mutableStateOf(id0 != null && !id0.isEmpty) }
+    var sn by remember { mutableStateOf(id0?.sn.orEmpty()) }
+    var devId by remember { mutableStateOf(id0?.deviceId.orEmpty()) }
+    var devId2 by remember { mutableStateOf(id0?.deviceId2.orEmpty()) }
+    var signature by remember { mutableStateOf(id0?.signature.orEmpty()) }
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     val S = LocalStrings.current
     val D = LocalDs.current
@@ -555,12 +566,12 @@ fun StalkerDialog(onDismiss: () -> Unit, busy: Boolean = false, onBack: (() -> U
     val macOk = mac.length == 12
     AddProviderDialog(
         title = D.kindStalker,
-        subtitle = D.formSubStalker,
+        subtitle = if (initial != null) D.sourceEditTitle else D.formSubStalker,
         icon = Icons.Monitor,
         onDismiss = onDismiss,
         onSubmit = { if (!busy) onSubmit(name, url.trim(), mac.chunked(2).joinToString(":"), login.trim(), pass, com.ultratv.tv.nativeapp.data.stalker.StalkerIdentity(sn, devId, devId2, signature).trimmed()) },
         canSubmit = isValidHttpUrl(url) && macOk && !busy,
-        submitLabel = if (busy) D.stalkerChecking else null,
+        submitLabel = if (busy) D.stalkerChecking else if (initial != null) D.sourceEditSave else null,
         onBack = onBack,
     ) {
         FormField(S.fieldNameOptional, name, { name = it }, placeholder = D.formNamePh, testTag = "field-name")
@@ -594,9 +605,10 @@ fun StalkerDialog(onDismiss: () -> Unit, busy: Boolean = false, onBack: (() -> U
  * connexion ([busy]) et se ferme quand l'appelant a fini (échec : message, le dialogue reste ouvert).
  */
 @Composable
-fun MediaServerDialog(title: String, onDismiss: () -> Unit, busy: Boolean = false, onBack: (() -> Unit)? = null, initialUrl: String = "", onSubmit: (name: String, server: String, user: String, pass: String, apiKey: String) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var url by remember { mutableStateOf(initialUrl) }
+fun MediaServerDialog(title: String, onDismiss: () -> Unit, busy: Boolean = false, onBack: (() -> Unit)? = null, initialUrl: String = "", initial: com.ultratv.tv.nativeapp.data.repo.SourceEdit.Prefill? = null, onSubmit: (name: String, server: String, user: String, pass: String, apiKey: String) -> Unit) {
+    // [initial] : « Modifier » ; identifiants vides = connexion actuelle gardée (seuls le nom et l'adresse changent).
+    var name by remember { mutableStateOf(initial?.name.orEmpty()) }
+    var url by remember { mutableStateOf(initial?.url ?: initialUrl) }
     var user by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
     var key by remember { mutableStateOf("") }
@@ -607,16 +619,18 @@ fun MediaServerDialog(title: String, onDismiss: () -> Unit, busy: Boolean = fals
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     val urlOk = url.isBlank() || com.ultratv.tv.nativeapp.data.mediaserver.MediaServer.normalizeServerUrl(url) != null
     val credsOk = if (useKey) key.isNotBlank() else (user.isNotBlank() && pass.isNotBlank())
+    val editing = initial != null
+    val keepLogin = editing && user.isBlank() && pass.isEmpty() && key.isBlank()
     AddProviderDialog(
         title = title,
-        subtitle = D.formSubMediaServer,
+        subtitle = if (editing) D.sourceEditTitle else D.formSubMediaServer,
         icon = Icons.Monitor,
         onDismiss = onDismiss,
         onSubmit = { if (!busy) onSubmit(name, url.trim(), if (useKey) "" else user.trim(), if (useKey) "" else pass, if (useKey) key.trim() else "") },
-        canSubmit = com.ultratv.tv.nativeapp.data.mediaserver.MediaServer.normalizeServerUrl(url) != null && credsOk && !busy,
-        submitLabel = if (busy) D.mediaChecking else D.mlibConnect,
+        canSubmit = com.ultratv.tv.nativeapp.data.mediaserver.MediaServer.normalizeServerUrl(url) != null && (credsOk || keepLogin) && !busy,
+        submitLabel = if (busy) D.mediaChecking else if (editing) D.sourceEditSave else D.mlibConnect,
         onBack = onBack,
-        step = 2,
+        step = if (editing) null else 2,
     ) {
         FormField(S.fieldNameOptional, name, { name = it }, placeholder = D.formNamePh, testTag = "field-name")
         FormField(D.fieldMediaUrl, url, { url = it }, keyboardType = KeyboardType.Uri,
@@ -637,6 +651,7 @@ fun MediaServerDialog(title: String, onDismiss: () -> Unit, busy: Boolean = fals
             FormField(D.fieldMediaUser, user, { user = it }, testTag = "field-user")
             FormField(D.fieldMediaPass, pass, { pass = it }, password = true, last = true, placeholder = "••••••••", testTag = "field-pass")
         }
+        if (editing) Text(D.sourceEditKeepLogin, fontFamily = Manrope, fontSize = if (touch) 12.sp else 20.spx, color = Ux.Text3, maxLines = 2)
         Text(D.mlibPwNote, fontFamily = Manrope, fontSize = if (touch) 12.sp else 20.spx, color = Ux.Text3, maxLines = 3)
     }
 }
@@ -704,24 +719,24 @@ fun PlexDialog(state: PlexUi, onDismiss: () -> Unit, onRetry: () -> Unit) {
  * ouvert pendant la connexion ([busy]) et se ferme quand l'appelant a fini (échec : message, le dialogue reste ouvert).
  */
 @Composable
-fun NasDialog(onDismiss: () -> Unit, busy: Boolean = false, onBack: (() -> Unit)? = null, onSubmit: (name: String, address: String, user: String, pass: String) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var url by remember { mutableStateOf("") }
-    var user by remember { mutableStateOf("") }
-    var pass by remember { mutableStateOf("") }
+fun NasDialog(onDismiss: () -> Unit, busy: Boolean = false, onBack: (() -> Unit)? = null, initial: com.ultratv.tv.nativeapp.data.repo.SourceEdit.Prefill? = null, onSubmit: (name: String, address: String, user: String, pass: String) -> Unit) {
+    var name by remember { mutableStateOf(initial?.name.orEmpty()) }
+    var url by remember { mutableStateOf(initial?.url.orEmpty()) }
+    var user by remember { mutableStateOf(initial?.user.orEmpty()) }
+    var pass by remember { mutableStateOf(initial?.password.orEmpty()) }
     val S = LocalStrings.current
     val D = LocalDs.current
     val parsed = com.ultratv.tv.nativeapp.data.nas.Nas.parseAddress(url)
     AddProviderDialog(
         title = "NAS (SMB)",
-        subtitle = D.formSubNas,
+        subtitle = if (initial != null) D.sourceEditTitle else D.formSubNas,
         icon = Icons.Monitor,
         onDismiss = onDismiss,
         onSubmit = { if (!busy) onSubmit(name, url.trim(), user.trim(), pass) },
         canSubmit = parsed != null && !busy,
-        submitLabel = if (busy) D.nasChecking else null,
+        submitLabel = if (busy) D.nasChecking else if (initial != null) D.sourceEditSave else null,
         onBack = onBack,
-        step = 2,
+        step = if (initial != null) null else 2,
     ) {
         FormField(S.fieldNameOptional, name, { name = it }, placeholder = D.formNamePh, testTag = "field-name")
         FormField(D.fieldNasUrl, url, { url = it }, keyboardType = KeyboardType.Uri,
@@ -771,4 +786,71 @@ private fun FieldImeLabel(label: String, last: Boolean = false, content: @Compos
             })
         },
     ) { content() }
+}
+
+/**
+ * « Modifier » une playlist locale (fichier M3U) : nom de la source, et « Choisir un autre fichier… » qui relit un fichier
+ * dans la MÊME source (chaînes connues, favoris et historique gardés).
+ */
+@Composable
+fun M3uLocalEditDialog(initial: com.ultratv.tv.nativeapp.data.repo.SourceEdit.Prefill, onDismiss: () -> Unit, onPickFile: () -> Unit, onSubmit: (name: String) -> Unit) {
+    var name by remember { mutableStateOf(initial.name) }
+    val S = LocalStrings.current
+    val D = LocalDs.current
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    AddProviderDialog(
+        title = "M3U",
+        subtitle = D.sourceEditTitle,
+        icon = Icons.List,
+        onDismiss = onDismiss,
+        onSubmit = { onSubmit(name) },
+        canSubmit = true,
+        submitLabel = D.sourceEditSave,
+    ) {
+        FormField(S.fieldNameOptional, name, { name = it }, placeholder = D.formNamePh, autoFocus = true, last = true, testTag = "field-name")
+        if (initial.url.isNotBlank()) Text(initial.url, fontFamily = Manrope, fontSize = if (touch) 12.sp else 20.spx, color = Ux.Text3, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+        FocusSurface(onClick = onPickFile, shape = RoundedCornerShape(if (touch) 12.dp else 14.design), bg = Ux.Surface2, modifier = Modifier.fillMaxWidth().testTag("edit-pick-file")) { f ->
+            Box(Modifier.fillMaxWidth().padding(vertical = if (touch) 10.dp else 14.design), contentAlignment = Alignment.Center) {
+                Text(D.sourceEditPickFile, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = if (touch) 14.sp else 20.spx,
+                    color = if (f) Ux.TextOnLight else Ux.Text, maxLines = 1)
+            }
+        }
+    }
+}
+
+/**
+ * Confirmation avant d'enregistrer une source modifiée qui pointe vers un AUTRE fournisseur : son catalogue remplacera
+ * l'actuel (la garde anti-effacement s'applique toujours à la synchro). Focus initial sur « Annuler » : un OK machinal
+ * ne remplace rien.
+ */
+@Composable
+fun ReplaceCatalogDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    val D = LocalDs.current
+    val S = LocalStrings.current
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    val cancelFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { repeat(10) { if (runCatching { cancelFocus.requestFocus() }.isSuccess) return@LaunchedEffect; kotlinx.coroutines.delay(50) } }
+    ModalFocusScope(onBack = onDismiss, modifier = Modifier.background(Ux.Scrim)) {
+        Column(
+            Modifier.widthIn(max = if (touch) 420.dp else 820.design).clip(RoundedCornerShape(28.design)).background(Ux.SurfaceDeep).padding(if (touch) 20.dp else 40.design).testTag("replace-catalog"),
+            verticalArrangement = Arrangement.spacedBy(if (touch) 12.dp else 20.design),
+        ) {
+            Text(D.sourceEditReplaceTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (touch) 20.sp else 34.spx, maxLines = 2)
+            Text(D.sourceEditReplaceBody, color = Ux.Text2, fontFamily = Manrope, fontSize = if (touch) 14.sp else 24.spx, maxLines = 6)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 16.design)) {
+                for ((confirm, label) in listOf(false to S.cancel, true to D.sourceEditReplaceConfirm)) {
+                    FocusSurface(
+                        onClick = { if (confirm) onConfirm() else onDismiss() },
+                        shape = RoundedCornerShape(if (touch) 12.dp else 16.design), bg = if (confirm) Ux.Cta else Ux.Surface2,
+                        modifier = Modifier.weight(1f).then(if (confirm) Modifier.testTag("replace-confirm") else Modifier.focusRequester(cancelFocus).testTag("replace-cancel")),
+                    ) { f ->
+                        Box(Modifier.fillMaxWidth().padding(vertical = if (touch) 12.dp else 18.design), contentAlignment = Alignment.Center) {
+                            Text(label, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = if (touch) 15.sp else 24.spx,
+                                color = if (f || confirm) Ux.TextOnLight else Ux.Text, maxLines = 1)
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

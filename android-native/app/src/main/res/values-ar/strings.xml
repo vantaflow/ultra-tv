@@ -2035,4 +2035,15 @@
     <string name="cat_lock_need_pin">عيّن رمز الرقابة الأبوية أولاً (الإعدادات › الرقابة الأبوية): بدونه لا تكون الفئة المقفلة محمية</string>
     <string name="rail_switch_source">تغيير المصدر</string>
     <string name="source_picker_title">اختيار المصدر</string>
+    <string name="source_edit">تعديل</string>
+    <string name="source_edit_title">تعديل المصدر</string>
+    <string name="source_edit_save">حفظ ومزامنة</string>
+    <string name="source_edit_replace_title">استبدال الكتالوج؟</string>
+    <string name="source_edit_replace_body">هذا العنوان أو الحساب يخص مزوّدًا آخر: ستحل قنواته وأفلامه ومسلسلاته محل الكتالوج الحالي. تبقى المفضلة والسجل وإعدادات الفئات مرتبطة بهذا المصدر.</string>
+    <string name="source_edit_replace_confirm">استبدال</string>
+    <string name="source_edit_saved">تم تعديل المصدر: جارٍ المزامنة…</string>
+    <string name="source_edit_failed">تعذّر الحفظ: تحقق من العنوان وبيانات الدخول</string>
+    <string name="source_edit_exists">مصدر آخر يستخدم هذا العنوان وهذا الحساب بالفعل</string>
+    <string name="source_edit_keep_login">اترك تسجيل الدخول فارغًا للإبقاء على الحالي</string>
+    <string name="source_edit_pick_file">اختيار ملف آخر…</string>
 </resources>
