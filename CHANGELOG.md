@@ -6,22 +6,6 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 
 ## [Non publié]
 
-### Ajouté
-- Réglages › Messages : bouton « Rafraîchir » en tête de la rubrique, qui va chercher tout de suite les annonces de l'équipe au serveur (télécommande et toucher). « Actualisation… » pendant l'appel (un seul appel à la fois), puis la liste à jour ; message clair hors ligne ou serveur injoignable, avec « Réessayer » ; « Dernière vérification : HH:MM » affichée (chiffres latins en arabe). Une annonce reçue ainsi suit les règles habituelles (affichée une fois par appareil, niveaux, ciblage version / appareil / langue) et fonctionne sans appairage ; la vérification automatique toutes les 15 minutes est inchangée.
-
-### Modifié
-- Releases GitHub : cinq fichiers de moins à chaque version (12 au lieu de 17) et des notes plus claires. Le tableau « Which file should I download? / Quel fichier télécharger ? » en tête dit quel APK prendre selon l'appareil, quels noms sont les mêmes fichiers (noms fixes pour les liens) et lesquels ignorer (mise à jour intégrée, sommes de contrôle) ; un résumé en anglais (`### In English` du CHANGELOG) précède les notes en français. Retirés : `UltraTV.apk.sha256` et les `.sha256` des noms fixes `UltraTV-arm64-v8a.apk`, `UltraTV-armeabi-v7a.apk`, `UltraTV-android7.apk` (lus par personne, couverts par `SHA256SUMS.txt`), et le `.dm` de l'APK android7 (profil Android 12+, jamais lu sous Android 7). Tous les autres noms restent publiés : la mise à jour intégrée de chaque version encore en circulation, Kairo, le Worker et les liens existants en dépendent.
-
-### Corrigé
-- Aperçu du Direct et du Guide : à l'entrée de l'écran, la première chaîne montre son image dans l'encadré en ~1 s au lieu du son seul pendant ~30 s (box Amlogic). Le décodeur vidéo n'est plus configuré sur une surface factice avant que l'encadré ne soit à l'écran : il attend la surface de l'encadré et s'y configure directement (le son démarre tout de suite). Filet de sécurité : surface de l'encadré affichée, son qui avance et toujours aucune image au bout de 2 s → la sortie vidéo est rebranchée sur cette surface (une fois par écran, sans recharger le flux ni changer de décodeur). Une surface n'est jugée prête que si sa vue est attachée à la fenêtre, visible et dimensionnée. Journal `UltraPlay` : `surface host=… take`, `surface attach host=… id=…`, `surface detach host=…`, `surface reattach host=…`.
-- Direct : le bouton « Recharger » ne reste plus affiché sur une vidéo qui joue (chaîne dont les horodatages reculent, passage de l'aperçu au plein écran). L'état « chargement » repasse à faux dès que des images sont rendues ou que la lecture avance, et « Recharger » n'est proposé qu'après 3 s de chargement sans aucune progression.
-- « Qui regarde ? » : le focus revient sur le dernier profil utilisé quand il se pose ailleurs sans action de l'utilisateur (profil courant connu un instant après la liste, focus par défaut sur la première tuile) ; jamais après une flèche.
-- Accueil, « Dernières chaînes regardées » : chaque chaîne regardée au moins 5 s y entre, zapping compris (avant : seule la chaîne affichée en quittant le lecteur). Une chaîne lancée depuis l'écran Favoris (une seule source) ou les favoris du mode simple est enregistrée au lieu de l'élément regardé avant. « Ouvrir sur la dernière chaîne » prend la source active.
-- Accueil, « Dernières chaînes regardées » : plus de carte au nom d'une chaîne avec le logo (et l'adresse) d'une autre après une synchro entre appareils ; l'image et l'adresse locales ne sont reprises que pour une chaîne du même nom.
-
-### In English
-- GitHub releases: clearer notes, starting with a "Which file should I download?" table (which APK for which device, which files are identical copies, which to ignore), then this English summary, then the full notes in French. Four unused checksum files and one unused startup profile are no longer published (12 files instead of 17).
-
 ### Bureau (prochaine version)
 - Accueil : aucune rangée (à la une, en direct, reprises, nouveautés, mieux notés, Trakt, nouveaux épisodes, sport) ne montre plus de contenu d'une catégorie masquée, verrouillée ou adulte ; un profil Enfants ne voit les catégories adultes nulle part (case « Profil Enfants » dans Réglages › Profils).
 - Contrôle parental : verrou par catégorie entière (Réglages › Catégories, Direct, Films et Séries), code exigé partout où un contenu peut s'ouvrir (listes, guide, panneau des chaînes, recherche, favoris, fiches, reprise, zapping qui la saute) ; déverrouillé pour la session seulement.
@@ -37,6 +21,24 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 
 ### Corrigé
 - Écran d'accueil Android TV / Google TV : le logo des chaînes (Chaînes récentes, Favoris, catégories choisies, Sport en direct, direct de « Continuer à regarder ») s'affiche en entier, centré sur un fond sombre (ou clair pour un logo sombre), au lieu d'être agrandi et coupé ; sans logo, le nom de la chaîne. Les vignettes sont préparées par l'appli au fil de l'eau (jamais juste après le démarrage de la box) et vidées avec le cache d'images.
+
+## [1.3.74] — 2026-11-23 (Android)
+
+### Ajouté
+- Réglages › Messages : bouton « Rafraîchir » en tête de la rubrique, qui va chercher tout de suite les annonces de l'équipe au serveur (télécommande et toucher). « Actualisation… » pendant l'appel (un seul appel à la fois), puis la liste à jour ; message clair hors ligne ou serveur injoignable, avec « Réessayer » ; « Dernière vérification : HH:MM » affichée (chiffres latins en arabe). Une annonce reçue ainsi suit les règles habituelles (affichée une fois par appareil, niveaux, ciblage version / appareil / langue) et fonctionne sans appairage ; la vérification automatique toutes les 15 minutes est inchangée.
+
+### Modifié
+- Releases GitHub : cinq fichiers de moins à chaque version (12 au lieu de 17) et des notes plus claires. Le tableau « Which file should I download? / Quel fichier télécharger ? » en tête dit quel APK prendre selon l'appareil, quels noms sont les mêmes fichiers (noms fixes pour les liens) et lesquels ignorer (mise à jour intégrée, sommes de contrôle) ; un résumé en anglais (`### In English` du CHANGELOG) précède les notes en français. Retirés : `UltraTV.apk.sha256` et les `.sha256` des noms fixes `UltraTV-arm64-v8a.apk`, `UltraTV-armeabi-v7a.apk`, `UltraTV-android7.apk` (lus par personne, couverts par `SHA256SUMS.txt`), et le `.dm` de l'APK android7 (profil Android 12+, jamais lu sous Android 7). Tous les autres noms restent publiés : la mise à jour intégrée de chaque version encore en circulation, Kairo, le Worker et les liens existants en dépendent.
+
+### Corrigé
+- Aperçu du Direct et du Guide : à l'entrée de l'écran, la première chaîne montre son image dans l'encadré en ~1 s au lieu du son seul pendant ~30 s (box Amlogic). Le décodeur vidéo n'est plus configuré sur une surface factice avant que l'encadré ne soit à l'écran : il attend la surface de l'encadré et s'y configure directement (le son démarre tout de suite). Filet de sécurité : surface de l'encadré affichée, son qui avance et toujours aucune image au bout de 2 s → la sortie vidéo est rebranchée sur cette surface (une fois par écran, sans recharger le flux ni changer de décodeur). Une surface n'est jugée prête que si sa vue est attachée à la fenêtre, visible et dimensionnée. Journal `UltraPlay` : `surface host=… take`, `surface attach host=… id=…`, `surface detach host=…`, `surface reattach host=…`.
+- Direct : le bouton « Recharger » ne reste plus affiché sur une vidéo qui joue (chaîne dont les horodatages reculent, passage de l'aperçu au plein écran). L'état « chargement » repasse à faux dès que des images sont rendues ou que la lecture avance, et « Recharger » n'est proposé qu'après 3 s de chargement sans aucune progression.
+- « Qui regarde ? » : le focus revient sur le dernier profil utilisé quand il se pose ailleurs sans action de l'utilisateur (profil courant connu un instant après la liste, focus par défaut sur la première tuile) ; jamais après une flèche.
+- Accueil, « Dernières chaînes regardées » : chaque chaîne regardée au moins 5 s y entre, zapping compris (avant : seule la chaîne affichée en quittant le lecteur). Une chaîne lancée depuis l'écran Favoris (une seule source) ou les favoris du mode simple est enregistrée au lieu de l'élément regardé avant. « Ouvrir sur la dernière chaîne » prend la source active.
+- Accueil, « Dernières chaînes regardées » : plus de carte au nom d'une chaîne avec le logo (et l'adresse) d'une autre après une synchro entre appareils ; l'image et l'adresse locales ne sont reprises que pour une chaîne du même nom.
+
+### In English
+- GitHub releases: clearer notes, starting with a "Which file should I download?" table (which APK for which device, which files are identical copies, which to ignore), then this English summary, then the full notes in French. Four unused checksum files and one unused startup profile are no longer published (12 files instead of 17).
 
 ## [1.3.73] — 2026-11-23 (Android)
 
