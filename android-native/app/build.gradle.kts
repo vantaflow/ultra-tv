@@ -297,7 +297,7 @@ dependencies {
     // Tests — runs on the local JVM with Robolectric for Android types we
     // can't easily strip out (android.util.Base64).
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.robolectric:robolectric:4.18")
+    testImplementation("org.robolectric:robolectric:4.18.1")
     // Migrations Room : MigrationTestHelper lit les schémas exportés (app/schemas) exposés comme assets de test.
     testImplementation("androidx.room:room-testing:2.8.5")
     testImplementation("androidx.test.ext:junit:1.1.5")
