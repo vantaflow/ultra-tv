@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Ajouté
+- Rubrique « Replay » (Android) dans le menu latéral, après le Guide (téléphone et tablette : rail latéral et « Plus ») : les chaînes de la source active qui ont une archive (Xtream, M3U avec rattrapage), filtrables par catégorie, puis le jour (aujourd'hui, hier… jusqu'à la durée d'archive de la chaîne, 7 jours au plus) et la liste des programmes passés de ce jour (heure, titre, durée, description). OK lit le programme depuis le début ; un programme sorti de l'archive est grisé « Indisponible ». Le profil est respecté : catégories masquées ou désactivées absentes, chaînes et catégories verrouillées derrière le code parental, adultes exclus du profil Enfants. L'entrée n'apparaît que si la source propose une archive ; sinon l'écran l'explique. Lien direct `ultratv://replay`.
+
 ### Bureau (prochaine version)
 - Accueil : aucune rangée (à la une, en direct, reprises, nouveautés, mieux notés, Trakt, nouveaux épisodes, sport) ne montre plus de contenu d'une catégorie masquée, verrouillée ou adulte ; un profil Enfants ne voit les catégories adultes nulle part (case « Profil Enfants » dans Réglages › Profils).
 - Contrôle parental : verrou par catégorie entière (Réglages › Catégories, Direct, Films et Séries), code exigé partout où un contenu peut s'ouvrir (listes, guide, panneau des chaînes, recherche, favoris, fiches, reprise, zapping qui la saute) ; déverrouillé pour la session seulement.
