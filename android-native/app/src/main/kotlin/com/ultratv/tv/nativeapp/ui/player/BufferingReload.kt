@@ -23,7 +23,7 @@ import com.ultratv.tv.nativeapp.ui.player.engine.PlaybackSession
 import kotlinx.coroutines.delay
 
 /**
- * Mise en mémoire tampon prolongée (> [StreamInfoFormat.RELOAD_OFFER_MS]) : bouton « Recharger » qui relance le flux sur la même
+ * Mise en mémoire tampon prolongée (> [StreamInfoFormat.RELOAD_OFFER_MS]) sans aucune progression réelle de la lecture : bouton « Recharger » qui relance le flux sur la même
  * chaîne / position. Il prend le focus (OK à la télécommande) et le rend à la racine du lecteur quand il disparaît.
  */
 @Composable
@@ -31,7 +31,21 @@ internal fun BufferingReload(session: PlaybackSession, D: DesignStrings, rootFoc
     val st by session.state.collectAsState()
     var offer by remember { mutableStateOf(false) }
     LaunchedEffect(st.buffering) {
-        if (st.buffering) { delay(StreamInfoFormat.RELOAD_OFFER_MS); offer = true } else offer = false
+        offer = false
+        if (!st.buffering) return@LaunchedEffect
+        // Proposé seulement si le chargement dure ET qu'aucune progression réelle (images, position) n'est vue pendant
+        // toute la durée : une vidéo qui joue sous un état « chargement » resté vrai n'affiche jamais le bouton.
+        var bufferingFor = 0L
+        var stillFor = 0L
+        var mark = session.progressMark()
+        while (true) {
+            delay(StreamInfoFormat.RELOAD_PROBE_MS)
+            bufferingFor += StreamInfoFormat.RELOAD_PROBE_MS
+            val now = session.progressMark()
+            stillFor = if (com.ultratv.tv.nativeapp.ui.player.engine.BufferingProgress.moved(mark, now)) 0L else stillFor + StreamInfoFormat.RELOAD_PROBE_MS
+            mark = now
+            offer = StreamInfoFormat.shouldOfferReload(bufferingFor, stillFor)
+        }
     }
     if (!offer || !st.buffering) return
     val focus = remember { FocusRequester() }
