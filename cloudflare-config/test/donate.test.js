@@ -50,6 +50,7 @@ describe("dons : PayPal seul", () => {
     const gh = await g.text();
     expect(gh).toContain("paypal.com/ncp/payment/JHPS8RCN35UWA");
     expect(gh).toContain("/donate/merci?m=1&l=en");
+    expect(gh).toContain('href="https://paypal.me/pitivi"');
     const once = await call("/donate/merci?l=es", { ip: freshIp() });
     expect(once.status).toBe(200);
     expect(once.headers.get("x-robots-tag")).toBe("noindex");
