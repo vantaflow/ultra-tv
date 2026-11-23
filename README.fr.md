@@ -374,7 +374,7 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)   # macOS
 ./gradlew assembleRelease                          # APK par ABI (arm64-v8a, armeabi-v7a)
 ```
 
-- La version vient du fichier [`VERSION`](VERSION) ; `versionCode = major×10000 + minor×100 + patch` (1.2.0 → 10200).
+- La version vient du fichier [`VERSION`](VERSION) ; `versionCode = major×1000000 + minor×10000 + patch×100 + (rcN, ou 99 pour une stable)` (1.3.76 → 1037699, 1.3.76-rc1 → 1037601).
 - **Faux serveur Xtream** pour tester sans abonnement : `python3 android-native/tools/fake-xtream/server.py` (l'émulateur y accède via `http://10.0.2.2:8099`, identifiants `test` / `test`).
 - Build debug : intents de débogage (`debug_route`, `debug_theme`, `debug_engine`, `debug_decoder`, `debug_buffer`…) pour les captures et les mesures.
 - **CI** ([ci.yml](.github/workflows/ci.yml)) : web (tsc + vitest), Android (compilation + tests unitaires), Worker. Publication : [release.yml](.github/workflows/release.yml) sur tag `v*` (APK universel `UltraTV-debug.apk`, APK par processeur `UltraTV-<version>-<abi>.apk` et `SHA256SUMS.txt`, notes produites par [release-notes.sh](.github/release-notes.sh) : tableau des fichiers, résumé anglais tiré de la sous-section `### In English` du CHANGELOG, puis les notes en français) ; site : [pages.yml](.github/workflows/pages.yml).

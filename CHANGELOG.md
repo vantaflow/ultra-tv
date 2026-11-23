@@ -12,6 +12,9 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 ## [Non publié]
 
 ### Android et site (prochaine version)
+- Écran noir permanent après le passage de la pré-version 1.3.75-rc1 à la 1.3.75 : la base locale rétrogradée (25 → 24) était reconstruite sans profil par défaut, donc « Qui regarde ? » et les préférences n'émettaient jamais. Le profil Principal est désormais recréé à chaque ouverture s'il manque (les appareils déjà touchés sont réparés au lancement suivant).
+- Premier écran : plus jamais un écran vide. Au bout de 3 s, l'écran de chargement ; au bout de 12 s, un écran d'erreur avec « Réessayer » et « Réinitialiser les données locales » (la configuration revient du cloud). Une exception dans les flux de démarrage est journalisée et donne une valeur de repli au lieu d'un blocage.
+- Numéro de version interne (versionCode) : une pré-version -rcN est désormais strictement inférieure à la stable du même numéro (major×1 000 000 + minor×10 000 + patch×100 + rcN, ou 99 pour une stable ; 1.3.76-rc1 → 1037601, 1.3.76 → 1037699), tous supérieurs à celui de la 1.3.75 (10375). La mise à jour automatique (sans base de données) est inchangée.
 - Interface TV : « Grande » et « Très grande » passent à x1,15 et x1,3 (comme le texte) ; « Petite » et « Normale » inchangées. Le menu de gauche suit la taille du texte (hauteur des entrées, largeur déployée) au lieu d'être écrasé.
 - Accueil TV : « Votre catalogue se charge… » n'apparaît que pendant une synchronisation réelle ; une source sans film ni série (direct seul, M3U) n'affiche plus ce message indéfiniment.
 - Lecteur en direct : l'action « Ma liste » est renommée « Favoris », comme la rubrique qu'elle ouvre (les fiches film et série gardent « Ma liste »).
