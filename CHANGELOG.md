@@ -16,11 +16,6 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 - Réglages : niveaux Essentiel / Standard / Expert ; Expert d'office pour un utilisateur existant, Standard pour une installation neuve ; un réglage modifié reste toujours affiché.
 - Rail latéral : sélecteur de source rapide quand le profil voit plusieurs sources.
 
-### Modifié
-- Écran d'accueil Android TV / Google TV : les films, séries et épisodes publiés (« Continuer à regarder », Nouveautés, Nouveaux films, Nouvelles séries, Top 10, Mieux notés, Ma liste) montrent de nouveau leur affiche en 2:3 au lieu d'une photo de scène en 16:9 ; un épisode montre l'affiche de sa série. Sans affiche seulement, le fond du titre apparaît entier dans une vignette 2:3, le titre dessous.
-
-### Corrigé
-- Écran d'accueil Android TV / Google TV : le logo des chaînes (Chaînes récentes, Favoris, catégories choisies, Sport en direct, direct de « Continuer à regarder ») s'affiche en entier, centré sur un fond sombre (ou clair pour un logo sombre), au lieu d'être agrandi et coupé ; sans logo, le nom de la chaîne. Les vignettes sont préparées par l'appli au fil de l'eau (jamais juste après le démarrage de la box) et vidées avec le cache d'images.
 
 ## [1.3.74] — 2026-11-23 (Android)
 
@@ -29,6 +24,7 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 
 ### Modifié
 - Releases GitHub : cinq fichiers de moins à chaque version (12 au lieu de 17) et des notes plus claires. Le tableau « Which file should I download? / Quel fichier télécharger ? » en tête dit quel APK prendre selon l'appareil, quels noms sont les mêmes fichiers (noms fixes pour les liens) et lesquels ignorer (mise à jour intégrée, sommes de contrôle) ; un résumé en anglais (`### In English` du CHANGELOG) précède les notes en français. Retirés : `UltraTV.apk.sha256` et les `.sha256` des noms fixes `UltraTV-arm64-v8a.apk`, `UltraTV-armeabi-v7a.apk`, `UltraTV-android7.apk` (lus par personne, couverts par `SHA256SUMS.txt`), et le `.dm` de l'APK android7 (profil Android 12+, jamais lu sous Android 7). Tous les autres noms restent publiés : la mise à jour intégrée de chaque version encore en circulation, Kairo, le Worker et les liens existants en dépendent.
+- Écran d'accueil Android TV / Google TV : les films, séries et épisodes publiés (« Continuer à regarder », Nouveautés, Nouveaux films, Nouvelles séries, Top 10, Mieux notés, Ma liste) montrent de nouveau leur affiche en 2:3 au lieu d'une photo de scène en 16:9 ; un épisode montre l'affiche de sa série. Sans affiche seulement, le fond du titre apparaît entier dans une vignette 2:3, le titre dessous.
 
 ### Corrigé
 - Aperçu du Direct et du Guide : à l'entrée de l'écran, la première chaîne montre son image dans l'encadré en ~1 s au lieu du son seul pendant ~30 s (box Amlogic). Le décodeur vidéo n'est plus configuré sur une surface factice avant que l'encadré ne soit à l'écran : il attend la surface de l'encadré et s'y configure directement (le son démarre tout de suite). Filet de sécurité : surface de l'encadré affichée, son qui avance et toujours aucune image au bout de 2 s → la sortie vidéo est rebranchée sur cette surface (une fois par écran, sans recharger le flux ni changer de décodeur). Une surface n'est jugée prête que si sa vue est attachée à la fenêtre, visible et dimensionnée. Journal `UltraPlay` : `surface host=… take`, `surface attach host=… id=…`, `surface detach host=…`, `surface reattach host=…`.
@@ -39,6 +35,7 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 - Réglages, « Niveau des réglages » : la description garde un interligne normal (plus de grand vide entre ses deux lignes) et passe sur autant de lignes qu'il faut, dans toutes les langues et à toutes les tailles de texte et d'interface.
 - Réglages (TV) : le titre et la carte « Niveau des réglages » restent en tête de la colonne, avec la marge du haut ; seules les rubriques défilent (avant, la carte se retrouvait collée au bord haut dès qu'une rubrique basse avait le focus). « À propos » reste atteignable.
 - Réglages : un utilisateur existant mis à jour arrive en niveau Expert. Les pré-versions rc8 / rc9 et la 1.3.73 enregistraient d'elles-mêmes « Simple » quand des sources existaient déjà sans que l'assistant ait été passé ; ces valeurs automatiques ne comptent plus comme un choix (les sources présentes suffisent à reconnaître un utilisateur existant). Un niveau choisi dans le sélecteur est désormais mémorisé comme tel et n'est jamais modifié.
+- Écran d'accueil Android TV / Google TV : le logo des chaînes (Chaînes récentes, Favoris, catégories choisies, Sport en direct, direct de « Continuer à regarder ») s'affiche en entier, centré sur un fond sombre (ou clair pour un logo sombre), au lieu d'être agrandi et coupé ; sans logo, le nom de la chaîne. Les vignettes sont préparées par l'appli au fil de l'eau (jamais juste après le démarrage de la box) et vidées avec le cache d'images.
 
 ### In English
 - GitHub releases: clearer notes, starting with a "Which file should I download?" table (which APK for which device, which files are identical copies, which to ignore), then this English summary, then the full notes in French. Four unused checksum files and one unused startup profile are no longer published (12 files instead of 17).
