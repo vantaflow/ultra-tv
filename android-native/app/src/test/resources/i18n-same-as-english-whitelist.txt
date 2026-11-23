@@ -157,3 +157,4 @@ ar|rec_loc_nas
 fr|ds_update_channel_stable
 fr|cat_lock_col
 es|perso_ui_size_normal
+fr|ds_settings_level_expert

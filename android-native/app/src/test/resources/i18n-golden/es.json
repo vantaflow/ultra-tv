@@ -1899,13 +1899,16 @@
   "DesignStrings/PersonalizationStringsKt.screenEdgesName(MEDIUM)": "Medio (5 %)",
   "DesignStrings/PersonalizationStringsKt.screenEdgesName(NONE)": "Ninguno",
   "DesignStrings/PersonalizationStringsKt.screenEdgesName(SMALL)": "Pequeño (2,5 %)",
-  "DesignStrings/DesignStringsB1Kt.getShowAdvanced()": "Mostrar ajustes avanzados",
-  "DesignStrings/DesignStringsB1Kt.getShowAdvancedHint()": "Motor, decodificación, búfer, calidad, frecuencia de imagen. Un ajuste modificado siempre queda visible.",
   "DesignStrings/HomeV2StringsKt.getHeroNextPage()": "Página siguiente",
   "DesignStrings/HomeV2StringsKt.getHeroPrevPage()": "Página anterior",
   "DesignStrings/HomeV2StringsKt.heroPageOf(0,0)": "Página 0 de 0",
   "DesignStrings/HomeV2StringsKt.heroPageOf(1,1)": "Página 1 de 1",
   "DesignStrings/HomeV2StringsKt.heroPageOf(2,2)": "Página 2 de 2",
   "DesignStrings/HomeV2StringsKt.heroPageOf(22,22)": "Página 22 de 22",
-  "DesignStrings/HomeV2StringsKt.heroPageOf(5,5)": "Página 5 de 5"
+  "DesignStrings/HomeV2StringsKt.heroPageOf(5,5)": "Página 5 de 5",
+  "DesignStrings/DesignStringsB1Kt.getSettingsLevelLabel()": "Nivel de ajustes",
+  "DesignStrings/DesignStringsB1Kt.settingsLevelHint(EXPERT)": "Se muestran todos los ajustes, incluidos los técnicos.",
+  "DesignStrings/DesignStringsB1Kt.settingsLevelHint(SIMPLE)": "Los ajustes técnicos están ocultos. Un ajuste modificado siempre queda visible.",
+  "DesignStrings/DesignStringsB1Kt.settingsLevelName(EXPERT)": "Experto",
+  "DesignStrings/DesignStringsB1Kt.settingsLevelName(SIMPLE)": "Básico"
 }

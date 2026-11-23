@@ -66,7 +66,7 @@ class AppViewModel @Inject constructor(
     fun setLocalLogosFolderUri(uri: String) = viewModelScope.launch { store.setLocalLogosFolderUri(uri) }
     fun setAccent(key: String) = viewModelScope.launch { store.setAccent(key) }
     fun setTextSize(key: String) = viewModelScope.launch { store.setTextSize(key) }
-    fun setShowAdvanced(v: Boolean) = viewModelScope.launch { store.setShowAdvanced(v) }
+    fun setSettingsLevel(level: com.ultratv.tv.nativeapp.ui.settings.SettingsLevel) = viewModelScope.launch { store.setSettingsLevel(level) }
     fun setUiSize(key: String) = viewModelScope.launch { store.setUiSize(key) }
     fun setScreenEdges(key: String) = viewModelScope.launch { store.setScreenEdges(key) }
     fun setSimpleSize(key: String) = viewModelScope.launch { store.setSimpleSize(key) }

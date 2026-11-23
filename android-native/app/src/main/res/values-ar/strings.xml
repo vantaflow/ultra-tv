@@ -2030,8 +2030,11 @@
     <string name="perso_ui_size_normal">عادي</string>
     <string name="perso_ui_size_large">كبير</string>
     <string name="perso_ui_size_xlarge">كبير جدًا</string>
-    <string name="ds_show_advanced">إظهار الإعدادات المتقدمة</string>
-    <string name="ds_show_advanced_hint">المشغّل وفك الترميز والتخزين المؤقت والجودة ومعدل الإطارات. يبقى الإعداد المعدَّل ظاهرًا دائمًا.</string>
+    <string name="ds_settings_level">مستوى الإعدادات</string>
+    <string name="ds_settings_level_simple">بسيط</string>
+    <string name="ds_settings_level_expert">خبير</string>
+    <string name="ds_settings_level_simple_hint">الإعدادات التقنية مخفية. يبقى الإعداد المعدَّل ظاهرًا دائمًا.</string>
+    <string name="ds_settings_level_expert_hint">تظهر كل الإعدادات، بما فيها الإعدادات التقنية.</string>
     <string name="cat_lock_col">الرمز</string>
     <string name="cat_lock">قفل هذه الفئة برمز الرقابة الأبوية</string>
     <string name="cat_unlock">إلغاء قفل هذه الفئة</string>

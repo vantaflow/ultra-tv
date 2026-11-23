@@ -109,6 +109,8 @@ internal fun DnsSection(vm: DnsSettingsViewModel = hiltViewModel()) {
     val s by vm.settings.collectAsState()
     val test by vm.test.collectAsState()
     var choice by remember { mutableStateOf("") }
+    // Réglage technique : masqué au niveau Simple, sauf un DNS déjà changé (jamais caché une fois modifié).
+    if (!showTechnical(s.mode != DnsMode.SYSTEM)) return
 
     Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
         GroupLabel(L.group)

@@ -93,8 +93,10 @@ import com.ultratv.tv.nativeapp.i18n.startScreenHint
 import com.ultratv.tv.nativeapp.i18n.startScreenName
 import com.ultratv.tv.nativeapp.i18n.textSizeLabel
 import com.ultratv.tv.nativeapp.i18n.textSizeName
-import com.ultratv.tv.nativeapp.i18n.showAdvanced
-import com.ultratv.tv.nativeapp.i18n.showAdvancedHint
+import com.ultratv.tv.nativeapp.i18n.settingsLevelLabel
+import com.ultratv.tv.nativeapp.i18n.settingsLevelName
+import com.ultratv.tv.nativeapp.i18n.settingsLevelHint
+import androidx.compose.ui.platform.testTag
 import com.ultratv.tv.nativeapp.i18n.uiSizeLabel
 import com.ultratv.tv.nativeapp.i18n.uiSizeName
 import com.ultratv.tv.nativeapp.i18n.screenEdgesHint
@@ -142,7 +144,8 @@ import java.text.NumberFormat
 import com.ultratv.tv.nativeapp.ui.profile.TechnicalGate
 
 private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, STALKER, JELLYFIN, EMBY, PLEX, NAS, MEDIA_FIND, MEDIA_KIND, CLOUD, PHONE, REMOTE, WORKER, SOURCE_ACTIONS, SOURCE_GUIDE, WORKER_URL, SHARE, RENAME_DEVICE }
-private enum class Rub(val icon: String) {
+/** [technicalOnly] : rubrique ENTIÈREMENT technique, masquée au niveau Simple (aucune aujourd'hui : chacune garde au moins un réglage simple). */
+private enum class Rub(val icon: String, val technicalOnly: Boolean = false) {
     SOURCES("M3 5h18v12H3zM8 21h8M12 17v4"), SYNC("M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"), CATEGORIES("M4 6h16M4 12h16M4 18h10"),
     DISPLAY("M4 6h16M4 12h16M4 18h16"), PLAYBACK("M7 4v16l13-8z"), PARENTAL("M6 10V8a6 6 0 0 1 12 0v2M5 10h14v11H5z"),
     LANGUAGES("M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18"), PROFILES("M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0"),
@@ -187,7 +190,18 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
         D.setDescMessages,
         D.setVersionSummary(com.ultratv.tv.nativeapp.BuildConfig.VERSION_NAME),
     )
-    val pane: @Composable () -> Unit = {
+    // Niveau des réglages (Simple / Expert), par appareil : lu par tous les volets via LocalSettingsLevel.
+    val level = SettingsLevel.parse(pp.settingsLevel) ?: SettingsLevel.SIMPLE
+    val shownRubs = Rub.entries.filter { SettingsLevels.rubVisible(level, it.technicalOnly, anyCustomized = false) }
+    // Rubrique ouverte masquée par un passage en Simple : retour à Affichage.
+    if (Rub.entries[rub] !in shownRubs) rub = Rub.DISPLAY.ordinal
+    var levelOpen by remember { mutableStateOf(false) }
+    val levelRow: @Composable () -> Unit = { SettingsLevelRow(level) { levelOpen = true } }
+    if (levelOpen) ChoiceDialog(
+        D.settingsLevelLabel, SettingsLevel.entries.map { it to D.settingsLevelName(it) }, level,
+        { app.setSettingsLevel(it); levelOpen = false }, { levelOpen = false },
+    )
+    val pane: @Composable () -> Unit = { androidx.compose.runtime.CompositionLocalProvider(LocalSettingsLevel provides level) {
             when (Rub.entries[rub]) {
                 Rub.SOURCES -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { SourcesPane(vm, panes, onNavigate) }
                 Rub.SYNC -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { SyncPane(vm, panes, onNavigate) }
@@ -201,7 +215,7 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
                 Rub.MESSAGES -> com.ultratv.tv.nativeapp.ui.common.AnnouncementHistoryPane()
                 Rub.ABOUT -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { AboutPane(vm, panes, app, onNavigate) }
             }
-    }
+    } }
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     val compact = touch && com.ultratv.tv.nativeapp.ui.common.LocalUiWidthDp.current < 600f
     if (compact) {
@@ -212,7 +226,9 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
                 Text(D.settingsTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, maxLines = 1)
                 com.ultratv.tv.nativeapp.ui.mobile.SearchAction()
             }
-            Rub.entries.forEachIndexed { i, r ->
+            levelRow()
+            shownRubs.forEach { r ->
+                val i = r.ordinal
                 FocusSurface(onClick = { rub = i; showPane = true }, shape = RoundedCornerShape(20.dp), bg = Ux.SurfaceDeep, modifier = Modifier.fillMaxWidth().height(68.dp)) { _ ->
                     Row(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         DIcon(r.icon, 22.dp, Ux.Text2)
@@ -238,10 +254,34 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
         return
     }
     SettingsTvLayout(
-        title = D.settingsTitle, rubs = Rub.entries.mapIndexed { i, r -> SettingsRubUi(r.icon, labels[i], subs[i]) },
-        selected = rub, onSelect = { rub = it }, rubFocus = rubFocus, modalOpen = overlays?.hasModal == true, pane = pane,
+        title = D.settingsTitle, rubs = shownRubs.map { r -> SettingsRubUi(r.icon, labels[r.ordinal], subs[r.ordinal]) },
+        selected = shownRubs.indexOf(Rub.entries[rub]).coerceAtLeast(0), onSelect = { rub = shownRubs[it].ordinal },
+        rubFocus = shownRubs.map { rubFocus[it.ordinal] }, modalOpen = overlays?.hasModal == true, pane = pane, header = levelRow,
     )
 }
+
+/**
+ * « Niveau des réglages : Simple / Expert » en tête de la page Réglages (au-dessus des rubriques) ; OK ouvre le choix.
+ * Simple masque les réglages techniques de toutes les rubriques (un réglage modifié reste visible), Expert montre tout.
+ */
+@Composable
+internal fun SettingsLevelRow(level: SettingsLevel, onClick: () -> Unit) {
+    val D = LocalDs.current
+    FocusSurface(
+        onClick = onClick, shape = RoundedCornerShape(20.design), bg = Ux.SurfaceDeep, ringWidth = 0.design, focusedScale = 1.0f,
+        modifier = Modifier.fillMaxWidth().padding(bottom = 10.design).testTag(SETTINGS_LEVEL_TAG),
+    ) { f ->
+        Column(Modifier.fillMaxWidth().padding(horizontal = 18.design, vertical = 12.design), verticalArrangement = Arrangement.spacedBy(2.design)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(D.settingsLevelLabel, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(D.settingsLevelName(level), color = if (f) Ux.TextOnLight else Ux.Accent, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1)
+            }
+            Text(D.settingsLevelHint(level), color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 17.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+internal const val SETTINGS_LEVEL_TAG = "settings-level"
 
 /** Une rubrique de la liste de gauche : icône (chemin SVG), libellé et résumé d'état d'une ligne. */
 internal class SettingsRubUi(val icon: String, val label: String, val sub: String)
@@ -260,6 +300,7 @@ internal fun SettingsTvLayout(
     onSelect: (Int) -> Unit,
     rubFocus: List<androidx.compose.ui.focus.FocusRequester>,
     modalOpen: Boolean,
+    header: @Composable () -> Unit = {},
     pane: @Composable () -> Unit,
 ) {
     Row(Modifier.fillMaxSize()) {
@@ -276,6 +317,7 @@ internal fun SettingsTvLayout(
             verticalArrangement = Arrangement.spacedBy(6.design),
         ) {
             Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, maxLines = 1, modifier = Modifier.padding(bottom = 14.design))
+            header()
             rubs.forEachIndexed { i, r ->
                 val sel = selected == i
                 FocusSurface(
@@ -457,7 +499,8 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, on
             SwitchPrefRow(C.syncDisplayPrefs, up.syncDisplayPrefs, hint = C.syncDisplayPrefsHint) { panes.setSyncDisplayPrefs(it) }
             if (cloud.devices.isNotEmpty()) PrefRow(C.accountDevices, "", hint = cloud.devices.joinToString(" · ") { com.ultratv.tv.nativeapp.data.config.CloudSyncLogic.deviceDisplayName(it) }) { }
         } else PrefRow(D.cloudSyncImport, "", hint = null) { vm.syncFromCloud() }
-        PrefRow(D.workerUrlTitle, hostOnly(com.ultratv.tv.nativeapp.data.config.WorkerFallbackLogic.siteBase(workerBase)).substringAfter("://")) { dialog = OpenDialog.WORKER_URL }
+        val up0 by panes.state.collectAsState()
+        if (AdvancedSettings.visible(up0, AdvancedRow.WORKER_URL)) PrefRow(D.workerUrlTitle, hostOnly(com.ultratv.tv.nativeapp.data.config.WorkerFallbackLogic.siteBase(workerBase)).substringAfter("://")) { dialog = OpenDialog.WORKER_URL }
         if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) PrefRow(com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.openDashboard, "", hint = hostOnly(com.ultratv.tv.nativeapp.data.config.WorkerFallbackLogic.siteBase(workerBase)).substringAfter("://")) { ctx.openInBrowser(com.ultratv.tv.nativeapp.data.config.WorkerFallbackLogic.siteBase(workerBase)) }
     }
     if (paired && connWarn) Text("⚠ " + C.connectionWarning, color = Ux.Err, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx, modifier = Modifier.padding(horizontal = 8.design, vertical = 6.design))
@@ -668,18 +711,22 @@ private fun SyncPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, onNav
         modes.forEach { (id, pair) -> com.ultratv.tv.nativeapp.ui.design.ChoiceRow(pair.first, p.syncMode == id, { panes.setMode(id) }, hint = null, heightPx = 100, sub = pair.second) }
     }
     if (p.syncMode == "scheduled") SettingsCard { PrefRow(D.modeScheduled, com.ultratv.tv.nativeapp.ui.common.EpgClock.hourLabel(p.syncHour)) { panes.setHour((p.syncHour + 1) % 24) } }
-    GroupLabel(D.contentToSync)
-    SettingsCard {
+    // Synchronisation technique (contenus synchronisés, guide supplémentaire, Wi-Fi seul) : masquée au niveau Simple,
+    // sauf un réglage modifié.
+    fun adv(r: AdvancedRow) = AdvancedSettings.visible(p, r)
+    val parts = listOf(AdvancedRow.SYNC_LIVE, AdvancedRow.SYNC_EPG, AdvancedRow.SYNC_VOD, AdvancedRow.SYNC_SERIES, AdvancedRow.EXTRA_GUIDE)
+    if (parts.any { adv(it) }) GroupLabel(D.contentToSync)
+    if (parts.any { adv(it) }) SettingsCard {
         val ttl = com.ultratv.tv.nativeapp.data.sync.SyncPolicy.ttl(p.syncIntervalHours)
         val live = "${D.channels(counts.live)} · ${D.everyHours((ttl.liveMs / 3_600_000L).toInt())}"
-        ContentRow(Icons.Live, D.liveTv, live, p.syncLive) { if (!it) purgeFor = "live" else panes.setPart("live", true, false) }
-        ContentRow(Icons.Guide, D.stepGuide, D.guideWindow(2, 24) + " · " + D.everyNight, p.syncEpg) { panes.setPart("epg", it, false) }
-        if (p.syncEpg) PrefRow(D.extraGuide, extraLabel, hint = D.extraGuideHint) { extraOpen = true }
-        ContentRow(Icons.Movies, D.stepMovies, D.moviesOf(counts.movies) + " · " + D.everyDay, p.syncVod) { if (!it) purgeFor = "vod" else panes.setPart("vod", true, false) }
-        ContentRow(Icons.Series, D.stepSeries, D.seriesOf(counts.series) + " · " + D.everyDay, p.syncSeries) { if (!it) purgeFor = "series" else panes.setPart("series", true, false) }
+        if (adv(AdvancedRow.SYNC_LIVE)) ContentRow(Icons.Live, D.liveTv, live, p.syncLive) { if (!it) purgeFor = "live" else panes.setPart("live", true, false) }
+        if (adv(AdvancedRow.SYNC_EPG)) ContentRow(Icons.Guide, D.stepGuide, D.guideWindow(2, 24) + " · " + D.everyNight, p.syncEpg) { panes.setPart("epg", it, false) }
+        if (p.syncEpg && adv(AdvancedRow.EXTRA_GUIDE)) PrefRow(D.extraGuide, extraLabel, hint = D.extraGuideHint) { extraOpen = true }
+        if (adv(AdvancedRow.SYNC_VOD)) ContentRow(Icons.Movies, D.stepMovies, D.moviesOf(counts.movies) + " · " + D.everyDay, p.syncVod) { if (!it) purgeFor = "vod" else panes.setPart("vod", true, false) }
+        if (adv(AdvancedRow.SYNC_SERIES)) ContentRow(Icons.Series, D.stepSeries, D.seriesOf(counts.series) + " · " + D.everyDay, p.syncSeries) { if (!it) purgeFor = "series" else panes.setPart("series", true, false) }
     }
     SettingsCard {
-        SwitchPrefRow(D.wifiOnly, p.syncUnmeteredOnly) { panes.setUnmetered(it) }
+        if (adv(AdvancedRow.SYNC_UNMETERED)) SwitchPrefRow(D.wifiOnly, p.syncUnmeteredOnly) { panes.setUnmetered(it) }
         PrefRow(D.manageCategories, activeDisabledText(D, totals.enabled, totals.disabled)) { onNavigate("categories") }
     }
     if (extraOpen) ChoiceDialog(
@@ -776,9 +823,10 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         SwitchPrefRow(D.launchAtBoot, p.launchAtBoot) { app.setLaunchAtBoot(it) }
         val start = com.ultratv.tv.nativeapp.nav.StartScreen.parse(p.startScreen, p.autoPlayLastOnLaunch)
         PrefRow(D.openOn, D.startScreenName(start), hint = D.startScreenHint) { choice = "open" }
-        PrefRow(D.timeZone, timeZoneLabel(D, p.timeZone)) { choice = "tz" }
-        PrefRow(D.timeFormat, timeFormatLabel(D, com.ultratv.tv.nativeapp.ui.common.TimeFormatPref.parse(p.timeFormat))) { choice = "tf" }
-        PrefRow(D.logosFolder, if (logosUri.isBlank()) D.none else "…" + logosUri.takeLast(24), hint = null) {
+        // Techniques (niveau Expert, ou valeur modifiée) : fuseau horaire, format de l'heure, dossier de logos locaux.
+        if (AdvancedSettings.visible(p, AdvancedRow.TIME_ZONE)) PrefRow(D.timeZone, timeZoneLabel(D, p.timeZone)) { choice = "tz" }
+        if (AdvancedSettings.visible(p, AdvancedRow.TIME_FORMAT)) PrefRow(D.timeFormat, timeFormatLabel(D, com.ultratv.tv.nativeapp.ui.common.TimeFormatPref.parse(p.timeFormat))) { choice = "tf" }
+        if (showTechnical(logosUri.isNotBlank())) PrefRow(D.logosFolder, if (logosUri.isBlank()) D.none else "…" + logosUri.takeLast(24), hint = null) {
             pickLogos.launchOrToast(null, D.chooseFolderUnavailable)
         }
     }
@@ -861,7 +909,7 @@ private fun PlaybackPane(panes: SettingsPanesViewModel, app: AppViewModel) {
         if (p.playerEngine != "auto" || p.decoderMode != "auto" || p.bufferPreset != "auto" || p.maxHeight != "auto") PillButton(D.backToAuto, { panes.backToAuto() }, bg = Ux.Surface2)
     }
     SettingsCard {
-        // Réglages avancés (AdvancedSettings) : masqués sauf interrupteur ou valeur modifiée ; rien n'est supprimé.
+        // Réglages techniques (AdvancedSettings) : masqués au niveau Simple sauf valeur modifiée ; rien n'est supprimé.
         fun adv(r: AdvancedRow) = AdvancedSettings.visible(p, r)
         if (adv(AdvancedRow.ENGINE)) PrefRow(D.playerRow, engineLabel) { choice = "engine" }
         if (adv(AdvancedRow.DECODER)) PrefRow(D.decodingRow, decLabel) { choice = "dec" }
@@ -878,7 +926,6 @@ private fun PlaybackPane(panes: SettingsPanesViewModel, app: AppViewModel) {
         if (adv(AdvancedRow.VIDEO_SURFACE)) SwitchPrefRow(D.compatVideo, com.ultratv.tv.nativeapp.ui.player.engine.useTextureView(p.videoSurface, com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current), hint = D.compatVideoHint) {
             app.setVideoSurface(if (it) "texture" else "surface")
         }
-        SwitchPrefRow(D.showAdvanced, p.showAdvanced, hint = D.showAdvancedHint) { app.setShowAdvanced(it) }
         // Aperçu vidéo du Direct (TV seulement : sans effet sur téléphone / tablette).
         if (!com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) com.ultratv.tv.nativeapp.ui.live.LivePreviewSettingsRows()
     }
@@ -923,8 +970,8 @@ private fun LanguagesPane(panes: SettingsPanesViewModel, app: AppViewModel) {
     SettingsCard {
         PrefRow(D.appLanguage, D.langName(AppLang.fromCode(p.language))) { uiLang = true }
         PrefRow(D.contentLanguages, if (selected.isEmpty()) D.allLanguages else selected.joinToString(" · ") { it.uppercase() }) { picker = true }
-        SwitchPrefRow(D.includeMulti, p.includeMulti) { panes.setIncludeMulti(it) }
-        SwitchPrefRow(D.includeUnknown, p.includeUnknownLang) { panes.setIncludeUnknown(it) }
+        if (AdvancedSettings.visible(p, AdvancedRow.INCLUDE_MULTI)) SwitchPrefRow(D.includeMulti, p.includeMulti) { panes.setIncludeMulti(it) }
+        if (AdvancedSettings.visible(p, AdvancedRow.INCLUDE_UNKNOWN)) SwitchPrefRow(D.includeUnknown, p.includeUnknownLang) { panes.setIncludeUnknown(it) }
         TranslateHelpRow(D)
     }
     // Les langues masquées ne sont pas chargées : plus rapide, moins de mémoire.
@@ -992,8 +1039,9 @@ private fun AboutPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, app:
         // la prochaine version stable plus récente (jamais de retour à une version plus ancienne) : on le dit.
         val pre by com.ultratv.tv.nativeapp.update.UpdateChannel.preRelease.collectAsState()
         val stays = com.ultratv.tv.nativeapp.update.UpdateVersions.staysOnPreRelease(com.ultratv.tv.nativeapp.update.UpdateChannel.installed(), pre)
-        PrefRow(D.updateChannel, if (pre) D.updateChannelPre else D.updateChannelStable, hint = if (stays) D.updateChannelStay else D.updateChannelHint) { channelOpen = true }
-        PrefRow(D.diagnostic, "", hint = D.diagnosticHint) { onNavigate("diagnostic") }
+        // Techniques (niveau Expert) : canal de mise à jour (toujours affiché sur le canal Pré-version) et diagnostic / journaux.
+        if (showTechnical(pre || stays)) PrefRow(D.updateChannel, if (pre) D.updateChannelPre else D.updateChannelStable, hint = if (stays) D.updateChannelStay else D.updateChannelHint) { channelOpen = true }
+        if (showTechnical()) PrefRow(D.diagnostic, "", hint = D.diagnosticHint) { onNavigate("diagnostic") }
         SwitchPrefRow(D.telemetry, p.telemetryEnabled, hint = D.telemetryHint) { app.setTelemetry(it) }
     }
     if (channelOpen) {

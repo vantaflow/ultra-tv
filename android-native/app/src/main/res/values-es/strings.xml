@@ -1964,8 +1964,11 @@
     <string name="perso_ui_size_normal">Normal</string>
     <string name="perso_ui_size_large">Grande</string>
     <string name="perso_ui_size_xlarge">Muy grande</string>
-    <string name="ds_show_advanced">Mostrar ajustes avanzados</string>
-    <string name="ds_show_advanced_hint">Motor, decodificación, búfer, calidad, frecuencia de imagen. Un ajuste modificado siempre queda visible.</string>
+    <string name="ds_settings_level">Nivel de ajustes</string>
+    <string name="ds_settings_level_simple">Básico</string>
+    <string name="ds_settings_level_expert">Experto</string>
+    <string name="ds_settings_level_simple_hint">Los ajustes técnicos están ocultos. Un ajuste modificado siempre queda visible.</string>
+    <string name="ds_settings_level_expert_hint">Se muestran todos los ajustes, incluidos los técnicos.</string>
     <string name="cat_lock_col">Código</string>
     <string name="cat_lock">Bloquear esta categoría con el código parental</string>
     <string name="cat_unlock">Desbloquear esta categoría</string>

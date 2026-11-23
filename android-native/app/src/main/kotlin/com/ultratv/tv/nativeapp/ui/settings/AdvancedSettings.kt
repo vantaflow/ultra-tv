@@ -1,13 +1,70 @@
 package com.ultratv.tv.nativeapp.ui.settings
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
 import com.ultratv.tv.nativeapp.data.prefs.UserPrefs
 
 /**
- * Réglages avancés (Réglages › Lecture) : masqués par défaut pour une installation neuve, affichés d'office pour un
- * utilisateur existant, et un réglage avancé dont la valeur diffère du défaut reste toujours visible (on ne cache jamais
- * ce que l'utilisateur a changé). Rien n'est supprimé : l'interrupteur « Afficher les réglages avancés » les montre tous.
+ * Niveau GLOBAL des réglages (en tête de la page Réglages), par APPAREIL (préférence de l'appareil, pas du profil) :
+ * - [SIMPLE] masque dans toutes les rubriques les réglages techniques (moteur de lecture, tampon, DNS, fuseau horaire…) ;
+ * - [EXPERT] montre tout.
+ * Un réglage technique dont la valeur diffère du défaut reste TOUJOURS visible (on ne cache jamais ce que l'utilisateur a
+ * changé) et rien n'est supprimé : repasser en Expert montre tout. Remplace l'interrupteur « Afficher les réglages
+ * avancés » de Réglages › Lecture (1.3.73), dont la valeur enregistrée est reprise une fois (voir [SettingsLevels.resolve]).
  */
-enum class AdvancedRow { ENGINE, DECODER, BUFFER, MAX_HEIGHT, VIDEO_QUALITY, PREFERRED_QUALITY, AUTO_FPS, TUNNELED, VIDEO_SURFACE }
+enum class SettingsLevel(val key: String) {
+    SIMPLE("simple"), EXPERT("expert");
+
+    companion object {
+        /** null pour une valeur absente ou inconnue (la règle de départ s'applique alors). */
+        fun parse(raw: String?): SettingsLevel? = entries.firstOrNull { it.key == raw }
+    }
+}
+
+/** Niveau lu par les volets des Réglages ; hors des Réglages (défaut) rien n'est masqué. */
+val LocalSettingsLevel = staticCompositionLocalOf { SettingsLevel.EXPERT }
+
+object SettingsLevels {
+    /**
+     * Niveau effectif : celui enregistré s'il existe ; sinon l'ancien interrupteur S1 s'il a été enregistré (« afficher »
+     * = Expert, « masquer » = Simple) ; sinon Expert pour un utilisateur existant (assistant déjà passé, préférences déjà
+     * présentes) et Simple pour une installation neuve.
+     */
+    fun resolve(stored: String?, legacyShowAdvanced: Boolean?, hasSeenOnboarding: Boolean): SettingsLevel =
+        SettingsLevel.parse(stored) ?: when (legacyShowAdvanced) {
+            true -> SettingsLevel.EXPERT
+            false -> SettingsLevel.SIMPLE
+            null -> if (hasSeenOnboarding) SettingsLevel.EXPERT else SettingsLevel.SIMPLE
+        }
+
+    /** Un réglage technique est affiché en Expert, ou en Simple si sa valeur diffère du défaut. */
+    fun show(level: SettingsLevel, customized: Boolean = false): Boolean = level == SettingsLevel.EXPERT || customized
+
+    /**
+     * Rubrique affichée : toujours si elle porte au moins un réglage non technique ; une rubrique ENTIÈREMENT technique est
+     * masquée en Simple, sauf si l'un de ses réglages a été modifié.
+     */
+    fun rubVisible(level: SettingsLevel, technicalOnly: Boolean, anyCustomized: Boolean): Boolean =
+        !technicalOnly || show(level, anyCustomized)
+}
+
+/** Raccourci des volets : réglage technique affiché au niveau courant (ou parce que [customized]). */
+@Composable
+fun showTechnical(customized: Boolean = false): Boolean = SettingsLevels.show(LocalSettingsLevel.current, customized)
+
+/**
+ * Réglages techniques de UserPrefs (toutes rubriques) : masqués en Simple sauf valeur différente du défaut.
+ * Lecture : moteur, décodage, tampon, qualité, fréquence, tunnel, surface ; Synchronisation : contenus, Wi-Fi seul, guide
+ * XMLTV supplémentaire ; Affichage : fuseau horaire, format de l'heure, logos locaux ; Langues : MULTI / langue inconnue ;
+ * Sources : adresse du Worker.
+ */
+enum class AdvancedRow {
+    ENGINE, DECODER, BUFFER, MAX_HEIGHT, VIDEO_QUALITY, PREFERRED_QUALITY, AUTO_FPS, TUNNELED, VIDEO_SURFACE,
+    SYNC_LIVE, SYNC_EPG, SYNC_VOD, SYNC_SERIES, SYNC_UNMETERED, EXTRA_GUIDE,
+    TIME_ZONE, TIME_FORMAT, LOCAL_LOGOS,
+    INCLUDE_MULTI, INCLUDE_UNKNOWN,
+    WORKER_URL,
+}
 
 object AdvancedSettings {
     private val defaults = UserPrefs()
@@ -23,10 +80,20 @@ object AdvancedSettings {
         AdvancedRow.AUTO_FPS -> p.autoFrameRate != defaults.autoFrameRate
         AdvancedRow.TUNNELED -> p.tunneledPlayback != defaults.tunneledPlayback
         AdvancedRow.VIDEO_SURFACE -> p.videoSurface != defaults.videoSurface
+        AdvancedRow.SYNC_LIVE -> p.syncLive != defaults.syncLive
+        AdvancedRow.SYNC_EPG -> p.syncEpg != defaults.syncEpg
+        AdvancedRow.SYNC_VOD -> p.syncVod != defaults.syncVod
+        AdvancedRow.SYNC_SERIES -> p.syncSeries != defaults.syncSeries
+        AdvancedRow.SYNC_UNMETERED -> p.syncUnmeteredOnly != defaults.syncUnmeteredOnly
+        AdvancedRow.EXTRA_GUIDE -> p.extraEpg != defaults.extraEpg
+        AdvancedRow.TIME_ZONE -> p.timeZone != defaults.timeZone
+        AdvancedRow.TIME_FORMAT -> p.timeFormat != defaults.timeFormat
+        AdvancedRow.LOCAL_LOGOS -> p.localLogosFolderUri != defaults.localLogosFolderUri
+        AdvancedRow.INCLUDE_MULTI -> p.includeMulti != defaults.includeMulti
+        AdvancedRow.INCLUDE_UNKNOWN -> p.includeUnknownLang != defaults.includeUnknownLang
+        AdvancedRow.WORKER_URL -> p.workerBaseUrl != defaults.workerBaseUrl
     }
 
-    fun visible(p: UserPrefs, row: AdvancedRow): Boolean = p.showAdvanced || customized(p, row)
-
-    /** Première lecture après la mise à jour : affichés pour qui utilisait déjà l'appli (assistant déjà passé). */
-    fun initialShow(hasSeenOnboarding: Boolean): Boolean = hasSeenOnboarding
+    fun visible(p: UserPrefs, row: AdvancedRow): Boolean =
+        SettingsLevels.show(SettingsLevel.parse(p.settingsLevel) ?: SettingsLevel.EXPERT, customized(p, row))
 }

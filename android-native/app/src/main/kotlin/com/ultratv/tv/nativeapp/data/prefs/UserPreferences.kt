@@ -67,8 +67,11 @@ data class UserPrefs(
     /** Suppresses the onboarding wizard. Flipped to `true` when the user
      *  dismisses or completes it. */
     val hasSeenOnboarding: Boolean = false,
-    /** Réglages avancés affichés (voir AdvancedSettings) : faux pour une installation neuve, vrai pour un utilisateur existant. */
-    val showAdvanced: Boolean = false,
+    /**
+     * Niveau des réglages, par appareil (voir SettingsLevel) : « simple » pour une installation neuve, « expert » pour un
+     * utilisateur existant ; remplace l'ancien « Afficher les réglages avancés » (clé show_advanced, lue pour la reprise).
+     */
+    val settingsLevel: String = "simple",
     /** UI language code: "system", "en", "fr", "es", "ar". */
     val language: String = "system",
     /** Fuseau horaire de l'horloge et du guide : "" = celui du système, sinon un identifiant (« GMT », « Africa/Casablanca »…). */
@@ -188,6 +191,12 @@ class UserPreferencesStore @Inject constructor(
     @ApplicationContext private val ctx: Context,
     private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
 ) {
+    companion object {
+        /** Niveau des réglages lu dans les préférences (clé settings_level, sinon reprise de show_advanced, sinon neuf / existant). */
+        internal fun settingsLevelFrom(p: androidx.datastore.preferences.core.Preferences): com.ultratv.tv.nativeapp.ui.settings.SettingsLevel =
+            com.ultratv.tv.nativeapp.ui.settings.SettingsLevels.resolve(p[Keys.settingsLevel], p[Keys.showAdvanced], p[Keys.seenOnboarding] ?: false)
+    }
+
     private object Keys {
         val sidebar = stringPreferencesKey("sidebar_position")
         val theme = stringPreferencesKey("theme")
@@ -205,7 +214,9 @@ class UserPreferencesStore @Inject constructor(
         val lastSyncAt = longPreferencesKey("last_sync_at_ms")
         val workerBase = stringPreferencesKey("worker_base_url")
         val seenOnboarding = booleanPreferencesKey("has_seen_onboarding")
+        /** Ancien interrupteur S1 (1.3.73) : lu seulement pour fixer le niveau la première fois, jamais effacé. */
         val showAdvanced = booleanPreferencesKey("show_advanced")
+        val settingsLevel = stringPreferencesKey("settings_level")
         val language = stringPreferencesKey("language")
         val timeZone = stringPreferencesKey("time_zone")
         val timeFormat = stringPreferencesKey("time_format")
@@ -283,7 +294,7 @@ class UserPreferencesStore @Inject constructor(
             lastSyncAtMs = p[Keys.lastSyncAt] ?: 0L,
             workerBaseUrl = p[Keys.workerBase] ?: "",
             hasSeenOnboarding = p[Keys.seenOnboarding] ?: false,
-            showAdvanced = p[Keys.showAdvanced] ?: com.ultratv.tv.nativeapp.ui.settings.AdvancedSettings.initialShow(p[Keys.seenOnboarding] ?: false),
+            settingsLevel = settingsLevelFrom(p).key,
             language = p[Keys.language] ?: "system",
             timeZone = p[Keys.timeZone] ?: "",
             timeFormat = com.ultratv.tv.nativeapp.ui.common.TimeFormatPref.parse(p[Keys.timeFormat]).key,
@@ -336,9 +347,12 @@ class UserPreferencesStore @Inject constructor(
     suspend fun setLastSyncAt(ms: Long) = update { it[Keys.lastSyncAt] = ms }
     suspend fun setWorkerBase(url: String) = update { it[Keys.workerBase] = url.trim() }
     suspend fun markOnboardingSeen() = update { it[Keys.seenOnboarding] = true }
-    suspend fun setShowAdvanced(v: Boolean) = update { it[Keys.showAdvanced] = v }
-    /** Fige au premier démarrage le choix initial des réglages avancés (avant que l'assistant ne soit passé). */
-    suspend fun initShowAdvanced() = update { if (it[Keys.showAdvanced] == null) it[Keys.showAdvanced] = com.ultratv.tv.nativeapp.ui.settings.AdvancedSettings.initialShow(it[Keys.seenOnboarding] ?: false) }
+    suspend fun setSettingsLevel(level: com.ultratv.tv.nativeapp.ui.settings.SettingsLevel) = update { it[Keys.settingsLevel] = level.key }
+    /** Fige au premier démarrage le niveau des réglages (avant que l'assistant ne soit passé) ; une valeur déjà enregistrée est gardée. */
+    suspend fun initSettingsLevel() = update {
+        if (com.ultratv.tv.nativeapp.ui.settings.SettingsLevel.parse(it[Keys.settingsLevel]) == null)
+            it[Keys.settingsLevel] = settingsLevelFrom(it).key
+    }
     /** Langue de l'interface : celle du PROFIL (partagée entre appareils) ; la valeur de l'appareil sert aux profils sans choix. */
     suspend fun setLanguage(code: String) {
         update { it[Keys.language] = code }

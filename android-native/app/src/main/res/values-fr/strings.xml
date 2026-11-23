@@ -1972,8 +1972,11 @@
     <string name="perso_ui_size_normal">Normale</string>
     <string name="perso_ui_size_large">Grande</string>
     <string name="perso_ui_size_xlarge">Très grande</string>
-    <string name="ds_show_advanced">Afficher les réglages avancés</string>
-    <string name="ds_show_advanced_hint">Moteur, décodage, tampon, qualité, fréquence d\'image. Un réglage modifié reste toujours visible.</string>
+    <string name="ds_settings_level">Niveau des réglages</string>
+    <string name="ds_settings_level_simple">Simple</string>
+    <string name="ds_settings_level_expert">Expert</string>
+    <string name="ds_settings_level_simple_hint">Les réglages techniques sont masqués. Un réglage modifié reste toujours visible.</string>
+    <string name="ds_settings_level_expert_hint">Tous les réglages sont affichés, techniques compris.</string>
     <string name="cat_lock_col">Code</string>
     <string name="cat_lock">Verrouiller cette catégorie par le code parental</string>
     <string name="cat_unlock">Déverrouiller cette catégorie</string>

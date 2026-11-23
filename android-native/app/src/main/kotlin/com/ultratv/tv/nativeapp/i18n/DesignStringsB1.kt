@@ -151,6 +151,13 @@ val DesignStrings.updateChannelPre get() = tx(R.string.ds_update_channel_pre)
 val DesignStrings.updateChannelHint get() = tx(R.string.ds_update_channel_hint)
 val DesignStrings.updateChannelStay get() = tx(R.string.ds_update_channel_stay)
 
-// Réglages › Lecture : interrupteur des réglages avancés.
-val DesignStrings.showAdvanced get() = tx(R.string.ds_show_advanced)
-val DesignStrings.showAdvancedHint get() = tx(R.string.ds_show_advanced_hint)
+// Réglages : niveau global Simple / Expert (remplace « Afficher les réglages avancés » de Lecture).
+val DesignStrings.settingsLevelLabel get() = tx(R.string.ds_settings_level)
+fun DesignStrings.settingsLevelName(l: com.ultratv.tv.nativeapp.ui.settings.SettingsLevel): String = when (l) {
+    com.ultratv.tv.nativeapp.ui.settings.SettingsLevel.SIMPLE -> tx(R.string.ds_settings_level_simple)
+    com.ultratv.tv.nativeapp.ui.settings.SettingsLevel.EXPERT -> tx(R.string.ds_settings_level_expert)
+}
+fun DesignStrings.settingsLevelHint(l: com.ultratv.tv.nativeapp.ui.settings.SettingsLevel): String = when (l) {
+    com.ultratv.tv.nativeapp.ui.settings.SettingsLevel.SIMPLE -> tx(R.string.ds_settings_level_simple_hint)
+    com.ultratv.tv.nativeapp.ui.settings.SettingsLevel.EXPERT -> tx(R.string.ds_settings_level_expert_hint)
+}

@@ -219,7 +219,7 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
         // flag so disabling it from Settings takes effect immediately for
         // every subsequent event/crash POST.
         // Réglages avancés : masqués pour une installation neuve, affichés pour un utilisateur existant (décidé une fois).
-        startTask("advanced-init") { prefsStore.get().initShowAdvanced() }
+        startTask("settings-level-init") { prefsStore.get().initSettingsLevel() }
         startTask("prefs") {
             prefsStore.get().flow.collect { p ->
                 RemoteLog.telemetryEnabled = p.telemetryEnabled

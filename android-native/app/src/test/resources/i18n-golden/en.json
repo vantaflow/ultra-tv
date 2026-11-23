@@ -1899,13 +1899,16 @@
   "DesignStrings/PersonalizationStringsKt.screenEdgesName(MEDIUM)": "Medium (5%)",
   "DesignStrings/PersonalizationStringsKt.screenEdgesName(NONE)": "None",
   "DesignStrings/PersonalizationStringsKt.screenEdgesName(SMALL)": "Small (2.5%)",
-  "DesignStrings/DesignStringsB1Kt.getShowAdvanced()": "Show advanced settings",
-  "DesignStrings/DesignStringsB1Kt.getShowAdvancedHint()": "Engine, decoding, buffer, quality, frame rate. A changed setting always stays visible.",
   "DesignStrings/HomeV2StringsKt.getHeroNextPage()": "Next page",
   "DesignStrings/HomeV2StringsKt.getHeroPrevPage()": "Previous page",
   "DesignStrings/HomeV2StringsKt.heroPageOf(0,0)": "Page 0 of 0",
   "DesignStrings/HomeV2StringsKt.heroPageOf(1,1)": "Page 1 of 1",
   "DesignStrings/HomeV2StringsKt.heroPageOf(2,2)": "Page 2 of 2",
   "DesignStrings/HomeV2StringsKt.heroPageOf(22,22)": "Page 22 of 22",
-  "DesignStrings/HomeV2StringsKt.heroPageOf(5,5)": "Page 5 of 5"
+  "DesignStrings/HomeV2StringsKt.heroPageOf(5,5)": "Page 5 of 5",
+  "DesignStrings/DesignStringsB1Kt.getSettingsLevelLabel()": "Settings level",
+  "DesignStrings/DesignStringsB1Kt.settingsLevelHint(EXPERT)": "All settings are shown, technical ones included.",
+  "DesignStrings/DesignStringsB1Kt.settingsLevelHint(SIMPLE)": "Technical settings are hidden. A changed setting always stays visible.",
+  "DesignStrings/DesignStringsB1Kt.settingsLevelName(EXPERT)": "Expert",
+  "DesignStrings/DesignStringsB1Kt.settingsLevelName(SIMPLE)": "Basic"
 }
