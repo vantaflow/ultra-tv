@@ -1916,5 +1916,12 @@
   "DesignStrings/DesignStringsB1Kt.settingsLevelHint(EXPERT)": "Se muestran todos los ajustes, incluidos los técnicos.",
   "DesignStrings/DesignStringsB1Kt.settingsLevelHint(SIMPLE)": "Los ajustes técnicos están ocultos. Un ajuste modificado siempre queda visible.",
   "DesignStrings/DesignStringsB1Kt.settingsLevelName(EXPERT)": "Experto",
-  "DesignStrings/DesignStringsB1Kt.settingsLevelName(SIMPLE)": "Básico"
+  "DesignStrings/DesignStringsB1Kt.settingsLevelName(SIMPLE)": "Básico",
+  "DesignStrings/PersonalizationStringsKt.getRowHiddenToast()": "Fila oculta. Ajustes › Pantalla › Filas de inicio la vuelve a mostrar.",
+  "DesignStrings/PersonalizationStringsKt.getRowHideHint()": "Para volver a mostrarla: Ajustes › Pantalla › Filas de inicio.",
+  "DesignStrings/PersonalizationStringsKt.getRowMenuDown()": "Bajar la fila",
+  "DesignStrings/PersonalizationStringsKt.getRowMenuHide()": "Ocultar la fila",
+  "DesignStrings/PersonalizationStringsKt.getRowMenuSettings()": "Ajustes de las filas…",
+  "DesignStrings/PersonalizationStringsKt.getRowMenuUp()": "Subir la fila",
+  "DesignStrings/PersonalizationStringsKt.rowHideTitle(Zed)": "¿Ocultar «Zed»?"
 }

@@ -674,6 +674,13 @@
     <string name="perso_row_hidden">Masquée</string>
     <string name="perso_move_up">Monter</string>
     <string name="perso_move_down">Descendre</string>
+    <string name="perso_row_menu_up">Monter la rangée</string>
+    <string name="perso_row_menu_down">Descendre la rangée</string>
+    <string name="perso_row_menu_hide">Masquer la rangée</string>
+    <string name="perso_row_menu_settings">Réglages des rangées…</string>
+    <string name="perso_row_hide_title">Masquer « %1$s » ?</string>
+    <string name="perso_row_hide_hint">Pour la réafficher : Réglages › Affichage › Rangées de l\'accueil.</string>
+    <string name="perso_row_hidden_toast">Rangée masquée. Réglages › Affichage › Rangées de l\'accueil la réaffiche.</string>
     <string name="perso_reset_default">Réinitialiser</string>
     <string name="perso_done_label">Terminé</string>
     <string name="perso_trakt_lists_row">Mes listes Trakt</string>

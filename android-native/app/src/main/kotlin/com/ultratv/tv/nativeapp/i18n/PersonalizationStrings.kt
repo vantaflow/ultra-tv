@@ -104,6 +104,15 @@ fun DesignStrings.startScreenName(s: StartScreen): String = when (s) {
 /** Explication de « Ouvrir sur » : ce que chaque choix fait et ce qui n'est jamais rouvert. */
 val DesignStrings.startScreenHint get() = tx(R.string.perso_start_screen_hint)
 
+// Menu d'une rangée de l'accueil (appui long sur OK, touche Menu, appui long sur le titre au toucher).
+val DesignStrings.rowMenuUp get() = tx(R.string.perso_row_menu_up)
+val DesignStrings.rowMenuDown get() = tx(R.string.perso_row_menu_down)
+val DesignStrings.rowMenuHide get() = tx(R.string.perso_row_menu_hide)
+val DesignStrings.rowMenuSettings get() = tx(R.string.perso_row_menu_settings)
+fun DesignStrings.rowHideTitle(name: String) = tx(R.string.perso_row_hide_title, name)
+val DesignStrings.rowHideHint get() = tx(R.string.perso_row_hide_hint)
+val DesignStrings.rowHiddenToast get() = tx(R.string.perso_row_hidden_toast)
+
 fun DesignStrings.homeBlockName(b: HomeBlock): String = when (b) {
     HomeBlock.RESUME -> continueWatching
     HomeBlock.TRAKT_UP_NEXT -> traktUpNext

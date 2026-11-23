@@ -179,6 +179,11 @@ fun HomeScreen(
         lifecycleOwner.lifecycle.addObserver(obs)
         onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
     }
+    // Disposition des rangées (MÊME préférence que Réglages › Affichage › Rangées de l'accueil) : menu d'une rangée.
+    val appVm: com.ultratv.tv.nativeapp.ui.AppViewModel = hiltViewModel()
+    val appPrefs by appVm.prefs.collectAsStateWithLifecycle()
+    val homeLayout = remember(appPrefs.homeOrder, appPrefs.homeHidden) { HomeLayout.parse(appPrefs.homeOrder, appPrefs.homeHidden) }
+    val saveLayout: (HomeLayout) -> Unit = remember(appVm) { { l -> appVm.setHomeLayout(l) } }
     val dataState: com.ultratv.tv.nativeapp.ui.common.DataStateViewModel = hiltViewModel()
     val failure by dataState.failure.collectAsStateWithLifecycle()
 
@@ -198,7 +203,7 @@ fun HomeScreen(
         val prof by profileVm.current.collectAsStateWithLifecycle()
         com.ultratv.tv.nativeapp.ui.mobile.MobileHomeScreen(
             state = com.ultratv.tv.nativeapp.ui.mobile.MobileHomeState(loaded, providers.isNotEmpty(), hero, rows, prof?.initial ?: "K", prof?.color ?: 0xFFD91E2B.toInt(), heroIndex = heroIdx % heroes.size.coerceAtLeast(1), heroCount = heroes.size),
-            onHeroStep = stepHero,
+            onHeroStep = stepHero, homeLayout = homeLayout, onHomeLayout = saveLayout,
             syncPercent = { syncPct.value },
             onOpenMovie = onOpenMovie, onOpenSeries = onOpenSeries,
             onSearch = onGoSearch, onProfile = { profileVm.requestSwitch() }, onGoLive = onGoLive, onGoSettings = onGoSettings, onGoGuide = onGoGuide, onGoFavorites = onGoFavorites, onShortcut = onShortcut,
@@ -232,6 +237,7 @@ fun HomeScreen(
         heroFocusDone = heroFocusDone, onHeroFocused = onHeroFocused,
         playHistory = playHistory, openPoster = openPoster, playChannel = playChannel, onShortcut = onShortcut, onGoSport = onGoSport,
         onWatchHero = watchHero, onInfoHero = openHero, onHeroStep = stepHero, onHeroBlockFocus = holdHero,
+        homeLayout = homeLayout, onHomeLayout = saveLayout,
         emptyTop = {
             when (slot) {
                 HomeTopSlot.NO_SOURCE -> EmptyCard(D.homeNoSource, D.syncCloudHint, D.addSource, onGoSettings, D.cardCloud, onGoCloud, action3 = D.cardPhone, onAction3 = onGoPhone)
@@ -268,6 +274,9 @@ internal fun HomeTvContent(
     sportRow: @Composable (Modifier, PaddingValues) -> Unit,
     onHeroStep: (Int) -> Unit = {},
     onHeroBlockFocus: (Boolean) -> Unit = {},
+    /** Disposition des rangées ; null = pas de menu de rangée (rendus de test). */
+    homeLayout: HomeLayout? = null,
+    onHomeLayout: (HomeLayout) -> Unit = {},
 ) {
     val D = LocalDs.current
     // Pivot VERTICAL seulement (haut de l'élément focalisé à 30 % de l'écran, comme le pivot TV de Compose) ; les
@@ -301,6 +310,21 @@ internal fun HomeTvContent(
     val embedShortcuts = slot == HomeTopSlot.HERO && hero != null && HomeSectionId.SHORTCUTS in rows.order
     val order = remember(rows, embedShortcuts) { if (embedShortcuts) rows.order.filter { it != HomeSectionId.SHORTCUTS } else rows.order }
     val sportAnchor = if (HomeSectionId.CHANNELS in order) HomeSectionId.CHANNELS else order.lastOrNull()
+    // Menu d'une rangée (appui long sur OK / touche Menu) : bloc visé, puis focus rendu à la rangée (même déplacée).
+    val shownBlocks = remember(order) { movableShown(order) }
+    var menuFor by remember { mutableStateOf<HomeBlock?>(null) }
+    var refocus by remember { mutableStateOf<HomeBlock?>(null) }
+    val rowFocus = remember { HashMap<HomeBlock, FocusRequester>() }
+    LaunchedEffect(refocus, order) {
+        val b = refocus ?: return@LaunchedEffect
+        val idx = order.indexOfFirst { it.block == b }
+        if (idx >= 0) {
+            listState.scrollToItem(idx + 1)   // + 1 : l'en-tête (« À la une ») est le premier élément de la liste
+            kotlinx.coroutines.delay(60)
+            runCatching { rowFocus[b]?.requestFocus() }
+        }
+        refocus = null
+    }
     val sportTile = if (sportOn) SportTile(sportLive, onGoSport) else null
     val stats = remember(providerCount, rows.shortcuts, D) {
         val count = { id: ShortcutId -> rows.shortcuts.firstOrNull { it.id == id }?.count }
@@ -340,15 +364,34 @@ internal fun HomeTvContent(
                 CompositionLocalProvider(LocalBringIntoViewSpec provides inheritedSpec) {
                     Box(Modifier.padding(start = HomeStart)) {
                         // Rubrique Sport activée : « Sport en direct » juste sous la rangée « Direct » (à défaut, en dernier).
+                        val section: @Composable () -> Unit = {
+                            val b = id.block
+                            if (homeLayout != null && b != HomeBlock.SHORTCUTS) {
+                                // Rangée réglable : appui long sur OK ou touche Menu ouvre son menu (bandeau et tuiles exclus).
+                                val keys = remember { RowMenuKeys() }
+                                val req = rowFocus.getOrPut(b) { FocusRequester() }
+                                Box(
+                                    Modifier.focusRequester(req).focusRestorer().onPreviewKeyEvent { e ->
+                                        val n = e.nativeKeyEvent
+                                        keys.handle(n.keyCode, e.type == KeyEventType.KeyDown, n.repeatCount, n.downTime, n.eventTime) { menuFor = b }
+                                    }.focusGroup(),
+                                ) { HomeSection(id, rows, sportTile, playHistory, openPoster, playChannel, onShortcut) }
+                            } else HomeSection(id, rows, sportTile, playHistory, openPoster, playChannel, onShortcut)
+                        }
                         if (sportOn && id == sportAnchor) Column(verticalArrangement = Arrangement.spacedBy(30.design)) {
-                            HomeSection(id, rows, sportTile, playHistory, openPoster, playChannel, onShortcut)
+                            section()
                             sportRow(Modifier.homeRow(), PaddingValues(start = RowBleed, end = 96.design))
-                        } else HomeSection(id, rows, sportTile, playHistory, openPoster, playChannel, onShortcut)
+                        } else section()
                     }
                 }
             }
         }
     }
+    val target = menuFor
+    if (target != null && homeLayout != null) HomeRowMenuHost(
+        target, homeLayout, shownBlocks, onSave = onHomeLayout,
+        onDone = { b -> menuFor = null; refocus = b },
+    )
 }
 
 /** Marge gauche de l'accueil (maquette : 56 px après le rail). */

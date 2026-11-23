@@ -672,6 +672,13 @@
     <string name="perso_row_hidden">Hidden</string>
     <string name="perso_move_up">Move up</string>
     <string name="perso_move_down">Move down</string>
+    <string name="perso_row_menu_up">Move row up</string>
+    <string name="perso_row_menu_down">Move row down</string>
+    <string name="perso_row_menu_hide">Hide row</string>
+    <string name="perso_row_menu_settings">Row settings…</string>
+    <string name="perso_row_hide_title">Hide “%1$s”?</string>
+    <string name="perso_row_hide_hint">To show it again: Settings › Display › Home rows.</string>
+    <string name="perso_row_hidden_toast">Row hidden. Settings › Display › Home rows shows it again.</string>
     <string name="perso_reset_default">Reset</string>
     <string name="perso_done_label">Done</string>
     <string name="perso_trakt_lists_row">My Trakt lists</string>

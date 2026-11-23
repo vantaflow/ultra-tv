@@ -666,6 +666,13 @@
     <string name="perso_row_hidden">Oculta</string>
     <string name="perso_move_up">Subir</string>
     <string name="perso_move_down">Bajar</string>
+    <string name="perso_row_menu_up">Subir la fila</string>
+    <string name="perso_row_menu_down">Bajar la fila</string>
+    <string name="perso_row_menu_hide">Ocultar la fila</string>
+    <string name="perso_row_menu_settings">Ajustes de las filas…</string>
+    <string name="perso_row_hide_title">¿Ocultar «%1$s»?</string>
+    <string name="perso_row_hide_hint">Para volver a mostrarla: Ajustes › Pantalla › Filas de inicio.</string>
+    <string name="perso_row_hidden_toast">Fila oculta. Ajustes › Pantalla › Filas de inicio la vuelve a mostrar.</string>
     <string name="perso_reset_default">Restablecer</string>
     <string name="perso_done_label">Listo</string>
     <string name="perso_trakt_lists_row">Mis listas de Trakt</string>

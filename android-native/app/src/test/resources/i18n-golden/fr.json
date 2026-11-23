@@ -1916,5 +1916,12 @@
   "DesignStrings/DesignStringsB1Kt.settingsLevelHint(EXPERT)": "Tous les réglages sont affichés, techniques compris.",
   "DesignStrings/DesignStringsB1Kt.settingsLevelHint(SIMPLE)": "Les réglages techniques sont masqués. Un réglage modifié reste toujours visible.",
   "DesignStrings/DesignStringsB1Kt.settingsLevelName(EXPERT)": "Expert",
-  "DesignStrings/DesignStringsB1Kt.settingsLevelName(SIMPLE)": "Simple"
+  "DesignStrings/DesignStringsB1Kt.settingsLevelName(SIMPLE)": "Simple",
+  "DesignStrings/PersonalizationStringsKt.getRowHiddenToast()": "Rangée masquée. Réglages › Affichage › Rangées de l'accueil la réaffiche.",
+  "DesignStrings/PersonalizationStringsKt.getRowHideHint()": "Pour la réafficher : Réglages › Affichage › Rangées de l'accueil.",
+  "DesignStrings/PersonalizationStringsKt.getRowMenuDown()": "Descendre la rangée",
+  "DesignStrings/PersonalizationStringsKt.getRowMenuHide()": "Masquer la rangée",
+  "DesignStrings/PersonalizationStringsKt.getRowMenuSettings()": "Réglages des rangées…",
+  "DesignStrings/PersonalizationStringsKt.getRowMenuUp()": "Monter la rangée",
+  "DesignStrings/PersonalizationStringsKt.rowHideTitle(Zed)": "Masquer « Zed » ?"
 }

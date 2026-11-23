@@ -710,6 +710,13 @@
     <string name="perso_row_hidden">مخفي</string>
     <string name="perso_move_up">تحريك لأعلى</string>
     <string name="perso_move_down">تحريك لأسفل</string>
+    <string name="perso_row_menu_up">رفع الصف</string>
+    <string name="perso_row_menu_down">إنزال الصف</string>
+    <string name="perso_row_menu_hide">إخفاء الصف</string>
+    <string name="perso_row_menu_settings">إعدادات الصفوف…</string>
+    <string name="perso_row_hide_title">إخفاء «%1$s»؟</string>
+    <string name="perso_row_hide_hint">لإظهاره من جديد: الإعدادات › العرض › صفوف الصفحة الرئيسية.</string>
+    <string name="perso_row_hidden_toast">تم إخفاء الصف. يمكنك إظهاره من الإعدادات › العرض › صفوف الصفحة الرئيسية.</string>
     <string name="perso_reset_default">إعادة تعيين</string>
     <string name="perso_done_label">تم</string>
     <string name="perso_trakt_lists_row">قوائمي على Trakt</string>

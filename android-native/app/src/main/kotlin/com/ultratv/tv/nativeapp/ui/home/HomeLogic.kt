@@ -456,3 +456,37 @@ fun <T> heroesToResolve(movies: List<T>, selectedCount: Int, wanted: Int, max: I
 
 /** Durée « h:mm(:ss) » (compilée une fois). */
 private val HM = Regex("""\d{1,2}:\d{2}(:\d{2})?""")
+
+/**
+ * Ouverture du menu d'une rangée de l'accueil à la télécommande : appui LONG sur OK (répétition de la touche, ou
+ * relâchement après [longMs] pour les télécommandes sans répétition) ou touche Menu. Quand le menu s'ouvre, la suite de
+ * l'appui (répétitions, relâchement) est avalée : la carte ne s'ouvre pas en plus.
+ */
+internal class RowMenuKeys(private val longMs: Long = 500L) {
+    private var fired = false
+
+    /** true = touche consommée ; [onOpen] est appelé quand le menu doit s'ouvrir. */
+    fun handle(keyCode: Int, down: Boolean, repeatCount: Int, downTime: Long, eventTime: Long, onOpen: () -> Unit): Boolean {
+        if (keyCode == android.view.KeyEvent.KEYCODE_MENU) {
+            if (down && repeatCount == 0) onOpen()
+            return true
+        }
+        if (keyCode !in OK_KEYS) return false
+        if (down) {
+            if (repeatCount == 0) { fired = false; return false }
+            if (!fired) { fired = true; onOpen() }
+            return true
+        }
+        if (fired) { fired = false; return true }
+        if (eventTime - downTime >= longMs) { onOpen(); return true }
+        return false
+    }
+
+    private companion object {
+        val OK_KEYS = setOf(android.view.KeyEvent.KEYCODE_DPAD_CENTER, android.view.KeyEvent.KEYCODE_ENTER, android.view.KeyEvent.KEYCODE_NUMPAD_ENTER, android.view.KeyEvent.KEYCODE_BUTTON_A)
+    }
+}
+
+/** Blocs de l'accueil affichés, dans l'ordre, sans les tuiles de raccourcis (non déplaçables depuis l'accueil). */
+internal fun movableShown(order: List<HomeSectionId>): List<HomeBlock> =
+    order.map { it.block }.distinct().filter { it != HomeBlock.SHORTCUTS }

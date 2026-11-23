@@ -1916,5 +1916,12 @@
   "DesignStrings/DesignStringsB1Kt.settingsLevelHint(EXPERT)": "All settings are shown, technical ones included.",
   "DesignStrings/DesignStringsB1Kt.settingsLevelHint(SIMPLE)": "Technical settings are hidden. A changed setting always stays visible.",
   "DesignStrings/DesignStringsB1Kt.settingsLevelName(EXPERT)": "Expert",
-  "DesignStrings/DesignStringsB1Kt.settingsLevelName(SIMPLE)": "Basic"
+  "DesignStrings/DesignStringsB1Kt.settingsLevelName(SIMPLE)": "Basic",
+  "DesignStrings/PersonalizationStringsKt.getRowHiddenToast()": "Row hidden. Settings › Display › Home rows shows it again.",
+  "DesignStrings/PersonalizationStringsKt.getRowHideHint()": "To show it again: Settings › Display › Home rows.",
+  "DesignStrings/PersonalizationStringsKt.getRowMenuDown()": "Move row down",
+  "DesignStrings/PersonalizationStringsKt.getRowMenuHide()": "Hide row",
+  "DesignStrings/PersonalizationStringsKt.getRowMenuSettings()": "Row settings…",
+  "DesignStrings/PersonalizationStringsKt.getRowMenuUp()": "Move row up",
+  "DesignStrings/PersonalizationStringsKt.rowHideTitle(Zed)": "Hide “Zed”?"
 }

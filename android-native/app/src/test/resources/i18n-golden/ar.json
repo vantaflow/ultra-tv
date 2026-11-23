@@ -1916,5 +1916,12 @@
   "DesignStrings/DesignStringsB1Kt.settingsLevelHint(EXPERT)": "تظهر كل الإعدادات، بما فيها الإعدادات التقنية.",
   "DesignStrings/DesignStringsB1Kt.settingsLevelHint(SIMPLE)": "الإعدادات التقنية مخفية. يبقى الإعداد المعدَّل ظاهرًا دائمًا.",
   "DesignStrings/DesignStringsB1Kt.settingsLevelName(EXPERT)": "خبير",
-  "DesignStrings/DesignStringsB1Kt.settingsLevelName(SIMPLE)": "بسيط"
+  "DesignStrings/DesignStringsB1Kt.settingsLevelName(SIMPLE)": "بسيط",
+  "DesignStrings/PersonalizationStringsKt.getRowHiddenToast()": "تم إخفاء الصف. يمكنك إظهاره من الإعدادات › العرض › صفوف الصفحة الرئيسية.",
+  "DesignStrings/PersonalizationStringsKt.getRowHideHint()": "لإظهاره من جديد: الإعدادات › العرض › صفوف الصفحة الرئيسية.",
+  "DesignStrings/PersonalizationStringsKt.getRowMenuDown()": "إنزال الصف",
+  "DesignStrings/PersonalizationStringsKt.getRowMenuHide()": "إخفاء الصف",
+  "DesignStrings/PersonalizationStringsKt.getRowMenuSettings()": "إعدادات الصفوف…",
+  "DesignStrings/PersonalizationStringsKt.getRowMenuUp()": "رفع الصف",
+  "DesignStrings/PersonalizationStringsKt.rowHideTitle(Zed)": "إخفاء «Zed»؟"
 }

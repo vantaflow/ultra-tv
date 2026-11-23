@@ -58,6 +58,31 @@ data class HomeLayout(val order: List<HomeBlock>, val hidden: Set<HomeBlock>) {
         return copy(order = m)
     }
 
+    /**
+     * Depuis l'accueil (menu d'une rangée) : [b] peut-il passer au-dessus ([delta] = −1) ou au-dessous (+1) de la rangée
+     * VOISINE réellement affichée ? [shown] = blocs affichés à l'accueil, dans l'ordre, sans les tuiles (non déplaçables).
+     */
+    fun canMoveAmong(b: HomeBlock, delta: Int, shown: List<HomeBlock>): Boolean {
+        val i = shown.indexOf(b)
+        return i >= 0 && (i + delta) in shown.indices
+    }
+
+    /**
+     * Déplace [b] juste au-dessus / au-dessous de sa voisine affichée (les blocs vides ou masqués entre les deux ne
+     * comptent pas : sinon « Monter » ne changeait parfois rien à l'écran). Même préférence que Réglages › Affichage ›
+     * Rangées de l'accueil ; sans effet si le déplacement est impossible.
+     */
+    fun moveAmong(b: HomeBlock, delta: Int, shown: List<HomeBlock>): HomeLayout {
+        if (!canMoveAmong(b, delta, shown)) return this
+        val target = shown[shown.indexOf(b) + delta]
+        val m = order.toMutableList(); m.remove(b)
+        val t = m.indexOf(target)
+        m.add(if (delta < 0) t else t + 1, b)
+        return copy(order = m)
+    }
+
+    fun hide(b: HomeBlock) = copy(hidden = hidden + b)
+
     fun orderCsv(): String = if (order == HomeBlock.entries) "" else order.joinToString(",") { it.name }
     fun hiddenCsv(): String = hidden.sortedBy { it.ordinal }.joinToString(",") { it.name }
 

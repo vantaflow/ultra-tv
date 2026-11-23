@@ -2,6 +2,8 @@ package com.ultratv.tv.nativeapp.ui.mobile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import com.ultratv.tv.nativeapp.ui.home.block
 import androidx.compose.ui.input.pointer.pointerInput
 import com.ultratv.tv.nativeapp.i18n.heroPageOf
 import androidx.compose.foundation.clickable
@@ -168,9 +170,15 @@ fun MobileHomeScreen(
     onOpenMovie: (Long) -> Unit = {},
     onOpenSeries: (Long) -> Unit = {},
     onHeroStep: (Int) -> Unit = {},
+    /** Disposition des rangées (même préférence que Réglages › Affichage) ; null = pas de menu de rangée. */
+    homeLayout: com.ultratv.tv.nativeapp.ui.home.HomeLayout? = null,
+    onHomeLayout: (com.ultratv.tv.nativeapp.ui.home.HomeLayout) -> Unit = {},
 ) {
     val D = LocalDs.current
     val M = LocalMobileStrings.current
+    // Appui long sur le TITRE d'une rangée : menu de la rangée (monter, descendre, masquer, réglages des rangées).
+    var menuFor by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<com.ultratv.tv.nativeapp.ui.home.HomeBlock?>(null) }
+    val rowMenu: (HomeSectionId) -> (() -> Unit)? = { id -> if (homeLayout == null) null else ({ menuFor = id.block }) }
     val wide = rememberWindowClass() != WindowClass.COMPACT
     val rows = state.rows
     val sections = remember(rows.order) { mobileSectionOrder(rows.order) }
@@ -192,37 +200,37 @@ fun MobileHomeScreen(
                 when (id) {
                     HomeSectionId.SHORTCUTS -> MobileShortcuts(rows.shortcuts, onShortcut)
                     HomeSectionId.RESUME -> Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
-                        SectionHeader(D.continueWatching, null, {})
+                        SectionHeader(D.continueWatching, null, {}, onTitleLongPress = rowMenu(id))
                         val resume = androidx.compose.runtime.remember(rows.resume) { rows.resume.withUniqueKeys() }
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
                             items(resume, key = { it.key }, contentType = { "resume" }) { c -> ResumeCard(c, D) { onPlayHistory(c.entry) } }
                         }
                     }
-                    HomeSectionId.TRAKT_AVAILABLE -> TraktPosterRow(D.traktAvailable, rows.availableNow, wide, openPoster)
-                    HomeSectionId.TRAKT_WATCHLIST -> TraktPosterRow(D.traktWatchlist, rows.watchlist, wide, openPoster)
-                    HomeSectionId.TRAKT_RECOMMENDED -> TraktPosterRow(D.traktRecommended, rows.recommended, wide, openPoster)
-                    HomeSectionId.TRAKT_TRENDING -> TraktPosterRow(D.traktTrending, rows.trending, wide, openPoster)
-                    HomeSectionId.TRAKT_POPULAR -> TraktPosterRow(D.traktPopular, rows.popular, wide, openPoster)
-                    HomeSectionId.TRAKT_UP_NEXT -> TraktPosterRow(D.traktUpNext, rows.upNext, wide, openPoster)
-                    HomeSectionId.BECAUSE_WATCHED -> TraktPosterRow(D.becauseWatched(rows.becauseTitle), rows.because, wide, openPoster)
-                    HomeSectionId.TOP_MOVIES -> TraktPosterRow(D.topRatedMovies, rows.topMovies, wide, openPoster)
-                    HomeSectionId.LATEST_MOVIES -> TraktPosterRow(D.latestMovies, rows.latestMovies, wide, openPoster)
-                    HomeSectionId.LATEST_SERIES -> TraktPosterRow(D.latestSeries, rows.latestSeries, wide, openPoster)
-                    HomeSectionId.TOP10 -> TraktPosterRow(D.homeTop10, rows.top10, wide, openPoster)
+                    HomeSectionId.TRAKT_AVAILABLE -> TraktPosterRow(D.traktAvailable, rows.availableNow, wide, openPoster, rowMenu(id))
+                    HomeSectionId.TRAKT_WATCHLIST -> TraktPosterRow(D.traktWatchlist, rows.watchlist, wide, openPoster, rowMenu(id))
+                    HomeSectionId.TRAKT_RECOMMENDED -> TraktPosterRow(D.traktRecommended, rows.recommended, wide, openPoster, rowMenu(id))
+                    HomeSectionId.TRAKT_TRENDING -> TraktPosterRow(D.traktTrending, rows.trending, wide, openPoster, rowMenu(id))
+                    HomeSectionId.TRAKT_POPULAR -> TraktPosterRow(D.traktPopular, rows.popular, wide, openPoster, rowMenu(id))
+                    HomeSectionId.TRAKT_UP_NEXT -> TraktPosterRow(D.traktUpNext, rows.upNext, wide, openPoster, rowMenu(id))
+                    HomeSectionId.BECAUSE_WATCHED -> TraktPosterRow(D.becauseWatched(rows.becauseTitle), rows.because, wide, openPoster, rowMenu(id))
+                    HomeSectionId.TOP_MOVIES -> TraktPosterRow(D.topRatedMovies, rows.topMovies, wide, openPoster, rowMenu(id))
+                    HomeSectionId.LATEST_MOVIES -> TraktPosterRow(D.latestMovies, rows.latestMovies, wide, openPoster, rowMenu(id))
+                    HomeSectionId.LATEST_SERIES -> TraktPosterRow(D.latestSeries, rows.latestSeries, wide, openPoster, rowMenu(id))
+                    HomeSectionId.TOP10 -> TraktPosterRow(D.homeTop10, rows.top10, wide, openPoster, rowMenu(id))
                     HomeSectionId.LIBRARY_1, HomeSectionId.LIBRARY_2, HomeSectionId.LIBRARY_3, HomeSectionId.LIBRARY_4, HomeSectionId.LIBRARY_5, HomeSectionId.LIBRARY_6 ->
-                        rows.libraries.getOrNull(id.libraryIndex)?.let { l -> TraktPosterRow(D.catalogSortName(com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Sort.RECENT) + " · " + l.name, l.cards, wide, openPoster) }
+                        rows.libraries.getOrNull(id.libraryIndex)?.let { l -> TraktPosterRow(D.catalogSortName(com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Sort.RECENT) + " · " + l.name, l.cards, wide, openPoster, rowMenu(id)) }
                     HomeSectionId.RECENT_CHANNELS -> Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
-                        SectionHeader(D.recentlyWatched, null, {})
+                        SectionHeader(D.recentlyWatched, null, {}, onTitleLongPress = rowMenu(id))
                         val recent = androidx.compose.runtime.remember(rows.recentChannels) { rows.recentChannels.withUniqueKeys() }
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
                             items(recent, key = { it.key }, contentType = { "resume" }) { c -> ResumeCard(c, D) { onPlayHistory(c.entry) } }
                         }
                     }
-                    HomeSectionId.TOP_SERIES -> TraktPosterRow(D.topRatedSeries, rows.topSeries, wide, openPoster)
+                    HomeSectionId.TOP_SERIES -> TraktPosterRow(D.topRatedSeries, rows.topSeries, wide, openPoster, rowMenu(id))
                     HomeSectionId.TRAKT_LIST_1, HomeSectionId.TRAKT_LIST_2, HomeSectionId.TRAKT_LIST_3, HomeSectionId.TRAKT_LIST_4, HomeSectionId.TRAKT_LIST_5 ->
-                        rows.traktLists.getOrNull(id.traktListIndex)?.let { l -> TraktPosterRow(D.traktListRow(l.name), l.cards, wide, openPoster) }
+                        rows.traktLists.getOrNull(id.traktListIndex)?.let { l -> TraktPosterRow(D.traktListRow(l.name), l.cards, wide, openPoster, rowMenu(id)) }
                     HomeSectionId.CHANNELS -> Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
-                        SectionHeader(if (rows.showingFavorites) D.favoriteChannels else D.directTitle, M.seeAll, if (rows.showingFavorites) onGoFavorites else onGoLive)
+                        SectionHeader(if (rows.showingFavorites) D.favoriteChannels else D.directTitle, M.seeAll, if (rows.showingFavorites) onGoFavorites else onGoLive, onTitleLongPress = rowMenu(id))
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
                             items(rows.channels.distinctBy { it.channel.id }, key = { it.channel.id }, contentType = { "channel" }) { c -> FavChannelCard(c) { playChannel(c.channel) } }
                         }
@@ -233,15 +241,19 @@ fun MobileHomeScreen(
             }
         }
     }
+    val target = menuFor
+    if (target != null && homeLayout != null) com.ultratv.tv.nativeapp.ui.home.HomeRowMenuHost(
+        target, homeLayout, com.ultratv.tv.nativeapp.ui.home.movableShown(sections), onSave = onHomeLayout, onDone = { menuFor = null },
+    )
 }
 
 /** Rangée d'affiches Trakt (films et séries mêlés, ordre de Trakt) ; toucher ouvre la fiche existante. */
 @Composable
-private fun TraktPosterRow(title: String, cards: List<PosterCardUi>, wide: Boolean, onOpen: (PosterCardUi) -> Unit) {
+private fun TraktPosterRow(title: String, cards: List<PosterCardUi>, wide: Boolean, onOpen: (PosterCardUi) -> Unit, onTitleLongPress: (() -> Unit)? = null) {
     val w = if (wide) 150.dp else 110.dp
     val unique = androidx.compose.runtime.remember(cards) { cards.withUniqueKeys() }
     Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
-        SectionHeader(title, null, {})
+        SectionHeader(title, null, {}, onTitleLongPress = onTitleLongPress)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
             items(unique, key = { it.key }, contentType = { "poster" }) { p ->
                 com.ultratv.tv.nativeapp.ui.catalog.PosterCell(p.item, Modifier.width(w), kind = p.kind, imageWidth = w) { onOpen(p) }
@@ -251,9 +263,12 @@ private fun TraktPosterRow(title: String, cards: List<PosterCardUi>, wide: Boole
 }
 
 @Composable
-fun SectionHeader(title: String, action: String?, onAction: () -> Unit) {
+fun SectionHeader(title: String, action: String?, onAction: () -> Unit, onTitleLongPress: (() -> Unit)? = null) {
     Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
-        Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+        val longPress = if (onTitleLongPress == null) Modifier else Modifier.pointerInput(onTitleLongPress) {
+            detectTapGestures(onLongPress = { onTitleLongPress() })
+        }
+        Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false).then(longPress).padding(vertical = 6.dp))
         if (action != null) Text(action, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1,
             modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onAction).padding(horizontal = 8.dp, vertical = 14.dp))
     }
