@@ -273,8 +273,10 @@ fun StateCard(
     /** Points affichés sous le texte (ex. nouveautés d'une mise à jour), une ou deux lignes chacun. */
     details: List<String> = emptyList(),
     detailsTitle: String? = null,
+    /** Fond de la carte (défaut : surface profonde du thème). */
+    surface: Color = Ux.SurfaceDeep,
 ) {
-    Column(modifier.clip(RoundedCornerShape(28.design)).background(Ux.SurfaceDeep).padding(44.design), verticalArrangement = Arrangement.spacedBy(20.design)) {
+    Column(modifier.clip(RoundedCornerShape(28.design)).background(surface).padding(44.design), verticalArrangement = Arrangement.spacedBy(20.design)) {
         Box(Modifier.width(80.design).height(80.design).clip(RoundedCornerShape(40.design)).background(badge), contentAlignment = Alignment.Center) {
             DIcon(iconPath, 40.design, if (badge == Ux.Accent) Ux.OnAccent else Ux.White, strokeWidth = 2f)
         }

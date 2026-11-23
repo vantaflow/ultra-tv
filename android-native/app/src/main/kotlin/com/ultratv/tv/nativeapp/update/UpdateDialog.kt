@@ -3,6 +3,9 @@ package com.ultratv.tv.nativeapp.update
 import com.ultratv.tv.nativeapp.ui.design.Ux
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.testTag
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -39,6 +42,14 @@ private object UpdateDialogSlot {
     var owner: Any? by mutableStateOf(null)
 }
 
+/** Voile plein écran de l'invite : couleur du voile du thème, rendue opaque (rien ne transparaît derrière). */
+internal fun updateVeil(p: com.ultratv.tv.nativeapp.ui.design.UxPalette): androidx.compose.ui.graphics.Color = p.scrim.copy(alpha = 1f)
+
+/** Surface de la carte de l'invite : surface profonde du thème, opaque. */
+internal fun updateSurface(p: com.ultratv.tv.nativeapp.ui.design.UxPalette): androidx.compose.ui.graphics.Color = p.card2.copy(alpha = 1f)
+
+internal const val UPDATE_VEIL_TAG = "update-veil"
+
 /** [onClose] : appelé quand l'utilisateur ferme l'invite (« Plus tard », Retour). */
 @Composable
 fun UpdateDialog(onClose: () -> Unit = {}) {
@@ -66,8 +77,16 @@ fun UpdateDialog(onClose: () -> Unit = {}) {
     val s = LocalStrings.current
     val D = LocalDs.current
 
-    ModalFocusScope(onBack = close, modifier = Modifier.background(com.ultratv.tv.nativeapp.ui.design.Ux.Scrim)) {
+    // Voile plein écran OPAQUE (avant : voile translucide, les menus restaient visibles derrière l'invite) et surface
+    // opaque, dans les 10 thèmes ; les touches et appuis ne traversent pas le voile. Rendu dans l'OverlayHost (plein écran)
+    // depuis À propos comme depuis l'alerte « Mettre à jour » ; focus piégé et Retour ferme (ModalFocusScope).
+    val palette = Ux.palette
+    ModalFocusScope(
+        onBack = close,
+        modifier = Modifier.background(updateVeil(palette)).pointerInput(Unit) { detectTapGestures { } }.testTag(UPDATE_VEIL_TAG),
+    ) {
         StateCard(
+            surface = updateSurface(palette),
             title = if (update.preRelease) D.updateTitle(update.versionName) + " · " + D.updatePreReleaseTag else D.updateTitle(update.versionName),
             body = when {
                 mismatch -> D.updateSignatureMismatch
