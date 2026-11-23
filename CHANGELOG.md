@@ -4,6 +4,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 Chaque version Android peut finir par une sous-section `### In English` : quelques puces courtes en anglais, reprises en tête des notes de la release GitHub (« English summary ») par `.github/release-notes.sh` ; le reste de la section y figure en français. Uniquement des puces sous ce titre, sans autre sous-titre.
 
+## [Site] — 2026-11-23
+
+### Modifié
+- Bouton flottant « Me soutenir » : la section Soutenir s'ouvre en fenêtre par-dessus la page (Fermer, Échap ou clic à côté), sans faire défiler jusqu'en bas. Rien n'est déplacé ni dupliqué : les boutons PayPal déjà chargés servent tels quels. Sans JavaScript, le lien mène toujours à la section.
+
 ## [Worker et site] — 2026-11-23
 
 ### Ajouté

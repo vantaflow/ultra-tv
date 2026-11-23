@@ -228,6 +228,7 @@ adb install -r UltraTV.apk</code></pre>
 </section>
 
 <section id="soutenir">
+  <button type="button" id="donate-close" class="donate-close" hidden>✕ <span lang="fr">Fermer</span><span lang="en">Close</span></button>
   <h2><span lang="fr">Soutenir le projet</span><span lang="en">Support the project</span></h2>
   <p><span lang="fr">Ultra TV est gratuit, sans publicité, et le restera. Un don aide à payer les serveurs (synchronisation cloud, guide, affiches) et le temps passé à l'améliorer. Carte bancaire ou PayPal, depuis n'importe quel pays ; aucune donnée bancaire ne passe par Ultra TV.</span><span lang="en">Ultra TV is free and ad-free, and will stay that way. A donation helps pay for the servers (cloud sync, guide, artwork) and the time spent improving it. Card or PayPal, from any country; no card details ever go through Ultra TV.</span></p>
   <div class="pp-tabs"><label class="pp-amt"><input type="radio" name="pp-mode" value="once" checked/><span><span lang="fr">Une fois</span><span lang="en">One time</span></span></label><label class="pp-amt"><input type="radio" name="pp-mode" value="monthly"/><span><span lang="fr">Chaque mois</span><span lang="en">Monthly</span></span></label></div>
@@ -283,5 +284,21 @@ adb install -r UltraTV.apk</code></pre>
 </script>
 <!-- Dons : bouton flottant vers la section Soutenir (boutons PayPal intégrés) -->
 <a class="donate-float" href="#soutenir">♥ {{DONATE}}</a>
+<script>
+/* « Me soutenir » : la section Soutenir s'ouvre en fenêtre par-dessus la page (rien n'est déplacé : les boutons PayPal restent chargés).
+   Sans JavaScript, le lien mène à la section comme avant. */
+(function () {
+  var btn = document.querySelector('.donate-float'), sec = document.getElementById('soutenir'), close = document.getElementById('donate-close');
+  if (!btn || !sec || !close) return;
+  var back = document.createElement('div'); back.className = 'donate-backdrop'; back.hidden = true; document.body.appendChild(back);
+  var last = null;
+  function open(e) { e.preventDefault(); last = document.activeElement; document.body.classList.add('donate-open'); back.hidden = false; sec.setAttribute('role', 'dialog'); sec.setAttribute('aria-modal', 'true'); close.hidden = false; close.focus(); }
+  function shut() { document.body.classList.remove('donate-open'); back.hidden = true; sec.removeAttribute('role'); sec.removeAttribute('aria-modal'); close.hidden = true; if (last && last.focus) last.focus(); }
+  btn.addEventListener('click', open);
+  close.addEventListener('click', shut);
+  back.addEventListener('click', shut);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && document.body.classList.contains('donate-open')) shut(); });
+})();
+</script>
 </body>
 </html>
