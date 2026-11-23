@@ -4,23 +4,39 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 Chaque version Android peut finir par une sous-section `### In English` : quelques puces courtes en anglais, reprises en tête des notes de la release GitHub (« English summary ») par `.github/release-notes.sh` ; le reste de la section y figure en français. Uniquement des puces sous ce titre, sans autre sous-titre.
 
+## [1.3.76] — 2026-11-23 (Android)
+
+### Ajouté
+- Dons : PayPal seul (Ko-fi et Liberapay retirés partout). Réglages › À propos › Soutenir Ultra TV ouvre le lien de paiement PayPal (montant libre, PayPal ou carte) sur téléphone et tablette ; sur TV, le QR code (généré sur l'appareil) y mène. Cette page et le site vitrine (section Soutenir) : bouton PayPal hébergé du compte Business (montant libre, PayPal ou carte bancaire, réglé dans le tableau de bord PayPal), lien de paiement PayPal en secours ; choix « Une fois / Chaque mois » : dons mensuels de 3, 5 ou 10 € par abonnement PayPal (résiliables depuis le compte PayPal). Tableau de bord, README et bouton Sponsor : PayPal seul.
+- Catégories favorites (#249, avec la modification depuis le tableau de bord web) : une étoile dans Réglages › Catégories marque ou démarque une catégorie du Direct, des Films ou des Séries ; les favorites remontent en tête des listes de catégories (avec ★), les autres gardent leur ordre personnalisé. Partagées entre appareils par le champ `favCats` des réglages d'affichage ; un appareil qui ne l'a pas lu n'efface jamais les favorites du compte.
+
+### Modifié
+- Interface TV : « Grande » et « Très grande » passent à x1,15 et x1,3 (comme le texte) ; « Petite » et « Normale » inchangées. Le menu de gauche suit la taille du texte (hauteur des entrées, largeur déployée) au lieu d'être écrasé.
+- Lecteur en direct : l'action « Ma liste » est renommée « Favoris », comme la rubrique qu'elle ouvre (les fiches film et série gardent « Ma liste »).
+
+### Corrigé
+- Écran noir permanent après le passage de la pré-version 1.3.75-rc1 à la 1.3.75 : la base locale rétrogradée (25 → 24) était reconstruite sans profil par défaut, donc « Qui regarde ? » et les préférences n'émettaient jamais. Le profil Principal est désormais recréé à chaque ouverture s'il manque (les appareils déjà touchés sont réparés au lancement suivant).
+- Premier écran : plus jamais un écran vide. Au bout de 3 s, l'écran de chargement ; au bout de 12 s, un écran d'erreur avec « Réessayer » et « Réinitialiser les données locales » (la configuration revient du cloud). Une exception dans les flux de démarrage est journalisée et donne une valeur de repli au lieu d'un blocage.
+- Accueil TV : « Votre catalogue se charge… » n'apparaît que pendant une synchronisation réelle ; une source sans film ni série (direct seul, M3U) n'affiche plus ce message indéfiniment.
+- Couleur d'accent : le schéma Material ne teinte plus les surfaces avec l'accent (surfaceTint neutralisé) ; l'accent reste réservé au focus, aux sélections et aux progressions.
+
+### Technique
+- Numéro de version interne (versionCode) : une pré-version -rcN est désormais strictement inférieure à la stable du même numéro (major×1 000 000 + minor×10 000 + patch×100 + rcN, ou 99 pour une stable ; 1.3.76-rc1 → 1037601, 1.3.76 → 1037699), tous supérieurs à celui de la 1.3.75 (10375). La mise à jour automatique (sans base de données) est inchangée.
+
+### In English
+- Fixes the permanent black screen after updating from the 1.3.75-rc1 pre-release to 1.3.75 (the app now recreates its default profile); the first screen is never blank again (loading screen, then an error screen with Retry / Reset).
+- Donations: PayPal only (Ko-fi and Liberapay removed). Settings › About › Support Ultra TV opens the PayPal payment link; on TV, the QR code leads to it. The /donate page and the website offer one-time and monthly donations (3, 5 or 10 €).
+- Favourite categories (#249): star a Live, Movies or Series category in Settings › Categories (or from the web dashboard); favourites move to the top of the lists.
+- TV: "Large" and "Extra large" interface sizes now scale like the text (x1.15 / x1.3), and the side menu grows with the text size.
+- Home: "Your catalog is loading…" only shows during a real sync (no more endless message for live-only sources).
+- Live player: "My list" is renamed "Favorites"; the accent colour no longer tints the whole theme.
+
 ## [1.3.75] — 2026-11-23 (Android)
 
 ### Technique
 - Mise à jour des dépendances (Dependabot) : Bump the android-mineures group in /android-native with 7 updates (#254).
 
 ## [Non publié]
-
-### Android et site (prochaine version)
-- Écran noir permanent après le passage de la pré-version 1.3.75-rc1 à la 1.3.75 : la base locale rétrogradée (25 → 24) était reconstruite sans profil par défaut, donc « Qui regarde ? » et les préférences n'émettaient jamais. Le profil Principal est désormais recréé à chaque ouverture s'il manque (les appareils déjà touchés sont réparés au lancement suivant).
-- Premier écran : plus jamais un écran vide. Au bout de 3 s, l'écran de chargement ; au bout de 12 s, un écran d'erreur avec « Réessayer » et « Réinitialiser les données locales » (la configuration revient du cloud). Une exception dans les flux de démarrage est journalisée et donne une valeur de repli au lieu d'un blocage.
-- Numéro de version interne (versionCode) : une pré-version -rcN est désormais strictement inférieure à la stable du même numéro (major×1 000 000 + minor×10 000 + patch×100 + rcN, ou 99 pour une stable ; 1.3.76-rc1 → 1037601, 1.3.76 → 1037699), tous supérieurs à celui de la 1.3.75 (10375). La mise à jour automatique (sans base de données) est inchangée.
-- Interface TV : « Grande » et « Très grande » passent à x1,15 et x1,3 (comme le texte) ; « Petite » et « Normale » inchangées. Le menu de gauche suit la taille du texte (hauteur des entrées, largeur déployée) au lieu d'être écrasé.
-- Accueil TV : « Votre catalogue se charge… » n'apparaît que pendant une synchronisation réelle ; une source sans film ni série (direct seul, M3U) n'affiche plus ce message indéfiniment.
-- Lecteur en direct : l'action « Ma liste » est renommée « Favoris », comme la rubrique qu'elle ouvre (les fiches film et série gardent « Ma liste »).
-- Couleur d'accent : le schéma Material ne teinte plus les surfaces avec l'accent (surfaceTint neutralisé) ; l'accent reste réservé au focus, aux sélections et aux progressions.
-- Dons : PayPal seul (Ko-fi et Liberapay retirés partout). Réglages › À propos › Soutenir Ultra TV ouvre le lien de paiement PayPal (montant libre, PayPal ou carte) sur téléphone et tablette ; sur TV, le QR code (généré sur l'appareil) y mène. Cette page et le site vitrine (section Soutenir) : bouton PayPal hébergé du compte Business (montant libre, PayPal ou carte bancaire, réglé dans le tableau de bord PayPal), lien de paiement PayPal en secours ; choix « Une fois / Chaque mois » : dons mensuels de 3, 5 ou 10 € par abonnement PayPal (résiliables depuis le compte PayPal). Tableau de bord, README et bouton Sponsor : PayPal seul.
-- Catégories favorites (#249, avec la modification depuis le tableau de bord web) : une étoile dans Réglages › Catégories marque ou démarque une catégorie du Direct, des Films ou des Séries ; les favorites remontent en tête des listes de catégories (avec ★), les autres gardent leur ordre personnalisé. Partagées entre appareils par le champ `favCats` des réglages d'affichage ; un appareil qui ne l'a pas lu n'efface jamais les favorites du compte.
 
 ### Bureau (prochaine version)
 - Accueil : aucune rangée (à la une, en direct, reprises, nouveautés, mieux notés, Trakt, nouveaux épisodes, sport) ne montre plus de contenu d'une catégorie masquée, verrouillée ou adulte ; un profil Enfants ne voit les catégories adultes nulle part (case « Profil Enfants » dans Réglages › Profils).
@@ -31,7 +47,6 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 - Groupes de chaînes personnalisés dans le Direct et le Guide, par profil et par source (créer, renommer, supprimer, ajouter une chaîne par clic droit ou le bouton « Groupes »).
 - Réglages : niveaux Essentiel / Standard / Expert ; Expert d'office pour un utilisateur existant, Standard pour une installation neuve ; un réglage modifié reste toujours affiché.
 - Rail latéral : sélecteur de source rapide quand le profil voit plusieurs sources.
-
 
 
 ## [1.3.74] — 2026-11-23 (Android)
