@@ -3,7 +3,7 @@ import { escapeHtml as e } from "../http.js";
 import { ENVOYER_DICT, ENVOYER_DIR, ENVOYER_LANGS, ENVOYER_LANG_NAMES } from "../i18n/envoyer.js";
 import { SITE_DICT } from "../i18n/site.js";
 import { ico, jsonForScript, notice } from "../ui/components.js";
-import { DONATE_DICT, DONATE_CURRENCY, PAYPAL_HOSTED_BUTTON_ID, PAYPAL_PLANS, PAYPAL_SUB_CLIENT_ID, PAYPAL_URL, donateCsp } from "../donate.js";
+import { DONATE_DICT, DONATE_CURRENCY, PAYPAL_HOSTED_BUTTON_ID, PAYPAL_PLANS, PAYPAL_SUB_CLIENT_ID, PAYPAL_URL, SITE_URL, donateCsp } from "../donate.js";
 import { shell } from "../ui/layout.js";
 
 const nextField = (next) => (next && next !== "/" ? `<input type="hidden" name="next" value="${e(next)}"/>` : "");
@@ -222,13 +222,37 @@ export function donatePage(n, { lang = "en", clientId = null } = {}) {
 function go(){if(!window.paypal||!window.paypal.HostedButtons)return;window.paypal.HostedButtons({hostedButtonId:"${PAYPAL_HOSTED_BUTTON_ID}"}).render("#${box}");}
 function sub(){if(!window.paypalSub||!window.paypalSub.Buttons)return;window.paypalSub.Buttons({style:{layout:"vertical",label:"subscribe"},
 createSubscription:function(d,a){var p=document.querySelector('input[name="pp-plan"]:checked');return a.subscription.create({plan_id:p?p.value:"${PAYPAL_PLANS[1].id}"});},
-onApprove:function(){subMsg.textContent=T.thanks;document.getElementById("pp-sub").hidden=true;},onError:function(){subMsg.textContent=T.error;}}).render("#pp-sub");}
+onApprove:function(){subMsg.textContent=T.thanks;document.getElementById("pp-sub").hidden=true;location.href="/donate/merci?m=1&l=${lang}";},onError:function(){subMsg.textContent=T.error;}}).render("#pp-sub");}
 document.querySelectorAll('input[name="pp-mode"]').forEach(function(r){r.addEventListener("change",function(){var m=r.value==="monthly";document.getElementById("pp-monthly").hidden=!m;document.getElementById("pp-once").hidden=m;});});
 function all(){go();sub();}if(document.readyState==="complete")all();else window.addEventListener("load",all);})();</script>${css}` : "";
   const res = shell(n, { title: t.title, ctx: "public", width: "narrow", body, extra,
     loc: { lang, dir, skip: c.skip, themeBtn: c.themeBtn, themeLabels: { auto: c.themeAuto, light: c.themeLight, dark: c.themeDark }, themeChange: c.themeChange,
       foot: { github: c.footGithub, privacy: c.footPrivacy, navLabel: c.langLabel, langs: `<nav class="langs" aria-label="${e(c.langLabel)}">${langLinks}</nav>` } } });
   if (clientId) res.headers.set("content-security-policy", donateCsp(n));
+  res.headers.append("vary", "Cookie, Accept-Language");
+  return res;
+}
+
+/**
+ * Page de remerciement après un don (/donate/merci) : retour du bouton hébergé et du lien de paiement PayPal (URL de retour
+ * réglée dans le tableau de bord PayPal), et des abonnements (onApprove). `monthly` (?m=1) ajoute la ligne sur la résiliation.
+ * Aucune donnée de paiement n'est lue ni affichée : la page remercie, sans rien vérifier.
+ */
+export function donateThanksPage(n, { lang = "en", monthly = false } = {}) {
+  if (!ENVOYER_LANGS.includes(lang)) lang = "en";
+  const t = DONATE_DICT[lang];
+  const c = ENVOYER_DICT[lang];
+  const dir = ENVOYER_DIR[lang];
+  const q = monthly ? "&m=1" : "";
+  const langLinks = ENVOYER_LANGS.map((l) => `<a href="${e(`/donate/merci?l=${l}${q}`)}" data-lang="${l}" lang="${l}" hreflang="${l}"${l === lang ? ` aria-current="true"` : ""}>${e(ENVOYER_LANG_NAMES[l])}</a>`).join("");
+  const body = `<div class="panel" id="merci"><div class="heart" aria-hidden="true">♥</div><h1>${e(t.thanksTitle)}</h1><p class="sub">${e(t.thanksBody)}</p>${monthly ? `<p class="hint">${e(t.thanksMonthly)}</p>` : ""}<p class="hint">${e(t.thanksReceipt)}</p>
+<div class="row"><a class="button block" href="${e(SITE_URL)}" autofocus>${e(t.thanksSite)}</a></div>
+<div class="row"><a class="button alt-btn block" href="${e(`/donate?l=${lang}`)}">${e(t.thanksAgain)}</a></div></div>`;
+  const extra = `<style nonce="${n}">#merci{text-align:center}#merci .heart{font-size:56px;line-height:1;color:#d9534f;margin:4px 0 8px}</style>`;
+  const res = shell(n, { title: t.thanksTitle, ctx: "public", width: "narrow", body, extra,
+    loc: { lang, dir, skip: c.skip, themeBtn: c.themeBtn, themeLabels: { auto: c.themeAuto, light: c.themeLight, dark: c.themeDark }, themeChange: c.themeChange,
+      foot: { github: c.footGithub, privacy: c.footPrivacy, navLabel: c.langLabel, langs: `<nav class="langs" aria-label="${e(c.langLabel)}">${langLinks}</nav>` } } });
+  res.headers.set("x-robots-tag", "noindex");
   res.headers.append("vary", "Cookie, Accept-Language");
   return res;
 }

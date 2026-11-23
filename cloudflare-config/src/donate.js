@@ -5,6 +5,8 @@
 //   dans le tableau de bord PayPal, sans secret côté Worker.
 
 /** Don direct sur PayPal (versé tout de suite, sans plateforme intermédiaire). */
+/** Site vitrine (lien « Retour au site » de la page de remerciement). */
+export const SITE_URL = "https://vantaflow.github.io/ultra-tv/";
 export const PAYPAL_URL = "https://www.paypal.com/ncp/payment/JHPS8RCN35UWA";
 /** Devise des dons intégrés. */
 export const DONATE_CURRENCY = "EUR";
@@ -48,6 +50,7 @@ export function donateCsp(n) {
 
 export const DONATE_DICT = {
   fr: {
+    thanksTitle: "Merci pour votre don !", thanksBody: "Votre soutien aide à garder Ultra TV gratuit, sans publicité, et à continuer de l'améliorer.", thanksMonthly: "Votre don mensuel est actif. Vous pouvez le résilier à tout moment depuis votre compte PayPal.", thanksReceipt: "PayPal vous envoie un reçu par e-mail.", thanksSite: "Retour au site Ultra TV", thanksAgain: "Faire un autre don",
     once: "Une fois", monthly: "Chaque mois", monthlyNote: "Don mensuel, résiliable à tout moment depuis votre compte PayPal.", subThanks: "Merci ! Votre don mensuel est actif.",
     title: "Soutenir Ultra TV", sub: "Ultra TV est gratuit, sans publicité et le restera. Un don aide à payer les serveurs et le temps passé à l'améliorer.",
     paypal: "Faire un don avec PayPal", paypalNote: "Don direct, compte PayPal ou carte bancaire. Aucune donnée bancaire ne passe par Ultra TV.",
@@ -55,6 +58,7 @@ export const DONATE_DICT = {
     direct: "Ou par le lien PayPal direct",
   },
   en: {
+    thanksTitle: "Thank you for your donation!", thanksBody: "Your support helps keep Ultra TV free and ad-free, and keeps it improving.", thanksMonthly: "Your monthly donation is active. You can cancel it anytime from your PayPal account.", thanksReceipt: "PayPal sends you a receipt by email.", thanksSite: "Back to the Ultra TV website", thanksAgain: "Make another donation",
     once: "One time", monthly: "Monthly", monthlyNote: "Monthly donation, cancel anytime from your PayPal account.", subThanks: "Thank you! Your monthly donation is active.",
     title: "Support Ultra TV", sub: "Ultra TV is free and ad-free, and will stay that way. A donation helps pay for the servers and the time spent improving it.",
     paypal: "Donate with PayPal", paypalNote: "Direct donation, PayPal account or card. No card details go through Ultra TV.",
@@ -62,6 +66,7 @@ export const DONATE_DICT = {
     direct: "Or use the direct PayPal link",
   },
   es: {
+    thanksTitle: "¡Gracias por tu donación!", thanksBody: "Tu apoyo ayuda a que Ultra TV siga siendo gratis, sin anuncios, y a seguir mejorándolo.", thanksMonthly: "Tu donación mensual está activa. Puedes cancelarla en cualquier momento desde tu cuenta PayPal.", thanksReceipt: "PayPal te envía un recibo por correo electrónico.", thanksSite: "Volver al sitio de Ultra TV", thanksAgain: "Hacer otra donación",
     once: "Una vez", monthly: "Cada mes", monthlyNote: "Donación mensual, cancelable en cualquier momento desde tu cuenta PayPal.", subThanks: "¡Gracias! Tu donación mensual está activa.",
     title: "Apoyar Ultra TV", sub: "Ultra TV es gratis, sin anuncios, y lo seguirá siendo. Una donación ayuda a pagar los servidores y el tiempo dedicado a mejorarlo.",
     paypal: "Donar con PayPal", paypalNote: "Donación directa, cuenta PayPal o tarjeta. Ningún dato bancario pasa por Ultra TV.",
@@ -69,6 +74,7 @@ export const DONATE_DICT = {
     direct: "O con el enlace directo de PayPal",
   },
   ar: {
+    thanksTitle: "شكرًا على تبرعك!", thanksBody: "دعمك يساعد على إبقاء Ultra TV مجانيًا وبلا إعلانات، وعلى مواصلة تحسينه.", thanksMonthly: "تبرعك الشهري مفعّل. يمكنك إلغاؤه في أي وقت من حسابك على PayPal.", thanksReceipt: "يرسل لك PayPal إيصالًا عبر البريد الإلكتروني.", thanksSite: "العودة إلى موقع Ultra TV", thanksAgain: "تبرّع مرة أخرى",
     once: "مرة واحدة", monthly: "كل شهر", monthlyNote: "تبرّع شهري، يمكن إلغاؤه في أي وقت من حسابك على PayPal.", subThanks: "شكرًا! تبرعك الشهري مفعّل.",
     title: "ادعم Ultra TV", sub: "Ultra TV مجاني وبلا إعلانات وسيبقى كذلك. يساعد تبرعك في دفع تكاليف الخوادم والوقت المخصص لتحسينه.",
     paypal: "تبرّع عبر PayPal", paypalNote: "تبرّع مباشر، بحساب PayPal أو بطاقة بنكية. لا تمر أي بيانات بنكية عبر Ultra TV.",
@@ -76,6 +82,7 @@ export const DONATE_DICT = {
     direct: "أو عبر رابط PayPal المباشر",
   },
   pl: {
+    thanksTitle: "Dziękujemy za darowiznę!", thanksBody: "Twoje wsparcie pomaga utrzymać Ultra TV za darmo i bez reklam oraz dalej je rozwijać.", thanksMonthly: "Twoja comiesięczna darowizna jest aktywna. Możesz ją anulować w dowolnej chwili na koncie PayPal.", thanksReceipt: "PayPal wyśle Ci potwierdzenie e-mailem.", thanksSite: "Wróć na stronę Ultra TV", thanksAgain: "Przekaż kolejną darowiznę",
     once: "Jednorazowo", monthly: "Co miesiąc", monthlyNote: "Comiesięczna darowizna, możesz ją anulować w dowolnej chwili na koncie PayPal.", subThanks: "Dziękujemy! Twoja comiesięczna darowizna jest aktywna.",
     title: "Wesprzyj Ultra TV", sub: "Ultra TV jest darmowe, bez reklam i takie pozostanie. Darowizna pomaga opłacić serwery i czas poświęcony na rozwój.",
     paypal: "Wesprzyj przez PayPal", paypalNote: "Bezpośrednia darowizna, konto PayPal lub karta. Żadne dane karty nie przechodzą przez Ultra TV.",

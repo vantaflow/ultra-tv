@@ -272,7 +272,7 @@ adb install -r UltraTV.apk</code></pre>
     window.paypalSub.Buttons({
       style: { layout: 'vertical', label: 'subscribe' },
       createSubscription: function (d, a) { var p = document.querySelector('input[name="pp-plan"]:checked'); return a.subscription.create({ plan_id: p ? p.value : 'P-73H946429U469760TNMCJZXQ' }); },
-      onApprove: function () { msg.textContent = (document.getElementById('pp-sub-thanks') || {}).textContent || ''; document.getElementById('pp-sub').hidden = true; },
+      onApprove: function () { msg.textContent = (document.getElementById('pp-sub-thanks') || {}).textContent || ''; document.getElementById('pp-sub').hidden = true; location.href = 'https://ultratv.dpdns.org/donate/merci?m=1&l=' + (document.documentElement.lang === 'en' ? 'en' : 'fr'); },
       onError: function () { msg.textContent = (document.getElementById('pp-error') || {}).textContent || ''; }
     }).render('#pp-sub');
   }

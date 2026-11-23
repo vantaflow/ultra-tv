@@ -58,7 +58,7 @@ import { fontResponse } from "./fonts.js";
 import { loadAnnouncements, saveAnnouncements, activeAnnouncements, parseAnnouncementForm, ANN_AUDIENCES, ANN_STAT_KINDS, ANN_LANGS, ANN_SOURCE_LANGS } from "./announcements.js";
 import { pickEnvoyerLang, langFromCookie, fromAcceptLanguage } from "./i18n/envoyer.js";
 import { pickSiteLang, TOO_MANY_TEXT } from "./i18n/site.js";
-import { apkPage, envoyerPage, loginPage, signupPage, pairPage, dashboardPage, offlinePage, donatePage } from "./pages.js";
+import { apkPage, envoyerPage, loginPage, signupPage, pairPage, dashboardPage, offlinePage, donatePage, donateThanksPage } from "./pages.js";
 import { paypalClientId } from "./donate.js";
 import { pwaResponse } from "./pwa.js";
 import { legacyDecision, PRIMARY_HOST, LEGACY_HOST, LEGACY_HOSTS, API_HOST } from "./legacyhost.js";
@@ -324,8 +324,12 @@ async function route(req, env, ctx) {
     const lang = pickEnvoyerLang({ param: url.searchParams.get("l"), cookie: langFromCookie(req.headers.get("cookie")), acceptLanguage: req.headers.get("accept-language") });
     return envoyerPage(nonce(), { code: normalizeEnvoiCode(url.searchParams.get("c")), lang });
   }
-  // Dons : page publique PayPal (boutons intégrés si PAYPAL_CLIENT_ID, sinon lien de paiement PayPal). /donate/merci ne sert plus : 302 vers /donate pour les vieux liens.
-  if (path === "/donate/merci" && (m === "GET" || m === "HEAD")) return redirect("/donate");
+  // Dons : page publique PayPal (boutons intégrés si PAYPAL_CLIENT_ID, sinon lien de paiement PayPal) et page de remerciement
+  // (/donate/merci : URL de retour PayPal du bouton et du lien de paiement, redirection après un abonnement ; ?m=1 = don mensuel).
+  if (path === "/donate/merci" && (m === "GET" || m === "HEAD")) {
+    const lang = pickEnvoyerLang({ param: url.searchParams.get("l"), cookie: langFromCookie(req.headers.get("cookie")), acceptLanguage: req.headers.get("accept-language") });
+    return donateThanksPage(nonce(), { lang, monthly: url.searchParams.get("m") === "1" });
+  }
   if (path === "/donate" && (m === "GET" || m === "HEAD")) {
     const lang = pickEnvoyerLang({ param: url.searchParams.get("l"), cookie: langFromCookie(req.headers.get("cookie")), acceptLanguage: req.headers.get("accept-language") });
     return donatePage(nonce(), { lang, clientId: paypalClientId(env) });
