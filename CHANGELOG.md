@@ -6,6 +6,12 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 
 ## [Non publié]
 
+### Android (prochaine version)
+- Interface TV : « Grande » et « Très grande » passent à x1,15 et x1,3 (comme le texte) ; « Petite » et « Normale » inchangées. Le menu de gauche suit la taille du texte (hauteur des entrées, largeur déployée) au lieu d'être écrasé.
+- Accueil TV : « Votre catalogue se charge… » n'apparaît que pendant une synchronisation réelle ; une source sans film ni série (direct seul, M3U) n'affiche plus ce message indéfiniment.
+- Lecteur en direct : l'action « Ma liste » est renommée « Favoris », comme la rubrique qu'elle ouvre (les fiches film et série gardent « Ma liste »).
+- Couleur d'accent : le schéma Material ne teinte plus les surfaces avec l'accent (surfaceTint neutralisé) ; l'accent reste réservé au focus, aux sélections et aux progressions.
+
 ### Bureau (prochaine version)
 - Accueil : aucune rangée (à la une, en direct, reprises, nouveautés, mieux notés, Trakt, nouveaux épisodes, sport) ne montre plus de contenu d'une catégorie masquée, verrouillée ou adulte ; un profil Enfants ne voit les catégories adultes nulle part (case « Profil Enfants » dans Réglages › Profils).
 - Contrôle parental : verrou par catégorie entière (Réglages › Catégories, Direct, Films et Séries), code exigé partout où un contenu peut s'ouvrir (listes, guide, panneau des chaînes, recherche, favoris, fiches, reprise, zapping qui la saute) ; déverrouillé pour la session seulement.

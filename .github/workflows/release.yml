@@ -109,7 +109,9 @@ jobs:
         if: steps.signing.outputs.signed == 'true'
         run: |
           SIGNER=$(find "$ANDROID_HOME/build-tools" -maxdepth 2 -name apksigner | sort -V | tail -1)
-          for f in app/build/outputs/apk/release/*-release.apk; do
+          # L'APK android7 (app-armeabi-v7a-android7.apk, publié ensuite sous UltraTV-*android7*.apk) est contrôlé comme les -release.apk.
+          for f in app/build/outputs/apk/release/*-release.apk app/build/outputs/apk/release/*android7*.apk; do
+            [ -f "$f" ] || continue
             CERTS=$("$SIGNER" verify --print-certs "$f")
             echo "$f"; echo "$CERTS" | grep -E "DN|SHA-256"
             if echo "$CERTS" | grep -q "CN=Android Debug"; then
