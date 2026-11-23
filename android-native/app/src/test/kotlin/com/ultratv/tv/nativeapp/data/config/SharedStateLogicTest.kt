@@ -13,6 +13,33 @@ class SharedStateLogicTest {
         assertEquals(1L, SharedStateLogic.idOf(ps)["principal"])
         assertEquals(2L, SharedStateLogic.idOf(ps)["enfants"])
     }
+    private fun h(t: String, img: String?) = SharedHist("Khalil", "LIVE", "42", t, img, 0, 0, 1_000, null)
+
+    /** Box rc9 : « Geo National Wild » avec le logo (et l'adresse) de « La chaîne météo », ligne locale de même identifiant. */
+    @Test fun histRecu_ligneLocaleDUneAutreChaine_niLogoNiAdresseRepris() {
+        val local = SharedStateLogic.LocalRow("La chaîne météo", "http://logo/meteo.png", "http://s/meteo")
+        val (t, img, url) = SharedStateLogic.mergeHist(h("Geo National Wild", null), local, null)
+        assertEquals("Geo National Wild", t)
+        assertEquals(null, img)
+        assertEquals("", url)
+    }
+
+    @Test fun histRecu_catalogueDeMemeNom_logoEtAdresseDuCatalogue() {
+        val cat = SharedStateLogic.LocalItem("Geo National Wild", "http://logo/geo.png", "http://s/geo")
+        val local = SharedStateLogic.LocalRow("La chaîne météo", "http://logo/meteo.png", "http://s/meteo")
+        assertEquals(Triple("Geo National Wild", "http://logo/geo.png", "http://s/geo"), SharedStateLogic.mergeHist(h("Geo National Wild", null), local, cat))
+    }
+
+    @Test fun histRecu_catalogueDUnAutreNom_ignore_imageDistante() {
+        val cat = SharedStateLogic.LocalItem("La chaîne météo", "http://logo/meteo.png", "http://s/meteo")
+        assertEquals(Triple("Geo National Wild", "http://logo/geo-remote.png", ""), SharedStateLogic.mergeHist(h("Geo National Wild", "http://logo/geo-remote.png"), null, cat))
+    }
+
+    @Test fun histRecu_ligneLocaleDeMemeNom_reprendSonImageEtSonAdresse() {
+        val local = SharedStateLogic.LocalRow("SERIE-CLUB", "http://logo/sc.png", "http://s/sc")
+        assertEquals(Triple("Serie Club", "http://logo/sc.png", "http://s/sc"), SharedStateLogic.mergeHist(h("Serie Club", null), local, null))
+    }
+
     private fun f(r: String, on: Boolean = true, at: Long = 100) = SharedFav("Principal", "LIVE", r, on, at)
 
     @Test fun local_ajout_devientOnMaintenant() {

@@ -6,6 +6,8 @@ import java.util.Locale
 object StreamInfoFormat {
     /** Durée de mise en mémoire tampon après laquelle « Recharger » est proposé. */
     const val RELOAD_OFFER_MS = 3_000L
+    /** Intervalle des relevés de progression pendant un chargement (offre « Recharger »). */
+    const val RELOAD_PROBE_MS = 500L
 
     /** « 1280×720 · 720p » ; null si la taille est inconnue. Entrelacé/variantes non distingués. */
     fun resolution(width: Int, height: Int): String? {
@@ -27,4 +29,7 @@ object StreamInfoFormat {
     }
 
     fun shouldOfferReload(bufferingForMs: Long): Boolean = bufferingForMs >= RELOAD_OFFER_MS
+
+    /** « Recharger » : chargement depuis [RELOAD_OFFER_MS] ET aucune progression réelle (images, position) depuis autant. */
+    fun shouldOfferReload(bufferingForMs: Long, stillForMs: Long): Boolean = bufferingForMs >= RELOAD_OFFER_MS && stillForMs >= RELOAD_OFFER_MS
 }

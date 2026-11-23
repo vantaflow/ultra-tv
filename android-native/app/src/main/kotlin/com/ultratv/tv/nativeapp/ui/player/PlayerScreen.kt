@@ -844,6 +844,16 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             liveUrlBeforeTs?.let { currentUrl = it }
         }
     }
+    // Direct : chaque chaîne réellement regardée entre dans « Dernières chaînes regardées » au bout de
+    // [LiveHistoryPolicy.MIN_WATCH_MS] d'image, zapping compris (haut / bas, numéro, liste, récentes, télécommande). Avant :
+    // seule la chaîne affichée en QUITTANT le lecteur était enregistrée — toutes celles regardées entre-temps manquaient.
+    val liveWatchKey = item?.takeIf { it.kind == "LIVE" }?.let { "${it.providerId}:${it.remoteId}" }
+    val livePlaying = state.phase == Phase.PLAYING
+    LaunchedEffect(liveWatchKey, livePlaying) {
+        if (!LiveHistoryPolicy.shouldArm(liveWatchKey, livePlaying)) return@LaunchedEffect
+        kotlinx.coroutines.delay(LiveHistoryPolicy.MIN_WATCH_MS)
+        vm.recordProgress(0, 0)
+    }
     DisposableEffect(Unit) {
         onDispose {
             session.engine?.let { vm.recordProgress(it.positionMs, it.durationMs.coerceAtLeast(0)); vm.scrobbleStop(it.positionMs, it.durationMs.coerceAtLeast(0)) }

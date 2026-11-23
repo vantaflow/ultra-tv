@@ -173,9 +173,11 @@ class FavoritesViewModel @Inject constructor(
      * à l'autre) et le contexte de lecture porte la source de la chaîne. Vue d'une seule source : comportement inchangé.
      */
     fun prepare(c: ChannelEntity, shown: List<ChannelEntity>) {
+        // Contexte de lecture TOUJOURS posé : en vue d'une seule source il ne l'était pas, et le lecteur enregistrait dans
+        // l'historique l'élément précédent (« Dernières chaînes regardées » sans la chaîne lancée depuis les favoris).
+        playback.set(com.ultratv.tv.nativeapp.data.repo.PlaybackContext.Item(c.providerId, "LIVE", c.remoteId, c.title, c.logo, c.streamUrl))
         if (sourceNames.value == null) return
         zapQueue.set(shown, c)
-        playback.set(com.ultratv.tv.nativeapp.data.repo.PlaybackContext.Item(c.providerId, "LIVE", c.remoteId, c.title, c.logo, c.streamUrl))
     }
 
     fun remove(kind: String, providerId: Long, remoteId: String) {

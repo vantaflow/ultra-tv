@@ -315,7 +315,7 @@ fun SimpleFavoritesScreen(onPlayChannel: (String, String) -> Unit, onOpenMovie: 
                     Row(horizontalArrangement = Arrangement.spacedBy(28.design)) {
                         row.forEach { c ->
                             val isFirst = c.id == channels.first().id
-                            FocusSurface(onClick = { onPlayChannel(c.streamUrl, c.title) }, onLongClick = { vm.remove("LIVE", c.providerId, c.remoteId) }, shape = RoundedCornerShape(28.design), bg = Ux.Surface2, ringWidth = 8.design, focusedScale = 1f,
+                            FocusSurface(onClick = { vm.prepare(c, channels); onPlayChannel(c.streamUrl, c.title) }, onLongClick = { vm.remove("LIVE", c.providerId, c.remoteId) }, shape = RoundedCornerShape(28.design), bg = Ux.Surface2, ringWidth = 8.design, focusedScale = 1f,
                                 modifier = Modifier.weight(1f).height(132.designT).then(if (isFirst) Modifier.focusRequester(first) else Modifier)) { f ->
                                 Row(Modifier.fillMaxSize().padding(horizontal = 28.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.design)) {
                                     LogoBox(c.logo, c.title, Modifier.width(112.design).height(72.design), radius = 16, pad = 8, bg = if (f) Ux.Line else Ux.Surface)

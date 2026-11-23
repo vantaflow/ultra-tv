@@ -16,5 +16,10 @@ class StreamInfoFormatTest {
     }
     @Test fun bitrate_mbps() { assertEquals("4.2 Mb/s", StreamInfoFormat.bitrate(4200)); assertEquals("0.8 Mb/s", StreamInfoFormat.bitrate(800)) }
     @Test fun bitrate_unknown() { assertNull(StreamInfoFormat.bitrate(null)); assertNull(StreamInfoFormat.bitrate(0)) }
+    @Test fun reload_offer_needs_no_progress() {
+        assertFalse(StreamInfoFormat.shouldOfferReload(10_000, 0))       // chargement long mais la vidéo défile
+        assertFalse(StreamInfoFormat.shouldOfferReload(2_500, 2_500))
+        assertTrue(StreamInfoFormat.shouldOfferReload(3_000, 3_000))
+    }
     @Test fun reload_offer_threshold() { assertFalse(StreamInfoFormat.shouldOfferReload(2_999)); assertTrue(StreamInfoFormat.shouldOfferReload(3_000)) }
 }

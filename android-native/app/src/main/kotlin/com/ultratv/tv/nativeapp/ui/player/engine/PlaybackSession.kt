@@ -61,6 +61,8 @@ internal const val AUDIO_ONLY_CONFIRM_MS = 1_500L
 
 /** Direct bloqué en chargement après avoir joué : délai avant reconnexion. */
 private const val STALL_MS = 12_000L
+/** Pendant un chargement signalé : intervalle des relevés de progression réelle (images, position). */
+internal const val BUFFERING_PROBE_MS = 1_000L
 /** Aperçu : délai laissé au décodeur pour rendre sa première image après l'arrivée tardive de la surface. */
 internal const val PICTURE_AFTER_SURFACE_MS = 5_000L
 
@@ -160,6 +162,8 @@ class PlaybackSession(
     private var everPlayed = false
     private var reconnectJob: Job? = null
     private var stallJob: Job? = null
+    /** Chargement signalé après la première image : vérifie que la lecture n'avance pas (voir [BufferingProgress]). */
+    private var bufferingWatchJob: Job? = null
     /** Direct figé en lecture (position ou images bloquées sans erreur) : voir [FrozenLiveDetector]. */
     private var frozenJob: Job? = null
     /** Délai de démarrage : armé à chaque lancement de moteur, levé par la première image (ou Ready, relais du contrôle d'image). */
@@ -309,7 +313,7 @@ class PlaybackSession(
         val wantTexture = if (hintSurface) false else textureView
         syncPresence(); lastHttp = null; playedSinceMs = 0L
         diagStartMs = System.currentTimeMillis(); diagFirstFrameMs = null; diagRebuffers = 0; diagRebufferTotalMs = 0L; diagBufferingSinceMs = 0L; diagErrors.clear()
-        recovery.reset(); everPlayed = false; reconnectJob?.cancel(); stallJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel(); errorJob?.cancel(); openJob?.cancel(); audioOnlyJob?.cancel()
+        recovery.reset(); everPlayed = false; reconnectJob?.cancel(); stallJob?.cancel(); bufferingWatchJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel(); errorJob?.cancel(); openJob?.cancel(); audioOnlyJob?.cancel()
         val s = settings()
         presetOverride = channelKey?.let { memory.bufferPreset(it) }
         val protectedNow = isProtected
@@ -467,7 +471,7 @@ class PlaybackSession(
         val c = PlaybackPlanner.manualCombo(c0, isProtected)
         eventsJob?.cancel(); watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel()
         // Nouveau moteur : une reconnexion ou une nouvelle tentative encore en attente rechargerait un flux qui joue.
-        reconnectJob?.cancel(); stallJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel(); errorJob?.cancel(); openJob?.cancel(); audioOnlyJob?.cancel()
+        reconnectJob?.cancel(); stallJob?.cancel(); bufferingWatchJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel(); errorJob?.cancel(); openJob?.cancel(); audioOnlyJob?.cancel()
         releaseEngine()
         combo = c; tried += c; firstFrame = false; launchedAtNs = System.nanoTime()
         val s = settings()
@@ -547,16 +551,17 @@ class PlaybackSession(
                 if (!_state.value.buffering) { _state.value = _state.value.copy(buffering = true); diagRebuffers++; diagBufferingSinceMs = System.currentTimeMillis() }
                 android.util.Log.i("UltraPlay", "rebuffer engine=${combo.engine}"); network.onRebuffer(); applyQualityLimit(adapter.onRebuffer(System.currentTimeMillis()))
                 // Direct figé en chargement (serveur qui ne renvoie plus rien sans fermer) : reconnexion au bout de 12 s.
-                if (reconnectAllowed && stallJob?.isActive != true) stallJob = scope.launch { delay(STALL_MS); reconnectLive(LiveRecoveryPolicy.Cause.STALL) }
+                armStall()
+                if (bufferingWatchJob?.isActive != true) armBufferingWatch(e)
             } else if (e.hasVideo && startupJob?.isActive != true) armStartup(e)   // rechargement avant toute image (après Ready) : même garde-fou
-            EngineEvent.Ready -> { diagEndBuffering(); if (_state.value.buffering) _state.value = _state.value.copy(buffering = false); confirmAudioOnly(e); stallJob?.cancel(); startupJob?.cancel(); if (!firstFrame && watchdog?.isActive != true) armPictureWatchdog(e) }
+            EngineEvent.Ready -> { bufferingWatchJob?.cancel(); diagEndBuffering(); if (_state.value.buffering) _state.value = _state.value.copy(buffering = false); confirmAudioOnly(e); stallJob?.cancel(); startupJob?.cancel(); if (!firstFrame && watchdog?.isActive != true) armPictureWatchdog(e) }
             EngineEvent.FirstFrame -> {
                 // Déjà vue pour ce lancement : le moteur la resignale quand sa surface change (aperçu → plein écran) ;
                 // la durée depuis le lancement n'aurait plus de sens (41 s affichées pour 1,7 s réelles).
                 val again = firstFrame
                 diagEndBuffering()
                 if (diagFirstFrameMs == null) diagFirstFrameMs = System.currentTimeMillis() - diagStartMs
-                firstFrame = true; audioOnlyJob?.cancel(); watchdog?.cancel(); blackJob?.cancel(); stallJob?.cancel(); startupJob?.cancel()
+                firstFrame = true; audioOnlyJob?.cancel(); watchdog?.cancel(); blackJob?.cancel(); stallJob?.cancel(); bufferingWatchJob?.cancel(); startupJob?.cancel()
                 everPlayed = true
                 if (playedSinceMs == 0L) playedSinceMs = System.currentTimeMillis()
                 // Le compteur de reconnexions n'est plus remis à zéro après 30 s : il compte sur une fenêtre glissante
@@ -647,6 +652,46 @@ class PlaybackSession(
                     stallIgnoredLogged = true
                     android.util.Log.i("UltraPlay", "live position stalled but stream alive (frames/bytes/timestamp jump) -> no reconnect engine=${combo.engine}")
                 } else if (!detector.positionStallIgnored) stallIgnoredLogged = false
+            }
+        }
+    }
+
+    private fun armStall() {
+        if (reconnectAllowed && stallJob?.isActive != true) stallJob = scope.launch { delay(STALL_MS); reconnectLive(LiveRecoveryPolicy.Cause.STALL) }
+    }
+
+    /** Relevé de progression réelle du moteur en place (null sans moteur). */
+    fun progressMark(): ProgressMark? = engine?.let { e -> runCatching { ProgressMark(e.renderedFrames(), e.positionMs) }.getOrNull() }
+
+    /**
+     * Chargement signalé par le moteur après la première image : l'état « buffering » ne reste vrai que si la lecture
+     * n'avance pas. Images rendues ou position qui bouge (recul d'horodatage compris) : « buffering » repasse à faux et le
+     * délai de reconnexion est levé ; plus aucune progression alors que le moteur n'a toujours pas dit « prêt » : l'état
+     * redevient vrai et le délai de reconnexion repart. S'arrête à « prêt », à l'image suivante ou au changement de moteur.
+     */
+    private fun armBufferingWatch(e: PlayerEngine) {
+        bufferingWatchJob?.cancel()
+        bufferingWatchJob = scope.launch {
+            var prev = progressMark()
+            var logged = false
+            while (true) {
+                delay(BUFFERING_PROBE_MS)
+                if (engine !== e || !firstFrame) return@launch
+                val now = progressMark()
+                val moving = BufferingProgress.moved(prev, now)
+                prev = now
+                val st = _state.value
+                if (moving) {
+                    stallJob?.cancel()
+                    if (st.buffering) {
+                        diagEndBuffering()
+                        _state.value = st.copy(buffering = false)
+                        if (!logged) { logged = true; android.util.Log.i("UltraPlay", "buffering signalled but playback progressing -> no reload offer engine=${combo.engine}") }
+                    }
+                } else if (!st.buffering && st.phase == Phase.PLAYING) {
+                    _state.value = st.copy(buffering = true); diagBufferingSinceMs = System.currentTimeMillis()
+                    armStall()
+                }
             }
         }
     }
@@ -800,7 +845,7 @@ class PlaybackSession(
      * rouvre l'adresse du direct : le serveur renvoie le point de direct, rien n'est rejoué depuis le tampon.
      */
     private fun reconnectLive(cause: LiveRecoveryPolicy.Cause) {
-        stallJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel()
+        stallJob?.cancel(); bufferingWatchJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel()
         if (reconnectJob?.isActive == true) return
         // Appli en arrière-plan (lecteur en pause) : surtout pas de rechargement — le son repartirait. Le retour sur
         // l'appli relance la lecture (retry) de toute façon.
@@ -858,7 +903,7 @@ class PlaybackSession(
 
     fun release() {
         startJob?.cancel(); eventsJob?.cancel(); watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel(); adaptJob?.cancel()
-        reconnectJob?.cancel(); stallJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel(); errorJob?.cancel(); openJob?.cancel(); presenceJob?.cancel()
+        reconnectJob?.cancel(); stallJob?.cancel(); bufferingWatchJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel(); errorJob?.cancel(); openJob?.cancel(); presenceJob?.cancel()
         releaseEngine()
     }
 }

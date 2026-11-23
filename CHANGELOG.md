@@ -4,6 +4,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Direct : le bouton « Recharger » ne reste plus affiché sur une vidéo qui joue (chaîne dont les horodatages reculent, passage de l'aperçu au plein écran). L'état « chargement » repasse à faux dès que des images sont rendues ou que la lecture avance, et « Recharger » n'est proposé qu'après 3 s de chargement sans aucune progression.
+- « Qui regarde ? » : le focus revient sur le dernier profil utilisé quand il se pose ailleurs sans action de l'utilisateur (profil courant connu un instant après la liste, focus par défaut sur la première tuile) ; jamais après une flèche.
+- Accueil, « Dernières chaînes regardées » : chaque chaîne regardée au moins 5 s y entre, zapping compris (avant : seule la chaîne affichée en quittant le lecteur). Une chaîne lancée depuis l'écran Favoris (une seule source) ou les favoris du mode simple est enregistrée au lieu de l'élément regardé avant. « Ouvrir sur la dernière chaîne » prend la source active.
+- Accueil, « Dernières chaînes regardées » : plus de carte au nom d'une chaîne avec le logo (et l'adresse) d'une autre après une synchro entre appareils ; l'image et l'adresse locales ne sont reprises que pour une chaîne du même nom.
+
 ### Bureau (prochaine version)
 - Accueil : aucune rangée (à la une, en direct, reprises, nouveautés, mieux notés, Trakt, nouveaux épisodes, sport) ne montre plus de contenu d'une catégorie masquée, verrouillée ou adulte ; un profil Enfants ne voit les catégories adultes nulle part (case « Profil Enfants » dans Réglages › Profils).
 - Contrôle parental : verrou par catégorie entière (Réglages › Catégories, Direct, Films et Séries), code exigé partout où un contenu peut s'ouvrir (listes, guide, panneau des chaînes, recherche, favoris, fiches, reprise, zapping qui la saute) ; déverrouillé pour la session seulement.
