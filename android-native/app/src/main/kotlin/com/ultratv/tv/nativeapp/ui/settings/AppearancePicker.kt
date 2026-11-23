@@ -219,14 +219,19 @@ fun UiSizePicker(selected: UiSize, onPick: (UiSize) -> Unit, modifier: Modifier 
     val touch = LocalTouch.current
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.design)) {
         SectionLabel(D.uiSizeLabel, null)
+        // Téléphone étroit (ou grand texte) : deux par rangée, pour que « Normale » / « Très grande » ne se coupent pas.
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val perRow = if (maxWidth < 440.dp) 2 else 4
+        Column(verticalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 14.design)) {
+        UiSize.entries.chunked(perRow).forEach { rowSizes ->
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 14.design)) {
-            UiSize.entries.forEach { s ->
+            rowSizes.forEach { s ->
                 val on = s == selected
                 FocusSurface(
                     onClick = { onPick(s) }, shape = RoundedCornerShape(16.design), bg = if (on) Ux.Surface2 else Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1.04f,
                     modifier = Modifier.weight(1f).heightIn(min = if (touch) 48.dp else 64.design).semantics { this.selected = on }.testTag(AppearancePicker.SIZE_TAG + s.key),
                 ) { f ->
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 10.design, vertical = 10.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                    Row(Modifier.align(Alignment.Center).padding(horizontal = 10.design, vertical = 10.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                         if (on) { DIcon(Icons.Check, if (touch) 14.dp else 20.design, if (f) Ux.TextOnLight else Ux.AccentInk, strokeWidth = 3f); Spacer(Modifier.width(6.design)) }
                         Text(
                             D.uiSizeName(s), color = when { f -> Ux.TextOnLight; on -> Ux.AccentInk; else -> Ux.Text }, fontFamily = Manrope,
@@ -235,6 +240,9 @@ fun UiSizePicker(selected: UiSize, onPick: (UiSize) -> Unit, modifier: Modifier 
                     }
                 }
             }
+        }
+        }
+        }
         }
     }
 }

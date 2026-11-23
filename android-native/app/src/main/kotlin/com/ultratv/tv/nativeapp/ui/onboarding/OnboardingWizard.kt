@@ -528,9 +528,12 @@ internal fun AppearanceStepContent(
                     lineHeight = 72.spx, color = Ux.Text, maxLines = 2)
                 Text(D.appearanceBody, fontFamily = Manrope, fontSize = 28.spx, lineHeight = 40.spx, color = Ux.Text2)
             }
-            Row(Modifier.padding(top = 8.design), verticalAlignment = Alignment.CenterVertically) {
+            // Les deux boutons passent l'un sous l'autre quand le libellé de « Passer » est long (aucun libellé sur deux lignes).
+            androidx.compose.foundation.layout.FlowRow(
+                Modifier.padding(top = 8.design), horizontalArrangement = Arrangement.spacedBy(24.design), verticalArrangement = Arrangement.spacedBy(20.design),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
                 PrimaryCta(D.continueLabel, Icons.Arrow, fillIcon = false, initialFocus = false, onClick = onContinue)
-                Spacer(Modifier.width(24.design))
                 SecondaryButton(W.skip, onSkip)
             }
         }

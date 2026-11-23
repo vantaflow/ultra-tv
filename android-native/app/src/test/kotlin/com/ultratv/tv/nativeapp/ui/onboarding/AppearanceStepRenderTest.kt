@@ -51,6 +51,23 @@ internal fun ComposeContentTestRule.ellipsizedTexts(): List<String> =
             n.config.getOrNull(SemanticsProperties.Text)?.joinToString("") { it.text } else null
     }
 
+/**
+ * Libellés dont un MOT est coupé en fin de ligne (« Synchronisatio / n ») : une ligne qui ne finit ni par une espace ni
+ * avant une espace, un trait d'union ou une ponctuation.
+ */
+internal fun ComposeContentTestRule.brokenWords(): List<String> =
+    onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.Text), useUnmergedTree = true).fetchSemanticsNodes().mapNotNull { n ->
+        val out = mutableListOf<TextLayoutResult>()
+        n.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(out)
+        val r = out.firstOrNull() ?: return@mapNotNull null
+        val text = r.layoutInput.text.text
+        val broken = (0 until r.lineCount - 1).any { i ->
+            val end = r.getLineEnd(i)
+            end in 1 until text.length && text[end - 1].isLetterOrDigit() && text[end].isLetterOrDigit()
+        }
+        if (broken) text else null
+    }
+
 internal fun ComposeContentTestRule.savePng(name: String) {
     val dir = File("build/outputs/ui-v2").also { it.mkdirs() }
     val bmp = onRoot().captureToImage().asAndroidBitmap()
@@ -92,6 +109,8 @@ class AppearanceStepTouchTest {
         for (s in UiSize.entries) rule.onNodeWithTag(AppearancePicker.SIZE_TAG + s.key).assertExists()
         val cut = rule.ellipsizedTexts()
         assertTrue("${w}x$h ${lang.code} police $font : textes coupés $cut", cut.isEmpty())
+        val words = rule.brokenWords()
+        assertTrue("${w}x$h ${lang.code} police $font : mots coupés $words", words.isEmpty())
     }
 
     @Test fun telephone_choixAppliques() {
@@ -126,6 +145,13 @@ class AppearanceStepTvTest {
         }
         rule.mainClock.advanceTimeBy(1_000)
         rule.waitForIdle()
+        val words = rule.brokenWords()
+        assertTrue("${lang.code} : mots coupés $words", words.isEmpty())
+        // « Continuer » et « Passer pour l'instant » chacun sur une ligne.
+        val skip = rule.onNode(androidx.compose.ui.test.hasText(com.ultratv.tv.nativeapp.i18n.I18n.string(lang, com.ultratv.tv.nativeapp.R.string.wiz_skip)), useUnmergedTree = true).fetchSemanticsNode()
+        val out = mutableListOf<TextLayoutResult>()
+        skip.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(out)
+        assertEquals("${lang.code} : « Passer » sur une ligne", 1, out.first().lineCount)
     }
 
     @Test fun focusInitial_surLaTuileDuThemeActif() {

@@ -19,6 +19,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Modifié
 - Démarrage : juste après l'écran système (gardé le plus court possible), un écran de chargement sobre affiche « ULTRA TV » dans la typographie de la marque et trois points animés tant que l'appli prépare l'accueil (préférences, profils, catalogue), puis disparaît aussitôt, sans durée minimale. Plus de second logo ni d'animation d'ouverture de 700 ms par-dessus l'accueil, plus d'écran vide entre les deux ; points immobiles quand les animations sont réduites ou désactivées ; fond de fenêtre aligné sur celui de l'appli (plus d'éclair bleu nuit).
+- Tablette (à partir de 600 dp de large, portrait et paysage) : Réglages en deux volets proportionnés, rubriques à gauche et contenu à droite, avec des marges, des interlignes et des cibles tactiles agrandis (rubriques et lignes d'au moins 56 dp, texte nettement plus grand, libellés sur deux lignes au lieu d'être coupés) ; les fenêtres de choix ouvertes depuis les Réglages suivent la même taille. L'agrandissement se réduit de lui-même en portrait avec une grande taille d'interface. Téléphone et TV inchangés.
 - Réglages › Affichage : le thème se choisit en tête de la rubrique, directement sur les tuiles d'aperçu des 10 thèmes (avant : une ligne « Thème » qui ouvrait une liste de noms).
 
 ## [1.3.73] — 2026-11-23 (Android)
