@@ -111,6 +111,8 @@ data class TvProgramItem(
     val link: String,
     val live: Boolean = false,
     val description: String? = null,
+    /** Image à composer par l'appli (logo de chaîne en 16:9, fond en 2:3) ; [image] reste la source (signature). */
+    val compose: TvArtRequest? = null,
 )
 
 /** Règles pures des chaînes d'accueil activables (sélection, filtres, différences). */
@@ -175,10 +177,10 @@ object TvChannelPlan {
     }
 
     fun vodProgram(prefix: String, v: Vod): TvProgramItem {
-        val art = NewsChannelPlan.art(v.poster, v.landscape)
+        val art = NewsChannelPlan.art(v.poster, v.landscape, v.title)
         return TvProgramItem(
             internalId = "$prefix:${v.kind.name}:${v.providerId}:${v.remoteId}",
-            title = v.title, image = art.uri, aspectRatio = art.aspectRatio,
+            title = v.title, image = art.uri, aspectRatio = art.aspectRatio, compose = art.compose,
             type = if (v.kind == NewsChannelPlan.Kind.MOVIE) TYPE_MOVIE else TYPE_SERIES,
             link = if (v.kind == NewsChannelPlan.Kind.MOVIE) DeepLink.movieDetail(v.providerId, v.remoteId) else DeepLink.series(v.providerId, v.remoteId),
         )
@@ -196,6 +198,8 @@ object TvChannelPlan {
         internalId = "$prefix:LIVE:${c.providerId}:${c.remoteId}",
         title = title, image = c.logo?.takeIf { it.isNotBlank() } ?: fallbackImage, aspectRatio = RATIO_16_9,
         type = TYPE_CHANNEL, link = DeepLink.live(c.providerId, c.remoteId), live = true, description = description,
+        // Logo entier centré dans une vignette 16:9 composée (le lanceur l'agrandissait et le rognait) ; nom sans logo.
+        compose = TvArtRequest.ChannelLogo(c.logo?.takeIf { it.isNotBlank() }, c.title),
     )
 
     /** Opérations à appliquer : [existing] = identifiant interne -> ligne publiée. */
@@ -210,7 +214,7 @@ object TvChannelPlan {
         )
     }
 
-    fun signature(items: List<TvProgramItem>): String = items.joinToString("|") { "${it.internalId}:${it.title}:${it.image}:${it.description.orEmpty()}" }.hashCode().toString()
+    fun signature(items: List<TvProgramItem>): String = "art${TvArtPlan.VERSION}|" + items.joinToString("|") { "${it.internalId}:${it.title}:${it.image}:${it.description.orEmpty()}" }.hashCode().toString()
 
     /** Clés publiées à supprimer : plus voulues (désactivées, catégorie retirée, autre source). */
     fun stale(published: Set<String>, wanted: Set<String>): Set<String> = published - wanted

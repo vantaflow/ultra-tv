@@ -63,6 +63,7 @@ class MemoryManager @Inject constructor(
     private val downloadPrefs: DownloadPrefs,
     private val prefs: MemoryPrefs,
     private val adaptive: com.ultratv.tv.nativeapp.adaptive.AdaptiveProfile,
+    private val tvArt: dagger.Lazy<com.ultratv.tv.nativeapp.data.tv.TvArtStore>,
 ) {
     private val dbFile: File get() = ctx.getDatabasePath(DB_NAME)
 
@@ -80,6 +81,8 @@ class MemoryManager @Inject constructor(
     fun imageCacheLimitBytes(): Long = ImageCacheLimit.bytes(prefs.state.value.imageCache, freeBytes(), limitedDevice())
 
     private fun imageDir() = File(ctx.cacheDir, IMAGE_DIR)
+    /** Vignettes composées pour l'écran d'accueil Android TV (logos de chaînes) : comptées et vidées avec les images. */
+    private fun tvArtDir() = File(ctx.cacheDir, com.ultratv.tv.nativeapp.data.tv.TvArtPlan.DIR)
     private fun timeshiftDir() = File(ctx.cacheDir, TimeshiftRegistry.DIR_NAME)
     private fun downloadDirs() = listOfNotNull(
         ctx.getExternalFilesDir(null)?.let { File(it, DownloadPrefs.DIR_NAME) },
@@ -93,7 +96,7 @@ class MemoryManager @Inject constructor(
         val base = dbFile.path
         StorageUsage(
             database = listOf(base, "$base-wal", "$base-shm", "$base-journal").sumOf { StorageMath.sizeOf(File(it)) },
-            images = StorageMath.sizeOf(imageDir()),
+            images = StorageMath.sizeOf(imageDir()) + StorageMath.sizeOf(tvArtDir()),
             downloads = downloadDirs().distinct().sumOf { StorageMath.sizeOf(it) },
             timeshift = StorageMath.sizeOf(timeshiftDir()),
             temp = TempFiles.size(ctx.cacheDir),
@@ -106,7 +109,9 @@ class MemoryManager @Inject constructor(
         runCatching {
             val before = StorageMath.sizeOf(imageDir())
             clearCoilDisk()
-            ActionResult.Done((before - StorageMath.sizeOf(imageDir())).coerceAtLeast(0L))
+            // Vignettes de l'accueil Android TV : refaites à la demande du lanceur (description gardée à part).
+            val art = runCatching { tvArt.get().clear() }.getOrDefault(0L)
+            ActionResult.Done((before - StorageMath.sizeOf(imageDir())).coerceAtLeast(0L) + art)
         }.getOrDefault(ActionResult.Failed)
     }
 

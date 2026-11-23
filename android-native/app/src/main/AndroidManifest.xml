@@ -178,6 +178,14 @@
 
         <!-- Launcher Kairo : « en cours / suivant » en lecture seule. Pas de permission (clés différentes) : le paquet
              appelant et l'empreinte de sa signature sont vérifiés à chaque requête (KairoAccess). -->
+        <!-- Écran d'accueil Android TV / Google TV : vignettes composées (logo de chaîne entier en 16:9, fond en 2:3), en
+             lecture seule, noms <empreinte>.jpg seulement. Sans permission : une autorisation d'URI accordée au lanceur ne
+             survit pas au redémarrage de la box. -->
+        <provider
+            android:name="com.ultratv.tv.nativeapp.data.tv.TvArtProvider"
+            android:authorities="${applicationId}.tvart"
+            android:exported="true" />
+
         <provider
             android:name="com.ultratv.tv.nativeapp.data.kairo.KairoNowProvider"
             android:authorities="${applicationId}.kairo"

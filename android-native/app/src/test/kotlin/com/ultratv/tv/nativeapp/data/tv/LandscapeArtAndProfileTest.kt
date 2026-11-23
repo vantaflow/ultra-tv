@@ -8,18 +8,37 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
 
-/** Rangées Android TV (contrat Kairo) : image paysage 16:9 quand le titre en a une, et « Nouveautés » qui suit le profil. */
+/**
+ * Rangées Android TV : films, séries et épisodes publiés avec leur AFFICHE en 2:3 (plus la photo de scène 16:9 de la
+ * 1.3.73) ; sans affiche seulement, le fond composé en 2:3. Et « Nouveautés » qui suit le profil.
+ */
 class LandscapeArtAndProfileTest {
-    private val r169 = TvContractCompat.PreviewPrograms.ASPECT_RATIO_16_9
     private val r23 = TvContractCompat.PreviewPrograms.ASPECT_RATIO_2_3
 
     private fun m(id: String, poster: String? = "p$id", landscape: String? = null, cat: String? = "c", title: String = "t$id") =
         Item(Kind.MOVIE, 1, id, title, poster, id.toLong(), landscape = landscape, categoryId = cat)
 
-    @Test fun nouveautes_fond_du_titre_en_16_9_sinon_affiche_en_2_3() {
-        assertEquals(NewsChannelPlan.Art("bg", r169), NewsChannelPlan.art(m("1", landscape = "bg")))
+    @Test fun nouveautes_affiche_en_2_3_meme_avec_un_fond() {
+        assertEquals(NewsChannelPlan.Art("p1", r23), NewsChannelPlan.art(m("1", landscape = "bg")))
         assertEquals(NewsChannelPlan.Art("p1", r23), NewsChannelPlan.art(m("1")))
         assertEquals(NewsChannelPlan.Art("p1", r23), NewsChannelPlan.art(m("1", landscape = " ")))
+    }
+
+    @Test fun nouveautes_sans_affiche_fond_compose_en_2_3() {
+        val a = NewsChannelPlan.art(m("1", poster = null, landscape = "bg", title = "Dune"))
+        assertEquals(r23, a.aspectRatio)
+        assertEquals(TvArtRequest.Backdrop("bg", "Dune"), a.compose)
+        assertEquals(null, NewsChannelPlan.art(m("1", poster = " ", landscape = null)).compose)
+    }
+
+    @Test fun chaines_activables_films_et_series_en_affiche_2_3() {
+        val v = TvChannelPlan.vodProgram("TOP10", TvChannelPlan.Vod(Kind.MOVIE, 1, "9", "Dune", "affiche", "fond", "c"))
+        assertEquals("affiche", v.image)
+        assertEquals(r23, v.aspectRatio)
+        assertEquals(null, v.compose)
+        val s = TvChannelPlan.vodProgram("MYLIST", TvChannelPlan.Vod(Kind.SERIES, 1, "8", "Lost", null, "fond", "c"))
+        assertEquals(r23, s.aspectRatio)
+        assertEquals(TvArtRequest.Backdrop("fond", "Lost"), s.compose)
     }
 
     @Test fun nouveautes_titre_avec_seulement_un_fond_garde() {
@@ -52,17 +71,29 @@ class LandscapeArtAndProfileTest {
 
     private fun h(kind: String, poster: String? = "affiche") = WatchHistoryEntity(providerId = 1, kind = kind, remoteId = "9", title = "Titre", poster = poster, streamUrl = "u", positionMs = 120_000, durationMs = 3_600_000, parentRemoteId = "s1")
 
-    @Test fun continuer_a_regarder_fond_en_16_9_sinon_affiche_en_2_3() {
-        assertEquals(NewsChannelPlan.Art("fond", r169), WatchNextPlan.art(h("MOVIE"), "fond"))
-        assertEquals(NewsChannelPlan.Art("fond", r169), WatchNextPlan.art(h("EPISODE"), "fond"))
+    private fun img(poster: String?, backdrop: String?) = WatchNextPlan.TitleImages(poster, backdrop)
+
+    @Test fun continuer_a_regarder_film_affiche_en_2_3() {
+        assertEquals(NewsChannelPlan.Art("catalogue", r23), WatchNextPlan.art(h("MOVIE"), img("catalogue", "fond")))
+        // Catalogue introuvable : l'affiche gardée dans l'historique.
         assertEquals(NewsChannelPlan.Art("affiche", r23), WatchNextPlan.art(h("MOVIE"), null))
-        assertEquals(NewsChannelPlan.Art("affiche", r23), WatchNextPlan.art(h("EPISODE"), ""))
+        assertEquals(NewsChannelPlan.Art("affiche", r23), WatchNextPlan.art(h("MOVIE"), img(null, "fond")))
     }
 
-    @Test fun continuer_a_regarder_cle_de_l_image_paysage() {
-        // Film : son propre fond ; épisode : le fond de sa série.
-        assertEquals(WatchNextPlan.LandscapeKey(Kind.MOVIE, "9"), WatchNextPlan.landscapeKey(h("MOVIE")))
-        assertEquals(WatchNextPlan.LandscapeKey(Kind.SERIES, "s1"), WatchNextPlan.landscapeKey(h("EPISODE")))
-        assertEquals(null, WatchNextPlan.landscapeKey(h("LIVE")))
+    @Test fun continuer_a_regarder_episode_affiche_de_la_serie() {
+        // L'historique d'un épisode garde l'image de l'épisode (scène) : jamais publiée comme affiche.
+        assertEquals(NewsChannelPlan.Art("serie", r23), WatchNextPlan.art(h("EPISODE", poster = "scene"), img("serie", "fond")))
+        val noPoster = WatchNextPlan.art(h("EPISODE", poster = "scene"), img(null, "fond"))
+        assertEquals(r23, noPoster.aspectRatio)
+        assertEquals(TvArtRequest.Backdrop("fond", "Titre"), noPoster.compose)
+        val nothing = WatchNextPlan.art(h("EPISODE", poster = "scene"), null)
+        assertEquals(TvArtRequest.Backdrop("scene", "Titre"), nothing.compose)
+    }
+
+    @Test fun continuer_a_regarder_cle_du_titre() {
+        // Film : lui-même ; épisode : sa série.
+        assertEquals(WatchNextPlan.TitleKey(Kind.MOVIE, "9"), WatchNextPlan.titleKey(h("MOVIE")))
+        assertEquals(WatchNextPlan.TitleKey(Kind.SERIES, "s1"), WatchNextPlan.titleKey(h("EPISODE")))
+        assertEquals(null, WatchNextPlan.titleKey(h("LIVE")))
     }
 }
