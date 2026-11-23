@@ -451,6 +451,46 @@ export async function xtreamAccount(p, fetchImpl = fetch, timeoutMs = 8000, rela
   };
 }
 
+/**
+ * Catégories d'une source Xtream (live, films, séries), interrogées PAR LE WORKER (les identifiants ne quittent pas le
+ * serveur) : { live: [{ id, name }], movie: [...], series: [...] } ou { error: "unsupported" | "unreachable" }.
+ */
+export async function xtreamCategories(p, fetchImpl = fetch, timeoutMs = 8000, relay = null) {
+  const c = xtreamCredsOf(p);
+  if (!c || (c.u.protocol !== "http:" && c.u.protocol !== "https:")) return { error: "unsupported" };
+  const actions = { live: "get_live_categories", movie: "get_vod_categories", series: "get_series_categories" };
+  const one = async (action, f, viaRelay) => {
+    if (!viaRelay && !WORKER_PORTS.has(c.u.port)) return null;
+    const url = `${c.base}/player_api.php?${new URLSearchParams({ username: c.username, password: c.password, action })}`;
+    for (const ua of XTREAM_USER_AGENTS.slice(0, 2)) {
+      try {
+        const res = await f(url, { headers: { "user-agent": ua, accept: "*/*" }, signal: AbortSignal.timeout(timeoutMs), redirect: "follow" });
+        if (res.status === 401 || res.status === 403) continue;
+        if (!res.ok) return null;
+        const j = JSON.parse(await res.text());
+        if (!Array.isArray(j)) return null;
+        const seen = new Set();
+        const list = [];
+        for (const e of j) {
+          const id = e && typeof e === "object" && (typeof e.category_id === "string" || typeof e.category_id === "number") ? cleanId(String(e.category_id)) : null;
+          if (!id || seen.has(id)) continue;
+          seen.add(id);
+          list.push({ id, name: typeof e.category_name === "string" ? cleanLine(e.category_name, 120) || id : id });
+        }
+        return list;
+      } catch { return null; }
+    }
+    return null;
+  };
+  const run = async (f, viaRelay) => {
+    const r = await Promise.all(Object.values(actions).map((a) => one(a, f, viaRelay)));
+    return r.every((x) => x === null) ? null : { live: r[0] || [], movie: r[1] || [], series: r[2] || [] };
+  };
+  let out = await run(fetchImpl, false);
+  if (!out && relay && relay.url && relay.key) out = await run(relayFetch(relay, fetchImpl, timeoutMs), true);
+  return out || { error: "unreachable" };
+}
+
 // ---- édition Pro : licence signée par le panneau revendeur ---------------------
 
 /** Clé publique Ed25519 (SPKI, base64) des licences Ultra TV Pro — publique, la même que celle des applications Pro. */
@@ -547,6 +587,18 @@ export const PREFS_MAX_HIDDEN = 3000;
 export const PREFS_MAX_CHORDER = 400;
 // eslint-disable-next-line no-control-regex
 const cleanId = (x) => (typeof x === "string" && x.length > 0 && x.length <= 128 && !/[\u0000-\u001f\u007f]/.test(x) ? x : null);
+
+/** Catégories favorites { live, movie, series } (listes d'identifiants du fournisseur, sans doublon) ; null si invalide. */
+export function parseFavCats(f) {
+  if (!f || typeof f !== "object" || Array.isArray(f)) return null;
+  const out = {};
+  for (const k of PREFS_KINDS) {
+    const a = f[k] ?? [];
+    if (!Array.isArray(a) || a.length > PREFS_MAX_IDS || !a.every((x) => cleanId(x))) return null;
+    out[k] = [...new Set(a)];
+  }
+  return out;
+}
 
 /**
  * Réglages d'affichage partagés d'une source, envoyés par un appareil :
@@ -652,6 +704,13 @@ export function parsePrefs(body, now = Date.now()) {
       pOrder.push({ p, k: c.k, ids: [...new Set(c.ids)] });
     }
   }
+  // Catégories FAVORITES par type (facultatif : absent = appareil plus ancien, les favorites du compte sont gardées).
+  let favCats;
+  if (body.favCats !== undefined && body.favCats !== null) {
+    const f = parseFavCats(body.favCats);
+    if (!f) return { error: "favCats" };
+    favCats = f;
+  }
   const updatedAt = Number(body.updatedAt);
   if (!Number.isFinite(updatedAt) || updatedAt <= 0) return { error: "updatedAt" };
   // Horloge d'appareil en avance : plafonnée, sinon ses réglages gagneraient pour toujours.
@@ -662,6 +721,7 @@ export function parsePrefs(body, now = Date.now()) {
   if (pHidden) prefs.pHidden = pHidden;
   if (pHiddenCh) prefs.pHiddenCh = pHiddenCh;
   if (pOrder) prefs.pOrder = pOrder;
+  if (favCats) prefs.favCats = favCats;
   return { prefs };
 }
 
