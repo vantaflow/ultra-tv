@@ -1,6 +1,9 @@
 package com.ultratv.tv.nativeapp.ui.mobile
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import com.ultratv.tv.nativeapp.i18n.heroPageOf
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.widthIn
@@ -102,6 +105,9 @@ data class MobileHomeState(
     val rows: HomeRows,
     val profileInitial: String,
     val profileColor: Int,
+    /** Carrousel « À la une » : page affichée et nombre de pages (balayage et pastilles touchables). */
+    val heroIndex: Int = 0,
+    val heroCount: Int = 1,
 )
 
 /** En-tête commun aux écrans principaux tactiles : logo, recherche, profil (maquette MobileAccueil). */
@@ -161,6 +167,7 @@ fun MobileHomeScreen(
     onOpenHero: (HeroItem) -> Unit,
     onOpenMovie: (Long) -> Unit = {},
     onOpenSeries: (Long) -> Unit = {},
+    onHeroStep: (Int) -> Unit = {},
 ) {
     val D = LocalDs.current
     val M = LocalMobileStrings.current
@@ -175,7 +182,7 @@ fun MobileHomeScreen(
             item(key = "topbar", contentType = "topbar") { MobileTopBar(state.profileInitial, state.profileColor, onSearch, onProfile) }
             val h = state.hero
             when {
-                h != null -> item(key = "top", contentType = "hero") { MobileHero(h, D, wide, onOpenHero) }
+                h != null -> item(key = "top", contentType = "hero") { MobileHero(h, D, wide, onOpenHero, state.heroIndex, state.heroCount, onHeroStep) }
                 state.providersLoaded && !state.hasProviders -> item(key = "top", contentType = "notice") {
                     MobileNotice(D.homeNoSource, D.syncCloudHint, M.fromCloud, startPairing, secondary = D.addSource to onGoSettings)
                 }
@@ -254,14 +261,25 @@ fun SectionHeader(title: String, action: String?, onAction: () -> Unit) {
 
 /** Hero « À la une » : carte 216 dp (tablette : 280), visuel plein cadre, voile, titre et bouton Regarder. */
 @Composable
-private fun MobileHero(h: HeroItem, D: DesignStrings, wide: Boolean, onOpen: (HeroItem) -> Unit) {
+private fun MobileHero(h: HeroItem, D: DesignStrings, wide: Boolean, onOpen: (HeroItem) -> Unit, index: Int = 0, count: Int = 1, onStep: (Int) -> Unit = {}) {
     val S = LocalStrings.current
+    val rtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    // Balayage horizontal : page suivante / précédente (inversé en arabe) ; seuil de 48 dp pour ne pas gêner le défilement vertical.
+    val swipe = if (count > 1) Modifier.pointerInput(count, rtl) {
+        var total = 0f
+        val threshold = with(density) { 48.dp.toPx() }
+        detectHorizontalDragGestures(
+            onDragStart = { total = 0f },
+            onDragEnd = { com.ultratv.tv.nativeapp.ui.home.heroSwipeStep(total, rtl, threshold)?.let(onStep) },
+        ) { change, dx -> total += dx; change.consume() }
+    } else Modifier
     val shape = RoundedCornerShape(22.dp)
     val heightDp = if (wide) 300.dp else 216.dp
     // Taille de décodage : largeur de la fenêtre moins les marges (le cadre n'est jamais plus large).
     val widthDp = (com.ultratv.tv.nativeapp.ui.common.LocalUiWidthDp.current - 40f).coerceAtLeast(1f).dp
     val size = androidx.compose.ui.unit.DpSize(widthDp, heightDp)
-    Box(Modifier.padding(horizontal = 12.dp).fillMaxWidth().height(heightDp).clip(shape).background(Ux.Tone).clickable(onClickLabel = D.watch) { onOpen(h) }) {
+    Box(Modifier.padding(horizontal = 12.dp).fillMaxWidth().height(heightDp).clip(shape).background(Ux.Tone).then(swipe).clickable(onClickLabel = D.watch) { onOpen(h) }) {
         if (h.backdrop != null) BackdropImage(h.backdrop, Modifier.fillMaxSize(), decodeSize = size)
         else PosterImage(h.poster, h.title, Modifier.align(Alignment.CenterEnd).fillMaxSize(), radius = 0, kind = if (h.kind == HeroItem.Kind.SERIES) com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV else com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, decodeSize = size)
         Column(
@@ -276,6 +294,18 @@ private fun MobileHero(h: HeroItem, D: DesignStrings, wide: Boolean, onOpen: (He
                 if (h.meta.isNotEmpty()) Text(h.meta, color = Color(0xFFC4C4CC), fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text(h.title, color = Color(0xFFF5F5F7), fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 20.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+        // Pastilles touchables (cible de 32 dp chacune) : toucher une pastille affiche sa page.
+        if (count > 1) Row(Modifier.align(Alignment.TopEnd).padding(4.dp)) {
+            repeat(count) { i ->
+                val label = D.heroPageOf(i + 1, count)
+                Box(
+                    Modifier.size(32.dp).clip(CircleShape).clickable(onClickLabel = label) { if (i != index) onStep(i - index) }.semantics { contentDescription = label },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(Modifier.height(8.dp).width(if (i == index) 20.dp else 8.dp).clip(RoundedCornerShape(4.dp)).background(if (i == index) Color.White else Color.White.copy(alpha = 0.5f)))
+                }
+            }
         }
     }
 }

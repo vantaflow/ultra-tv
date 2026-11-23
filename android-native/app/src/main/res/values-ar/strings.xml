@@ -644,6 +644,9 @@
     <string name="guide_source_value_completes">يُكمل · %1$s</string>
     <!-- i18n/HomeV2Strings.kt -->
     <string name="home2_home_more_info">مزيد من المعلومات</string>
+    <string name="home2_hero_prev_page">الصفحة السابقة</string>
+    <string name="home2_hero_next_page">الصفحة التالية</string>
+    <string name="home2_hero_page_of">الصفحة %1$d من %2$d</string>
     <string name="home2_home_live_now">مباشر</string>
     <string name="home2_home_top10">الأفضل 10 اليوم</string>
     <string name="home2_home_shortcuts_row">اختصارات</string>

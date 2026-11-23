@@ -1900,5 +1900,12 @@
   "DesignStrings/PersonalizationStringsKt.screenEdgesName(NONE)": "بلا",
   "DesignStrings/PersonalizationStringsKt.screenEdgesName(SMALL)": "صغير (2.5٪)",
   "DesignStrings/DesignStringsB1Kt.getShowAdvanced()": "إظهار الإعدادات المتقدمة",
-  "DesignStrings/DesignStringsB1Kt.getShowAdvancedHint()": "المشغّل وفك الترميز والتخزين المؤقت والجودة ومعدل الإطارات. يبقى الإعداد المعدَّل ظاهرًا دائمًا."
+  "DesignStrings/DesignStringsB1Kt.getShowAdvancedHint()": "المشغّل وفك الترميز والتخزين المؤقت والجودة ومعدل الإطارات. يبقى الإعداد المعدَّل ظاهرًا دائمًا.",
+  "DesignStrings/HomeV2StringsKt.getHeroNextPage()": "الصفحة التالية",
+  "DesignStrings/HomeV2StringsKt.getHeroPrevPage()": "الصفحة السابقة",
+  "DesignStrings/HomeV2StringsKt.heroPageOf(0,0)": "الصفحة 0 من 0",
+  "DesignStrings/HomeV2StringsKt.heroPageOf(1,1)": "الصفحة 1 من 1",
+  "DesignStrings/HomeV2StringsKt.heroPageOf(2,2)": "الصفحة 2 من 2",
+  "DesignStrings/HomeV2StringsKt.heroPageOf(22,22)": "الصفحة 22 من 22",
+  "DesignStrings/HomeV2StringsKt.heroPageOf(5,5)": "الصفحة 5 من 5"
 }

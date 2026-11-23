@@ -1900,5 +1900,12 @@
   "DesignStrings/PersonalizationStringsKt.screenEdgesName(NONE)": "Aucun",
   "DesignStrings/PersonalizationStringsKt.screenEdgesName(SMALL)": "Petit (2,5 %)",
   "DesignStrings/DesignStringsB1Kt.getShowAdvanced()": "Afficher les réglages avancés",
-  "DesignStrings/DesignStringsB1Kt.getShowAdvancedHint()": "Moteur, décodage, tampon, qualité, fréquence d'image. Un réglage modifié reste toujours visible."
+  "DesignStrings/DesignStringsB1Kt.getShowAdvancedHint()": "Moteur, décodage, tampon, qualité, fréquence d'image. Un réglage modifié reste toujours visible.",
+  "DesignStrings/HomeV2StringsKt.getHeroNextPage()": "Page suivante",
+  "DesignStrings/HomeV2StringsKt.getHeroPrevPage()": "Page précédente",
+  "DesignStrings/HomeV2StringsKt.heroPageOf(0,0)": "Page 0 sur 0",
+  "DesignStrings/HomeV2StringsKt.heroPageOf(1,1)": "Page 1 sur 1",
+  "DesignStrings/HomeV2StringsKt.heroPageOf(2,2)": "Page 2 sur 2",
+  "DesignStrings/HomeV2StringsKt.heroPageOf(22,22)": "Page 22 sur 22",
+  "DesignStrings/HomeV2StringsKt.heroPageOf(5,5)": "Page 5 sur 5"
 }

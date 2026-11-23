@@ -612,6 +612,9 @@
     <string name="guide_source_value_completes">Completa · %1$s</string>
     <!-- i18n/HomeV2Strings.kt -->
     <string name="home2_home_more_info">Más información</string>
+    <string name="home2_hero_prev_page">Página anterior</string>
+    <string name="home2_hero_next_page">Página siguiente</string>
+    <string name="home2_hero_page_of">Página %1$d de %2$d</string>
     <string name="home2_home_live_now">En directo</string>
     <string name="home2_home_top10">Top 10 de hoy</string>
     <string name="home2_home_shortcuts_row">Accesos directos</string>

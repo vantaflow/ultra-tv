@@ -30,6 +30,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Recherche (TV) : touche « Clavier du système » (Gboard, texte envoyé depuis l'appli télécommande du téléphone, tout texte Unicode) et touche « عربي / ABC » pour un clavier arabe à l'écran, arabe par défaut quand l'appli est en arabe, choix mémorisé (#247).
 - Réglages › À propos : l'option « Télémétrie et rapports de plantage » est de retour et le choix de l'utilisateur est de nouveau respecté (active par défaut).
 - Menu latéral : à partir de deux sources (hors serveurs multimédias et NAS), une entrée affiche la source active et ouvre la liste des sources ; OK la rend active comme « Définir par défaut », Retour ferme sans rien changer.
+- Accueil : carrousel « À la une » contrôlable. Boutons « ‹ » « › » à côté des pastilles (Regarder → Plus d'infos → ‹ → ›), OK = page précédente / suivante en boucle ; ⏪ / ⏩ et Précédent / Suivant quand le focus est dans le bloc. Le défilement automatique s'arrête tant que le focus y est et repart de zéro après un changement manuel. Téléphone et tablette : balayage et pastilles touchables. Sens inversé en arabe.
 
 ### Modifié
 - Télécommande (TV) : sur l'Accueil, le Guide, le Direct, Films, Séries et les autres écrans du menu, Retour ouvre le menu latéral avec le focus sur l'écran courant, au lieu d'afficher seulement « Maintenez Retour pour quitter ». Menu ouvert, Retour garde la règle d'avant (retour à l'accueil, puis le message de sortie). Fenêtres et sous-niveaux gardent la priorité.

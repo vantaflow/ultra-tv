@@ -48,6 +48,15 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.ultratv.tv.nativeapp.i18n.heroNextPage
+import com.ultratv.tv.nativeapp.i18n.heroPrevPage
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -145,10 +154,17 @@ fun HomeScreen(
     val heroes by vm.heroes.collectAsStateWithLifecycle()
     // « À la une » qui défile toutes les 9 s (sans focus volé : seul le contenu change, OK ouvre le titre affiché).
     var heroIdx by rememberSaveable { mutableStateOf(0) }
-    LaunchedEffect(heroes.size, heroAnim.rotateHero) {
-        if (heroes.size < 2 || !heroAnim.rotateHero) return@LaunchedEffect
-        while (true) { kotlinx.coroutines.delay(HERO_ROTATE_MS); heroIdx = (heroIdx + 1) % heroes.size }
+    // Défilement automatique en PAUSE tant que le focus est dans le bloc « À la une » ; un changement manuel (‹ ›,
+    // ⏪ ⏩, balayage, pastille) relance le minuteur à zéro ([heroManual] change la clé de l'effet).
+    var heroHeld by remember { mutableStateOf(false) }
+    var heroManual by remember { mutableStateOf(0) }
+    LaunchedEffect(heroes.size, heroAnim.rotateHero, heroHeld, heroManual) {
+        if (heroes.size < 2 || !heroAnim.rotateHero || heroHeld) return@LaunchedEffect
+        while (true) { kotlinx.coroutines.delay(HERO_ROTATE_MS); heroIdx = heroStep(heroIdx, heroes.size, 1) }
     }
+    val heroCountNow = heroes.size
+    val stepHero: (Int) -> Unit = remember(heroCountNow) { { d -> if (heroCountNow > 1) { heroIdx = heroStep(heroIdx, heroCountNow, d); heroManual++ } } }
+    val holdHero: (Boolean) -> Unit = remember { { held -> heroHeld = held } }
     val hero = if (heroes.isEmpty()) null else heroes[heroIdx % heroes.size]
     // Notes IMDb / RT et synopsis de repli : State NON déballé ici, lu seulement par les pastilles et le synopsis du hero.
     val heroExtras = vm.heroExtras.collectAsStateWithLifecycle()
@@ -181,7 +197,8 @@ fun HomeScreen(
         val profileVm: com.ultratv.tv.nativeapp.ui.profile.ProfileViewModel = hiltViewModel()
         val prof by profileVm.current.collectAsStateWithLifecycle()
         com.ultratv.tv.nativeapp.ui.mobile.MobileHomeScreen(
-            state = com.ultratv.tv.nativeapp.ui.mobile.MobileHomeState(loaded, providers.isNotEmpty(), hero, rows, prof?.initial ?: "K", prof?.color ?: 0xFFD91E2B.toInt()),
+            state = com.ultratv.tv.nativeapp.ui.mobile.MobileHomeState(loaded, providers.isNotEmpty(), hero, rows, prof?.initial ?: "K", prof?.color ?: 0xFFD91E2B.toInt(), heroIndex = heroIdx % heroes.size.coerceAtLeast(1), heroCount = heroes.size),
+            onHeroStep = stepHero,
             syncPercent = { syncPct.value },
             onOpenMovie = onOpenMovie, onOpenSeries = onOpenSeries,
             onSearch = onGoSearch, onProfile = { profileVm.requestSwitch() }, onGoLive = onGoLive, onGoSettings = onGoSettings, onGoGuide = onGoGuide, onGoFavorites = onGoFavorites, onShortcut = onShortcut,
@@ -214,7 +231,7 @@ fun HomeScreen(
         rows = rows, providerCount = providers.size, clock = clock, sportOn = sportOn, sportLive = sportLive,
         heroFocusDone = heroFocusDone, onHeroFocused = onHeroFocused,
         playHistory = playHistory, openPoster = openPoster, playChannel = playChannel, onShortcut = onShortcut, onGoSport = onGoSport,
-        onWatchHero = watchHero, onInfoHero = openHero,
+        onWatchHero = watchHero, onInfoHero = openHero, onHeroStep = stepHero, onHeroBlockFocus = holdHero,
         emptyTop = {
             when (slot) {
                 HomeTopSlot.NO_SOURCE -> EmptyCard(D.homeNoSource, D.syncCloudHint, D.addSource, onGoSettings, D.cardCloud, onGoCloud, action3 = D.cardPhone, onAction3 = onGoPhone)
@@ -249,6 +266,8 @@ internal fun HomeTvContent(
     onWatchHero: (HeroItem) -> Unit, onInfoHero: (HeroItem) -> Unit,
     emptyTop: @Composable () -> Unit,
     sportRow: @Composable (Modifier, PaddingValues) -> Unit,
+    onHeroStep: (Int) -> Unit = {},
+    onHeroBlockFocus: (Boolean) -> Unit = {},
 ) {
     val D = LocalDs.current
     // Pivot VERTICAL seulement (haut de l'élément focalisé à 30 % de l'écran, comme le pivot TV de Compose) ; les
@@ -309,6 +328,7 @@ internal fun HomeTvContent(
                                 Hero(
                                     hero, heroExtras, onWatch = onWatchHero, onInfo = onInfoHero, takeFocus = !heroFocusDone, onFocused = onHeroFocused, onFocusTop = scrollTop,
                                     index = heroIndex, count = heroCount, modifier = Modifier.weight(1f).fillMaxHeight(),
+                                    onStep = onHeroStep, onBlockFocus = onHeroBlockFocus,
                                 )
                                 if (embedShortcuts) ShortcutGrid(rows.shortcuts, sportTile, onShortcut, Modifier.width(420.design).fillMaxHeight())
                             }
@@ -583,22 +603,47 @@ private fun Section(title: String, content: @Composable () -> Unit) {
 private fun Hero(
     h: HeroItem, extras: State<Map<String, HeroExtras>>, onWatch: (HeroItem) -> Unit, onInfo: (HeroItem) -> Unit,
     takeFocus: Boolean, onFocused: () -> Unit, onFocusTop: () -> Unit, index: Int = 0, count: Int = 1, modifier: Modifier = Modifier,
+    onStep: (Int) -> Unit = {}, onBlockFocus: (Boolean) -> Unit = {},
 ) = com.ultratv.tv.nativeapp.ui.design.NoTextWrap {
     // Bandeau de hauteur fixe : pas de ligne de plus (les boutons « Regarder / Plus d'infos » étaient écrasés).
-    HeroBody(h, extras, onWatch, onInfo, takeFocus, onFocused, onFocusTop, index, count, modifier)
+    HeroBody(h, extras, onWatch, onInfo, takeFocus, onFocused, onFocusTop, index, count, modifier, onStep, onBlockFocus)
 }
 
 @Composable
 private fun HeroBody(
     h: HeroItem, extras: State<Map<String, HeroExtras>>, onWatch: (HeroItem) -> Unit, onInfo: (HeroItem) -> Unit,
     takeFocus: Boolean, onFocused: () -> Unit, onFocusTop: () -> Unit, index: Int, count: Int, modifier: Modifier,
+    onStep: (Int) -> Unit, onBlockFocus: (Boolean) -> Unit,
 ) {
     val D = LocalDs.current
     val requester = remember { FocusRequester() }
+    // Ordre du focus : Regarder → Plus d'infos → ‹ → › dans le sens de lecture (miroir en arabe).
+    val infoReq = remember { FocusRequester() }
+    val prevReq = remember { FocusRequester() }
+    val nextReq = remember { FocusRequester() }
     var focused by remember { mutableStateOf(false) }
     if (takeFocus) RequestInitialFocus(requester, hasFocus = { focused })
+    val paged = count > 1
+    // Voisins posés en GAUCHE / DROITE absolues selon la langue (les propriétés start/end suivent la direction de la vue
+    // racine, pas celle imposée par l'appli) : en arabe « suivant » est à gauche.
+    val rtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
+    fun Modifier.neighbours(before: FocusRequester?, after: FocusRequester?): Modifier = if (!paged) this else focusProperties {
+        val back = if (rtl) after else before
+        val fwd = if (rtl) before else after
+        back?.let { left = it }
+        fwd?.let { right = it }
+    }
     // Carte arrondie : image à droite, panneau de texte de 640 px à gauche sur un voile simple (aucun flou).
-    Box(modifier.clip(RoundedCornerShape(32.design)).background(Ux.Tone)) {
+    // ⏪ / Précédent et ⏩ / Suivant changent de page tant que le focus est dans le bloc (les flèches gardent la navigation).
+    Box(
+        modifier.clip(RoundedCornerShape(32.design)).background(Ux.Tone)
+            .onFocusChanged { onBlockFocus(it.hasFocus) }
+            .onPreviewKeyEvent { e ->
+                val step = if (paged) heroKeyStep(e.nativeKeyEvent.keyCode) else null
+                if (step != null && e.type == KeyEventType.KeyDown && e.nativeKeyEvent.repeatCount == 0) onStep(step)
+                step != null
+            },
+    ) {
         // UNE seule image de fond. Fondu léger entre deux titres (coupé net si les animations sont désactivées).
         androidx.compose.animation.Crossfade(targetState = h, animationSpec = com.ultratv.tv.nativeapp.ui.design.LocalAnimations.current.let { if (it.rotateHero) it.tween<Float>(500) else androidx.compose.animation.core.snap<Float>() }, label = "hero") { cur ->
             Box(Modifier.fillMaxSize()) {
@@ -627,20 +672,46 @@ private fun HeroBody(
                 PillButton(
                     D.watch, onClick = { onWatch(h) }, heightPx = 58, hPadPx = 28, fontPx = 19, weight = FontWeight.Bold,
                     iconPath = Icons.Play, iconFill = true, bg = Ux.Cta,
-                    modifier = Modifier.focusRequester(requester).onFocusChanged { focused = it.isFocused; if (it.isFocused) { onFocused(); onFocusTop() } },
+                    modifier = Modifier.focusRequester(requester)
+                        .neighbours(null, infoReq)
+                        .onFocusChanged { focused = it.isFocused; if (it.isFocused) { onFocused(); onFocusTop() } },
                 )
                 PillButton(
                     D.homeMoreInfo, onClick = { onInfo(h) }, heightPx = 58, hPadPx = 26, fontPx = 19, weight = FontWeight.Bold,
-                    modifier = Modifier.onFocusChanged { if (it.isFocused) onFocusTop() },
+                    modifier = Modifier.focusRequester(infoReq)
+                        .neighbours(requester, prevReq)
+                        .onFocusChanged { if (it.isFocused) onFocusTop() },
                 )
             }
         }
-        // Points de pagination (titre affiché / nombre de titres « à la une »).
-        if (count > 1) Row(Modifier.align(Alignment.BottomEnd).padding(end = 28.design, bottom = 24.design), horizontalArrangement = Arrangement.spacedBy(10.design)) {
+        // Pagination : ‹ points › (titre affiché / nombre de titres « à la une ») ; OK sur ‹ ou › change de page, en boucle.
+        if (paged) Row(
+            Modifier.align(Alignment.BottomEnd).padding(end = 20.design, bottom = 14.design),
+            horizontalArrangement = Arrangement.spacedBy(10.design), verticalAlignment = Alignment.CenterVertically,
+        ) {
+            HeroPageButton(D.heroPrevPage, next = false, onClick = { onStep(-1) }, modifier = Modifier.focusRequester(prevReq).neighbours(infoReq, nextReq))
             repeat(count) { i ->
                 Box(Modifier.height(8.design).width(if (i == index) 28.design else 8.design).clip(RoundedCornerShape(4.design)).background(if (i == index) Color.White else Color.White.copy(alpha = 0.4f)))
             }
+            HeroPageButton(D.heroNextPage, next = true, onClick = { onStep(1) }, modifier = Modifier.focusRequester(nextReq).neighbours(prevReq, null))
         }
+    }
+}
+
+/**
+ * Bouton rond « ‹ » / « › » du carrousel « À la une » ([next] = page suivante) ; [label] est lu par l'accessibilité.
+ * Le chevron suit le sens de lecture : en arabe « page précédente » est à droite et pointe vers la droite.
+ */
+@Composable
+private fun HeroPageButton(label: String, next: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val rtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
+    val flip = next != rtl
+    FocusSurface(
+        onClick = onClick, shape = CircleShape, bg = Color.Black.copy(alpha = 0.45f), focusedBg = Ux.Cta, focusedScale = 1.1f, ringWidth = 0.dp,
+        modifier = modifier.size(44.design).semantics { contentDescription = label },
+    ) { f ->
+        DIcon(Icons.Chevron, 24.design, if (f) Ux.TextOnLight else Color.White, strokeWidth = 2.6f,
+            modifier = Modifier.align(Alignment.Center).graphicsLayer { scaleX = if (flip) -1f else 1f })
     }
 }
 

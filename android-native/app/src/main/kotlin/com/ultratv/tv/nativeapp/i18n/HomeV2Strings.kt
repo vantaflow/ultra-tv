@@ -13,6 +13,11 @@ val DesignStrings.homeTop10 get() = tx(R.string.home2_home_top10)
 val DesignStrings.homeShortcutsRow get() = tx(R.string.home2_home_shortcuts_row)
 val DesignStrings.homeGuideSubtitle get() = tx(R.string.home2_home_guide_subtitle)
 
+// Carrousel « À la une » : boutons ‹ › (libellés lus par l'accessibilité) et pastilles touchables.
+val DesignStrings.heroPrevPage get() = tx(R.string.home2_hero_prev_page)
+val DesignStrings.heroNextPage get() = tx(R.string.home2_hero_next_page)
+fun DesignStrings.heroPageOf(page: Int, count: Int) = tx(R.string.home2_hero_page_of, page, count)
+
 fun DesignStrings.homeChannelsCount(n: Int, count: String) = tp(R.plurals.home2_home_channels_count, n, count)
 
 fun DesignStrings.homeMoviesCount(n: Int, count: String) = tp(R.plurals.home2_home_movies_count, n, count)

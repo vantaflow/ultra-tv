@@ -400,6 +400,29 @@ const val HERO_ROTATE_MS = 9_000L
  */
 fun heroPoolSize(rotating: Boolean): Int = if (rotating) HERO_POOL else 1
 
+/** Page « À la une » après un pas [delta] (−1 = précédente, +1 = suivante), en boucle ; 0 si aucun titre. */
+internal fun heroStep(index: Int, count: Int, delta: Int): Int = if (count <= 0) 0 else Math.floorMod(index + delta, count)
+
+/**
+ * Touche de la télécommande quand le focus est dans le bloc « À la une » : ⏪ et Précédent = page précédente (−1),
+ * ⏩ et Suivant = page suivante (+1), autre touche = null (les flèches gardent leur rôle de navigation).
+ */
+internal fun heroKeyStep(keyCode: Int): Int? = when (keyCode) {
+    android.view.KeyEvent.KEYCODE_MEDIA_REWIND, android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS -> -1
+    android.view.KeyEvent.KEYCODE_MEDIA_FAST_FORWARD, android.view.KeyEvent.KEYCODE_MEDIA_NEXT -> 1
+    else -> null
+}
+
+/**
+ * Balayage horizontal du bandeau (téléphone, tablette) de [dx] px, seuil [threshold] : vers la gauche = page suivante,
+ * vers la droite = précédente ; inversé en arabe (lecture de droite à gauche). null sous le seuil.
+ */
+internal fun heroSwipeStep(dx: Float, rtl: Boolean, threshold: Float): Int? {
+    if (kotlin.math.abs(dx) < threshold) return null
+    val forward = if (dx < 0) 1 else -1
+    return if (rtl) -forward else forward
+}
+
 /** Silence de la télécommande exigé avant de lancer un chargement réseau de confort (notes, logos, calendrier TVmaze). */
 const val BACKGROUND_QUIET_MS = 1_200L
 /** Attente maximale de ce silence : un utilisateur qui navigue sans arrêt ne bloque pas indéfiniment les compléments. */
