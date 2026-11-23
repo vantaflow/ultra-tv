@@ -40,7 +40,7 @@ class VersionCodeTest {
 
     @Test fun `la stable 1_3_76 est proposee a la 1_3_75 et a la 1_3_75-rc1`() {
         val latest = listOf(Release("v1.3.76", preRelease = false))
-        assertEquals("v1.3.76", UpdateVersions.pick(latest, false, UpdateVersions.installed("1.3.75", "v1.3.75"))?.tag)
+        assertEquals("v1.3.76", UpdateVersions.pick(latest, false, UpdateVersions.installed("1.3.75", "v1.3.75")!!)?.tag)
         assertEquals("v1.3.76", UpdateVersions.pick(latest, false, UpdateVersions.installed("1.3.75", "v1.3.75-rc1")!!)?.tag)
         assertEquals("v1.3.76", UpdateVersions.pick(latest, false, UpdateVersions.installed("1.3.75", "")!!)?.tag)
         // canal pré-version : la stable 1.3.76 passe aussi devant la 1.3.76-rc1
