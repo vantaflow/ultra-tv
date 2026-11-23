@@ -1399,7 +1399,7 @@
     <string name="wiz_step_welcome">Chào mừng</string>
     <string name="wiz_step_source">Nguồn</string>
     <string name="wiz_step_ready">Sẵn sàng</string>
-    <string name="wiz_step_label">BƯỚC %d TRÊN 3</string>
+    <string name="wiz_step_label">BƯỚC %d TRÊN 4</string>
     <string name="wiz_welcome_title">Chào mừng đến với Ultra TV</string>
     <string name="wiz_welcome_tagline">Kênh, phim và series của bạn ở một nơi. Hãy thêm nguồn và Ultra TV lo phần còn lại.</string>
     <string name="wiz_bullet_xtream">Xtream Codes</string>

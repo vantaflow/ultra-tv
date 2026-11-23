@@ -250,13 +250,24 @@ fun ModalFocusScope(
     val latestBack = androidx.compose.runtime.rememberUpdatedState(onBack)
     val latestContent = androidx.compose.runtime.rememberUpdatedState(content)
     val latestModifier = androidx.compose.runtime.rememberUpdatedState(modifier)
+    // Échelle de l'endroit qui ouvre la modale (Réglages agrandis sur tablette, voir TabletSettingsScale) : la modale, rendue à
+    // la racine, garde les mêmes tailles. Partout ailleurs ce sont déjà celles de la racine (rien ne change).
+    val density = androidx.compose.runtime.rememberUpdatedState(androidx.compose.ui.platform.LocalDensity.current)
+    val uiWidth = androidx.compose.runtime.rememberUpdatedState(LocalUiWidthDp.current)
+    val uiHeight = androidx.compose.runtime.rememberUpdatedState(com.ultratv.tv.nativeapp.ui.mobile.LocalUiHeightDp.current)
     if (host == null) {
         ModalBody(state, null, latestBack.value, latestModifier.value, contentAlignment, latestContent.value)
     } else {
         androidx.compose.runtime.DisposableEffect(host) {
             lateinit var layer: OverlayHost.Layer
             layer = OverlayHost.Layer(state) {
-                ModalBody(state, { host.layers.lastOrNull() === layer }, latestBack.value, latestModifier.value, contentAlignment, latestContent.value)
+                androidx.compose.runtime.CompositionLocalProvider(
+                    androidx.compose.ui.platform.LocalDensity provides density.value,
+                    LocalUiWidthDp provides uiWidth.value,
+                    com.ultratv.tv.nativeapp.ui.mobile.LocalUiHeightDp provides uiHeight.value,
+                ) {
+                    ModalBody(state, { host.layers.lastOrNull() === layer }, latestBack.value, latestModifier.value, contentAlignment, latestContent.value)
+                }
             }
             host.layers.add(layer)
             onDispose {

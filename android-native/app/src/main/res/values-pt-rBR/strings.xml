@@ -1431,7 +1431,7 @@
     <string name="wiz_step_welcome">Boas-vindas</string>
     <string name="wiz_step_source">Fonte</string>
     <string name="wiz_step_ready">Pronto</string>
-    <string name="wiz_step_label">ETAPA %d DE 3</string>
+    <string name="wiz_step_label">ETAPA %d DE 4</string>
     <string name="wiz_welcome_title">Boas-vindas ao Ultra TV</string>
     <string name="wiz_welcome_tagline">Seus canais, filmes e séries em um só lugar. Adicione sua fonte e o Ultra TV faz o resto.</string>
     <string name="wiz_bullet_xtream">Xtream Codes</string>

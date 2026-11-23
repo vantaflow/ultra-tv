@@ -1446,7 +1446,7 @@
     <string name="wiz_step_welcome">Bienvenida</string>
     <string name="wiz_step_source">Fuente</string>
     <string name="wiz_step_ready">Listo</string>
-    <string name="wiz_step_label">PASO %d DE 3</string>
+    <string name="wiz_step_label">PASO %d DE 4</string>
     <string name="wiz_welcome_title">Bienvenido a Ultra TV</string>
     <string name="wiz_welcome_tagline">Tus canales, películas y series en un solo lugar. Añade tu fuente y Ultra TV hace el resto.</string>
     <string name="wiz_bullet_xtream">Xtream Codes</string>
@@ -1983,6 +1983,9 @@
     <string name="perso_ui_size_normal">Normal</string>
     <string name="perso_ui_size_large">Grande</string>
     <string name="perso_ui_size_xlarge">Muy grande</string>
+    <string name="perso_appearance_step">Apariencia</string>
+    <string name="perso_appearance_title">Elige tu estilo</string>
+    <string name="perso_appearance_body">Tema, color de acento y tamaño de la interfaz. Puedes cambiarlos cuando quieras en Ajustes › Pantalla.</string>
     <string name="ds_settings_level">Nivel de ajustes</string>
     <string name="ds_settings_level_simple">Básico</string>
     <string name="ds_settings_level_expert">Experto</string>

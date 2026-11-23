@@ -1395,7 +1395,7 @@
     <string name="wiz_step_welcome">Witaj</string>
     <string name="wiz_step_source">Źródło</string>
     <string name="wiz_step_ready">Gotowe</string>
-    <string name="wiz_step_label">KROK %d Z 3</string>
+    <string name="wiz_step_label">KROK %d Z 4</string>
     <string name="wiz_welcome_title">Witaj w Ultra TV</string>
     <string name="wiz_welcome_tagline">Twoje kanały, filmy i seriale w jednym miejscu. Dodaj źródło, a resztą zajmie się Ultra TV.</string>
     <string name="wiz_bullet_m3u">Listy M3U / M3U8, online lub jako plik</string>

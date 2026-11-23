@@ -1425,7 +1425,7 @@
     <string name="wiz_step_welcome">Vítejte</string>
     <string name="wiz_step_source">Zdroj</string>
     <string name="wiz_step_ready">Připraveno</string>
-    <string name="wiz_step_label">KROK %d ZE 3</string>
+    <string name="wiz_step_label">KROK %d ZE 4</string>
     <string name="wiz_welcome_title">Vítejte v Ultra TV</string>
     <string name="wiz_welcome_tagline">Vaše kanály, filmy a seriály na jednom místě. Přidejte zdroj a o zbytek se postará Ultra TV.</string>
     <string name="wiz_bullet_xtream">Xtream Codes</string>

@@ -1393,7 +1393,7 @@
     <string name="wiz_step_welcome">Tervetuloa</string>
     <string name="wiz_step_source">Lähde</string>
     <string name="wiz_step_ready">Valmis</string>
-    <string name="wiz_step_label">VAIHE %d / 3</string>
+    <string name="wiz_step_label">VAIHE %d / 4</string>
     <string name="wiz_welcome_title">Tervetuloa Ultra TV:hen</string>
     <string name="wiz_welcome_tagline">Kanavasi, elokuvasi ja sarjasi yhdessä paikassa. Lisää lähde, niin Ultra TV hoitaa lopun.</string>
     <string name="wiz_bullet_xtream">Xtream Codes</string>

@@ -1397,7 +1397,7 @@
 <string name="wiz_step_welcome">Hoş geldiniz</string>
 <string name="wiz_step_source">Kaynak</string>
 <string name="wiz_step_ready">Hazır</string>
-<string name="wiz_step_label">ADIM %d / 3</string>
+<string name="wiz_step_label">ADIM %d / 4</string>
 <string name="wiz_welcome_title">Ultra TV\'ye hoş geldiniz</string>
 <string name="wiz_welcome_tagline">Kanallarınız, filmleriniz ve dizileriniz tek yerde. Kaynağınızı ekleyin, gerisini Ultra TV halletsin.</string>
 <string name="wiz_bullet_xtream">Xtream Codes</string>

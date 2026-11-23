@@ -1399,7 +1399,7 @@
     <string name="wiz_step_welcome">ยินดีต้อนรับ</string>
     <string name="wiz_step_source">แหล่งที่มา</string>
     <string name="wiz_step_ready">พร้อมแล้ว</string>
-    <string name="wiz_step_label">ขั้นตอนที่ %d จาก 3</string>
+    <string name="wiz_step_label">ขั้นตอนที่ %d จาก 4</string>
     <string name="wiz_welcome_title">ยินดีต้อนรับสู่ Ultra TV</string>
     <string name="wiz_welcome_tagline">ช่อง ภาพยนตร์ และซีรีส์ของคุณในที่เดียว เพิ่มแหล่งที่มาแล้ว Ultra TV จัดการที่เหลือ</string>
     <string name="wiz_bullet_xtream">Xtream Codes</string>

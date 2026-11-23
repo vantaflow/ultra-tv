@@ -48,6 +48,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -227,8 +229,8 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
             }
     } }
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
-    val compact = touch && com.ultratv.tv.nativeapp.ui.common.LocalUiWidthDp.current < 600f
-    if (compact) {
+    val mode = settingsModeFor(touch, com.ultratv.tv.nativeapp.ui.common.LocalUiWidthDp.current)
+    if (mode == SettingsMode.PHONE) {
         // Téléphone : liste de rubriques, puis la rubrique choisie en plein écran (Retour système = retour à la liste).
         androidx.activity.compose.BackHandler(enabled = showPane) { showPane = false }
         if (!showPane) Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -263,11 +265,59 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
         }
         return
     }
-    SettingsTvLayout(
-        title = D.settingsTitle, rubs = shownRubs.map { r -> SettingsRubUi(r.icon, labels[r.ordinal], subs[r.ordinal]) },
-        selected = shownRubs.indexOf(Rub.entries[rub]).coerceAtLeast(0), onSelect = { rub = shownRubs[it].ordinal },
-        rubFocus = shownRubs.map { rubFocus[it.ordinal] }, modalOpen = overlays?.hasModal == true, pane = pane, header = levelRow,
-    )
+    val twoPane: @Composable () -> Unit = {
+        SettingsTvLayout(
+            title = D.settingsTitle, rubs = shownRubs.map { r -> SettingsRubUi(r.icon, labels[r.ordinal], subs[r.ordinal]) },
+            selected = shownRubs.indexOf(Rub.entries[rub]).coerceAtLeast(0), onSelect = { rub = shownRubs[it].ordinal },
+            rubFocus = shownRubs.map { rubFocus[it.ordinal] }, modalOpen = overlays?.hasModal == true, pane = pane, header = levelRow,
+            tablet = mode == SettingsMode.TABLET,
+        )
+    }
+    if (mode == SettingsMode.TABLET) TabletSettingsScale(twoPane) else twoPane()
+}
+
+/** Disposition des Réglages : liste puis rubrique (téléphone), deux volets agrandis (tablette), deux volets de la maquette (TV). */
+internal enum class SettingsMode { PHONE, TABLET, TV }
+
+/** Tactile sous 600 dp de large = téléphone (inchangé) ; tactile à partir de 600 dp = tablette, en portrait comme en paysage. */
+internal fun settingsModeFor(touch: Boolean, widthDp: Float): SettingsMode = when {
+    !touch -> SettingsMode.TV
+    widthDp < 600f -> SettingsMode.PHONE
+    else -> SettingsMode.TABLET
+}
+
+/**
+ * Agrandissement des Réglages sur tablette : la maquette TV (540 dp de haut) posée telle quelle sur une tablette de 10 pouces
+ * donnait des lignes de 38 dp et du texte de 12 sp (« interface très serrée »). Tout le contenu des deux volets — et les
+ * fenêtres de choix qu'il ouvre — grandit de ce facteur, en plus de la taille de texte et de la taille d'interface choisies.
+ * Plafond : la zone des Réglages garde au moins [TABLET_SETTINGS_MIN_WIDTH_DP] dp de large une fois agrandie (tablette en
+ * portrait, rail latéral et taille d'interface « Grande » : le facteur descend vers 1, jamais en dessous).
+ */
+internal const val TABLET_SETTINGS_SCALE = 1.2f
+internal const val TABLET_SETTINGS_MIN_WIDTH_DP = 560f
+
+/** Facteur d'agrandissement pour une zone de [availableDp] dp de large (rail latéral déjà retiré). Pur. */
+internal fun tabletSettingsScale(availableDp: Float): Float = (availableDp / TABLET_SETTINGS_MIN_WIDTH_DP).coerceIn(1f, TABLET_SETTINGS_SCALE)
+
+/** Largeurs des volets sur tablette, en dp de l'interface agrandie : rubriques à ~38 % (256–330, « Synchronisation » tient sur une ligne en texte 1,3), contenu plafonné. */
+internal data class TabletSettingsMetrics(val railDp: Float, val paneMaxDp: Float, val panePadDp: Float)
+
+internal fun tabletSettingsMetrics(widthDp: Float): TabletSettingsMetrics =
+    TabletSettingsMetrics(railDp = (widthDp * 0.38f).coerceIn(256f, 330f), paneMaxDp = 760f, panePadDp = if (widthDp < 700f) 20f else 28f)
+
+@Composable
+internal fun TabletSettingsScale(content: @Composable () -> Unit) {
+    val base = androidx.compose.ui.platform.LocalDensity.current
+    // Largeur réelle de la zone des Réglages (sans le rail latéral de la tablette), pas celle de la fenêtre.
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
+        val k = tabletSettingsScale(maxWidth.value)
+        androidx.compose.runtime.CompositionLocalProvider(
+            androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(base.density * k, base.fontScale),
+            com.ultratv.tv.nativeapp.ui.common.LocalUiWidthDp provides maxWidth.value / k,
+            com.ultratv.tv.nativeapp.ui.mobile.LocalUiHeightDp provides maxHeight.value / k,
+            content = content,
+        )
+    }
 }
 
 /**
@@ -283,7 +333,8 @@ internal fun SettingsLevelRow(level: SettingsLevel, onClick: () -> Unit) {
     ) { f ->
         Column(Modifier.fillMaxWidth().padding(horizontal = 18.design, vertical = 12.design), verticalArrangement = Arrangement.spacedBy(2.design)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(D.settingsLevelLabel, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(D.settingsLevelLabel, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) 2 else 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Spacer(Modifier.width(12.design))
                 Text(D.settingsLevelName(level), color = if (f) Ux.TextOnLight else Ux.Accent, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1)
             }
             // Interligne explicite : sans lui, le texte (17 px) prenait celui du style par défaut du thème (près de deux fois sa taille), d'où un grand
@@ -296,6 +347,7 @@ internal fun SettingsLevelRow(level: SettingsLevel, onClick: () -> Unit) {
 internal const val SETTINGS_LEVEL_TAG = "settings-level"
 internal const val SETTINGS_LEVEL_HINT_TAG = "settings-level-hint"
 internal const val SETTINGS_TITLE_TAG = "settings-title"
+internal const val SETTINGS_RUB_TAG = "settings-rub-"
 
 /** Une rubrique de la liste de gauche : icône (chemin SVG), libellé et résumé d'état d'une ligne. */
 internal class SettingsRubUi(val icon: String, val label: String, val sub: String)
@@ -315,8 +367,11 @@ internal fun SettingsTvLayout(
     rubFocus: List<androidx.compose.ui.focus.FocusRequester>,
     modalOpen: Boolean,
     header: @Composable () -> Unit = {},
+    /** Tablette (à composer dans [TabletSettingsScale]) : volets proportionnés, lignes de rubrique d'au moins 52 dp, texte sur 2 lignes. */
+    tablet: Boolean = false,
     pane: @Composable () -> Unit,
 ) {
+    val metrics = if (tablet) tabletSettingsMetrics(com.ultratv.tv.nativeapp.ui.common.LocalUiWidthDp.current) else null
     Row(Modifier.fillMaxSize()) {
         // ← depuis le volet : le focus revient sur la rubrique OUVERTE, pas sur celle qui se trouve en face de la ligne
         // focalisée (« À propos » depuis le bas d'Affichage) — et comme la rubrique suit le focus, le volet changeait.
@@ -324,33 +379,39 @@ internal fun SettingsTvLayout(
         // Avant, toute la colonne défilait : dès qu'une rubrique basse prenait le focus, le titre sortait de l'écran et la carte
         // « Niveau des réglages » se retrouvait collée au bord haut.
         Column(
-            Modifier.width(520.design).fillMaxHeight().background(Ux.Rail)
+            Modifier.width(metrics?.railDp?.dp ?: 520.design).fillMaxHeight().background(Ux.Rail)
                 // Entrée dans l'écran (ouverture des Réglages) : les rubriques, dans toutes les langues. En arabe, l'entrée par défaut
                 // de Compose part du coin haut gauche, où se trouve le volet : le focus tombait sur le premier réglage.
                 .then(com.ultratv.tv.nativeapp.ui.common.screenEntryTarget())
                 .focusProperties { enter = { rubFocus[selected] } }.focusGroup()
-                .padding(start = 32.design, end = 32.design, top = 48.design), // même marge que le Direct (72 laissait un vide après le menu)
+                .then(if (metrics != null) Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp)
+                    else Modifier.padding(start = 32.design, end = 32.design, top = 48.design)), // même marge que le Direct (72 laissait un vide après le menu)
         ) {
             Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, maxLines = 1, modifier = Modifier.padding(bottom = 20.design).testTag(SETTINGS_TITLE_TAG))
             header()
             Column(
                 // Le focus fait défiler (rubrique amenée à l'écran) ; la dernière (« À propos ») reste atteignable.
-                Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = 32.design),
-                verticalArrangement = Arrangement.spacedBy(6.design),
+                Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = if (metrics != null) 24.dp else 32.design),
+                verticalArrangement = Arrangement.spacedBy(if (metrics != null) 4.dp else 6.design),
             ) {
             rubs.forEachIndexed { i, r ->
                 val sel = selected == i
                 FocusSurface(
                     onClick = { onSelect(i) }, shape = RoundedCornerShape(20.design), bg = if (sel) Ux.Cta else Color.Transparent, ringWidth = 0.design, focusedScale = 1.0f,
-                    modifier = Modifier.fillMaxWidth().height(76.designT).focusRequester(rubFocus[i]).onFocusChanged { if (it.isFocused && rubFollowsFocus(modalOpen)) onSelect(i) },
+                    modifier = Modifier.fillMaxWidth().then(if (tablet) Modifier.heightIn(min = 52.dp) else Modifier.height(76.designT))
+                        .then(if (tablet) Modifier.testTag(SETTINGS_RUB_TAG + i) else Modifier)
+                        .focusRequester(rubFocus[i]).onFocusChanged { if (it.isFocused && rubFollowsFocus(modalOpen)) onSelect(i) },
                 ) { f ->
                     val on = f || sel
-                    Row(Modifier.fillMaxSize().padding(horizontal = 18.design), verticalAlignment = Alignment.CenterVertically) {
-                        DIcon(r.icon, 28.design, if (on) Ux.TextOnLight else Ux.Text3)
-                        Spacer(Modifier.width(18.design))
+                    Row(
+                        (if (tablet) Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp) else Modifier.fillMaxSize().padding(horizontal = 18.design)),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        DIcon(r.icon, if (tablet) 20.dp else 28.design, if (on) Ux.TextOnLight else Ux.Text3)
+                        Spacer(Modifier.width(if (tablet) 10.dp else 18.design))
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.design)) {
-                            Text(r.label, color = if (on) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(r.sub, color = if (on) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(r.label, color = if (on) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = if (tablet) 14.sp else 24.spx, maxLines = if (tablet) 2 else 1, overflow = TextOverflow.Ellipsis)
+                            Text(r.sub, color = if (on) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = if (tablet) 12.sp else 18.spx, maxLines = if (tablet) 2 else 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }
@@ -369,8 +430,10 @@ internal fun SettingsTvLayout(
                 // Seulement à l'arrivée par la flèche horizontale depuis les rubriques : un focus RENDU au volet (fenêtre de choix
                 // fermée après une validation) revenait sur la première ligne, volet remonté en haut (retour Reddit).
                 .focusProperties { enter = { if (SettingsFocus.enteringFromRubrics(rtl = rtl)) { paneScope.launch { paneScroll.scrollTo(0) }; firstSlot.target() } else androidx.compose.ui.focus.FocusRequester.Default } }.focusGroup()
-                .verticalScroll(paneScroll).padding(start = 72.design, end = 88.design, top = 54.design, bottom = 54.design),
-            verticalArrangement = Arrangement.spacedBy(24.design),
+                .verticalScroll(paneScroll)
+                .then(if (metrics != null) Modifier.padding(start = metrics.panePadDp.dp, end = metrics.panePadDp.dp, top = 24.dp, bottom = 32.dp).widthIn(max = metrics.paneMaxDp.dp)
+                    else Modifier.padding(start = 72.design, end = 88.design, top = 54.design, bottom = 54.design)),
+            verticalArrangement = Arrangement.spacedBy(if (metrics != null) 16.dp else 24.design),
         ) {
             androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.common.LocalFirstFocusSlot provides firstSlot) { pane() }
         }
@@ -862,11 +925,12 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
     }
     val logosUri by vm.localLogosFolderUri.collectAsState()
     PaneTitle(D.rubDisplay, D.setDescDisplay)
+    // Thème en tête, en aperçus (les 10 thèmes restaient introuvables derrière une ligne « Thème : Sombre ») : OK applique.
+    ThemePicker(p.theme, AccentChoice.parse(p.accent), { app.setTheme(it) }, title = D.theme)
     SettingsCard {
         // Mode simple : grandes tuiles à la place de l'accueil (profil courant) ; la sortie demande le code parental s'il existe.
         // Masqué sur téléphone / tablette (tactile) : le mode simple est conçu pour la télécommande.
         if (com.ultratv.tv.nativeapp.ui.simple.simpleModeAvailable(com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current)) com.ultratv.tv.nativeapp.ui.simple.SimpleModeRow(p.simpleMode, onChange = { app.setSimpleMode(it) })
-        PrefRow(D.theme, themeLabel(D, p.theme)) { choice = "theme" }
         PrefRow(D.language, D.langName(AppLang.fromCode(p.language))) { choice = "lang" }
         // (Réglage « Menu : barre latérale / barre du haut » retiré : depuis le nouveau menu latéral il n'avait plus d'effet.)
         // Téléphone : « Raccourcis » = les trois rubriques entre Accueil et Plus (les autres restent dans « Plus »), à choisir
@@ -908,7 +972,6 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         PrefRow(D.homeRows, D.homeRowsSummary(layout.order.count { layout.isVisible(it) }, layout.order.size)) { choice = "home" }
     }
     when (choice) {
-        "theme" -> ChoiceDialog(D.theme, AppTheme.entries.map { it to themeLabel(D, it) }, p.theme, { app.setTheme(it); choice = "" }, { choice = "" })
         "lang" -> ChoiceDialog(D.language, AppLang.entries.map { it.code to D.langName(it) }, p.language, { app.setLanguage(it); choice = "" }, { choice = "" })
         "open" -> ChoiceDialog(D.openOn, com.ultratv.tv.nativeapp.nav.StartScreen.entries.map { it to D.startScreenName(it) }, com.ultratv.tv.nativeapp.nav.StartScreen.parse(p.startScreen, p.autoPlayLastOnLaunch), { app.setStartScreen(it.key); choice = "" }, { choice = "" })
         "accent" -> AccentDialog(AccentChoice.parse(p.accent), { app.setAccent(it.key); choice = "" }, { choice = "" })
