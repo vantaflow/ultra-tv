@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Ajouté
+- Réglages › Messages : bouton « Rafraîchir » en tête de la rubrique, qui va chercher tout de suite les annonces de l'équipe au serveur (télécommande et toucher). « Actualisation… » pendant l'appel (un seul appel à la fois), puis la liste à jour ; message clair hors ligne ou serveur injoignable, avec « Réessayer » ; « Dernière vérification : HH:MM » affichée (chiffres latins en arabe). Une annonce reçue ainsi suit les règles habituelles (affichée une fois par appareil, niveaux, ciblage version / appareil / langue) et fonctionne sans appairage ; la vérification automatique toutes les 15 minutes est inchangée.
+
 ### Corrigé
 - Direct : le bouton « Recharger » ne reste plus affiché sur une vidéo qui joue (chaîne dont les horodatages reculent, passage de l'aperçu au plein écran). L'état « chargement » repasse à faux dès que des images sont rendues ou que la lecture avance, et « Recharger » n'est proposé qu'après 3 s de chargement sans aucune progression.
 - « Qui regarde ? » : le focus revient sur le dernier profil utilisé quand il se pose ailleurs sans action de l'utilisateur (profil courant connu un instant après la liste, focus par défaut sur la première tuile) ; jamais après une flèche.
