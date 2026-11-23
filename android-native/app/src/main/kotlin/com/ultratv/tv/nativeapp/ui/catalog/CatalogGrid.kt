@@ -133,6 +133,7 @@ class CatalogGridViewModel @Inject constructor(
     profileRepo: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
     private val catalog: CatalogRepository,
     private val hiddenStore: HiddenCategoriesStore,
+    private val favCats: com.ultratv.tv.nativeapp.data.prefs.FavoriteCategoriesStore,
     private val movieDao: MovieDao,
     private val seriesDao: SeriesDao,
     private val trakt: com.ultratv.tv.nativeapp.data.trakt.TraktLibraryRepository,
@@ -243,10 +244,15 @@ class CatalogGridViewModel @Inject constructor(
                 }
             } else {
                 val counts: Flow<List<CategoryCount>> = if (k == CatalogKind.MOVIES) movieDao.observeCategoryCounts(p).atMostEvery(1_000).snapshotWhile(syncing) else seriesDao.observeCategoryCounts(p).atMostEvery(1_000).snapshotWhile(syncing)
-                combine(catalog.categories(p, kindName), counts) { cats: List<CategoryEntity>, cnt ->
+                combine(catalog.categories(p, kindName), counts, favCats.keys) { cats: List<CategoryEntity>, cnt, fk ->
                     val byId = cnt.filter { it.n > 0 && it.categoryId != null }.associate { it.categoryId!! to it.n }
-                    src to cats.filter { it.remoteId in byId && hiddenStore.keyFor(kindName, p, it.remoteId) !in hidden }
-                        .map { CategoryChip(it.remoteId, prettyCategoryName(it.name), byId.getValue(it.remoteId)) }
+                    // Catégories favorites (issue #249) en tête, avec une étoile ; les autres gardent l'ordre personnalisé.
+                    val favs = com.ultratv.tv.nativeapp.data.prefs.FavoriteCategoriesStore.idsOf(fk, p, kindName)
+                    src to com.ultratv.tv.nativeapp.data.prefs.FavoriteCategoriesStore.favoritesFirst(
+                        cats.filter { it.remoteId in byId && hiddenStore.keyFor(kindName, p, it.remoteId) !in hidden }
+                            .map { CategoryChip(it.remoteId, (if (it.remoteId in favs) "★ " else "") + prettyCategoryName(it.name), byId.getValue(it.remoteId)) },
+                        favs,
+                    ) { it.remoteId }
                 }
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)

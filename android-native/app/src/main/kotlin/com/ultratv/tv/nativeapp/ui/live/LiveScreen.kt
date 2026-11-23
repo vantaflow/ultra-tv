@@ -251,7 +251,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
                 items(cats.size, key = { catKeys[it] }, contentType = { "cat" }) { ci ->
                     val c = cats[ci]
                     CategoryRow(
-                        label = when (c.id) { CATEGORY_FAVORITES -> D.catFavorites; CATEGORY_ALL -> D.catAll; else -> prettyCategoryName(c.name.orEmpty()) },
+                        label = (if (c.fav) "★ " else "") + when (c.id) { CATEGORY_FAVORITES -> D.catFavorites; CATEGORY_ALL -> D.catAll; else -> prettyCategoryName(c.name.orEmpty()) },
                         count = c.count, selected = c.id == selected, locked = c.locked,
                         modifier = if (c.id == selected) Modifier.focusRequester(selectedCatFocus) else Modifier,
                         onFocus = { if (userMoved) vm.selectCategory(c.id) },
@@ -846,7 +846,7 @@ private fun MobileLiveLayout(
                     com.ultratv.tv.nativeapp.ui.mobile.SearchAction()
                 }
             }
-            val chipLabel = { c: DirectCategory -> (if (c.locked) "🔒 " else "") + when (c.id) { CATEGORY_FAVORITES -> D.catFavorites; CATEGORY_ALL -> D.catAll; else -> prettyCategoryName(c.name.orEmpty()) } }
+            val chipLabel = { c: DirectCategory -> (if (c.fav) "★ " else "") + (if (c.locked) "🔒 " else "") + when (c.id) { CATEGORY_FAVORITES -> D.catFavorites; CATEGORY_ALL -> D.catAll; else -> prettyCategoryName(c.name.orEmpty()) } }
             if (twoPane) androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.heightIn(max = 120.dp).verticalScroll(androidx.compose.foundation.rememberScrollState())) {
                 cats.forEach { c -> CatChip(chipLabel(c), c.id == selected) { onSelect(c.id) } }
             } else androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

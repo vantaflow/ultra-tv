@@ -1970,5 +1970,7 @@
   "DesignStrings/PersonalizationStringsKt.tvChannelName(MY_LIST)": "Ma liste (films et séries favoris)",
   "DesignStrings/PersonalizationStringsKt.tvChannelPublishedName(MY_LIST)": "Ma liste",
   "DesignStrings/PersonalizationStringsKt.tvChannelName(SPORT_LIVE)": "Sport en direct",
-  "DesignStrings/PersonalizationStringsKt.tvChannelPublishedName(SPORT_LIVE)": "Sport en direct"
+  "DesignStrings/PersonalizationStringsKt.tvChannelPublishedName(SPORT_LIVE)": "Sport en direct",
+  "DesignStrings/RobustnessStringsKt.getCatFav()": "Mettre cette cat\u00e9gorie en favorite",
+  "DesignStrings/RobustnessStringsKt.getCatUnfav()": "Retirer cette cat\u00e9gorie des favorites"
 }

@@ -251,6 +251,7 @@ class GuideGridViewModel @Inject constructor(
     private val parentalLocks: com.ultratv.tv.nativeapp.data.parental.ParentalLocks,
     private val catalog: com.ultratv.tv.nativeapp.data.repo.CatalogRepository,
     private val hiddenStore: com.ultratv.tv.nativeapp.data.prefs.HiddenCategoriesStore,
+    private val favCats: com.ultratv.tv.nativeapp.data.prefs.FavoriteCategoriesStore,
     private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
     @dagger.hilt.android.qualifiers.ApplicationContext private val appCtx: android.content.Context,
     private val zapQueue: com.ultratv.tv.nativeapp.data.repo.LivePlaybackQueue,
@@ -326,14 +327,14 @@ class GuideGridViewModel @Inject constructor(
 
     /** Favoris, Tout, catégories non vides non masquées : même liste, mêmes noms, même ordre que le Direct. Compteurs relus au plus 1 fois par seconde, figés pendant une synchro. */
     val groups: StateFlow<List<com.ultratv.tv.nativeapp.ui.live.DirectCategory>> =
-        combine(pid, hiddenStore.hidden) { id, hidden -> id to hidden }
-            .flatMapLatest { (id, hidden) ->
+        combine(pid, hiddenStore.hidden, favCats.keys) { id, hidden, fk -> Triple(id, hidden, fk) }
+            .flatMapLatest { (id, hidden, fk) ->
                 if (id == null) flowOf(emptyList())
                 else combine(
                     catalog.categories(id, "LIVE"),
                     channelDao.observeCategoryCounts(id).atMostEvery(1_000).snapshotWhile(syncing),
                     catalog.favoriteCount(id, "LIVE"),
-                ) { cats, counts, fav -> com.ultratv.tv.nativeapp.ui.live.buildDirectCategories(cats, counts, fav, id, hidden) }
+                ) { cats, counts, fav -> com.ultratv.tv.nativeapp.ui.live.buildDirectCategories(cats, counts, fav, id, hidden, com.ultratv.tv.nativeapp.data.prefs.FavoriteCategoriesStore.idsOf(fk, id, "LIVE")) }
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 

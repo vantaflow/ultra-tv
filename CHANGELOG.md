@@ -4,10 +4,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 Chaque version Android peut finir par une sous-section `### In English` : quelques puces courtes en anglais, reprises en tête des notes de la release GitHub (« English summary ») par `.github/release-notes.sh` ; le reste de la section y figure en français. Uniquement des puces sous ce titre, sans autre sous-titre.
 
+## [1.3.75] — 2026-11-23 (Android)
+
+### Technique
+- Mise à jour des dépendances (Dependabot) : Bump the android-mineures group in /android-native with 7 updates (#254).
+
 ## [Non publié]
 
 ### Android et site (prochaine version)
+- Interface TV : « Grande » et « Très grande » passent à x1,15 et x1,3 (comme le texte) ; « Petite » et « Normale » inchangées. Le menu de gauche suit la taille du texte (hauteur des entrées, largeur déployée) au lieu d'être écrasé.
+- Accueil TV : « Votre catalogue se charge… » n'apparaît que pendant une synchronisation réelle ; une source sans film ni série (direct seul, M3U) n'affiche plus ce message indéfiniment.
+- Lecteur en direct : l'action « Ma liste » est renommée « Favoris », comme la rubrique qu'elle ouvre (les fiches film et série gardent « Ma liste »).
+- Couleur d'accent : le schéma Material ne teinte plus les surfaces avec l'accent (surfaceTint neutralisé) ; l'accent reste réservé au focus, aux sélections et aux progressions.
 - Dons : PayPal seul (Ko-fi et Liberapay retirés partout). Réglages › À propos › Soutenir Ultra TV ouvre le lien de paiement PayPal (montant libre, PayPal ou carte) sur téléphone et tablette ; sur TV, le QR code (généré sur l'appareil) y mène. Cette page et le site vitrine (section Soutenir) : bouton PayPal hébergé du compte Business (montant libre, PayPal ou carte bancaire, réglé dans le tableau de bord PayPal), lien de paiement PayPal en secours ; choix « Une fois / Chaque mois » : dons mensuels de 3, 5 ou 10 € par abonnement PayPal (résiliables depuis le compte PayPal). Tableau de bord, README et bouton Sponsor : PayPal seul.
+- Catégories favorites (#249, avec la modification depuis le tableau de bord web) : une étoile dans Réglages › Catégories marque ou démarque une catégorie du Direct, des Films ou des Séries ; les favorites remontent en tête des listes de catégories (avec ★), les autres gardent leur ordre personnalisé. Partagées entre appareils par le champ `favCats` des réglages d'affichage ; un appareil qui ne l'a pas lu n'efface jamais les favorites du compte.
 
 ### Bureau (prochaine version)
 - Accueil : aucune rangée (à la une, en direct, reprises, nouveautés, mieux notés, Trakt, nouveaux épisodes, sport) ne montre plus de contenu d'une catégorie masquée, verrouillée ou adulte ; un profil Enfants ne voit les catégories adultes nulle part (case « Profil Enfants » dans Réglages › Profils).
@@ -18,6 +28,7 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 - Groupes de chaînes personnalisés dans le Direct et le Guide, par profil et par source (créer, renommer, supprimer, ajouter une chaîne par clic droit ou le bouton « Groupes »).
 - Réglages : niveaux Essentiel / Standard / Expert ; Expert d'office pour un utilisateur existant, Standard pour une installation neuve ; un réglage modifié reste toujours affiché.
 - Rail latéral : sélecteur de source rapide quand le profil voit plusieurs sources.
+
 
 
 ## [1.3.74] — 2026-11-23 (Android)

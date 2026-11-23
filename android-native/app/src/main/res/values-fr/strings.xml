@@ -1998,6 +1998,8 @@
     <string name="ds_settings_level_expert_hint">Tous les réglages sont affichés, techniques compris.</string>
     <string name="cat_lock_col">Code</string>
     <string name="cat_lock">Verrouiller cette catégorie par le code parental</string>
+    <string name="cat_fav">Mettre cette catégorie en favorite</string>
+    <string name="cat_unfav">Retirer cette catégorie des favorites</string>
     <string name="cat_unlock">Déverrouiller cette catégorie</string>
     <string name="cat_lock_need_pin">Définissez d’abord un code parental (Réglages › Contrôle parental) : sans lui, une catégorie verrouillée n’est pas protégée</string>
     <string name="rail_switch_source">Changer de source</string>

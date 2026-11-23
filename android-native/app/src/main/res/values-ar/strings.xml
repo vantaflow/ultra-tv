@@ -2059,6 +2059,8 @@
     <string name="ds_settings_level_expert_hint">تظهر كل الإعدادات، بما فيها الإعدادات التقنية.</string>
     <string name="cat_lock_col">الرمز</string>
     <string name="cat_lock">قفل هذه الفئة برمز الرقابة الأبوية</string>
+    <string name="cat_fav">إضافة هذه الفئة إلى المفضلة</string>
+    <string name="cat_unfav">إزالة هذه الفئة من المفضلة</string>
     <string name="cat_unlock">إلغاء قفل هذه الفئة</string>
     <string name="cat_lock_need_pin">عيّن رمز الرقابة الأبوية أولاً (الإعدادات › الرقابة الأبوية): بدونه لا تكون الفئة المقفلة محمية</string>
     <string name="rail_switch_source">تغيير المصدر</string>

@@ -81,21 +81,29 @@ fun ApplyUxTheme(
     if (Ux.screenEdges != screenEdges) Ux.screenEdges = screenEdges
 }
 
+/**
+ * Schéma Material : fonds et surfaces viennent UNIQUEMENT de la palette du thème, jamais de l'accent (qui reste réservé
+ * au focus, aux sélections et aux progressions). [surfaceTint] est neutralisé : Material le garde sinon égal à `primary`
+ * et teinte alors toute surface en relief avec la couleur d'accent choisie.
+ */
+internal fun uxColorScheme(palette: com.ultratv.tv.nativeapp.ui.design.UxPalette, accent: Color, onAccent: Color): androidx.tv.material3.ColorScheme {
+    val base = if (palette.light) Light else Dark
+    return base.copy(
+        primary = accent, onPrimary = onAccent,
+        background = palette.bg, onBackground = palette.text, surface = palette.card2, onSurface = palette.text,
+        surfaceVariant = palette.button, onSurfaceVariant = palette.text2, border = palette.line,
+        inverseSurface = palette.focusFill, inverseOnSurface = palette.focusText,
+        surfaceTint = Color.Transparent,
+    )
+}
+
 @Composable
 fun UltraTvTheme(content: @Composable () -> Unit) {
     // Accent choisi par l'utilisateur (le jeu de couleurs Material ne sert qu'aux rares composants Material restants).
     val accent = Ux.Accent; val onAccent = Ux.OnAccent
     val palette = paletteFor(isLightEffective(Ux.themeLight, Ux.playerActive), Ux.themeKind)
-    val base = if (palette.light) Light else Dark
     // Schéma Material aligné sur la palette du thème choisi (fonds, surfaces, focus).
-    val scheme = androidx.compose.runtime.remember(base, accent, palette) {
-        base.copy(
-            primary = accent, onPrimary = onAccent,
-            background = palette.bg, onBackground = palette.text, surface = palette.card2, onSurface = palette.text,
-            surfaceVariant = palette.button, onSurfaceVariant = palette.text2, border = palette.line,
-            inverseSurface = palette.focusFill, inverseOnSurface = palette.focusText,
-        )
-    }
+    val scheme = androidx.compose.runtime.remember(accent, onAccent, palette) { uxColorScheme(palette, accent, onAccent) }
     androidx.compose.runtime.CompositionLocalProvider(LocalUxPalette provides palette) {
         MaterialTheme(colorScheme = scheme, content = content)
     }

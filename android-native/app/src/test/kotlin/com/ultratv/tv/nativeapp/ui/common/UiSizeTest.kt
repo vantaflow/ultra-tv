@@ -31,9 +31,14 @@ class UiSizeTest {
     }
 
     @Test fun `TV - ecart borne pour garder la maquette de 540 dp lisible`() {
-        // « Très grande » sur TV laisse au moins 480 dp de haut (cadres fixes du Guide, des fiches et du lecteur).
+        // « Très grande » sur TV (x1,3, aligné sur le texte « très grand ») laisse au moins 400 dp de haut.
         val h = 1080 / scaledDensity(tv = true, heightPx = 1080, base = phone, textScale = 1f, ui = UiSize.XLARGE.scale(tv = true)).density
-        assertTrue("hauteur utile $h dp", h >= 480f)
+        assertTrue("hauteur utile $h dp", h >= 400f)
         assertTrue(UiSize.entries.zipWithNext().all { (a, b) -> a.tvScale < b.tvScale && a.touchScale < b.touchScale })
+    }
+
+    @Test fun `TV - l'echelle d'interface suit celle du texte (0,92 - 1 - 1,15 - 1,3)`() {
+        assertEquals(listOf(0.92f, 1f, 1.15f, 1.3f), UiSize.entries.map { it.tvScale })
+        assertEquals(1f, UiSize.NORMAL.tvScale, 0f)
     }
 }
