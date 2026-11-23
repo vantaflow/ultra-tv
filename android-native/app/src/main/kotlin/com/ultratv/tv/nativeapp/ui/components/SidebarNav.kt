@@ -116,6 +116,9 @@ const val RAIL_COLLAPSED_PX = 112
 // 360 (et non 340) : « Téléchargements » était coupé au bord du rail déplié.
 const val RAIL_EXPANDED_PX = 360
 
+/** Largeur étendue du menu : suit la taille du texte au-delà de la normale (libellés entiers), jamais plus étroite qu'avant. */
+fun railExpandedPx(textScale: Float): Int = (RAIL_EXPANDED_PX * textScale.coerceIn(1f, 1.5f)).toInt()
+
 /**
  * Rail latéral (maquette Sidebar.dc.html) : 112 px, logo, neuf items de 64×64 (icône 30), profil.
  * Quand le focus y entre il s'élargit à 280 px et affiche les libellés ; il passe PAR-DESSUS le
@@ -148,7 +151,8 @@ fun SidebarNav(navController: NavController, menu: RailMenuState = remember { Ra
     val leaveRail: () -> Unit = {
         focusManager.moveFocus(if (rtl) androidx.compose.ui.focus.FocusDirection.Left else androidx.compose.ui.focus.FocusDirection.Right)
     }
-    val target = (if (expanded) RAIL_EXPANDED_PX else RAIL_COLLAPSED_PX).design
+    val expandedPx = railExpandedPx(Ux.textScale)
+    val target = (if (expanded) expandedPx else RAIL_COLLAPSED_PX).design
     // Animations réduites (réglage système) ou low-RAM : bascule instantanée, sans état intermédiaire.
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val noAnim = lowRam || remember { android.provider.Settings.Global.getFloat(ctx.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }
@@ -160,7 +164,7 @@ fun SidebarNav(navController: NavController, menu: RailMenuState = remember { Ra
     // Libellés et logotype : visibles seulement APRÈS 70 % de l'élargissement, masqués dès le début du repli.
     val labels by remember(noAnim) {
         androidx.compose.runtime.derivedStateOf {
-            val progress = ((widthState.value - RAIL_COLLAPSED_PX.design) / (RAIL_EXPANDED_PX.design - RAIL_COLLAPSED_PX.design)).coerceIn(0f, 1f)
+            val progress = ((widthState.value - RAIL_COLLAPSED_PX.design) / (expandedPx.design - RAIL_COLLAPSED_PX.design)).coerceIn(0f, 1f)
             expanded && (noAnim || progress >= 0.7f)
         }
     }
@@ -267,7 +271,7 @@ fun SidebarNav(navController: NavController, menu: RailMenuState = remember { Ra
                 val slots = 2 * GROUP_SLOT_PX + 16   // deux têtes de groupe + écart minimal avant le bas
                 val maxHeight = if (areaPx > 0) with(density) { areaPx.toDp() } else (56 * n + 6 * (n - 1) + slots).design
                 val gapPx = if (maxHeight >= (56 * n + 6 * (n + 1) + slots).design) 6 else 2
-                val itemDp = ((maxHeight - (gapPx * (n + 1) + slots).design) / n).coerceIn(40.design, 56.design)
+                val itemDp = ((maxHeight - (gapPx * (n + 1) + slots).design) / n).coerceIn(40.designT, 56.designT)
                 val railEntry: @Composable (RailItem) -> Unit = { item ->
                         val active = isSelected(route, item.route)
                         FocusSurface(
