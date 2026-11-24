@@ -420,6 +420,9 @@ export const SITE_DICT = {
       },
       clientJs: {
         linkFail: "Impossible de récupérer le lien.",
+        favAll: "Tout",
+        favSearch: "Rechercher une catégorie…",
+        favNoMatch: "Aucune catégorie ne correspond.",
         favLive: "Chaînes en direct",
         favMovie: "Films",
         favSeries: "Séries",
@@ -802,6 +805,9 @@ export const SITE_DICT = {
       },
       clientJs: {
         linkFail: "Could not retrieve link.",
+        favAll: "All",
+        favSearch: "Search categories…",
+        favNoMatch: "No matching category.",
         favLive: "Live channels",
         favMovie: "Movies",
         favSeries: "Series",
@@ -1184,6 +1190,9 @@ export const SITE_DICT = {
       },
       clientJs: {
         linkFail: "No se pudo obtener el enlace.",
+        favAll: "Todo",
+        favSearch: "Buscar una categoría…",
+        favNoMatch: "Ninguna categoría coincide.",
         favLive: "Canales en directo",
         favMovie: "Películas",
         favSeries: "Series",
@@ -1566,6 +1575,9 @@ export const SITE_DICT = {
       },
       clientJs: {
         linkFail: "تعذر الحصول على الرابط.",
+        favAll: "الكل",
+        favSearch: "ابحث عن فئة…",
+        favNoMatch: "لا توجد فئة مطابقة.",
         favLive: "القنوات المباشرة",
         favMovie: "الأفلام",
         favSeries: "المسلسلات",
@@ -1948,6 +1960,9 @@ export const SITE_DICT = {
       },
       clientJs: {
         linkFail: "Nie udało się pobrać linku.",
+        favAll: "Wszystko",
+        favSearch: "Szukaj kategorii…",
+        favNoMatch: "Brak pasujących kategorii.",
         favLive: "Kanały na żywo",
         favMovie: "Filmy",
         favSeries: "Seriale",
