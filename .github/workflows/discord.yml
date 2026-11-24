@@ -5,7 +5,7 @@ name: Discord
 # Déclenché à la fin réussie des builds Android (Release) et bureau (Desktop release) ;
 # les pré-versions (-rc) et les tags sans section CHANGELOG ne sont pas annoncés.
 # Messages libres (dons, accueil) : tools/discord/messages/*.json, lancement manuel avec « message ».
-# Secrets : DISCORD_WEBHOOK_UPDATES, DISCORD_WEBHOOK_FEATURES, DISCORD_WEBHOOK_ANNOUNCES (un secret absent = salon ignoré).
+# Secrets : DISCORD_WEBHOOK_UPDATES, DISCORD_WEBHOOK_FEATURES, DISCORD_WEBHOOK_ANNONCES (un secret absent = salon ignoré).
 
 on:
   workflow_run:
@@ -44,7 +44,7 @@ jobs:
           ONLY: ${{ inputs.only == 'all' && 'announces' || inputs.only }}
           DISCORD_WEBHOOK_UPDATES: ${{ secrets.DISCORD_WEBHOOK_UPDATES }}
           DISCORD_WEBHOOK_FEATURES: ${{ secrets.DISCORD_WEBHOOK_FEATURES }}
-          DISCORD_WEBHOOK_ANNOUNCES: ${{ secrets.DISCORD_WEBHOOK_ANNOUNCES }}
+          DISCORD_WEBHOOK_ANNONCES: ${{ secrets.DISCORD_WEBHOOK_ANNONCES }}
         run: python3 -I tools/discord/post_release.py
 
   announce:

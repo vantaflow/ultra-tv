@@ -90,7 +90,7 @@ def post(hook: str, payload: dict):
         print("Discord :", r.status)
 
 
-HOOKS = {"updates": "DISCORD_WEBHOOK_UPDATES", "features": "DISCORD_WEBHOOK_FEATURES", "announces": "DISCORD_WEBHOOK_ANNOUNCES"}
+HOOKS = {"updates": "DISCORD_WEBHOOK_UPDATES", "features": "DISCORD_WEBHOOK_FEATURES", "announces": "DISCORD_WEBHOOK_ANNONCES"}
 
 
 def valid(hook: str) -> bool:
@@ -104,7 +104,7 @@ def main():
     if os.environ.get("MESSAGE"):
         name = os.path.basename(os.environ["MESSAGE"]).removesuffix(".json")
         payload = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "messages", name + ".json"), encoding="utf-8"))
-        env = HOOKS.get(os.environ.get("ONLY", "announces"), "DISCORD_WEBHOOK_ANNOUNCES")
+        env = HOOKS.get(os.environ.get("ONLY", "announces"), "DISCORD_WEBHOOK_ANNONCES")
         hook = os.environ.get(env, "").strip()
         if dry:
             print(env, json.dumps(payload, ensure_ascii=False)[:300])
