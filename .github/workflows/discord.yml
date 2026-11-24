@@ -42,10 +42,9 @@ jobs:
           read -r draft pre url <<< "$info"
           if [ "$draft" = "true" ] || [ "$pre" = "true" ]; then echo "brouillon ou pré-version : pas d'annonce"; echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0; fi
           { echo "tag=$TAG"; echo "url=$url"; echo "skip=false"; } >> "$GITHUB_OUTPUT"
+      # Branche par défaut (pas le tag) : le script et le CHANGELOG à jour y sont, y compris pour une version antérieure au script.
       - uses: actions/checkout@v7
         if: steps.rel.outputs.skip == 'false'
-        with:
-          ref: ${{ steps.rel.outputs.tag }}
       - name: Annonce Discord
         if: steps.rel.outputs.skip == 'false'
         env:
