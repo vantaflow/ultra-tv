@@ -90,9 +90,29 @@ def post(hook: str, payload: dict):
         print("Discord :", r.status)
 
 
+HOOKS = {"updates": "DISCORD_WEBHOOK_UPDATES", "features": "DISCORD_WEBHOOK_FEATURES", "announces": "DISCORD_WEBHOOK_ANNONCES"}
+
+
+def valid(hook: str) -> bool:
+    return hook.startswith("https://discord.com/api/webhooks/") or hook.startswith("https://discordapp.com/api/webhooks/")
+
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     dry = "--dry-run" in sys.argv
+    # Message libre (tools/discord/messages/<nom>.json) posté au nom d'Ultra TV dans le salon ONLY.
+    if os.environ.get("MESSAGE"):
+        name = os.path.basename(os.environ["MESSAGE"]).removesuffix(".json")
+        payload = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "messages", name + ".json"), encoding="utf-8"))
+        env = HOOKS.get(os.environ.get("ONLY", "announces"), "DISCORD_WEBHOOK_ANNONCES")
+        hook = os.environ.get(env, "").strip()
+        if dry:
+            print(env, json.dumps(payload, ensure_ascii=False)[:300])
+            return
+        if not valid(hook):
+            sys.exit(f"{env} absent ou invalide")
+        post(hook, payload)
+        return
     tag = args[0]
     url = os.environ.get("RELEASE_URL") or f"https://github.com/vantaflow/ultra-tv/releases/tag/{tag}"
     changelog = open(os.environ.get("CHANGELOG", "CHANGELOG.md"), encoding="utf-8").read()
@@ -104,11 +124,14 @@ def main():
     for env, payload in (("DISCORD_WEBHOOK_UPDATES", updates), ("DISCORD_WEBHOOK_FEATURES", features)):
         if not payload:
             continue
+        only = os.environ.get("ONLY", "all")
+        if only != "all" and env != HOOKS.get(only):
+            continue
         if dry:
             print(env, json.dumps(payload, ensure_ascii=False, indent=1))
         elif os.environ.get(env):
             hook = os.environ[env].strip()
-            if not hook.startswith("https://discord.com/api/webhooks/") and not hook.startswith("https://discordapp.com/api/webhooks/"):
+            if not valid(hook):
                 # Diagnostic sans révéler le secret : longueur et début (schéma seulement).
                 print(f"{env} invalide : {len(hook)} caractères, commence par http : {hook.startswith('http')}, "
                       f"contient discord : {'discord' in hook}. Recopier l'URL du webhook (Paramètres du salon › Intégrations).")
