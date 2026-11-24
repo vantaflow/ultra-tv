@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { call, newAccount, pairDevice, addProvider, bearer } from "./helpers.js";
 import { nasUrl, parseProvider, parseDeviceProvider, parsePlexProvider, syncProvider } from "../src/store.js";
 import { parsePlexServers } from "../src/plexweb.js";
-import { autoTranslate } from "../src/annautotr.js";
+import { autoTranslate, AUTO_TR_LLM } from "../src/annautotr.js";
 
 const form = (o) => ({ get: (k) => (o[k] === undefined ? null : o[k]) });
 const ok = (body) => new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
@@ -197,6 +197,23 @@ describe("alertes : traduction automatique", () => {
     expect(i18n.en).toEqual({ title: "[en] Soutenir", message: "[en] Merci", auto: true });
     expect(i18n.fr).toBeUndefined();
     expect(done).toEqual(["en", "es"]);
+  });
+
+  it("modèle de langage d'abord (objet ou texte JSON), m2m100 seulement en secours", async () => {
+    const ai = { run: vi.fn(async (model, inp) => {
+      if (model === AUTO_TR_LLM) {
+        const to = inp.messages[0].content.match(/ to ([A-Za-z ]+)\./)[1];
+        if (to === "Thai") throw new Error("quota");
+        if (to === "Spanish") return { response: { title: "Apoya a Ultra TV", message: "¡Gracias!" } };
+        return { response: 'Voici : {"title": "Support Ultra TV", "message": "Thanks!"}' };
+      }
+      return { translated_text: `[m2m ${inp.target_lang}] ${inp.text}` };
+    }) };
+    const { i18n, done } = await autoTranslate(ai, { title: "Soutenir Ultra TV", message: "Merci !" }, ["en", "es", "th"], "fr");
+    expect(i18n.es).toEqual({ title: "Apoya a Ultra TV", message: "¡Gracias!", auto: true });
+    expect(i18n.en).toEqual({ title: "Support Ultra TV", message: "Thanks!", auto: true });
+    expect(i18n.th).toEqual({ title: "[m2m th] Soutenir Ultra TV", message: "[m2m th] Merci !", auto: true });
+    expect(done).toEqual(["en", "es", "th"]);
   });
 
   it("sans Workers AI : rien ne change", async () => {
