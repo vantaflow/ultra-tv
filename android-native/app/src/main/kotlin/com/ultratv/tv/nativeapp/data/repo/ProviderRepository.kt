@@ -790,11 +790,16 @@ class ProviderRepository @Inject constructor(
             ((doneBefore + weights.getValue(part) * fraction.coerceIn(0f, 1f)) / total * 100).toInt().coerceIn(0, 99)
 
         // Le pourcentage ne recule jamais (la lecture d'une partie puis son écriture ont chacune leur estimation).
+        // Appelé en parallèle par les lectures de catégories : calcul et émission sous verrou, sinon un fil
+        // qui a lu l'ancien maximum publie après un autre et la barre recule (40 puis 33).
         var shown = 0
+        val stepLock = Any()
         fun step(part: SyncPart, label: String, count: Int?, fraction: Float) {
             onProgress(label)
-            shown = maxOf(shown, pct(part, fraction))
-            syncStatus.set(SyncStatusBus.Status(provider = p.name, step = label, percent = shown, part = part, count = count))
+            synchronized(stepLock) {
+                shown = maxOf(shown, pct(part, fraction))
+                syncStatus.set(SyncStatusBus.Status(provider = p.name, step = label, percent = shown, part = part, count = count))
+            }
         }
 
         val pinSet = parental.isSet()
