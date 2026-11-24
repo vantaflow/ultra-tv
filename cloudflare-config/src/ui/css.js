@@ -226,6 +226,12 @@ details>.drop{margin-top:var(--sp-3);padding-top:4px;flex-basis:100%}
    sa hauteur (le contenu d'un <details> est enveloppé par le navigateur : seul le <details> peut changer d'ordre). */
 .actions{align-items:flex-start}
 .actions details[open]{display:block;flex-basis:100%;order:10;min-width:0}
+/* Navigateurs qui exposent l'enveloppe du contenu : le bouton du volet reste dans la rangée, seul le formulaire descend. */
+@supports selector(::details-content){
+.actions details[open]{display:contents}
+.actions details::details-content{order:10;flex-basis:100%;min-width:0}
+.actions details:not([open])::details-content{display:none}
+}
 .ed-fields{border:0;margin:0;padding:0;min-width:0}
 .ed-fields[disabled]{opacity:.55}
 .picks{display:flex;flex-wrap:wrap;gap:var(--sp-2);margin-top:10px}
