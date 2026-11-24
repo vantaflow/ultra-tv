@@ -192,6 +192,13 @@ describe("alertes : traduction automatique", () => {
     expect(done).toEqual(["es", "nb"]);
   });
 
+  it("texte saisi en français : l'anglais est traduit aussi, jamais la langue source", async () => {
+    const { i18n, done } = await autoTranslate(fakeAi(), { title: "Soutenir", message: "Merci" }, ["en", "fr", "es"], "fr");
+    expect(i18n.en).toEqual({ title: "[en] Soutenir", message: "[en] Merci", auto: true });
+    expect(i18n.fr).toBeUndefined();
+    expect(done).toEqual(["en", "es"]);
+  });
+
   it("sans Workers AI : rien ne change", async () => {
     expect(await autoTranslate(undefined, { title: "", message: "x" }, ["fr"])).toEqual({ i18n: null, done: [] });
   });

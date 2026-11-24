@@ -5,7 +5,8 @@
 export const AUTO_TR_MODEL = "@cf/meta/m2m100-1.2b";
 
 /** Code de langue de l'alerte → code attendu par m2m100 (norvégien bokmål = « no »). */
-const M2M = { fr: "fr", es: "es", ar: "ar", pl: "pl", pt: "pt", ro: "ro", nb: "no", cs: "cs", fi: "fi", da: "da", el: "el", th: "th", vi: "vi", tr: "tr" };
+// « en » : cible quand le texte est saisi dans une autre langue (sinon les appareils en anglais recevaient le texte source).
+const M2M = { en: "en", fr: "fr", es: "es", ar: "ar", pl: "pl", pt: "pt", ro: "ro", nb: "no", cs: "cs", fi: "fi", da: "da", el: "el", th: "th", vi: "vi", tr: "tr" };
 
 const TITLE_MAX = 80;
 const MESSAGE_MAX = 600;
