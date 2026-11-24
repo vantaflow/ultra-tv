@@ -24,8 +24,12 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 ### Ajouté
 - Mode simple : « Soutenir Ultra TV » apparaît aussi dans ses réglages (cœur, avant « Tous les réglages »). Même comportement que Réglages › À propos : QR code PayPal sur TV, lien de paiement direct sur téléphone et tablette.
 
+### Corrigé
+- Synchro : la barre de progression ne recule plus quand plusieurs catégories de films ou de séries sont lues en même temps (par exemple 40 % puis 33 % sur un portail Stalker).
+
 ### In English
 - Simple mode: "Support Ultra TV" (PayPal QR code on TV, direct link on phones) is now in the simple-mode settings too.
+- Sync: the progress bar no longer goes backwards while several movie or series categories are read in parallel.
 
 ## [1.3.76] — 2026-11-23 (Android)
 
