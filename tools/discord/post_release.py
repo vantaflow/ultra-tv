@@ -12,6 +12,8 @@ import json, os, re, sys, urllib.request
 DOWNLOAD = "https://ultratv.dpdns.org/download"
 ICONS = {"Ajouté": "✨", "Modifié": "🔧", "Corrigé": "🐛", "Bureau": "🖥️", "Sécurité": "🔒", "Retiré": "🗑️"}
 SKIP = {"Technique"}
+# Entrées devenues fausses depuis (corrigées par une version suivante) : jamais republiées.
+OUTDATED = ("le réglage est retiré", "the setting is removed", "Amélioration de télémétrie")
 
 
 def section(changelog: str, tag: str):
@@ -34,7 +36,7 @@ def section(changelog: str, tag: str):
             cur = h.group(1).strip()
             continue
         b = re.match(r"^- (.*)$", line)
-        if not b or cur is None or cur in SKIP:
+        if not b or cur is None or cur in SKIP or any(o.lower() in b.group(1).lower() for o in OUTDATED):
             continue
         (english if cur.lower().startswith("in english") else parts.setdefault(cur, [])).append(b.group(1).strip())
     return title, parts, english
@@ -68,6 +70,8 @@ def build(tag: str, url: str, changelog: str):
     if not s:
         return None, None
     title, parts, english = s
+    if not parts and not english:
+        return None, None   # version purement technique (dépendances) : rien à annoncer
     desc = []
     for name, items in parts.items():
         desc.append(f"**{ICONS.get(name, '•')} {name}**\n" + bullets(items, 1100))
@@ -79,7 +83,7 @@ def build(tag: str, url: str, changelog: str):
     if parts.get("Ajouté"):
         features = {"username": "Ultra TV", "embeds": [{
             "title": "🚀 Nouveautés · " + title.split(" ", 1)[1], "url": url, "color": 0x5865F2,
-            "description": (bullets(parts["Ajouté"], 3000) + f"\n\n⬇️ [Télécharger / Download]({DOWNLOAD})\n💡 Une idée ? #ideas-and-suggestions")[:4000],
+            "description": (bullets(parts["Ajouté"], 1800) + ("\n\n**🇬🇧 In English**\n" + bullets(english, 1200) if english else "") + f"\n\n⬇️ [Télécharger / Download]({DOWNLOAD})\n💡 Une idée ? #ideas-and-suggestions")[:4000],
         }]}
     return updates, features
 
