@@ -4,6 +4,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 Chaque version Android peut finir par une sous-section `### In English` : quelques puces courtes en anglais, reprises en tête des notes de la release GitHub (« English summary ») par `.github/release-notes.sh` ; le reste de la section y figure en français. Uniquement des puces sous ce titre, sans autre sous-titre.
 
+## [Worker] — 2026-11-24
+
+### Ajouté
+- Tableau de bord › source Xtream › Catégories favorites : champ de recherche (sans tenir compte des accents ni des majuscules) et onglets Tout / Direct / Films / Séries avec le nombre de catégories (#249). Une catégorie cochée puis masquée par le filtre reste enregistrée.
+
+### Modifié
+- Alertes : traduction automatique par un modèle de langage (Llama 3.3 70B, Workers AI, gratuit), plus naturelle ; m2m100 reste en secours. Une alerte saisie dans une autre langue que l'anglais est désormais traduite en anglais aussi (les appareils en anglais recevaient le texte source).
+
+### In English
+- Dashboard favourite categories: search box and All / Live / Movies / Series tabs (#249).
+- Alerts are auto-translated by an LLM (free Workers AI), English included when the alert is written in another language.
+
 ## [Site] — 2026-11-23
 
 ### Ajouté

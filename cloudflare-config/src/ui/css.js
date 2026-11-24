@@ -227,6 +227,12 @@ details>.drop{margin-top:var(--sp-3);padding-top:4px;flex-basis:100%}
 .pick{display:inline-flex;align-items:center;gap:10px;min-height:44px;margin:0;padding:0 14px;border-radius:var(--r-md);background:var(--bg);border:1.5px solid var(--bd);color:var(--fg);font-size:14px;font-weight:600;cursor:pointer}
 .pick:has(input:checked){border-color:var(--acc)}
 .pick.all{border-style:dashed}
+/* Catégories favorites : recherche et onglets Tout / Direct / Films / Séries (#249). */
+.favcats-q{width:100%;margin-top:var(--sp-3)}
+.favcats-seg{margin:var(--sp-3) 0 0}
+.favcats-seg button{flex:1;min-height:44px;margin:0;border:0;background:transparent;border-radius:var(--r-md);color:var(--fg2);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.favcats-seg button[aria-selected=true]{background:var(--acc);color:var(--on-acc)}
+.favcats-seg button:focus-visible{outline:3px solid var(--ring);outline-offset:2px}
 /* Carte « Service de suivi » : état en tête, une ligne par service, choix du service actif. */
 .track-now{margin-top:var(--sp-3);font-size:16px}
 .svcs{display:grid;gap:var(--sp-3);margin-top:var(--sp-4)}

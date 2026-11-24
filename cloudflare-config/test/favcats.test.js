@@ -144,6 +144,13 @@ describe("page du tableau de bord", () => {
       expect(html, l).toContain(`action="/providers/${id}/favcats"`);
       expect(html, l).toContain(s.favCats);
       expect(html, l).toContain(`/categories`);
+      // Recherche et onglets (#249) : textes traduits dans le script de la page.
+      const c = SITE_DICT[l].dash.clientJs;
+      for (const k of ["favAll", "favSearch", "favNoMatch"]) expect(c[k], `${l} ${k}`).toBeTruthy();
+      expect(html, l).toContain(JSON.stringify(c.favSearch).slice(1, -1));
+      expect(html, l).toContain("favcats-seg");
+      // Le script inline de la page reste du JavaScript valide (échappements du gabarit compris).
+      for (const [, code] of html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)) expect(() => new Function(code), l).not.toThrow();
     }
   });
   it("sourceM3U_sansVoletFavorites", async () => {
