@@ -12,6 +12,8 @@ import json, os, re, sys, urllib.request
 DOWNLOAD = "https://ultratv.dpdns.org/download"
 ICONS = {"Ajouté": "✨", "Modifié": "🔧", "Corrigé": "🐛", "Bureau": "🖥️", "Sécurité": "🔒", "Retiré": "🗑️"}
 SKIP = {"Technique"}
+# Entrées devenues fausses depuis (corrigées par une version suivante) : jamais republiées.
+OUTDATED = ("le réglage est retiré", "the setting is removed", "Amélioration de télémétrie")
 
 
 def section(changelog: str, tag: str):
@@ -34,7 +36,7 @@ def section(changelog: str, tag: str):
             cur = h.group(1).strip()
             continue
         b = re.match(r"^- (.*)$", line)
-        if not b or cur is None or cur in SKIP:
+        if not b or cur is None or cur in SKIP or any(o.lower() in b.group(1).lower() for o in OUTDATED):
             continue
         (english if cur.lower().startswith("in english") else parts.setdefault(cur, [])).append(b.group(1).strip())
     return title, parts, english
