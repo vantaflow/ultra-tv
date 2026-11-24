@@ -12,6 +12,8 @@ object Routes {
     const val FAVORITES = "favorites"
     /** Rubrique Sport (facultative, Réglages › Affichage) : direct, à venir et chaînes de sport tirés du guide de la source. */
     const val SPORT = "sport"
+    /** Rubrique Replay : chaînes à archive de la source active, jours puis programmes passés (rattrapage). */
+    const val REPLAY = "replay"
     const val SETTINGS = "settings"
     /** Réglages complets ouverts depuis le mode simple (sinon « settings » y affiche les réglages simples). */
     const val SETTINGS_ALL = "settings/all"

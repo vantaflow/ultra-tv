@@ -620,7 +620,10 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition, simpleHome: Boolean
         modifier = Modifier.fillMaxSize(),
         colors = SurfaceDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
     ) {
-      androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.common.LocalOverlayHost provides overlays, com.ultratv.tv.nativeapp.ui.mobile.LocalOpenSearch provides openSearch, com.ultratv.tv.nativeapp.ui.mobile.LocalNavBack provides navBack, com.ultratv.tv.nativeapp.ui.player.engine.LocalSharedLive provides sharedLive) {
+      // Entrée « Replay » des menus : seulement si la source active a au moins une chaîne avec archive.
+      val replayMenu: com.ultratv.tv.nativeapp.ui.replay.ReplayMenuViewModel = hiltViewModel()
+      val replayOn by replayMenu.available.collectAsState()
+      androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.replay.LocalReplayEnabled provides replayOn, com.ultratv.tv.nativeapp.ui.common.LocalOverlayHost provides overlays, com.ultratv.tv.nativeapp.ui.mobile.LocalOpenSearch provides openSearch, com.ultratv.tv.nativeapp.ui.mobile.LocalNavBack provides navBack, com.ultratv.tv.nativeapp.ui.player.engine.LocalSharedLive provides sharedLive) {
         androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
         val backEntryRoute by nav.currentBackStackEntryAsState()
         // « Ouvrir sur › Dernier écran » : la dernière rubrique ouverte est mémorisée (fiches, lecteur et réglages ignorés).
@@ -814,6 +817,14 @@ private fun NavGraph(nav: androidx.navigation.NavHostController, simpleHome: Boo
         screen(Routes.SPORT) {
             com.ultratv.tv.nativeapp.ui.sport.SportScreen(
                 onPlay = { url, title -> nav.navigate(Routes.player(url, title)) },
+                onGoSettings = { nav.navigate(Routes.SETTINGS) },
+            )
+        }
+        // Rubrique Replay : chaînes à archive de la source active, jours, programmes passés (lecture par le rattrapage).
+        screen(Routes.REPLAY) {
+            com.ultratv.tv.nativeapp.ui.replay.ReplayScreen(
+                onPlay = { url, title -> nav.navigate(Routes.player(url, title)) },
+                onGoLive = { nav.navigateTopLevel(Routes.LIVE) },
                 onGoSettings = { nav.navigate(Routes.SETTINGS) },
             )
         }

@@ -22,6 +22,7 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 ## [Non publié] (Android)
 
 ### Ajouté
+- De retour : rubrique « Replay » dans le menu latéral, après le Guide (téléphone et tablette : rail latéral et « Plus ») : les chaînes de la source active qui ont une archive (Xtream, M3U avec rattrapage), filtrables par catégorie, puis le jour (aujourd'hui, hier… jusqu'à la durée d'archive de la chaîne, 7 jours au plus) et la liste des programmes passés de ce jour (heure, titre, durée, description). OK lit le programme depuis le début ; un programme sorti de l'archive est grisé « Indisponible ». Le profil est respecté : catégories masquées ou désactivées absentes, chaînes et catégories verrouillées derrière le code parental, adultes exclus du profil Enfants. L'entrée n'apparaît que si la source propose une archive ; sinon l'écran l'explique. Lien direct `ultratv://replay`. Elle était dans la pré-version 1.3.75-rc1 mais pas dans les versions 1.3.75 et 1.3.76.
 - Mode simple : « Soutenir Ultra TV » apparaît aussi dans ses réglages (cœur, avant « Tous les réglages »). Même comportement que Réglages › À propos : QR code PayPal sur TV, lien de paiement direct sur téléphone et tablette.
 
 ### Corrigé
@@ -30,6 +31,7 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 - Accueil : l'heure est de nouveau calée au bord droit du bandeau de salutation.
 
 ### In English
+- Replay is back in the side menu (it was in the 1.3.75-rc1 pre-release but missing from 1.3.75 and 1.3.76).
 - Simple mode: "Support Ultra TV" (PayPal QR code on TV, direct link on phones) is now in the simple-mode settings too.
 - Sync: the progress bar no longer goes backwards while several movie or series categories are read in parallel.
 - Two-line texts no longer show a large gap between lines on TV; the home clock is right-aligned again.

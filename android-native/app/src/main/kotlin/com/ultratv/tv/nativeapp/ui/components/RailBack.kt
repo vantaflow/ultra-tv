@@ -48,7 +48,7 @@ internal enum class RailBackAction {
 }
 
 /** Écrans principaux : exactement une entrée du menu (les sous-niveaux « movies/12 », le lecteur, la recherche n'en sont pas). */
-private val mainRoutes: Set<String> by lazy { railItems.map { it.route }.toSet() + Routes.SPORT + Routes.LIBRARIES }
+private val mainRoutes: Set<String> by lazy { railItems.map { it.route }.toSet() + Routes.SPORT + Routes.REPLAY + Routes.LIBRARIES }
 
 /**
  * Effet de Retour (TV, menu latéral) quand les retours locaux n'ont rien à fermer :
