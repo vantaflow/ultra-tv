@@ -7,6 +7,22 @@ import { ago, frDate } from "../ui/format.js";
 import { shell } from "../ui/layout.js";
 import { PAIR_JS, scanJs, pairForm } from "./pair.js";
 
+/**
+ * Modifier une source IPTV : nom, adresse, et identifiants Xtream. Ni l'adresse ni le mot de passe ne sont écrits dans
+ * la page (l'adresse M3U contient souvent les identifiants) : champs vides = valeur actuelle gardée.
+ */
+function editForm(p, csrfInput, s) {
+  if (!["XTREAM", "M3U", "STALKER"].includes(p.kind)) return "";
+  const id = e(p.id);
+  return `<details><summary>${ico("edit")}${e(s.edit)}</summary><form method="post" action="/providers/${id}/edit" class="drop">${csrfInput}
+<label class="mt0" for="ed-n-${id}">${e(s.editName)}</label><input id="ed-n-${id}" name="name" maxlength="64" value="${e(p.name)}" autocomplete="off"/>
+<label for="ed-u-${id}">${e(s.editUrl)}</label><input id="ed-u-${id}" name="url" type="url" inputmode="url" maxlength="2048" placeholder="${e(displayUrl(p.url))}" spellcheck="false" autocomplete="off"/>
+${p.kind === "XTREAM" ? `<label for="ed-l-${id}">${e(s.editUser)}</label><input id="ed-l-${id}" name="username" maxlength="256" spellcheck="false" autocomplete="off"/>
+<label for="ed-p-${id}">${e(s.editPass)}</label><input id="ed-p-${id}" name="password" type="password" maxlength="256" autocomplete="new-password"/>` : ""}
+<p class="muted small">${e(s.editKeep)}</p>
+<div class="row"><button type="submit">${e(s.editSave)}</button></div></form></details>`;
+}
+
 /** Catégories favorites d'une source Xtream : liste chargée à l'ouverture (lue chez le fournisseur par le serveur), cases à cocher par type. */
 function favCatsForm(p, csrfInput, lang = "fr") {
   const s = (SITE_DICT[lang] || SITE_DICT.fr).dash.srcs;
@@ -91,6 +107,7 @@ ${p.managed === "reseller" ? `<div class="card-meta mt10"><span class="muted sma
     : p.kind === "STALKER" ? `<div class="card-meta mt10"><span class="muted small">${e(t.srcs.stalkerNoLink)}</span></div>` : ""}
 <div class="actions">${sh.form}
 ${xtreamCredsOf(p) ? favCatsForm(p, csrfInput, lang) : ""}
+${p.managed === "reseller" ? "" : editForm(p, csrfInput, t.srcs)}
 ${p.managed === "reseller" ? "" : `${MEDIA_KINDS.includes(p.kind) || p.kind === "STALKER" ? ""
     : `<button type="button" class="secondary reveal-link" data-id="${e(p.id)}" aria-controls="lk-${e(p.id)}" aria-expanded="false">${e(t.srcs.showLink)}</button>`}
 <form method="post" action="/providers/${e(p.id)}/delete" data-confirm="${e(t.srcs.delProvConfirm)}">${csrfInput}<button class="danger" type="submit">${e(t.srcs.deleteBtn)}</button></form>`}</div></article>`;
