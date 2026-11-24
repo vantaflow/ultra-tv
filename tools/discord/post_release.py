@@ -100,15 +100,25 @@ def main():
     if not updates:
         print(f"Aucune section CHANGELOG pour {tag} : rien à annoncer")
         return
+    failed = False
     for env, payload in (("DISCORD_WEBHOOK_UPDATES", updates), ("DISCORD_WEBHOOK_FEATURES", features)):
         if not payload:
             continue
         if dry:
             print(env, json.dumps(payload, ensure_ascii=False, indent=1))
         elif os.environ.get(env):
-            post(os.environ[env], payload)
+            hook = os.environ[env].strip()
+            if not hook.startswith("https://discord.com/api/webhooks/") and not hook.startswith("https://discordapp.com/api/webhooks/"):
+                # Diagnostic sans révéler le secret : longueur et début (schéma seulement).
+                print(f"{env} invalide : {len(hook)} caractères, commence par http : {hook.startswith('http')}, "
+                      f"contient discord : {'discord' in hook}. Recopier l'URL du webhook (Paramètres du salon › Intégrations).")
+                failed = True
+                continue
+            post(hook, payload)
         else:
             print(f"{env} absent : ignoré")
+    if failed:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
