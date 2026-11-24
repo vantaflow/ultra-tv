@@ -233,30 +233,39 @@ export function parseProvider(form, origin = null) {
   return { provider: p };
 }
 
+/** Types de source modifiables depuis le tableau de bord (les serveurs multimédias ont leur propre parcours). */
+export const EDITABLE_KINDS = ["XTREAM", "M3U", "STALKER"];
+
 /**
- * Modification d'une source IPTV depuis le tableau de bord : nom, adresse et, pour Xtream, identifiant et mot de passe.
- * Un champ vide garde la valeur actuelle (l'adresse et le mot de passe ne sont jamais renvoyés dans la page). Les sources
- * gérées par un revendeur et les serveurs multimédias ne se modifient pas ici. Renvoie { provider, changed } ou { error }.
+ * Modification complète d'une source IPTV depuis le tableau de bord : type, nom, adresse, identifiants, MAC. Les valeurs
+ * sont validées comme à l'ajout (parseProvider). Même type : la source garde son identifiant (favoris, réglages et
+ * affectations conservés, appareils mis à jour en place). Autre type (M3U → Xtream…) : nouvelle source à la place de
+ * l'ancienne, mêmes nom et affectations ; `replaced` = true (l'appelant pose la pierre tombale de l'ancienne).
+ * Sources d'un revendeur et serveurs multimédias exclus. Renvoie { provider, changed, replaced } ou { error }.
  */
 export function editProvider(p, form, now = Date.now()) {
-  if (!p || p.managed === "reseller" || !["XTREAM", "M3U", "STALKER"].includes(p.kind)) return { error: "edit" };
-  const next = { ...p };
-  const name = cleanLine(form.get("name"), 64);
-  if (name) next.name = name;
-  const rawUrl = String(form.get("url") || "").trim();
-  if (rawUrl) {
-    const url = validUrl(rawUrl);
-    if (!url) return { error: "url" };
-    next.url = url;
+  if (!p || p.managed === "reseller" || !EDITABLE_KINDS.includes(p.kind)) return { error: "edit" };
+  const kind = String(form.get("kind") || p.kind).toUpperCase();
+  if (!EDITABLE_KINDS.includes(kind)) return { error: "kind" };
+  const fields = { kind, name: form.get("name"), url: form.get("url"), username: form.get("username"), password: form.get("password"), mac: form.get("mac") };
+  const r = parseProvider({ get: (k) => (fields[k] === undefined ? null : fields[k]) }, { deviceId: p.originDeviceId || "", name: p.originName || "" });
+  if (r.error) return r;
+  const v = r.provider;
+  if (kind !== p.kind) {
+    const fresh = { ...v, createdAt: now, updatedAt: now, ...(p.assign ? { assign: p.assign } : {}) };
+    return { provider: fresh, changed: true, replaced: true };
   }
-  if (p.kind === "XTREAM") {
-    const u = cleanLine(form.get("username"), 256), pw = cleanLine(form.get("password"), 256);
-    if (u) next.username = u;
-    if (pw) next.password = pw;
-  }
-  const changed = ["name", "url", "username", "password"].some((k) => next[k] !== p[k]);
+  const next = { ...p, name: v.name, url: v.url, username: v.username || "", password: v.password || "" };
+  if (kind === "STALKER") next.mac = v.mac;
+  const changed = ["name", "url", "username", "password", "mac"].some((k) => next[k] !== p[k]);
   if (changed) next.updatedAt = Math.max(now, (p.updatedAt || 0) + 1);
-  return { provider: next, changed };
+  return { provider: next, changed, replaced: false };
+}
+
+/** Valeurs actuelles d'une source pour le formulaire de modification (lues à la demande, jamais écrites dans la page). */
+export function editableFields(p) {
+  if (!p || p.managed === "reseller" || !EDITABLE_KINDS.includes(p.kind)) return null;
+  return { kind: p.kind, name: p.name || "", url: p.url || "", username: p.username || "", password: p.password || "", mac: p.mac || "" };
 }
 
 /**

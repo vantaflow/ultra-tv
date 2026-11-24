@@ -8,19 +8,24 @@ import { shell } from "../ui/layout.js";
 import { PAIR_JS, scanJs, pairForm } from "./pair.js";
 
 /**
- * Modifier une source IPTV : nom, adresse, et identifiants Xtream. Ni l'adresse ni le mot de passe ne sont écrits dans
- * la page (l'adresse M3U contient souvent les identifiants) : champs vides = valeur actuelle gardée.
+ * Modifier une source IPTV en entier : type, nom, adresse, identifiants, MAC. Les valeurs actuelles sont chargées à
+ * l'ouverture du volet (POST /providers/:id/editfields, comme le lien IPTV) : rien de secret n'est écrit dans la page.
  */
 function editForm(p, csrfInput, s) {
   if (!["XTREAM", "M3U", "STALKER"].includes(p.kind)) return "";
   const id = e(p.id);
-  return `<details><summary>${ico("edit")}${e(s.edit)}</summary><form method="post" action="/providers/${id}/edit" class="drop">${csrfInput}
-<label class="mt0" for="ed-n-${id}">${e(s.editName)}</label><input id="ed-n-${id}" name="name" maxlength="64" value="${e(p.name)}" autocomplete="off"/>
-<label for="ed-u-${id}">${e(s.editUrl)}</label><input id="ed-u-${id}" name="url" type="url" inputmode="url" maxlength="2048" placeholder="${e(displayUrl(p.url))}" spellcheck="false" autocomplete="off"/>
-${p.kind === "XTREAM" ? `<label for="ed-l-${id}">${e(s.editUser)}</label><input id="ed-l-${id}" name="username" maxlength="256" spellcheck="false" autocomplete="off"/>
-<label for="ed-p-${id}">${e(s.editPass)}</label><input id="ed-p-${id}" name="password" type="password" maxlength="256" autocomplete="new-password"/>` : ""}
-<p class="muted small">${e(s.editKeep)}</p>
-<div class="row"><button type="submit">${e(s.editSave)}</button></div></form></details>`;
+  const opt = (k) => `<option value="${k}"${p.kind === k ? " selected" : ""}>${k === "M3U" ? "M3U" : k[0] + k.slice(1).toLowerCase()}</option>`;
+  return `<details class="editsrc" data-id="${id}" data-kind="${e(p.kind)}"><summary>${ico("edit")}${e(s.edit)}</summary><form method="post" action="/providers/${id}/edit" class="drop">${csrfInput}
+<p class="muted small mt0 ed-status" aria-live="polite">${e(s.editLoading)}</p>
+<fieldset class="ed-fields" disabled>
+<label class="mt0" for="ed-k-${id}">${e(s.editKind)}</label><select id="ed-k-${id}" name="kind">${["XTREAM", "M3U", "STALKER"].map(opt).join("")}</select>
+<p class="muted small ed-kindnote" hidden>${e(s.editKeep)}</p>
+<label for="ed-n-${id}">${e(s.editName)}</label><input id="ed-n-${id}" name="name" maxlength="64" value="${e(p.name)}" autocomplete="off"/>
+<label for="ed-u-${id}">${e(s.editUrl)}</label><input id="ed-u-${id}" name="url" type="url" inputmode="url" maxlength="2048" required spellcheck="false" autocomplete="off"/>
+<div class="ed-k ed-mac"><label for="ed-m-${id}">${e(s.editMac)}</label><input id="ed-m-${id}" name="mac" maxlength="17" spellcheck="false" autocomplete="off" placeholder="00:1A:79:12:34:56"/></div>
+<div class="ed-k ed-creds"><label for="ed-l-${id}">${e(s.editUser)}</label><input id="ed-l-${id}" name="username" maxlength="256" spellcheck="false" autocomplete="off"/>
+<label for="ed-p-${id}">${e(s.editPass)}</label><input id="ed-p-${id}" name="password" type="password" maxlength="256" autocomplete="new-password"/></div>
+<div class="row"><button type="submit">${e(s.editSave)}</button></div></fieldset></form></details>`;
 }
 
 /** Catégories favorites d'une source Xtream : liste chargée à l'ouverture (lue chez le fournisseur par le serveur), cases à cocher par type. */
@@ -170,6 +175,21 @@ document.querySelectorAll('.reveal-link').forEach(function(b){b.addEventListener
   .catch(function(){alert(${JSON.stringify(cJs.linkFail)});})
   .then(function(){b.disabled=false;});
 });});
+// Modifier une source : valeurs actuelles chargées à l'ouverture (jamais écrites dans la page), champs selon le type.
+document.querySelectorAll('details.editsrc').forEach(function(dt){
+ var f=dt.querySelector('form'),fs=f.querySelector('fieldset'),st=f.querySelector('.ed-status'),k=f.querySelector('select[name=kind]');
+ var show=function(){var v=k.value;f.querySelector('.ed-mac').hidden=v!=='STALKER';f.querySelector('.ed-creds').hidden=v==='M3U';
+  f.querySelector('input[name=mac]').required=v==='STALKER';f.querySelector('input[name=username]').required=v==='XTREAM';f.querySelector('input[name=password]').required=v==='XTREAM';
+  f.querySelector('.ed-kindnote').hidden=v===dt.dataset.kind;};
+ k.addEventListener('change',show);show();
+ dt.addEventListener('toggle',function(){
+  if(!dt.open||dt.dataset.loaded)return;dt.dataset.loaded='1';
+  fetch('/providers/'+dt.dataset.id+'/editfields',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/x-www-form-urlencoded'},body:'csrf='+encodeURIComponent(${JSON.stringify(csrf)})})
+   .then(function(r){if(!r.ok)throw new Error(String(r.status));return r.json();})
+   .then(function(j){['name','url','username','password','mac'].forEach(function(n){var i=f.querySelector('[name='+n+']');if(i&&typeof j[n]==='string')i.value=j[n];});k.value=j.kind;show();st.hidden=true;fs.disabled=false;})
+   .catch(function(){st.textContent=${JSON.stringify(t.srcs.editFail)};dt.removeAttribute('data-loaded');});
+ });
+});
 // Catégories favorites : chargées à la première ouverture du volet (noms lus chez le fournisseur par le serveur).
 document.querySelectorAll('details.favcats').forEach(function(dt){dt.addEventListener('toggle',function(){
  if(!dt.open||dt.dataset.loaded)return;dt.dataset.loaded='1';
