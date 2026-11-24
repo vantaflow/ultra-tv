@@ -1,0 +1,55 @@
+name: Discord
+
+# Annonce automatique de chaque version STABLE sur le serveur Discord (webhooks) :
+# #mises-a-jour (toutes les rubriques du CHANGELOG) et #new-features (rubrique « Ajouté »).
+# Déclenché à la fin réussie des builds Android (Release) et bureau (Desktop release) ;
+# les pré-versions (-rc) et les tags sans section CHANGELOG ne sont pas annoncés.
+# Secrets : DISCORD_WEBHOOK_UPDATES, DISCORD_WEBHOOK_FEATURES (un secret absent = salon ignoré).
+
+on:
+  workflow_run:
+    workflows: ["Release", "Desktop release"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag à annoncer (v1.3.77, desktop-v1.2.78)"
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: discord-${{ github.event.workflow_run.head_branch || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  announce:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Tag et release
+        id: rel
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.workflow_run.head_branch || inputs.tag }}
+        run: |
+          set -eu
+          case "$TAG" in v[0-9]*|desktop-v[0-9]*) ;; *) echo "pas un tag de version : $TAG"; echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0;; esac
+          case "$TAG" in *-rc*) echo "pré-version : pas d'annonce"; echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0;; esac
+          info=$(gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,url -q '[.isDraft,.isPrerelease,.url]|@tsv') || { echo "release introuvable"; echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0; }
+          read -r draft pre url <<< "$info"
+          if [ "$draft" = "true" ] || [ "$pre" = "true" ]; then echo "brouillon ou pré-version : pas d'annonce"; echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          { echo "tag=$TAG"; echo "url=$url"; echo "skip=false"; } >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        if: steps.rel.outputs.skip == 'false'
+        with:
+          ref: ${{ steps.rel.outputs.tag }}
+      - name: Annonce Discord
+        if: steps.rel.outputs.skip == 'false'
+        env:
+          RELEASE_URL: ${{ steps.rel.outputs.url }}
+          DISCORD_WEBHOOK_UPDATES: ${{ secrets.DISCORD_WEBHOOK_UPDATES }}
+          DISCORD_WEBHOOK_FEATURES: ${{ secrets.DISCORD_WEBHOOK_FEATURES }}
+        run: python3 -I tools/discord/post_release.py "${{ steps.rel.outputs.tag }}"
