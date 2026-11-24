@@ -410,8 +410,9 @@ private fun HomeGreeting(clock: State<Long>, stats: String) {
     val word = when { hour in 5..11 -> D.greetMorning; hour in 12..17 -> D.greetAfternoon; else -> D.greetEvening }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.design)) {
         Text(word, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 34.spx, maxLines = 1, softWrap = false)
-        if (stats.isNotEmpty()) Text("· $stats", color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-        Spacer(Modifier.weight(1f))
+        // Les compteurs prennent toute la place restante (texte calé à gauche) : l'heure finit au bord droit. Avant, ils
+        // partageaient l'espace à parts égales avec un Spacer, et l'heure s'arrêtait au milieu de la marge droite.
+        Text(if (stats.isNotEmpty()) "· $stats" else "", color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         Text(EpgClock.wall(now), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 30.spx, maxLines = 1, softWrap = false)
     }
 }

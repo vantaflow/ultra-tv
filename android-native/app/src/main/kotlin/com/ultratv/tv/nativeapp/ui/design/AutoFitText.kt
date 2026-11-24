@@ -19,6 +19,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.isSpecified
 
 /**
@@ -64,13 +65,20 @@ fun Text(
     var ready by remember(text, base) { mutableStateOf(false) }
     // Un mot seul trop long pour la ligne : réduction autorisée aussi sur TV (sinon « Recherch… »).
     var mayShrink by remember(text, base) { mutableStateOf(false) }
+    // Texte passé sur deux lignes : interligne proportionné à SA taille. Sans hauteur de ligne explicite, celle du thème
+    // (en sp réels, ~48 px sur TV) s'appliquait à des polices de maquette (spx, ~15 px) : gros vide entre les lignes.
+    var wrapped by remember(text, base) { mutableStateOf(false) }
+    val lh = if (!lineHeight.isSpecified && wrapped && lines > 1) WRAPPED_LINE_HEIGHT else lineHeight
     val size = if (base.isSpecified) base * scale else base
     androidx.tv.material3.Text(
         text = text, modifier = modifier.drawWithContent { if (ready) drawContent() }, color = color, fontSize = size,
         fontStyle = fontStyle, fontWeight = fontWeight, fontFamily = fontFamily,
         letterSpacing = if (letterSpacing.isSpecified) letterSpacing * scale else letterSpacing, textDecoration = textDecoration,
-        textAlign = textAlign, lineHeight = lineHeight, overflow = overflow, softWrap = softWrap, maxLines = lines, minLines = minLines,
-        onTextLayout = { r ->
+        textAlign = textAlign, lineHeight = lh, overflow = overflow, softWrap = softWrap, maxLines = lines, minLines = minLines,
+        onTextLayout = layout@{ r ->
+            // Première mesure sur deux lignes avec l'interligne du thème : on remesure avec l'interligne proportionné avant
+            // de juger la hauteur (sinon un texte qui tient sur deux lignes serait ramené à une seule).
+            if (!lineHeight.isSpecified && !wrapped && r.lineCount > 1) { wrapped = true; return@layout }
             val cut = r.lineCount > 0 && r.isLineEllipsized(r.lineCount - 1)
             // Retour à la ligne AU MILIEU d'un mot (« Recherch / er ») : jamais — une ligne, puis réduction de la taille.
             val midWord = r.lineCount > 1 && AutoFit.breaksWord(text, r.getLineEnd(0, visibleEnd = true))
@@ -95,6 +103,9 @@ val LocalTextWrap = androidx.compose.runtime.staticCompositionLocalOf { true }
 @Composable
 fun NoTextWrap(content: @Composable () -> Unit) =
     androidx.compose.runtime.CompositionLocalProvider(LocalTextWrap provides false, content = content)
+
+/** Interligne d'un texte passé à la ligne sans hauteur de ligne explicite (proportionnel à la police). */
+internal val WRAPPED_LINE_HEIGHT = 1.25.em
 
 /** Règle d'ajustement (pure, testée). */
 object AutoFit {
