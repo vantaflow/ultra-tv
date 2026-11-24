@@ -83,6 +83,16 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 - Réglages : niveaux Essentiel / Standard / Expert ; Expert d'office pour un utilisateur existant, Standard pour une installation neuve ; un réglage modifié reste toujours affiché.
 - Rail latéral : sélecteur de source rapide quand le profil voit plusieurs sources.
 
+### In English
+- Live TV on desktop (MPEG-TS streams): gentler live catch-up, no more stuttering and repeated buffering on Mac with servers that send data in bursts.
+- Home: no row shows content from a hidden, locked or adult category anymore; a Kids profile never sees adult categories.
+- Parental control: lock whole categories, with the PIN required everywhere the content can be opened.
+- Subscription screen shows the address you entered instead of the one declared by the provider's panel.
+- Themes and accent colour, in Settings › Display and in the first-source wizard.
+- Display: interface size from 90 % to 150 %.
+- Custom channel groups in Live TV and the Guide, per profile and per source.
+- Settings: Essential / Standard / Expert levels; a changed setting always stays visible.
+- Side rail: quick source switcher when the profile sees several sources.
 
 ## [1.3.74] — 2026-11-23 (Android)
 
@@ -202,6 +212,12 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 - Sport : une ligne de classement ou un match en direct répété par le serveur n'est affiché qu'une fois.
 - Démarrage avec l'appareil : une erreur au lancement automatique ne fait plus planter l'appli.
 
+### In English
+- Player: the error screen now explains the cause and what to do (provider server down, too many simultaneous streams, unreachable server, removed channel, unreadable format, sound without picture…).
+- Sync: dedicated messages for an unreachable local address, too many requests (429) and an unreadable reply.
+- Crash reports from devices without an account now reach us (errors and warnings only).
+- Fixed crashes: duplicate quality names in Live TV, duplicate tiles in libraries' Continue watching, simple-mode grid, repeated Sport rows, auto-start on boot.
+
 ## [1.3.71] — 2026-11-21 (Android)
 
 ### Modifié
@@ -216,11 +232,19 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 ### Ajouté
 - Stalker : champs facultatifs « Identité du boîtier » (numéro de série, Device ID 1/2, signature) dans le formulaire d'ajout, à recopier depuis un autre lecteur quand le fournisseur lie l'abonnement à ces valeurs.
 
+### In English
+- Stalker: retries with the MAC alone when the portal rejects the computed box identity, recognises "blocked" profiles and tries the other identity forms.
+- Stalker: optional "Box identity" fields (serial number, Device ID 1/2, signature) in the add form, for providers that bind the subscription to them.
+
 ## [1.3.70] — 2026-11-21 (Android)
 
 ### Corrigé
 - Stalker : quand plusieurs adresses du serveur répondent, l'appli retient celle où le portail accepte la MAC, au lieu de la première qui répond (la synchronisation échouait ensuite avec « identifiants refusés »).
 - Catégories : le tri A → Z se défait. Une fois trié, le bouton propose « Ordre du fournisseur » pour retrouver l'ordre d'origine.
+
+### In English
+- Stalker: when several server addresses answer, the app keeps the one where the portal accepts the MAC (sync no longer fails with "credentials refused").
+- Categories: A → Z sorting can be undone with "Provider order".
 
 ## [1.3.69] — 2026-11-20 (Android)
 
@@ -234,6 +258,9 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 - Bureau : version Mac pour macOS 12 Monterey (fichiers « mac12-universal »). Les versions récentes d'Electron exigent macOS 13 ; celle-ci est construite avec Electron 43, le dernier compatible, et sa mise à jour intégrée reste sur ce build
 - Lien de téléchargement /download/mac12 pour la version macOS 12 (/download/mac reste la version habituelle)
 
+### In English
+- Mac version for macOS 12 Monterey ("mac12-universal" files, built with Electron 43), with the /download/mac12 link.
+
 ## [1.3.68] — 2026-11-19 (Android)
 
 ### Corrigé
@@ -244,6 +271,9 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 
 ### Corrigé
 - Windows et Linux : clic droit dans un champ (adresse, identifiant, mot de passe…) → Couper, Copier, Coller, Tout sélectionner. Electron n'affiche aucun menu par défaut et l'appli n'a pas de barre de menus hors macOS : on ne pouvait coller qu'au clavier (Ctrl+V)
+
+### In English
+- Windows and Linux: right-click in a text field now offers Cut, Copy, Paste and Select all.
 
 ## [1.3.67] — 2026-11-19 (Android)
 
