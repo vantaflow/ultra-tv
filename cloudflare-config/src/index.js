@@ -24,7 +24,7 @@ import {
 } from "./http.js";
 import {
   guardStub, normalizeLogin, isMacLogin, getAccount, putAccount, loadProviders, saveProviders, deleteAccount,
-  newDeviceToken, registerDevice, authDevice, revokeDevice, rotateDevice, parseProvider, editProvider, publicProvider, syncProvider, parseDeviceProvider, parsePrefs, parseFavCats, xtreamCategories,
+  newDeviceToken, registerDevice, authDevice, revokeDevice, rotateDevice, parseProvider, editProvider, editableFields, publicProvider, syncProvider, parseDeviceProvider, parsePrefs, parseFavCats, xtreamCategories,
   isVisibleTo, assignmentOf, addTombstones, liveTombstones, isSupportedKind, parseAssign, dropDeviceFromAssignments, renameDevice,
   MAX_PROVIDERS, MAX_DEVICES, iptvLink, xtreamAccount, verifyProLicense, setDeviceInfo, parseStateBody, mergeState, loadState, saveState, deleteState, parseProfiles, mergeProfiles,
 } from "./store.js";
@@ -350,7 +350,7 @@ async function route(req, env, ctx) {
   const adminRoute = /^\/admin(\/(accounts|anon|devices|alerts|comptes\.csv))?$/.test(path) && m === "GET";
   const pairRoute = path === "/pair" && m === "GET";
   const mutating = m === "POST" && ["/pair", "/providers", "/password", "/account/delete", "/logout", "/subtitles/link", "/subtitles/unlink", "/trakt/connect", "/trakt/disconnect", "/simkl/connect", "/simkl/disconnect", "/tracking/service", "/profiles/sources", "/plex/pin", "/plex/check"].includes(path)
-    || (m === "POST" && /^\/(devices\/[0-9a-f]+\/(revoke|rename)|providers\/[0-9a-f]+\/(delete|assign|edit|link|account|categories|favcats)|admin\/announcements(\/[0-9a-f]+\/(end|delete))?)$/.test(path));
+    || (m === "POST" && /^\/(devices\/[0-9a-f]+\/(revoke|rename)|providers\/[0-9a-f]+\/(delete|assign|edit|editfields|link|account|categories|favcats)|admin\/announcements(\/[0-9a-f]+\/(end|delete))?)$/.test(path));
   if (!dashboardRoute && !pairRoute && !adminRoute && !mutating) return new Response("Not found", { status: 404 });
   if (!sess) {
     const c = pairRoute ? normalizeCode(url.searchParams.get("code")) : null;
@@ -423,6 +423,13 @@ async function route(req, env, ctx) {
   if (rl) return rl;
 
   // Lien IPTV complet, à la demande (jamais dans la page elle-même) : réponse non mise en cache.
+  // Valeurs actuelles d'une source pour le formulaire « Modifier » (à la demande, comme le lien IPTV).
+  const edf = path.match(/^\/providers\/([0-9a-f]+)\/editfields$/);
+  if (edf) {
+    const f = editableFields((await loadProviders(env, sess.acct)).find((x) => x.id === edf[1]));
+    if (!f) return new Response("Not found", { status: 404 });
+    return new Response(JSON.stringify(f), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
+  }
   const lnk = path.match(/^\/providers\/([0-9a-f]+)\/link$/);
   if (lnk) {
     const p = (await loadProviders(env, sess.acct)).find((x) => x.id === lnk[1]);
@@ -530,6 +537,8 @@ async function route(req, env, ctx) {
     if (!r.changed) return redirect("/");
     providers[i] = r.provider;
     await saveProviders(env, acct, providers);
+    // Type changé : l'ancienne source est retirée des appareils, la nouvelle (même place, mêmes affectations) y est ajoutée.
+    if (r.replaced) { addTombstones(acct, [edt[1]]); await deleteState(env, acct.login, edt[1]); }
     await putAccount(env, acct);
     return redirect("/?m=edited");
   }
