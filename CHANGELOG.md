@@ -19,7 +19,7 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 - Dons ponctuels : la carte bancaire est signalée clairement. Le bouton hébergé la propose sous le nom « Checkout » ; une ligne l'indique, et le lien de secours devient « Payer par carte bancaire ou PayPal » (sa page affiche « Carte bancaire »).
 - Dons : lien PayPal.Me (paypal.me/pitivi) en plus, sur `/donate` et dans la section Soutenir du site.
 
-## [Non publié] (Android)
+## [1.3.77] — 2026-11-24 (Android)
 
 ### Ajouté
 - De retour : rubrique « Replay » dans le menu latéral, après le Guide (téléphone et tablette : rail latéral et « Plus ») : les chaînes de la source active qui ont une archive (Xtream, M3U avec rattrapage), filtrables par catégorie, puis le jour (aujourd'hui, hier… jusqu'à la durée d'archive de la chaîne, 7 jours au plus) et la liste des programmes passés de ce jour (heure, titre, durée, description). OK lit le programme depuis le début ; un programme sorti de l'archive est grisé « Indisponible ». Le profil est respecté : catégories masquées ou désactivées absentes, chaînes et catégories verrouillées derrière le code parental, adultes exclus du profil Enfants. L'entrée n'apparaît que si la source propose une archive ; sinon l'écran l'explique. Lien direct `ultratv://replay`. Elle était dans la pré-version 1.3.75-rc1 mais pas dans les versions 1.3.75 et 1.3.76.
