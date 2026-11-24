@@ -4,7 +4,8 @@ name: Discord
 # #mises-a-jour (toutes les rubriques du CHANGELOG) et #new-features (rubrique « Ajouté »).
 # Déclenché à la fin réussie des builds Android (Release) et bureau (Desktop release) ;
 # les pré-versions (-rc) et les tags sans section CHANGELOG ne sont pas annoncés.
-# Secrets : DISCORD_WEBHOOK_UPDATES, DISCORD_WEBHOOK_FEATURES (un secret absent = salon ignoré).
+# Messages libres (dons, accueil) : tools/discord/messages/*.json, lancement manuel avec « message ».
+# Secrets : DISCORD_WEBHOOK_UPDATES, DISCORD_WEBHOOK_FEATURES, DISCORD_WEBHOOK_ANNOUNCES (un secret absent = salon ignoré).
 
 on:
   workflow_run:
@@ -13,8 +14,15 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag à annoncer (v1.3.77, desktop-v1.2.78)"
-        required: true
+        description: "Tag à annoncer (v1.3.77, desktop-v1.2.78) ; vide avec un message"
+        required: false
+      only:
+        description: "Salon : all, updates, features ou announces"
+        required: false
+        default: all
+      message:
+        description: "Message libre tools/discord/messages/<nom>.json (dons…), posté dans le salon choisi"
+        required: false
 
 permissions:
   contents: read
@@ -24,8 +32,23 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  message:
+    if: github.event_name == 'workflow_dispatch' && inputs.message != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Message Discord
+        env:
+          MESSAGE: ${{ inputs.message }}
+          ONLY: ${{ inputs.only == 'all' && 'announces' || inputs.only }}
+          DISCORD_WEBHOOK_UPDATES: ${{ secrets.DISCORD_WEBHOOK_UPDATES }}
+          DISCORD_WEBHOOK_FEATURES: ${{ secrets.DISCORD_WEBHOOK_FEATURES }}
+          DISCORD_WEBHOOK_ANNOUNCES: ${{ secrets.DISCORD_WEBHOOK_ANNOUNCES }}
+        run: python3 -I tools/discord/post_release.py
+
   announce:
-    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    if: (github.event_name == 'workflow_dispatch' && inputs.tag != '') || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -51,4 +74,5 @@ jobs:
           RELEASE_URL: ${{ steps.rel.outputs.url }}
           DISCORD_WEBHOOK_UPDATES: ${{ secrets.DISCORD_WEBHOOK_UPDATES }}
           DISCORD_WEBHOOK_FEATURES: ${{ secrets.DISCORD_WEBHOOK_FEATURES }}
+          ONLY: ${{ inputs.only || 'all' }}
         run: python3 -I tools/discord/post_release.py "${{ steps.rel.outputs.tag }}"
