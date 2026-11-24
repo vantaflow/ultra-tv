@@ -26,10 +26,13 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 
 ### Corrigé
 - Synchro : la barre de progression ne recule plus quand plusieurs catégories de films ou de séries sont lues en même temps (par exemple 40 % puis 33 % sur un portail Stalker).
+- Textes passés sur deux lignes (tuile « Guide TV », noms de chaînes longs…) : interligne proportionné à la taille du texte, plus de grand vide entre les deux lignes sur TV.
+- Accueil : l'heure est de nouveau calée au bord droit du bandeau de salutation.
 
 ### In English
 - Simple mode: "Support Ultra TV" (PayPal QR code on TV, direct link on phones) is now in the simple-mode settings too.
 - Sync: the progress bar no longer goes backwards while several movie or series categories are read in parallel.
+- Two-line texts no longer show a large gap between lines on TV; the home clock is right-aligned again.
 
 ## [1.3.76] — 2026-11-23 (Android)
 
