@@ -65,7 +65,9 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 
 ## [Non publié]
 
-### Bureau (prochaine version)
+## [Bureau 1.2.78] — 2026-11-24
+
+### Bureau
 - Direct sur ordinateur (flux MPEG-TS) : rattrapage du direct adouci. Le lecteur ne saute plus en avant dès 8 s de retard en ne gardant que 1,5 s de réserve (coupures et mises en mémoire tampon répétées sur Mac avec les serveurs qui envoient par à-coups) ; il ne rattrape plus qu'au-delà de 30 s, en gardant 6 s de réserve. Les conversions du bureau et la VOD ne changent pas.
 - Accueil : aucune rangée (à la une, en direct, reprises, nouveautés, mieux notés, Trakt, nouveaux épisodes, sport) ne montre plus de contenu d'une catégorie masquée, verrouillée ou adulte ; un profil Enfants ne voit les catégories adultes nulle part (case « Profil Enfants » dans Réglages › Profils).
 - Contrôle parental : verrou par catégorie entière (Réglages › Catégories, Direct, Films et Séries), code exigé partout où un contenu peut s'ouvrir (listes, guide, panneau des chaînes, recherche, favoris, fiches, reprise, zapping qui la saute) ; déverrouillé pour la session seulement.
