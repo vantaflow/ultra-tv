@@ -181,12 +181,25 @@ document.querySelectorAll('details.editsrc').forEach(function(dt){
  var show=function(){var v=k.value;f.querySelector('.ed-mac').hidden=v!=='STALKER';f.querySelector('.ed-creds').hidden=v==='M3U';
   f.querySelector('input[name=mac]').required=v==='STALKER';f.querySelector('input[name=username]').required=v==='XTREAM';f.querySelector('input[name=password]').required=v==='XTREAM';
   f.querySelector('.ed-kindnote').hidden=v===dt.dataset.kind;};
- k.addEventListener('change',show);show();
+ // Passage de type : M3U → Xtream découpe le lien get.php (serveur, identifiant, mot de passe dans leurs champs) ;
+ // Xtream → M3U reconstruit le lien de playlist.
+ var prev=k.value;
+ k.addEventListener('change',function(){
+  var U=f.querySelector('[name=url]'),N=f.querySelector('[name=username]'),P=f.querySelector('[name=password]');
+  try{
+   if(k.value==='XTREAM'&&prev!=='XTREAM'){var u=new URL(U.value.trim()),un=u.searchParams.get('username'),pw=u.searchParams.get('password');
+    if(un&&pw){U.value=u.protocol+'//'+u.host+u.pathname.replace(/\\/(get|player_api|xmltv)\\.php$/i,'').replace(/\\/+$/,'');N.value=un;P.value=pw;}}
+   else if(k.value==='M3U'&&prev==='XTREAM'&&N.value&&P.value){var b=new URL(U.value.trim());
+    U.value=b.protocol+'//'+b.host+b.pathname.replace(/\\/+$/,'')+'/get.php?'+new URLSearchParams({username:N.value,password:P.value,type:'m3u_plus',output:'ts'});}
+  }catch(_){}
+  prev=k.value;show();
+ });
+ show();
  dt.addEventListener('toggle',function(){
   if(!dt.open||dt.dataset.loaded)return;dt.dataset.loaded='1';
   fetch('/providers/'+dt.dataset.id+'/editfields',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/x-www-form-urlencoded'},body:'csrf='+encodeURIComponent(${JSON.stringify(csrf)})})
    .then(function(r){if(!r.ok)throw new Error(String(r.status));return r.json();})
-   .then(function(j){['name','url','username','password','mac'].forEach(function(n){var i=f.querySelector('[name='+n+']');if(i&&typeof j[n]==='string')i.value=j[n];});k.value=j.kind;show();st.hidden=true;fs.disabled=false;})
+   .then(function(j){['name','url','username','password','mac'].forEach(function(n){var i=f.querySelector('[name='+n+']');if(i&&typeof j[n]==='string')i.value=j[n];});k.value=j.kind;prev=j.kind;show();st.hidden=true;fs.disabled=false;})
    .catch(function(){st.textContent=${JSON.stringify(t.srcs.editFail)};dt.removeAttribute('data-loaded');});
  });
 });

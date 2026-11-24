@@ -233,6 +233,20 @@ export function parseProvider(form, origin = null) {
   return { provider: p };
 }
 
+/**
+ * Lien de playlist Xtream (…/get.php?username=…&password=…, ou player_api.php) → { url: serveur, username, password },
+ * ou null si le lien n'en contient pas. Sert au passage M3U → Xtream (les valeurs vont chacune dans leur champ).
+ */
+export function splitXtreamLink(raw) {
+  try {
+    const u = new URL(String(raw || "").trim());
+    const username = u.searchParams.get("username") || "", password = u.searchParams.get("password") || "";
+    if (!username || !password) return null;
+    const path = u.pathname.replace(/\/(get|player_api|xmltv)\.php$/i, "").replace(/\/+$/, "");
+    return { url: `${u.protocol}//${u.host}${path}`, username, password };
+  } catch { return null; }
+}
+
 /** Types de source modifiables depuis le tableau de bord (les serveurs multimédias ont leur propre parcours). */
 export const EDITABLE_KINDS = ["XTREAM", "M3U", "STALKER"];
 
@@ -248,6 +262,11 @@ export function editProvider(p, form, now = Date.now()) {
   const kind = String(form.get("kind") || p.kind).toUpperCase();
   if (!EDITABLE_KINDS.includes(kind)) return { error: "kind" };
   const fields = { kind, name: form.get("name"), url: form.get("url"), username: form.get("username"), password: form.get("password"), mac: form.get("mac") };
+  // Xtream avec un lien de playlist complet dans l'adresse : identifiants repris du lien si les champs sont vides.
+  if (kind === "XTREAM") {
+    const x = splitXtreamLink(fields.url);
+    if (x) fields.url = x.url, fields.username = String(fields.username || "").trim() || x.username, fields.password = String(fields.password || "").trim() || x.password;
+  }
   const r = parseProvider({ get: (k) => (fields[k] === undefined ? null : fields[k]) }, { deviceId: p.originDeviceId || "", name: p.originName || "" });
   if (r.error) return r;
   const v = r.provider;
