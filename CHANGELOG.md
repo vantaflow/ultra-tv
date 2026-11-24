@@ -7,12 +7,14 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 ## [Worker] — 2026-11-24
 
 ### Ajouté
+- Tableau de bord › Sources : bouton « Modifier » sur chaque source Xtream, M3U ou Stalker (sauf celles d'un revendeur) pour changer le nom, l'adresse du serveur ou de la playlist et, pour Xtream, l'identifiant et le mot de passe. Un champ vide garde la valeur actuelle ; l'adresse complète et le mot de passe ne sont jamais écrits dans la page. Les appareils appliquent le changement à leur prochaine synchronisation, sans perdre favoris ni réglages.
 - Tableau de bord › source Xtream › Catégories favorites : champ de recherche (sans tenir compte des accents ni des majuscules) et onglets Tout / Direct / Films / Séries avec le nombre de catégories (#249). Une catégorie cochée puis masquée par le filtre reste enregistrée.
 
 ### Modifié
 - Alertes : traduction automatique par un modèle de langage (Llama 3.3 70B, Workers AI, gratuit), plus naturelle ; m2m100 reste en secours. Une alerte saisie dans une autre langue que l'anglais est désormais traduite en anglais aussi (les appareils en anglais recevaient le texte source).
 
 ### In English
+- Dashboard › Sources: new "Edit" button to change a source's name, server or playlist address, and Xtream username and password; devices pick it up at their next sync.
 - Dashboard favourite categories: search box and All / Live / Movies / Series tabs (#249).
 - Alerts are auto-translated by an LLM (free Workers AI), English included when the alert is written in another language.
 

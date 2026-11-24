@@ -24,7 +24,7 @@ import {
 } from "./http.js";
 import {
   guardStub, normalizeLogin, isMacLogin, getAccount, putAccount, loadProviders, saveProviders, deleteAccount,
-  newDeviceToken, registerDevice, authDevice, revokeDevice, rotateDevice, parseProvider, publicProvider, syncProvider, parseDeviceProvider, parsePrefs, parseFavCats, xtreamCategories,
+  newDeviceToken, registerDevice, authDevice, revokeDevice, rotateDevice, parseProvider, editProvider, publicProvider, syncProvider, parseDeviceProvider, parsePrefs, parseFavCats, xtreamCategories,
   isVisibleTo, assignmentOf, addTombstones, liveTombstones, isSupportedKind, parseAssign, dropDeviceFromAssignments, renameDevice,
   MAX_PROVIDERS, MAX_DEVICES, iptvLink, xtreamAccount, verifyProLicense, setDeviceInfo, parseStateBody, mergeState, loadState, saveState, deleteState, parseProfiles, mergeProfiles,
 } from "./store.js";
@@ -350,7 +350,7 @@ async function route(req, env, ctx) {
   const adminRoute = /^\/admin(\/(accounts|anon|devices|alerts|comptes\.csv))?$/.test(path) && m === "GET";
   const pairRoute = path === "/pair" && m === "GET";
   const mutating = m === "POST" && ["/pair", "/providers", "/password", "/account/delete", "/logout", "/subtitles/link", "/subtitles/unlink", "/trakt/connect", "/trakt/disconnect", "/simkl/connect", "/simkl/disconnect", "/tracking/service", "/profiles/sources", "/plex/pin", "/plex/check"].includes(path)
-    || (m === "POST" && /^\/(devices\/[0-9a-f]+\/(revoke|rename)|providers\/[0-9a-f]+\/(delete|assign|link|account|categories|favcats)|admin\/announcements(\/[0-9a-f]+\/(end|delete))?)$/.test(path));
+    || (m === "POST" && /^\/(devices\/[0-9a-f]+\/(revoke|rename)|providers\/[0-9a-f]+\/(delete|assign|edit|link|account|categories|favcats)|admin\/announcements(\/[0-9a-f]+\/(end|delete))?)$/.test(path));
   if (!dashboardRoute && !pairRoute && !adminRoute && !mutating) return new Response("Not found", { status: 404 });
   if (!sess) {
     const c = pairRoute ? normalizeCode(url.searchParams.get("code")) : null;
@@ -519,6 +519,19 @@ async function route(req, env, ctx) {
     await saveProviders(env, acct, providers.map((p) => (p.id === asg[1] ? { ...p, assign: r.assign, updatedAt: Date.now() } : p)));
     await putAccount(env, acct);
     return redirect("/?m=assigned");
+  }
+  const edt = path.match(/^\/providers\/([0-9a-f]+)\/edit$/);
+  if (edt) {
+    const providers = await loadProviders(env, acct);
+    const i = providers.findIndex((p) => p.id === edt[1]);
+    if (i < 0) return redirect("/");
+    const r = editProvider(providers[i], form);
+    if (r.error) return redirect(`/?e=${r.error === "edit" ? "url" : r.error}`);
+    if (!r.changed) return redirect("/");
+    providers[i] = r.provider;
+    await saveProviders(env, acct, providers);
+    await putAccount(env, acct);
+    return redirect("/?m=edited");
   }
   const fav = path.match(/^\/providers\/([0-9a-f]+)\/favcats$/);
   if (fav) {

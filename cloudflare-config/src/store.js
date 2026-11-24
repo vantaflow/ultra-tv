@@ -234,6 +234,32 @@ export function parseProvider(form, origin = null) {
 }
 
 /**
+ * Modification d'une source IPTV depuis le tableau de bord : nom, adresse et, pour Xtream, identifiant et mot de passe.
+ * Un champ vide garde la valeur actuelle (l'adresse et le mot de passe ne sont jamais renvoyés dans la page). Les sources
+ * gérées par un revendeur et les serveurs multimédias ne se modifient pas ici. Renvoie { provider, changed } ou { error }.
+ */
+export function editProvider(p, form, now = Date.now()) {
+  if (!p || p.managed === "reseller" || !["XTREAM", "M3U", "STALKER"].includes(p.kind)) return { error: "edit" };
+  const next = { ...p };
+  const name = cleanLine(form.get("name"), 64);
+  if (name) next.name = name;
+  const rawUrl = String(form.get("url") || "").trim();
+  if (rawUrl) {
+    const url = validUrl(rawUrl);
+    if (!url) return { error: "url" };
+    next.url = url;
+  }
+  if (p.kind === "XTREAM") {
+    const u = cleanLine(form.get("username"), 256), pw = cleanLine(form.get("password"), 256);
+    if (u) next.username = u;
+    if (pw) next.password = pw;
+  }
+  const changed = ["name", "url", "username", "password"].some((k) => next[k] !== p[k]);
+  if (changed) next.updatedAt = Math.max(now, (p.updatedAt || 0) + 1);
+  return { provider: next, changed };
+}
+
+/**
  * Source Plex à partir d'un serveur choisi après liaison du compte (voir plexweb.js) : `username` = identifiant de la
  * machine, `password` = jeton du SERVEUR (pas celui du compte), `url` = meilleure connexion ; toutes les connexions
  * suivent pour que l'appareil choisisse celle qui répond chez lui.
