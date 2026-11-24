@@ -7,7 +7,7 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 ## [Worker] — 2026-11-24
 
 ### Ajouté
-- Tableau de bord › Sources : bouton « Modifier » sur chaque source Xtream, M3U ou Stalker (sauf celles d'un revendeur) : type, nom, adresse complète, identifiant, mot de passe et MAC, chargés à l'ouverture du volet (jamais écrits dans la page). Même type : la source est mise à jour en place sur les appareils (favoris et réglages gardés). Autre type (M3U → Xtream…) : elle est remplacée, avec les mêmes appareils affectés. Les boutons de la carte restent alignés, le volet ouvert s'affiche dessous.
+- Tableau de bord › Sources : bouton « Modifier » sur chaque source Xtream, M3U ou Stalker (sauf celles d'un revendeur) : type, nom, adresse complète, identifiant, mot de passe et MAC, chargés à l'ouverture du volet (jamais écrits dans la page). Même type : la source est mise à jour en place sur les appareils (favoris et réglages gardés). Autre type (M3U → Xtream…) : elle est remplacée, avec les mêmes appareils affectés. Les boutons de la carte restent alignés, le volet ouvert s'affiche dessous. Passer de M3U à Xtream découpe le lien de playlist (`get.php?username=…&password=…`) : serveur, identifiant et mot de passe vont chacun dans leur champ ; l'inverse reconstruit le lien.
 - Tableau de bord › source Xtream › Catégories favorites : champ de recherche (sans tenir compte des accents ni des majuscules) et onglets Tout / Direct / Films / Séries avec le nombre de catégories (#249). Une catégorie cochée puis masquée par le filtre reste enregistrée.
 
 ### Modifié

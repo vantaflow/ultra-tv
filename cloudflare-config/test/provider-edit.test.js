@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { call, newAccount, pairDevice, addProvider, bearer, freshIp } from "./helpers.js";
-import { editProvider, editableFields } from "../src/store.js";
+import { editProvider, editableFields, splitXtreamLink } from "../src/store.js";
 import { SITE_DICT, SITE_LANGS } from "../src/i18n/site.js";
 
 const xt = { kind: "XTREAM", name: "Démo", url: "http://iptv.example.test", username: "demo", password: "s3cret" };
@@ -41,6 +41,18 @@ describe("editProvider : règles", () => {
     expect(editProvider({ ...p, managed: "reseller" }, f({ kind: "XTREAM", url: "http://b.test", username: "u", password: "p" })).error).toBe("edit");
     expect(editProvider({ ...p, kind: "JELLYFIN" }, f({ url: "http://b.test" })).error).toBe("edit");
     expect(editableFields({ ...p, managed: "reseller" })).toBeNull();
+  });
+});
+
+describe("passage M3U → Xtream : lien découpé", () => {
+  it("splitXtreamLink : serveur, identifiant, mot de passe", () => {
+    expect(splitXtreamLink("http://cf.example.test:8080/get.php?username=ab&password=cd&type=m3u_plus&output=ts")).toEqual({ url: "http://cf.example.test:8080", username: "ab", password: "cd" });
+    expect(splitXtreamLink("https://x.test/sub/player_api.php?username=a&password=b")).toEqual({ url: "https://x.test/sub", username: "a", password: "b" });
+    expect(splitXtreamLink("http://lists.test/a.m3u")).toBeNull();
+  });
+  it("editProvider : lien complet en Xtream, champs vides → identifiants repris du lien", () => {
+    const r = editProvider({ id: "a1", kind: "M3U", name: "S", url: "http://x.test/get.php?username=ab&password=cd" }, f({ kind: "XTREAM", name: "S", url: "http://x.test/get.php?username=ab&password=cd&type=m3u_plus", username: "", password: "" }), 100);
+    expect(r.provider).toMatchObject({ kind: "XTREAM", url: "http://x.test", username: "ab", password: "cd" });
   });
 });
 
