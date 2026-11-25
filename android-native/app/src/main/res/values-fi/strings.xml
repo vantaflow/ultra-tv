@@ -637,6 +637,7 @@
     <string name="person_person_in_playlist">Soittolistallasi · %1$s</string>
     <string name="person_person_badge_movie">ELOKUVA</string>
     <string name="person_person_badge_series">SARJA</string>
+    <string name="person_person_search_title">NÄYTTELIJÄT JA OHJAAJAT · %1$s</string>
     <string name="perso_personalization">Mukauttaminen</string>
     <string name="perso_accent_color">Korostusväri</string>
     <string name="perso_text_size_label">Tekstin koko</string>

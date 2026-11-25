@@ -644,6 +644,7 @@
     <string name="person_person_in_playlist">I din afspilningsliste · %1$s</string>
     <string name="person_person_badge_movie">FILM</string>
     <string name="person_person_badge_series">SERIE</string>
+    <string name="person_person_search_title">SKUESPILLERE OG INSTRUKTØRER · %1$s</string>
     <!-- i18n/PersonalizationStrings.kt -->
     <string name="perso_personalization">Tilpasning</string>
     <string name="perso_accent_color">Accentfarve</string>

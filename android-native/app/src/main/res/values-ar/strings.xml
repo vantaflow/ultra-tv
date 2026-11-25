@@ -705,6 +705,7 @@
     <string name="person_person_in_playlist">في قائمتك · %1$s</string>
     <string name="person_person_badge_movie">فيلم</string>
     <string name="person_person_badge_series">مسلسل</string>
+    <string name="person_person_search_title">الممثلون والمخرجون · %1$s</string>
     <!-- i18n/PersonalizationStrings.kt -->
     <string name="perso_personalization">التخصيص</string>
     <string name="perso_accent_color">لون التمييز</string>

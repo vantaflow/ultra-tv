@@ -652,6 +652,7 @@
     <string name="person_person_in_playlist">Na Twojej liście · %1$s</string>
     <string name="person_person_badge_movie">FILM</string>
     <string name="person_person_badge_series">SERIAL</string>
+    <string name="person_person_search_title">AKTORZY I REŻYSERZY · %1$s</string>
     <string name="perso_personalization">Personalizacja</string>
     <string name="perso_accent_color">Kolor wyróżnienia</string>
     <string name="perso_text_size_label">Rozmiar tekstu</string>
