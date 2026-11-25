@@ -1855,4 +1855,13 @@
     <string name="mlib_err_notfound">Kohteen ”%1$s” osoitteesta (%2$s) ei löytynyt mitään. Tarkista se verkkosivustolla.</string>
     <string name="mlib_err_tls">”%1$s” (%2$s): suojattu yhteys epäonnistui (varmenne). Kokeile http-osoitetta.</string>
     <string name="mlib_err_retry">Uusi yritys %1$d min kuluttua.</string>
+    <string name="dg_ch_numbering_label">Kanavien numerointi</string>
+    <string name="dg_ch_numbering_auto">Automaattinen</string>
+    <string name="dg_ch_numbering_source">Lähteen numerot</string>
+    <string name="dg_ch_numbering_continuous">Jatkuva (1, 2, 3…)</string>
+    <string name="dg_ch_sort_label">Kanavien järjestys</string>
+    <string name="dg_ch_sort_source">Lähteen järjestys</string>
+    <string name="dg_ch_sort_number">Numeron mukaan</string>
+    <string name="dg_ch_sort_az">A → Ö</string>
+    <string name="dg_ch_sort_recent">Viimeksi katsotut ensin</string>
 </resources>

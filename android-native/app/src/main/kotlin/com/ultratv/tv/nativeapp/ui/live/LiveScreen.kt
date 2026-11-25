@@ -488,7 +488,7 @@ private fun ChannelList(
                     // En tête de liste, la place réservée au-dessus l'affiche déjà ; libellé vide : rien.
                     c.isSeparator -> if (i > 0 && c.title.isNotBlank() && !sameLabel(c.title, categoryName)) SectionHeader(c.title)
                     else -> ChannelRow(
-                        c, position = if (c.seq > 0) com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay.current.numbering.numberOf(c) else i + 1, locked = "${c.providerId}:${c.remoteId}" in locked, favorite = c.remoteId in favs,
+                        c, position = com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay.current.numbering.numberOf(c).takeIf { it > 0 } ?: (i + 1), locked = "${c.providerId}:${c.remoteId}" in locked, favorite = c.remoteId in favs,
                         now = nowNext[c.id]?.first, next = nowNext[c.id]?.second, clock = clock,
                         highlighted = c.id == highlightId,
                         variant = rowIndex.variantAt(i),

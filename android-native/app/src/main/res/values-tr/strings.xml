@@ -1855,4 +1855,13 @@
     <string name="mlib_err_notfound">“%1$s” adresinde (%2$s) hiçbir şey bulunamadı. Sitede kontrol edin.</string>
     <string name="mlib_err_tls">“%1$s” (%2$s): güvenli bağlantı başarısız (sertifika). http adresini deneyin.</string>
     <string name="mlib_err_retry">%1$d dk sonra yeniden denenecek.</string>
+    <string name="dg_ch_numbering_label">Kanal numaralandırma</string>
+    <string name="dg_ch_numbering_auto">Otomatik</string>
+    <string name="dg_ch_numbering_source">Kaynağın numaraları</string>
+    <string name="dg_ch_numbering_continuous">Sürekli (1, 2, 3…)</string>
+    <string name="dg_ch_sort_label">Kanal sıralaması</string>
+    <string name="dg_ch_sort_source">Kaynak sırası</string>
+    <string name="dg_ch_sort_number">Numaraya göre</string>
+    <string name="dg_ch_sort_az">A → Z</string>
+    <string name="dg_ch_sort_recent">Son izlenenler önce</string>
 </resources>

@@ -37,6 +37,8 @@ class AppViewModel @Inject constructor(
     fun setShowChannelNumbers(v: Boolean) = viewModelScope.launch { store.setShowChannelNumbers(v) }
     fun setSportSection(v: Boolean) = viewModelScope.launch { store.setSportSection(v) }
     fun setShowChannelLogos(v: Boolean) = viewModelScope.launch { store.setShowChannelLogos(v) }
+    fun setChannelNumbering(key: String) = viewModelScope.launch { store.setChannelNumbering(key) }
+    fun setChannelSort(key: String) = viewModelScope.launch { store.setChannelSort(key) }
     fun setGuideNameWidth(key: String) = viewModelScope.launch { store.setGuideNameWidth(key) }
     fun setHideAdult(v: Boolean) = viewModelScope.launch { store.setHideAdult(v) }
     fun setResumePlayback(v: Boolean) = viewModelScope.launch { store.setResumePlayback(v) }

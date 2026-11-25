@@ -2106,4 +2106,13 @@
     <string name="replay_empty_body">مزوّدك لا يوفّر خدمة الإعادة.</string>
     <string name="replay_hidden_body">القنوات التي توفّر الإعادة مخفية لهذا الملف الشخصي.</string>
     <string name="replay_no_source">أضف مصدرًا لمشاهدة الإعادة.</string>
+    <string name="dg_ch_numbering_label">ترقيم القنوات</string>
+    <string name="dg_ch_numbering_auto">تلقائي</string>
+    <string name="dg_ch_numbering_source">أرقام المصدر</string>
+    <string name="dg_ch_numbering_continuous">متواصل (1، 2، 3…)</string>
+    <string name="dg_ch_sort_label">ترتيب القنوات</string>
+    <string name="dg_ch_sort_source">ترتيب المصدر</string>
+    <string name="dg_ch_sort_number">حسب الرقم</string>
+    <string name="dg_ch_sort_az">أ ← ي</string>
+    <string name="dg_ch_sort_recent">الأحدث مشاهدة أولاً</string>
 </resources>

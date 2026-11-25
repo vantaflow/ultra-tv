@@ -1885,4 +1885,13 @@
     <string name="mlib_err_notfound">Der blev ikke fundet noget på adressen for “%1$s” (%2$s). Kontrollér den på hjemmesiden.</string>
     <string name="mlib_err_tls">“%1$s” (%2$s): den sikre forbindelse mislykkedes (certifikat). Prøv http-adressen.</string>
     <string name="mlib_err_retry">Nyt forsøg om %1$d min.</string>
+    <string name="dg_ch_numbering_label">Kanalnummerering</string>
+    <string name="dg_ch_numbering_auto">Automatisk</string>
+    <string name="dg_ch_numbering_source">Kildens numre</string>
+    <string name="dg_ch_numbering_continuous">Fortløbende (1, 2, 3…)</string>
+    <string name="dg_ch_sort_label">Sortering af kanaler</string>
+    <string name="dg_ch_sort_source">Kildens rækkefølge</string>
+    <string name="dg_ch_sort_number">Efter nummer</string>
+    <string name="dg_ch_sort_az">A → Å</string>
+    <string name="dg_ch_sort_recent">Senest sete først</string>
 </resources>

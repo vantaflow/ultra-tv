@@ -49,6 +49,10 @@ data class UserPrefs(
     val showChannelLogos: Boolean = true,
     /** Largeur de la colonne des noms du Guide : "narrow" | "normal" | "wide" (voir GuideNameWidth). Par profil. */
     val guideNameWidth: String = "normal",
+    /** Numérotation des chaînes : "auto" | "source" | "continuous" (voir ChannelNumberMode). Par profil. */
+    val channelNumbering: String = "auto",
+    /** Tri des chaînes du Direct : "source" | "number" | "az" | "recent" (voir ChannelSort). Par profil. */
+    val channelSort: String = "source",
     val hideAdultCategories: Boolean = false,
     val resumePlayback: Boolean = true,
     val autoPlayNextEpisode: Boolean = true,
@@ -218,6 +222,8 @@ class UserPreferencesStore @Inject constructor(
         val channelNums = booleanPreferencesKey("show_channel_numbers")
         val channelLogos = booleanPreferencesKey("show_channel_logos")
         val guideNameWidth = stringPreferencesKey("guide_name_width")
+        val channelNumbering = stringPreferencesKey("channel_numbering")
+        val channelSort = stringPreferencesKey("channel_sort")
         val hideAdult = booleanPreferencesKey("hide_adult")
         val resume = booleanPreferencesKey("resume_playback")
         val autoPlayNext = booleanPreferencesKey("auto_play_next")
@@ -303,6 +309,8 @@ class UserPreferencesStore @Inject constructor(
             showChannelNumbers = p[Keys.channelNums] ?: true,
             showChannelLogos = p[Keys.channelLogos] ?: true,
             guideNameWidth = p[Keys.guideNameWidth] ?: "normal",
+            channelNumbering = p[Keys.channelNumbering] ?: "auto",
+            channelSort = p[Keys.channelSort] ?: "source",
             hideAdultCategories = p[Keys.hideAdult] ?: false,
             resumePlayback = p[Keys.resume] ?: true,
             autoPlayNextEpisode = p[Keys.autoPlayNext] ?: true,
@@ -356,6 +364,8 @@ class UserPreferencesStore @Inject constructor(
     suspend fun setAutoSync(v: Boolean) = update { it[Keys.autoSync] = v }
     suspend fun setShowChannelNumbers(v: Boolean) = profiles.putPref(com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.CHANNEL_NUMBERS, v.toString())
     suspend fun setShowChannelLogos(v: Boolean) = profiles.putPref(com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.CHANNEL_LOGOS, v.toString())
+    suspend fun setChannelNumbering(key: String) = profiles.putPref(com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.CHANNEL_NUMBERING, key)
+    suspend fun setChannelSort(key: String) = profiles.putPref(com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.CHANNEL_SORT, key)
     suspend fun setGuideNameWidth(key: String) = profiles.putPref(com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.GUIDE_NAME_WIDTH, key)
     suspend fun setHideAdult(v: Boolean) = profiles.putPref(com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.HIDE_ADULT, v.toString())
     suspend fun setResumePlayback(v: Boolean) = profiles.putPref(com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.RESUME, v.toString())

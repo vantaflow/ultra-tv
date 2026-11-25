@@ -1865,4 +1865,13 @@
     <string name="mlib_err_notfound">Pod adresem „%1$s” (%2$s) nic nie znaleziono. Sprawdź go na stronie.</string>
     <string name="mlib_err_tls">„%1$s” (%2$s): bezpieczne połączenie nie powiodło się (certyfikat). Spróbuj adresu http.</string>
     <string name="mlib_err_retry">Kolejna próba za %1$d min.</string>
+    <string name="dg_ch_numbering_label">Numeracja kanałów</string>
+    <string name="dg_ch_numbering_auto">Automatyczna</string>
+    <string name="dg_ch_numbering_source">Numery ze źródła</string>
+    <string name="dg_ch_numbering_continuous">Ciągła (1, 2, 3…)</string>
+    <string name="dg_ch_sort_label">Sortowanie kanałów</string>
+    <string name="dg_ch_sort_source">Kolejność ze źródła</string>
+    <string name="dg_ch_sort_number">Według numeru</string>
+    <string name="dg_ch_sort_az">A → Z</string>
+    <string name="dg_ch_sort_recent">Ostatnio oglądane na początku</string>
 </resources>

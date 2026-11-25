@@ -1885,4 +1885,13 @@
     <string name="mlib_err_notfound">Δεν βρέθηκε τίποτα στη διεύθυνση του «%1$s» (%2$s). Ελέγξτε τη στον ιστότοπο.</string>
     <string name="mlib_err_tls">«%1$s» (%2$s): η ασφαλής σύνδεση απέτυχε (πιστοποιητικό). Δοκιμάστε τη διεύθυνση http.</string>
     <string name="mlib_err_retry">Νέα προσπάθεια σε %1$d λεπ.</string>
+    <string name="dg_ch_numbering_label">Αρίθμηση καναλιών</string>
+    <string name="dg_ch_numbering_auto">Αυτόματη</string>
+    <string name="dg_ch_numbering_source">Αριθμοί της πηγής</string>
+    <string name="dg_ch_numbering_continuous">Συνεχής (1, 2, 3…)</string>
+    <string name="dg_ch_sort_label">Ταξινόμηση καναλιών</string>
+    <string name="dg_ch_sort_source">Σειρά της πηγής</string>
+    <string name="dg_ch_sort_number">Κατά αριθμό</string>
+    <string name="dg_ch_sort_az">Α → Ω</string>
+    <string name="dg_ch_sort_recent">Πρόσφατα προβληθέντα πρώτα</string>
 </resources>

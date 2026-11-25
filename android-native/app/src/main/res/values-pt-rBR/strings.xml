@@ -1904,4 +1904,13 @@
     <string name="mlib_err_notfound">Nada foi encontrado no endereço de “%1$s” (%2$s). Verifique-o no site.</string>
     <string name="mlib_err_tls">“%1$s” (%2$s): a conexão segura falhou (certificado). Tente o endereço http.</string>
     <string name="mlib_err_retry">Nova tentativa em %1$d min.</string>
+    <string name="dg_ch_numbering_label">Numeração dos canais</string>
+    <string name="dg_ch_numbering_auto">Automática</string>
+    <string name="dg_ch_numbering_source">Números da fonte</string>
+    <string name="dg_ch_numbering_continuous">Contínua (1, 2, 3…)</string>
+    <string name="dg_ch_sort_label">Ordem dos canais</string>
+    <string name="dg_ch_sort_source">Ordem da fonte</string>
+    <string name="dg_ch_sort_number">Por número</string>
+    <string name="dg_ch_sort_az">A → Z</string>
+    <string name="dg_ch_sort_recent">Assistidos recentemente primeiro</string>
 </resources>

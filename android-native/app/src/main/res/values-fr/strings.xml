@@ -2045,4 +2045,13 @@
     <string name="replay_empty_body">Votre fournisseur ne propose pas de replay.</string>
     <string name="replay_hidden_body">Les chaînes avec replay sont masquées pour ce profil.</string>
     <string name="replay_no_source">Ajoutez une source pour regarder le replay.</string>
+    <string name="dg_ch_numbering_label">Numérotation des chaînes</string>
+    <string name="dg_ch_numbering_auto">Automatique</string>
+    <string name="dg_ch_numbering_source">Numéros de la source</string>
+    <string name="dg_ch_numbering_continuous">Continue (1, 2, 3…)</string>
+    <string name="dg_ch_sort_label">Tri des chaînes</string>
+    <string name="dg_ch_sort_source">Ordre de la source</string>
+    <string name="dg_ch_sort_number">Par numéro</string>
+    <string name="dg_ch_sort_az">A → Z</string>
+    <string name="dg_ch_sort_recent">Dernières regardées en premier</string>
 </resources>

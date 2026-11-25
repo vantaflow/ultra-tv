@@ -2037,4 +2037,13 @@
     <string name="replay_empty_body">Tu proveedor no ofrece repetición.</string>
     <string name="replay_hidden_body">Los canales con repetición están ocultos para este perfil.</string>
     <string name="replay_no_source">Añade una fuente para ver la repetición.</string>
+    <string name="dg_ch_numbering_label">Numeración de canales</string>
+    <string name="dg_ch_numbering_auto">Automática</string>
+    <string name="dg_ch_numbering_source">Números del proveedor</string>
+    <string name="dg_ch_numbering_continuous">Continua (1, 2, 3…)</string>
+    <string name="dg_ch_sort_label">Orden de canales</string>
+    <string name="dg_ch_sort_source">Orden del proveedor</string>
+    <string name="dg_ch_sort_number">Por número</string>
+    <string name="dg_ch_sort_az">A → Z</string>
+    <string name="dg_ch_sort_recent">Vistos recientemente primero</string>
 </resources>

@@ -44,6 +44,21 @@ data class ProfileCategoryOrderEntity(
 /** seq d'une chaîne masquée par le profil courant (numérotation par profil, voir ChannelNumbering). */
 data class HiddenSeqRow(val providerId: Long, val categoryId: String?, val seq: Int)
 
+/** Nombre de chaînes numérotées et visibles (non masquées par le profil) d'une catégorie ; sert à la numérotation continue. */
+data class CatCountRow(val providerId: Long, val categoryId: String?, val n: Int)
+
+/**
+ * Tri choisi des chaînes du Direct (réglage par profil), à greffer sur les requêtes `…Sorted` : alias `c` pour la chaîne et `h`
+ * pour son historique LIVE du profil (jointure [JOIN], paramètre `:profileId`). Paramètres `:sort` (voir ChannelSort.sql :
+ * 1 numéro, 2 A→Z, 3 dernières regardées) et `:srcNum` (1 si la numérotation du profil est celle de la source).
+ * Ces variantes ne servent QUE si un tri est choisi : le tri par défaut garde les requêtes d'origine, servies par l'index.
+ */
+object ChSort {
+    const val JOIN = "LEFT JOIN watch_history h ON h.profileId = :profileId AND h.providerId = c.providerId AND h.kind = 'LIVE' AND h.remoteId = c.remoteId"
+    /** A → Z : [sortKey] (déjà en minuscules) dont les lettres accentuées usuelles sont ramenées à leur lettre de base. */
+    const val ORDER = "CASE WHEN :sort = 3 THEN -COALESCE(h.watchedAt, 0) END, CASE WHEN :sort = 2 THEN REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(c.sortKey, 'é', 'e'), 'è', 'e'), 'ê', 'e'), 'ë', 'e'), 'à', 'a'), 'â', 'a'), 'á', 'a'), 'ä', 'a'), 'î', 'i'), 'ï', 'i'), 'í', 'i'), 'ô', 'o'), 'ö', 'o'), 'ó', 'o'), 'û', 'u'), 'ù', 'u'), 'ü', 'u'), 'ú', 'u'), 'ç', 'c'), 'ñ', 'n') END, CASE WHEN :sort = 1 THEN (CASE WHEN :srcNum = 1 OR c.seq <= 0 THEN c.num ELSE c.seq END) END, c.num, c.id"
+}
+
 data class HiddenKeyRow(val providerId: Long, val remoteId: String)
 
 /** Filtre « masquée pour le profil courant » à greffer sur une requête de chaînes (alias de table selon la requête). */
@@ -87,6 +102,10 @@ interface ProfileViewDao {
     /** Observe les seq des chaînes numérotées masquées par le profil courant (petit : seulement les masquées). */
     @Query("SELECT c.providerId AS providerId, c.categoryId AS categoryId, c.seq AS seq FROM channel c INNER JOIN channel_hidden_now hn ON hn.providerId = c.providerId AND hn.remoteId = c.remoteId WHERE c.seq > 0")
     fun observeHiddenSeqs(): Flow<List<HiddenSeqRow>>
+
+    /** Chaînes numérotées non masquées par catégorie, dans l'ordre des catégories (rang précalculé, voir LiveOrder). */
+    @Query("SELECT providerId, categoryId, COUNT(*) AS n FROM channel WHERE junk = 0 AND isSeparator = 0 AND seq > 0 AND ${Hid.T} GROUP BY providerId, categoryId ORDER BY providerId, MIN(catRank), categoryId")
+    fun observeCategoryCounts(): Flow<List<CatCountRow>>
 
     @Query("DELETE FROM channel_hidden_now")
     suspend fun clearNow()
