@@ -658,6 +658,7 @@
     <string name="person_person_in_playlist">În lista ta · %1$s</string>
     <string name="person_person_badge_movie">FILM</string>
     <string name="person_person_badge_series">SERIAL</string>
+    <string name="person_person_search_title">ACTORI ȘI REGIZORI · %1$s</string>
     <!-- i18n/PersonalizationStrings.kt -->
     <string name="perso_personalization">Personalizare</string>
     <string name="perso_accent_color">Culoare de accent</string>

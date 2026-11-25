@@ -669,6 +669,7 @@
     <string name="person_person_in_playlist">Dans votre playlist · %1$s</string>
     <string name="person_person_badge_movie">FILM</string>
     <string name="person_person_badge_series">SÉRIE</string>
+    <string name="person_person_search_title">ACTEURS ET RÉALISATEURS · %1$s</string>
     <!-- i18n/PersonalizationStrings.kt -->
     <string name="perso_personalization">Personnalisation</string>
     <string name="perso_accent_color">Couleur d\'accent</string>

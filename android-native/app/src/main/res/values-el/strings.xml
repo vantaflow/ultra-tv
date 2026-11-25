@@ -644,6 +644,7 @@
     <string name="person_person_in_playlist">Στη λίστα σας · %1$s</string>
     <string name="person_person_badge_movie">ΤΑΙΝΙΑ</string>
     <string name="person_person_badge_series">ΣΕΙΡΑ</string>
+    <string name="person_person_search_title">ΗΘΟΠΟΙΟΙ ΚΑΙ ΣΚΗΝΟΘΕΤΕΣ · %1$s</string>
     <!-- i18n/PersonalizationStrings.kt -->
     <string name="perso_personalization">Εξατομίκευση</string>
     <string name="perso_accent_color">Χρώμα έμφασης</string>

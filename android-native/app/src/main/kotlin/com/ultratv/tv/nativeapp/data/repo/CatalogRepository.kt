@@ -318,7 +318,11 @@ class CatalogRepository @Inject constructor(
         )
     }
 
-    private suspend fun excludedCategoryIds(pid: Long, kind: String): List<String> =
+    /** Profil Enfants (contrôle parental forcé) : pour filtrer les titres adultes hors recherche (pages acteur). */
+    internal suspend fun kidsMode(): Boolean =
+        kotlinx.coroutines.withTimeoutOrNull(2_000) { com.ultratv.tv.nativeapp.data.profile.KidsRules.forcesParentalControl(profiles.current.first()) } ?: false
+
+    internal suspend fun excludedCategoryIds(pid: Long, kind: String): List<String> =
         CategorySearchVisibility.excludedRemoteIds(
             kind = kind,
             providerId = pid,

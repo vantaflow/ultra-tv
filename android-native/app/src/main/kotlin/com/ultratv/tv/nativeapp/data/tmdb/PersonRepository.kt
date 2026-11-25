@@ -62,6 +62,27 @@ class PersonRepository @Inject constructor(
         return id
     }
 
+    private val searches = object : LinkedHashMap<String, List<String>>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<String>>) = size > 40
+    }
+
+    /**
+     * Noms de personnes de TMDB correspondant à la saisie (recherche du Worker), les plus connus d'abord ; vide sans Worker /
+     * hors ligne. Les identifiants sont gardés : ouvrir la page de la personne ne refait pas la recherche.
+     */
+    suspend fun searchNames(query: String, limit: Int = 5): List<String> = runCatching {
+        val q = query.trim().replace("%", "").replace("_", " ")
+        if (q.length < PersonSearch.MIN_QUERY) return@runCatching emptyList<String>()
+        val k = PersonLogic.key(q)
+        synchronized(searches) { searches[k] }?.let { return@runCatching it.take(limit) }
+        val json = tmdbGet("search/person?query=" + java.net.URLEncoder.encode(q, "UTF-8")) ?: return@runCatching emptyList<String>()
+        val found = PersonSearch.results(json)
+        synchronized(ids) { for ((id, n) in found) ids.putIfAbsent(n, id) }
+        val names = found.map { it.second }.distinct()
+        synchronized(searches) { searches[k] = names }
+        names.take(limit)
+    }.getOrDefault(emptyList())
+
     suspend fun works(pid: Long, name: String): PersonWorks {
         val clean = name.trim().replace("%", "").replace("_", " ")
         if (clean.length < 3) return PersonWorks(emptyList(), emptyList())

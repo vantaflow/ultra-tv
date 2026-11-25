@@ -73,6 +73,7 @@ import javax.inject.Inject
 class PersonViewModel @Inject constructor(
     private val providers: ProviderRepository,
     private val repo: PersonRepository,
+    private val people: com.ultratv.tv.nativeapp.data.repo.PeopleSearch,
 ) : ViewModel() {
     /** null = en cours de chargement. */
     private val _works = MutableStateFlow<PersonWorks?>(null)
@@ -87,7 +88,7 @@ class PersonViewModel @Inject constructor(
         viewModelScope.launch {
             val ps = providers.observeProviders().first()
             val pid = (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id
-            _works.value = if (pid == null) PersonWorks(emptyList(), emptyList()) else runCatching { repo.works(pid, name) }.getOrDefault(PersonWorks(emptyList(), emptyList()))
+            _works.value = if (pid == null) PersonWorks(emptyList(), emptyList()) else runCatching { people.visible(pid, repo.works(pid, name)) }.getOrDefault(PersonWorks(emptyList(), emptyList()))
         }
     }
 }
