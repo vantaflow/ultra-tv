@@ -22,7 +22,7 @@ class FakeVodPortal(
     /** Catégories des séries (module type=series) : id → (titre, nombre de séries). */
     val seriesCategories: Map<String, Pair<String, Int>> = mapOf("1" to ("FR Séries" to 30), "2" to ("FR Drames" to 5), "3" to ("FR Cassée" to 4)),
     /** Catégories VOD : id → (titre, nombre de films). */
-    val vodCategories: Map<String, Pair<String, Int>> = emptyMap(),
+    var vodCategories: Map<String, Pair<String, Int>> = emptyMap(),
     val perPage: Int = 14,
 ) : Interceptor {
     val failingCategories: MutableSet<String> = ConcurrentHashMap.newKeySet()
@@ -40,6 +40,13 @@ class FakeVodPortal(
     val slowAttempts = AtomicInteger()
     /** Appelé à chaque page de liste (observation de la progression pendant la lecture). */
     @Volatile var onList: (() -> Unit)? = null
+    /** Délai (ms) imposé à une page de liste, selon son numéro (portail lent). */
+    @Volatile var pageDelayMs: (Int) -> Long = { 0L }
+    /** Requêtes de liste en vol à un instant donné, et maximum observé. */
+    val inFlight = AtomicInteger()
+    val maxInFlight = AtomicInteger()
+    /** Numéros de page, dans l'ordre où leur réponse est partie. */
+    val completedPages = CopyOnWriteArrayList<Int>()
     val handshakes = AtomicInteger()
     val listRequests = AtomicInteger()
     val urls = CopyOnWriteArrayList<okhttp3.HttpUrl>()
@@ -63,11 +70,22 @@ class FakeVodPortal(
             "itv/get_all_channels" -> body(200, """{"js":{"data":[{"id":"100","name":"FR Info 1","cmd":"ffmpeg http://flux.invalid/ch/100","tv_genre_id":"10"}]}}""", req)
             "vod/get_categories" -> body(200, cats(vodCategories), req)
             "series/get_categories" -> body(200, cats(seriesCategories), req)
-            "vod/get_ordered_list", "series/get_ordered_list" -> list(req, type!!)
+            "vod/get_ordered_list", "series/get_ordered_list" -> tracked(req) { list(req, type!!) }
             "vod/create_link" -> if (vodCreateLinkFails) body(200, """{"js":[]}""", req) else body(200, """{"js":{"cmd":"ffmpeg http://flux.invalid/vod/${u.queryParameter("series")}.mkv"}}""", req)
             "series/create_link" -> body(200, """{"js":{"cmd":"auto http://flux.invalid/series/${u.queryParameter("series")}.mkv"}}""", req)
             else -> body(200, """{"js":[]}""", req)
         }
+    }
+
+    private fun tracked(req: okhttp3.Request, block: () -> Response): Response {
+        val page = req.url.queryParameter("p")?.toIntOrNull() ?: 1
+        val cur = inFlight.incrementAndGet()
+        maxInFlight.accumulateAndGet(cur) { a, b -> maxOf(a, b) }
+        try {
+            val d = pageDelayMs(page)
+            if (d > 0) Thread.sleep(d)
+            return block()
+        } finally { inFlight.decrementAndGet(); completedPages += page }
     }
 
     private fun cats(m: Map<String, Pair<String, Int>>) =

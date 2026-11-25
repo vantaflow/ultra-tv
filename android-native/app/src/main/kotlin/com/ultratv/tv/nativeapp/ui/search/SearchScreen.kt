@@ -73,6 +73,7 @@ import com.ultratv.tv.nativeapp.data.tmdb.TmdbKind
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.i18n.locale
+import com.ultratv.tv.nativeapp.i18n.personSearchTitle
 import com.ultratv.tv.nativeapp.ui.common.design
 import com.ultratv.tv.nativeapp.ui.design.*
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -110,8 +111,12 @@ data class SearchView(
     val fuzzy: Boolean = false,
     /** Saisie pour laquelle cette vue a été calculée (calcul en différé : elle peut retarder sur la saisie). */
     val query: String = "",
+    /** Acteurs / réalisateurs dont le nom correspond à la saisie (ouvrent la page personne). */
+    val people: List<String> = emptyList(),
+    /** Rangée des personnes en tête (nom identique ou commençant par la saisie), sinon après les séries. */
+    val peopleFirst: Boolean = false,
 ) {
-    val total get() = movies.size + series.size + channels.size + programs.size
+    val total get() = movies.size + series.size + channels.size + programs.size + people.size
     fun count(t: SearchTab) = when (t) {
         SearchTab.ALL -> total
         SearchTab.MOVIES -> movies.size
@@ -134,6 +139,7 @@ class SearchViewModel @Inject constructor(
     private val seriesDao: com.ultratv.tv.nativeapp.data.db.SeriesDao,
     private val indexHealth: com.ultratv.tv.nativeapp.data.repo.SearchIndexHealth,
     private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
+    private val peopleSearch: com.ultratv.tv.nativeapp.data.repo.PeopleSearch,
 ) : ViewModel() {
     /** Sources interrogées : la source active, ou (mode « Toutes les sources ») les sources visibles du profil courant. */
     private suspend fun searchedProviders(): List<com.ultratv.tv.nativeapp.data.db.ProviderEntity> {
@@ -182,7 +188,8 @@ class SearchViewModel @Inject constructor(
     val query: StateFlow<String> = _q.asStateFlow()
 
     /** Résultats bruts et la saisie qui les a produits (le classement se fait sur CETTE saisie, pas sur la frappe en cours). */
-    private data class Hits(val q: String, val r: SearchResults)
+    /** [strongPeople] : une personne dont le nom est celui de la saisie ou la commence (rangée en tête). */
+    private data class Hits(val q: String, val r: SearchResults, val people: List<String> = emptyList(), val strongPeople: Boolean = false)
     private val _hits = MutableStateFlow(Hits("", SearchResults()))
 
     private val _tab = MutableStateFlow(SearchTab.ALL)
@@ -266,7 +273,17 @@ class SearchViewModel @Inject constructor(
                 // Mesure (jamais le texte saisi) : durée de la recherche rapide.
                 android.util.Log.i("UltraSearch", "quick len=${s.length} ms=${android.os.SystemClock.elapsedRealtime() - t0} hits=${quick.channels.size + quick.movies.size + quick.series.size}")
                 publish(Hits(s, quick))
-                if (only == null && s.trim().length >= 3) publish(Hits(s, quick.copy(programs = catalog.searchProgramsAll(pids, s))))
+                // Acteurs : après les titres (jamais avant), index local en mémoire ; réseau TMDB plus bas, après un délai de plus.
+                var hits = Hits(s, quick)
+                val local = runCatching { peopleSearch.local(pids, s) }.getOrDefault(emptyList())
+                if (local.isNotEmpty()) { hits = withPeople(hits, local, s); publish(hits) }
+                if (only == null && s.trim().length >= 3) { hits = hits.copy(r = hits.r.copy(programs = catalog.searchProgramsAll(pids, s))); publish(hits) }
+                if (s.trim().length >= com.ultratv.tv.nativeapp.data.tmdb.PersonSearch.MIN_QUERY) {
+                    if (_q.value == s) _searching.value = false
+                    delay(350)
+                    val remote = runCatching { peopleSearch.remote(pids, s, local) }.getOrDefault(emptyList())
+                    if (remote.isNotEmpty()) publish(withPeople(hits, com.ultratv.tv.nativeapp.data.tmdb.PersonSearch.merge(local, remote, 12), s))
+                }
             } catch (e: kotlinx.coroutines.CancellationException) { throw e
             } catch (e: Exception) {
                 publish(Hits(s, SearchResults()))   // erreur : « Aucun résultat » plutôt qu'un chargement sans fin
@@ -276,6 +293,13 @@ class SearchViewModel @Inject constructor(
             // Récents : seulement la saisie finale (une nouvelle touche annule ce délai).
             if (s.length >= 3) { delay(1_500); history.record(s) }
         }
+    }
+
+    /** Hits complétés des personnes ; « en tête » si l'une porte exactement le nom saisi ou le commence. */
+    private fun withPeople(h: Hits, people: List<String>, q: String): Hits {
+        val qk = com.ultratv.tv.nativeapp.data.tmdb.PersonLogic.key(q)
+        val strong = people.any { com.ultratv.tv.nativeapp.data.tmdb.PersonLogic.key(it).startsWith(qk) }
+        return h.copy(people = people, strongPeople = strong)
     }
 
     fun append(c: Char) { setQuery(query.value + c) }
@@ -295,10 +319,11 @@ class SearchViewModel @Inject constructor(
     }
 
     private fun build(h: Hits, sort: SearchSort): SearchView {
-        val r = h.r
+        // Une personne dont le nom commence par la saisie vaut mieux que des « titres proches » : ils sont écartés.
+        val r = if (h.r.fuzzy && h.strongPeople) h.r.copy(movies = emptyList(), series = emptyList(), fuzzy = false) else h.r
         if (r.fuzzy) {
             // Repli tolérant aux fautes : l'ordre de ressemblance du dépôt est le bon, on ne le retrie pas.
-            return SearchView(movies = r.movies, series = r.series, channels = r.channels, programs = r.programs, fuzzy = true, query = h.q)
+            return SearchView(movies = r.movies, series = r.series, channels = r.channels, programs = r.programs, fuzzy = true, query = h.q, people = h.people, peopleFirst = h.strongPeople)
         }
         val movies = SearchRank.order(r.movies, h.q, sort, { it.title }, { it.year }, { it.rating })
         val series = SearchRank.order(r.series, h.q, sort, { it.title }, { it.year }, { it.rating })
@@ -310,7 +335,7 @@ class SearchViewModel @Inject constructor(
             val rs = s?.let { SearchRank.relevance(h.q, it.title) } ?: 0
             when { rm >= 3 && rm >= rs -> m; rs >= 3 -> s; else -> null }
         }
-        return SearchView(movies, series, channels, r.programs, best, false, query = h.q)
+        return SearchView(movies, series, channels, r.programs, best, false, query = h.q, people = h.people, peopleFirst = h.strongPeople)
     }
 }
 
@@ -353,6 +378,7 @@ fun SearchScreen(
     onOpenChannel: (String, String) -> Unit,
     onOpenMovie: (Long) -> Unit,
     onOpenSeries: (Long) -> Unit,
+    onOpenPerson: (String) -> Unit = {},
     vm: SearchViewModel = hiltViewModel(),
 ) {
     // Appui long sur un résultat (chaîne, film, série) : favoris ajoutés / retirés sans ouvrir la fiche.
@@ -361,7 +387,7 @@ fun SearchScreen(
     val fav = remember(keys, D) { SearchFav(keys) { p, k, id, t -> vm.toggleFavorite(p, k, id, t, D.favAdded, D.favRemoved) } }
     val sourceNames by vm.sourceNames.collectAsState()
     androidx.compose.runtime.CompositionLocalProvider(LocalSearchFav provides fav, LocalSearchSources provides sourceNames) {
-        SearchScreenContent(onOpenChannel, onOpenMovie, onOpenSeries, vm)
+        SearchScreenContent(onOpenChannel, onOpenMovie, onOpenSeries, onOpenPerson, vm)
     }
 }
 
@@ -371,6 +397,7 @@ private fun SearchScreenContent(
     onOpenChannel: (String, String) -> Unit,
     onOpenMovie: (Long) -> Unit,
     onOpenSeries: (Long) -> Unit,
+    onOpenPerson: (String) -> Unit,
     vm: SearchViewModel,
 ) {
     val q by vm.query.collectAsState()
@@ -406,7 +433,7 @@ private fun SearchScreenContent(
     val playChannel: (ChannelEntity) -> Unit = { c -> vm.playChannel(c) { onOpenChannel(c.streamUrl, c.name) } }
 
     if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
-        SearchTouch(q, view, recent, searching, effTab, sort, voiceAvailable, { runCatching { voiceLauncher.launch(voiceIntent) } }, vm, playChannel, openMovie, openSeries)
+        SearchTouch(q, view, recent, searching, effTab, sort, voiceAvailable, { runCatching { voiceLauncher.launch(voiceIntent) } }, vm, playChannel, openMovie, openSeries, onOpenPerson)
         return
     }
     // Saisie par le clavier du système (Gboard, appli télécommande du téléphone) : vrai champ de texte, toutes écritures (#247).
@@ -449,8 +476,8 @@ private fun SearchScreenContent(
                 // affichait les résultats un moment après.
                 view.query != q || (searching && view.total == 0) -> SearchingPane(D.searchingLabel)
                 view.total == 0 -> Message(S.searchNoMatches)
-                view.fuzzy -> FuzzyPane(q, view, vm, openMovie, openSeries)
-                effTab == SearchTab.ALL -> AllPane(view, effTab, sort, vm, playChannel, openMovie, openSeries)
+                view.fuzzy && view.people.isEmpty() -> FuzzyPane(q, view, vm, openMovie, openSeries)
+                effTab == SearchTab.ALL -> AllPane(view, effTab, sort, vm, playChannel, openMovie, openSeries, onOpenPerson)
                 else -> TypePane(q, view, effTab, sort, vm, playChannel, openMovie, openSeries)
             }
         }
@@ -702,6 +729,7 @@ private fun SeriesPoster(s: SeriesEntity, width: Int?, onOpen: (SeriesEntity) ->
 private fun AllPane(
     view: SearchView, tab: SearchTab, sort: SearchSort, vm: SearchViewModel,
     playChannel: (ChannelEntity) -> Unit, openMovie: (MovieEntity) -> Unit, openSeries: (SeriesEntity) -> Unit,
+    openPerson: (String) -> Unit,
 ) {
     val D = LocalDs.current
     Column(Modifier.fillMaxSize().padding(start = 56.design, top = 54.design)) {
@@ -711,12 +739,14 @@ private fun AllPane(
         // à l'écran, « F », et les onglets n'étaient plus atteignables à la télécommande).
         LazyColumn(Modifier.fillMaxSize().upExitTo(tabsReq), contentPadding = PaddingValues(top = 28.design, bottom = 54.design), verticalArrangement = Arrangement.spacedBy(34.design)) {
             view.best?.let { b -> item(key = "best", contentType = "best") { BestResult(b, openMovie, openSeries) } }
+            if (view.people.isNotEmpty() && view.peopleFirst) item(key = "people", contentType = "row") { PeopleRow(view.people, openPerson) }
             if (view.movies.isNotEmpty()) item(key = "movies", contentType = "row") {
                 ResultRow(D.searchMovies(view.movies.size), view.movies, { it.id }, { vm.setTab(SearchTab.MOVIES) }) { MoviePoster(it, 180, openMovie) }
             }
             if (view.series.isNotEmpty()) item(key = "series", contentType = "row") {
                 ResultRow(D.searchSeries(view.series.size), view.series, { it.id }, { vm.setTab(SearchTab.SERIES) }) { SeriesPoster(it, 180, openSeries) }
             }
+            if (view.people.isNotEmpty() && !view.peopleFirst) item(key = "people", contentType = "row") { PeopleRow(view.people, openPerson) }
             if (view.channels.isNotEmpty()) item(key = "channels", contentType = "row") {
                 ResultRow(D.searchChannels(view.channels.size), view.channels, { it.id }, { vm.setTab(SearchTab.CHANNELS) }, spacing = 16) { c ->
                     ChannelCard(c, Modifier.width(400.design)) { playChannel(c) }
@@ -726,6 +756,20 @@ private fun AllPane(
                 ResultRow(D.searchPrograms(view.programs.size), view.programs, { "${it.channel.id}-${it.startMs}" }, { vm.setTab(SearchTab.PROGRAMS) }, spacing = 16) { h ->
                     ProgramCard(h, D, Modifier.width(560.design)) { playChannel(h.channel) }
                 }
+            }
+        }
+    }
+}
+
+/** Rangée « ACTEURS ET RÉALISATEURS · n » : un bouton par personne, qui ouvre sa page. */
+@Composable
+private fun PeopleRow(people: List<String>, onOpen: (String) -> Unit) {
+    val D = LocalDs.current
+    ResultRow(D.personSearchTitle(people.size), people, { it }, null, spacing = 16) { name ->
+        FocusSurface(onClick = { onOpen(name) }, shape = RoundedCornerShape(16.design), bg = Ux.Surface, ringWidth = 4.design, focusedScale = 1f, modifier = Modifier.width(340.design).height(84.design)) { f ->
+            Row(Modifier.fillMaxSize().padding(horizontal = 22.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.design)) {
+                Text(name.take(1).uppercase(), color = if (f) Ux.TextOnLight else Ux.AccentInk, fontFamily = Sora, fontWeight = FontWeight.ExtraBold, fontSize = 32.spx, maxLines = 1)
+                Text(name, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             }
         }
     }
@@ -957,6 +1001,7 @@ private fun SearchTouch(
     q: String, view: SearchView, recent: List<String>, searching: Boolean, tab: SearchTab, sort: SearchSort,
     voiceAvailable: Boolean, onVoice: () -> Unit, vm: SearchViewModel,
     playChannel: (ChannelEntity) -> Unit, openMovie: (MovieEntity) -> Unit, openSeries: (SeriesEntity) -> Unit,
+    openPerson: (String) -> Unit,
 ) {
     val S = LocalStrings.current
     val D = LocalDs.current
@@ -1021,6 +1066,7 @@ private fun SearchTouch(
                         body(shown)
                         if (tab == SearchTab.ALL && n > shown) item(key = "more-${t.name}") { TouchChip(D.searchSeeAll + " (" + n + ")", false) { vm.setTab(t) } }
                     }
+                    if (tab == SearchTab.ALL && view.people.isNotEmpty() && view.peopleFirst) item(key = "people") { TouchPeople(view.people, openPerson) }
                     section(SearchTab.MOVIES, D.searchMovies(view.movies.size), view.movies.size) { shown ->
                         val k = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(view.movies.take(shown)) { "m${it.id}" }
                         items(shown, key = { k[it] }, contentType = { "vod" }) { i ->
@@ -1033,6 +1079,7 @@ private fun SearchTouch(
                             val s = view.series[i]; TouchVodRow(s.title, s.poster, TmdbKind.TV, s.year, listOfNotNull(s.year?.toString(), ratingLabel(s.rating, D), LocalSearchSources.current?.get(s.providerId)).joinToString(" · ")) { openSeries(s) }
                         }
                     }
+                    if (tab == SearchTab.ALL && view.people.isNotEmpty() && !view.peopleFirst) item(key = "people") { TouchPeople(view.people, openPerson) }
                     section(SearchTab.CHANNELS, D.searchChannels(view.channels.size), view.channels.size) { shown ->
                         val k = com.ultratv.tv.nativeapp.ui.common.uniqueKeys(view.channels.take(shown)) { "c${it.id}" }
                         items(shown, key = { k[it] }, contentType = { "channel" }) { i -> val c = view.channels[i]; TouchChannelHit(c) { playChannel(c) } }
@@ -1043,6 +1090,18 @@ private fun SearchTouch(
                     }
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TouchPeople(people: List<String>, onOpen: (String) -> Unit) {
+    val D = LocalDs.current
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        TouchHeader(D.personSearchTitle(people.size))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            people.forEach { n -> TouchChip(n, false) { onOpen(n) } }
         }
     }
 }

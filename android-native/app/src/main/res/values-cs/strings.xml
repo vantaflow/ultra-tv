@@ -665,6 +665,7 @@
     <string name="person_person_in_playlist">Ve vašem playlistu · %1$s</string>
     <string name="person_person_badge_movie">FILM</string>
     <string name="person_person_badge_series">SERIÁL</string>
+    <string name="person_person_search_title">HERCI A REŽISÉŘI · %1$s</string>
     <string name="perso_personalization">Personalizace</string>
     <string name="perso_accent_color">Barva zvýraznění</string>
     <string name="perso_text_size_label">Velikost textu</string>

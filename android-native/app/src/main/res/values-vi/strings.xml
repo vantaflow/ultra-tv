@@ -630,6 +630,7 @@
     <string name="person_person_in_playlist">Trong danh sách phát của bạn · %1$s</string>
     <string name="person_person_badge_movie">PHIM</string>
     <string name="person_person_badge_series">SERIES</string>
+    <string name="person_person_search_title">DIỄN VIÊN VÀ ĐẠO DIỄN · %1$s</string>
     <!-- i18n/PersonalizationStrings.kt -->
     <string name="perso_personalization">Cá nhân hóa</string>
     <string name="perso_accent_color">Màu nhấn</string>

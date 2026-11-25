@@ -41,9 +41,9 @@ class IncrementalTable<T>(
     }
 
     /** Une passe complète, À APPELER DANS UNE TRANSACTION. Retourne le nombre de lignes reçues. */
-    class Pass<T> internal constructor(private val t: IncrementalTable<T>, private val db: SupportSQLiteDatabase, private val providerId: Long) {
-        /** Table vide : insertion en masse, voir [IncrementalTable]. */
-        private val bulk = db.query("SELECT 1 FROM `${t.table}` LIMIT 1").use { !it.moveToFirst() }
+    class Pass<T> internal constructor(private val t: IncrementalTable<T>, private val db: SupportSQLiteDatabase, private val providerId: Long, private val progressive: Boolean = false) {
+        /** Table vide : insertion en masse, voir [IncrementalTable] (jamais en passe progressive : les index restent en place). */
+        private val bulk = !progressive && db.query("SELECT 1 FROM `${t.table}` LIMIT 1").use { !it.moveToFirst() }
         private val ins = db.compileStatement(if (bulk) t.bulkInsertSql else t.insertSql)
         private val upd by lazy { db.compileStatement(t.updateSql) }
         private val seen by lazy { db.compileStatement("INSERT OR IGNORE INTO temp.`sync_seen` (`remoteId`) VALUES (?)") }
@@ -78,7 +78,7 @@ class IncrementalTable<T>(
                     for (c in t.updatable) { if (c in t.keepIfNull) upd.bindAny(k++, byCol[c]); upd.bindAny(k++, byCol[c]) }
                     if (upd.executeUpdateDelete() > 0) updated++
                 }
-                seen.clearBindings(); seen.bindString(1, t.remoteIdOf(r)); seen.executeInsert()
+                if (!progressive) { seen.clearBindings(); seen.bindString(1, t.remoteIdOf(r)); seen.executeInsert() }
             }
         }
 
@@ -95,6 +95,9 @@ class IncrementalTable<T>(
                 )
             }
         }
+
+        /** Libère les requêtes d'une passe progressive. */
+        fun close() { runCatching { ins.close() }; runCatching { upd.close() } }
 
         /** Supprime ce qui n'est plus dans la liste et nettoie. Retourne le nombre de lignes supprimées. */
         fun finish(): Int {
@@ -117,6 +120,26 @@ class IncrementalTable<T>(
             return n
         }
     }
+
+    /** Identifiant distant d'une ligne. */
+    fun idOf(r: T): String = remoteIdOf(r)
+
+    /** Identifiants actuellement en base pour une catégorie (voir [beginProgressive]). */
+    fun idsInCategory(db: SupportSQLiteDatabase, providerId: Long, categoryId: String): Set<String> =
+        db.query("SELECT `remoteId` FROM `$table` WHERE `providerId` = ? AND `categoryId` = ?", arrayOf<Any>(providerId, categoryId)).use { c ->
+            val s = HashSet<String>(); while (c.moveToNext()) s += c.getString(0); s
+        }
+
+    /** Supprime ces identifiants du fournisseur (par paquets : SQLite plafonne les paramètres). À appeler dans une transaction. */
+    fun deleteIds(db: SupportSQLiteDatabase, providerId: Long, ids: Collection<String>) {
+        for (chunk in ids.chunked(500)) db.execSQL("DELETE FROM `$table` WHERE `providerId` = ? AND `remoteId` IN (${chunk.joinToString { "?" }})", (listOf<Any>(providerId) + chunk).toTypedArray())
+    }
+
+    /**
+     * Passe PROGRESSIVE (une catégorie à la fois, une transaction par catégorie) : écrit sans jamais supprimer, sans mode
+     * « en masse » ni table des identifiants vus. Fermer avec [Pass.close] ; les suppressions se font à part ([deleteIds]).
+     */
+    fun beginProgressive(db: SupportSQLiteDatabase, providerId: Long): Pass<T> = Pass(this, db, providerId, progressive = true)
 
     fun begin(db: SupportSQLiteDatabase, providerId: Long): Pass<T> {
         db.execSQL("CREATE TEMP TABLE IF NOT EXISTS `sync_seen` (`remoteId` TEXT PRIMARY KEY NOT NULL)")

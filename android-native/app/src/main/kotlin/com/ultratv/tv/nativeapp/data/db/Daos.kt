@@ -571,6 +571,9 @@ interface ChannelDao {
 /** Durée d'archive d'une chaîne (jours de rattrapage). */
 data class ChannelArchive(val id: Long, val catchupDays: Int)
 
+/** Une ligne de distribution (noms séparés par des virgules) et la catégorie du titre. */
+data class CastRow(val categoryId: String?, val names: String)
+
 @Dao
 interface MovieDao {
     /** Favoris : seulement les films demandés (index unique providerId+remoteId), jamais tout le catalogue. */
@@ -629,6 +632,18 @@ interface MovieDao {
         ORDER BY m.year IS NULL, m.year DESC LIMIT :limit
     """)
     suspend fun byPerson(pid: Long, name: String, limit: Int): List<MovieEntity>
+
+    /** Recherche d'acteurs : distributions de la liste (colonne cast), avec la catégorie pour le filtre du profil. */
+    @Query("SELECT categoryId AS categoryId, `cast` AS names FROM movie WHERE providerId = :pid AND `cast` IS NOT NULL AND `cast` != ''")
+    suspend fun castRows(pid: Long): List<CastRow>
+
+    /** Recherche d'acteurs : distributions et réalisateurs des fiches déjà ouvertes (vod_info). */
+    @Query("""
+        SELECT m.categoryId AS categoryId, COALESCE(v.`cast`, '') || ',' || COALESCE(v.director, '') AS names
+        FROM vod_info v JOIN movie m ON m.providerId = v.providerId AND m.remoteId = v.remoteId
+        WHERE v.providerId = :pid AND ((v.`cast` IS NOT NULL AND v.`cast` != '') OR (v.director IS NOT NULL AND v.director != ''))
+    """)
+    suspend fun infoCastRows(pid: Long): List<CastRow>
 
     /** Repli : même catégorie du fournisseur, les mieux notés d'abord. */
     @Query("SELECT * FROM movie WHERE providerId = :pid AND id != :excludeId AND categoryId = :cat AND poster IS NOT NULL AND poster != '' ORDER BY rating IS NULL, rating DESC, addedKey DESC LIMIT :limit")
@@ -808,6 +823,10 @@ interface SeriesDao {
     /** Page acteur : séries dont la distribution cite ce nom. */
     @Query("SELECT * FROM series WHERE providerId = :pid AND `cast` LIKE '%' || :name || '%' ORDER BY year IS NULL, year DESC LIMIT :limit")
     suspend fun byPerson(pid: Long, name: String, limit: Int): List<SeriesEntity>
+
+    /** Recherche d'acteurs : distributions des séries, avec la catégorie pour le filtre du profil. */
+    @Query("SELECT categoryId AS categoryId, `cast` AS names FROM series WHERE providerId = :pid AND `cast` IS NOT NULL AND `cast` != ''")
+    suspend fun castRows(pid: Long): List<CastRow>
 
     /** « Séries les mieux notées » (accueil) : note valide et affiche présente. */
     @Query("SELECT * FROM series WHERE providerId = :pid AND poster IS NOT NULL AND poster != '' AND rating > 0 AND rating <= 10 ORDER BY rating DESC, addedKey DESC LIMIT :limit")

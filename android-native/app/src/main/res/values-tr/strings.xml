@@ -639,6 +639,7 @@
 <string name="person_person_in_playlist">Oynatma listenizde · %1$s</string>
 <string name="person_person_badge_movie">FİLM</string>
 <string name="person_person_badge_series">DİZİ</string>
+<string name="person_person_search_title">OYUNCULAR VE YÖNETMENLER · %1$s</string>
 <string name="perso_personalization">Kişiselleştirme</string>
 <string name="perso_accent_color">Vurgu rengi</string>
 <string name="perso_text_size_label">Metin boyutu</string>

@@ -630,6 +630,7 @@
     <string name="person_person_in_playlist">ในเพลย์ลิสต์ของคุณ · %1$s</string>
     <string name="person_person_badge_movie">ภาพยนตร์</string>
     <string name="person_person_badge_series">ซีรีส์</string>
+    <string name="person_person_search_title">นักแสดงและผู้กำกับ · %1$s</string>
     <!-- i18n/PersonalizationStrings.kt -->
     <string name="perso_personalization">การปรับแต่ง</string>
     <string name="perso_accent_color">สีเน้น</string>

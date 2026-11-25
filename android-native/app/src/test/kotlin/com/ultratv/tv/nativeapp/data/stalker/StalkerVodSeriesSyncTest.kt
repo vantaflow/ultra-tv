@@ -23,6 +23,8 @@ import com.ultratv.tv.nativeapp.data.xmltv.XmltvParser
 import com.ultratv.tv.nativeapp.data.xtream.XtreamClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
@@ -128,14 +130,35 @@ class StalkerVodSeriesSyncTest {
         val fake = FakeVodPortal(seriesCategories = emptyMap(), vodCategories = mapOf("9" to ("FR Films" to 50_000))).apply { ignorePage = true }
         val split = client(fake).vodOfCategory(provider(), "9")
         assertEquals(14, split.movies.size)                           // la seule page réellement servie
-        assertTrue("pas 3 572 requêtes de la même page : ${listCalls(fake)}", listCalls(fake) <= 2 + 3)
+        assertTrue("pas 3 572 requêtes de la même page : ${listCalls(fake)}", listCalls(fake) <= 1 + 3 * StalkerClient.DEFAULT_PAGE_CONCURRENCY + 1)
     }
 
     @Test fun totalGonfle_arretSurLesPagesVides() = runBlocking {
         val fake = FakeVodPortal(seriesCategories = emptyMap(), vodCategories = mapOf("9" to ("FR Films" to 30))).apply { fakeTotal = 1_000_000 }
         val split = client(fake).vodOfCategory(provider(), "9")
         assertEquals(30, split.movies.size)
-        assertTrue("pas 71 429 pages demandées : ${listCalls(fake)}", listCalls(fake) <= 3 + 3)
+        assertTrue("pas 71 429 pages demandées : ${listCalls(fake)}", listCalls(fake) <= 1 + 3 * StalkerClient.DEFAULT_PAGE_CONCURRENCY + 1)
+    }
+
+    @Test fun poolGlissant_unePageLenteNeBloquePasLesAutres() = runBlocking {
+        val fake = FakeVodPortal(seriesCategories = emptyMap(), vodCategories = mapOf("9" to ("FR Films" to 14 * 20)))
+        fake.pageDelayMs = { p -> if (p == 2) 700L else 0L }
+        val split = client(fake).vodOfCategory(provider(), "9")
+        assertEquals(280, split.movies.size)
+        val order = fake.completedPages.toList()
+        // Avec une fenêtre à barrière de 3, la page 2 aurait été suivie de 2 pages seulement.
+        assertTrue("la page 2 (lente) termine après au moins 6 autres : $order", order.indexOf(2) >= 6)
+        assertTrue(order.containsAll((1..20).toList()))   // (+ la page 21 de sondage : la dernière page est pleine)
+    }
+
+    @Test fun poolGlissant_borneGlobaleRespecteeAvecPlusieursCategoriesEnParallele() = runBlocking {
+        val fake = FakeVodPortal(seriesCategories = emptyMap(), vodCategories = mapOf("1" to ("A" to 14 * 15), "2" to ("B" to 14 * 15), "3" to ("C" to 14 * 15)))
+        fake.pageDelayMs = { 25L }
+        val c = client(fake).also { it.pageConcurrency = 5 }
+        val got = coroutineScope { listOf("1", "2", "3").map { id -> async { c.vodOfCategory(provider(), id).movies.size } }.map { it.await() } }
+        assertEquals(listOf(210, 210, 210), got)
+        assertTrue("jamais plus de 5 pages en vol : ${fake.maxInFlight.get()}", fake.maxInFlight.get() <= 5)
+        assertTrue("le pool est bien utilisé : ${fake.maxInFlight.get()}", fake.maxInFlight.get() >= 3)
     }
 
     @Test fun totalTropPetit_pagesSuivantesLuesQuandMemeSiLaPageEstPleine() = runBlocking {
@@ -284,4 +307,36 @@ class StalkerVodSeriesSyncTest {
         assertEquals(null, r.bus.failure.value)
     }
 
+    @Test fun synchro_filmsEcritsAuFilDeLaLecture_avantLaFinDeLaPartie() = runBlocking {
+        val cats = (1..6).associate { "$it" to ("FR Cat $it" to 30) }
+        val fake = FakeVodPortal(seriesCategories = emptyMap(), vodCategories = cats)
+        fake.pageDelayMs = { 5L }
+        val r = rig(fake, "progressif")
+        val counts = java.util.concurrent.CopyOnWriteArrayList<Int>()
+        fake.onList = { counts += r.db.n("SELECT COUNT(*) FROM movie") }
+        r.repo.syncAll(r.providerId, force = true)
+        assertEquals(180, r.db.n("SELECT COUNT(*) FROM movie"))
+        assertTrue("des films visibles avant la fin de la lecture : ${counts.distinct()}", counts.any { it in 1..179 })
+    }
+
+    @Test fun synchro_titresDisparus_supprimesSeulementSiLaCategorieEstLue_categorieEnEchecGardeSonContenu() = runBlocking {
+        val fake = FakeVodPortal(seriesCategories = emptyMap(), vodCategories = mapOf("8" to ("FR Action" to 20), "9" to ("FR Films" to 30)))
+        val r = rig(fake, "disparus")
+        r.repo.syncAll(r.providerId, force = true)
+        assertEquals(50, r.db.n("SELECT COUNT(*) FROM movie"))
+
+        // 2e synchro : les deux catégories rétrécissent mais la 9 tombe en panne -> la 8 est mise à jour, la 9 garde ses 30 titres.
+        fake.vodCategories = mapOf("8" to ("FR Action" to 12), "9" to ("FR Films" to 10))
+        fake.failingCategories += "9"
+        r.repo.syncAll(r.providerId, force = true)
+        assertEquals(12, r.db.n("SELECT COUNT(*) FROM movie WHERE categoryId = '8'"))
+        assertEquals(30, r.db.n("SELECT COUNT(*) FROM movie WHERE categoryId = '9'"))
+
+        // 3e synchro réussie : la 9 rétrécit pour de bon.
+        fake.failingCategories.clear()
+        r.repo.syncAll(r.providerId, force = true)
+        assertEquals(10, r.db.n("SELECT COUNT(*) FROM movie WHERE categoryId = '9'"))
+        assertEquals(22, r.db.n("SELECT COUNT(*) FROM movie"))
+        assertEquals(null, r.bus.failure.value)
+    }
 }

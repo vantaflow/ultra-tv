@@ -811,6 +811,7 @@ private fun NavGraph(nav: androidx.navigation.NavHostController, simpleHome: Boo
                 onOpenChannel = { url, title -> nav.navigate(Routes.player(url, title)) },
                 onOpenMovie = { id -> nav.navigate(Routes.movieDetail(id)) },
                 onOpenSeries = { id -> nav.navigate(Routes.seriesDetail(id)) },
+                onOpenPerson = { name -> nav.navigate(Routes.person(name)) },
             )
         }
         // Rubrique Sport (facultative) : l'entrée de menu n'existe que si le réglage est activé.

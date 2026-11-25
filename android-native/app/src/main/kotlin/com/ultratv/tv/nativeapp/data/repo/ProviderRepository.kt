@@ -736,6 +736,11 @@ class ProviderRepository @Inject constructor(
         return true
     }
 
+    /** Télémétrie : fin d'une partie réussie (type de source, partie, éléments, durée) ; ni nom de source ni adresse. */
+    private fun logSyncDone(kind: String, part: SyncPart, items: Int, ms: Long) {
+        com.ultratv.tv.nativeapp.RemoteLog.info(com.ultratv.tv.nativeapp.UtvLog.SYNC, "sync done kind=$kind part=$part items=$items ms=$ms")
+    }
+
     private suspend fun syncAllInternal(providerId: Long, onProgress: (String) -> Unit, force: Boolean): Int {
         // Source M3U enregistrée avec une adresse Xtream : conversion automatique au prochain lancement / « Réessayer ».
         if (canConvertToXtream(providerId)) convertToXtream(providerId)
@@ -756,6 +761,7 @@ class ProviderRepository @Inject constructor(
         val now = System.currentTimeMillis()
         val u = prefs.flow.first()
         val a = adaptive.state.value
+        if (p.kind == "STALKER") stalker.pageConcurrency = a.auto.stalkerPageConcurrency
         val ttl = SyncPolicy.ttl(if (u.syncMode == "launch") 1 else u.syncIntervalHours)
         val enabledParts = buildSet { if (u.syncLive) add(SyncPart.LIVE); if (u.syncEpg) add(SyncPart.EPG); if (u.syncVod) add(SyncPart.VOD); if (u.syncSeries) add(SyncPart.SERIES) }
         val heavyOk = !(u.syncUnmeteredOnly && a.net.metered)
@@ -763,8 +769,10 @@ class ProviderRepository @Inject constructor(
         com.ultratv.tv.nativeapp.UtvLog.i(com.ultratv.tv.nativeapp.UtvLog.SYNC, "parties dues ${p.kind}: ${due.joinToString(",").ifEmpty { "aucune" }} (heavyOk=$heavyOk)")
         if (due.isEmpty()) return 0
 
+        val m3uT0 = System.currentTimeMillis()
         if (p.kind == "M3U") return syncM3u(providerId, onProgress).also {
             providerDao.markSynced(p.id, SyncPart.LIVE, System.currentTimeMillis())
+            logSyncDone(p.kind, SyncPart.LIVE, it, System.currentTimeMillis() - m3uT0)
             // Guide annoncé par la playlist (url-tvg) : après les chaînes, sans jamais faire échouer la synchro.
             // `due` ne contient jamais EPG pour une M3U : le guide est relu s'il est périmé (ou jamais lu : premier ajout), y compris
             // le guide complémentaire seul d'une playlist sans url-tvg.
@@ -841,24 +849,26 @@ class ProviderRepository @Inject constructor(
             var refused: EmptyCatalogException? = null
             suspend fun <R> orRefused(block: suspend () -> R): R? = try { block() } catch (e: EmptyCatalogException) { if (refused == null) refused = e; null }
             for (part in due) {
+                val partT0 = System.currentTimeMillis()
+                var partItems = -1
                 when (part) {
                     SyncPart.LIVE -> {
                         val n = orRefused { syncXtreamPart(p, livePart(p.kind), ::maybeLock, { c, n -> step(part, "Live channels: $n", n, c) }, null, { syncScope.launch { startPrefetch() } }) }
                         startPrefetch()   // direct par catégories (pas de liste complète) ou déjà lancé : sans effet si déjà fait
                         if (n == null) { doneBefore += weights.getValue(part); continue }
-                        written += n
+                        written += n; partItems = n
                     }
                     SyncPart.VOD -> {
-                        if (p.kind == "STALKER") { step(part, "Movies", null, 0f); stalkerProgress[p.id] = { c, n -> step(part, "Movies: $n", n, c) } }
-                        val n = try { orRefused { stalkerTolerant(p, "MOVIE") { syncXtreamPart(p, vodPart(p.kind), ::maybeLock, { c, n -> step(part, "Movies: $n", n, c) }, catsAhead[part]) } } } finally { stalkerProgress.remove(p.id) }
+                        if (p.kind == "STALKER") step(part, "Movies", null, 0f)
+                        val n = orRefused { stalkerTolerant(p, "MOVIE") { syncXtreamPart(p, vodPart(p.kind), ::maybeLock, { c, n -> step(part, "Movies: $n", n, c) }, catsAhead[part]) } }
                         if (n == null) { doneBefore += weights.getValue(part); continue }   // réessayée à la prochaine synchro
-                        written += n
+                        written += n; partItems = n
                     }
                     SyncPart.SERIES -> {
-                        if (p.kind == "STALKER") { step(part, "Series", null, 0f); stalkerProgress[p.id] = { c, n -> step(part, "Series: $n", n, c) } }
-                        val n = try { orRefused { stalkerTolerant(p, "SERIES") { syncXtreamPart(p, seriesPart(p.kind), ::maybeLock, { c, n -> step(part, "Series: $n", n, c) }, catsAhead[part]) } } } finally { stalkerProgress.remove(p.id) }
+                        if (p.kind == "STALKER") step(part, "Series", null, 0f)
+                        val n = orRefused { stalkerTolerant(p, "SERIES") { syncXtreamPart(p, seriesPart(p.kind), ::maybeLock, { c, n -> step(part, "Series: $n", n, c) }, catsAhead[part]) } }
                         if (n == null) { doneBefore += weights.getValue(part); continue }
-                        written += n
+                        written += n; partItems = n
                     }
                     SyncPart.EPG -> {
                         // Le guide ne doit jamais faire échouer le reste : erreur isolée, réessayée au TTL suivant.
@@ -868,6 +878,7 @@ class ProviderRepository @Inject constructor(
                 }
                 providerDao.markSynced(p.id, part, System.currentTimeMillis())
                 doneBefore += weights.getValue(part)
+                if (partItems >= 0) logSyncDone(p.kind, part, partItems, System.currentTimeMillis() - partT0)
             }
             refused?.let { throw it }
             syncStatus.set(SyncStatusBus.Status(p.name, "Done", 100))
@@ -933,8 +944,8 @@ class ProviderRepository @Inject constructor(
     private fun vodPart(kind: String = "XTREAM") = PartSpec<com.ultratv.tv.nativeapp.data.db.MovieEntity>(
         "MOVIE",
         { p -> if (Nas.isNasKind(kind)) nas.categories(p, "MOVIE") else if (MediaServer.isMediaKind(kind)) mediaCategories(p, "MOVIE") else if (kind == "STALKER") stalker.vodCategories(p, "MOVIE") else xtream.fetchVodCategories(p) },
-        { p, blk -> if (Nas.isNasKind(kind)) blk(nas.categories(p, "MOVIE").flatMap { nas.movies(p, it.remoteId) }.asSequence()) else if (MediaServer.isMediaKind(kind)) blk(mediaCategories(p, "MOVIE").flatMap { mediaServer.movies(p, it.remoteId) }.asSequence()) else if (kind == "STALKER") blk(stalkerVodAll(p, "MOVIE") { it.movies }.asSequence()) else xtream.withVodStreams(p, blk) },
-        { p, c -> if (Nas.isNasKind(kind)) nas.movies(p, c) else if (MediaServer.isMediaKind(kind)) mediaServer.movies(p, c) else if (kind == "STALKER") stalkerVod(p, c).movies else xtream.vodOfCategory(p, c) },
+        { p, blk -> if (Nas.isNasKind(kind)) blk(nas.categories(p, "MOVIE").flatMap { nas.movies(p, it.remoteId) }.asSequence()) else if (MediaServer.isMediaKind(kind)) blk(mediaCategories(p, "MOVIE").flatMap { mediaServer.movies(p, it.remoteId) }.asSequence()) else if (kind == "STALKER") blk(emptySequence()) /* Stalker : lecture progressive, voir stalkerProgressive */ else xtream.withVodStreams(p, blk) },
+        { p, c -> if (Nas.isNasKind(kind)) nas.movies(p, c) else if (MediaServer.isMediaKind(kind)) mediaServer.movies(p, c) else if (kind == "STALKER") stalkerMoviesOf(p, c) else xtream.vodOfCategory(p, c) },
         { it.categoryId }, { m, lang -> m.copy(lang = LanguageDetector.forItem(m.name, lang)) },
         { movieDao.deleteForProvider(it) }, { pid, ids -> movieDao.deleteForCategories(pid, ids) }, { pid, id -> movieDao.deleteForCategory(pid, id) },
         { movieDao.upsertAll(it) },
@@ -947,8 +958,8 @@ class ProviderRepository @Inject constructor(
     private fun seriesPart(kind: String = "XTREAM") = PartSpec<com.ultratv.tv.nativeapp.data.db.SeriesEntity>(
         "SERIES",
         { p -> if (Nas.isNasKind(kind)) nas.categories(p, "SERIES") else if (MediaServer.isMediaKind(kind)) mediaCategories(p, "SERIES") else if (kind == "STALKER") stalkerSeriesCategories(p) else xtream.fetchSeriesCategories(p) },
-        { p, blk -> if (Nas.isNasKind(kind)) blk(nas.categories(p, "SERIES").flatMap { nas.series(p, it.remoteId) }.asSequence()) else if (MediaServer.isMediaKind(kind)) blk(mediaCategories(p, "SERIES").flatMap { mediaServer.series(p, it.remoteId) }.asSequence()) else if (kind == "STALKER") blk(stalkerVodAll(p, "SERIES") { s -> s.series.map { it.series } }.asSequence()) else xtream.withSeries(p, blk) },
-        { p, c -> if (Nas.isNasKind(kind)) nas.series(p, c) else if (MediaServer.isMediaKind(kind)) mediaServer.series(p, c) else if (kind == "STALKER") stalkerVod(p, c).series.map { it.series } else xtream.seriesOfCategory(p, c) },
+        { p, blk -> if (Nas.isNasKind(kind)) blk(nas.categories(p, "SERIES").flatMap { nas.series(p, it.remoteId) }.asSequence()) else if (MediaServer.isMediaKind(kind)) blk(mediaCategories(p, "SERIES").flatMap { mediaServer.series(p, it.remoteId) }.asSequence()) else if (kind == "STALKER") blk(emptySequence()) /* Stalker : lecture progressive, voir stalkerProgressive */ else xtream.withSeries(p, blk) },
+        { p, c -> if (Nas.isNasKind(kind)) nas.series(p, c) else if (MediaServer.isMediaKind(kind)) mediaServer.series(p, c) else if (kind == "STALKER") stalkerVod(p, c, needMovies = false).series.map { it.series } else xtream.seriesOfCategory(p, c) },
         { it.categoryId }, { s2, lang -> s2.copy(lang = LanguageDetector.forItem(s2.name, lang)) },
         { seriesDao.deleteForProvider(it) }, { pid, ids -> seriesDao.deleteForCategories(pid, ids) }, { pid, id -> seriesDao.deleteForCategory(pid, id) },
         { seriesDao.upsertAll(it) },
@@ -1085,17 +1096,30 @@ class ProviderRepository @Inject constructor(
      * Dernière lecture VOD de chaque catégorie Stalker (films ET séries) : la partie « Séries », qui suit la partie
      * « Films », réutilise ces pages au lieu de les retélécharger (une catégorie de 2 000 titres = 140 requêtes).
      */
-    private val stalkerVodCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, com.ultratv.tv.nativeapp.data.stalker.StalkerClient.VodSplit>>()
+    private val stalkerVodCache = java.util.concurrent.ConcurrentHashMap<String, StalkerVodCached>()
 
-    private suspend fun stalkerVod(p: ProviderEntity, categoryId: String): com.ultratv.tv.nativeapp.data.stalker.StalkerClient.VodSplit {
+    /** [moviesDropped] : les films déjà écrits ont été retirés de la copie gardée (seules les séries restent, voir [stalkerMoviesOf]). */
+    private class StalkerVodCached(val at: Long, val split: com.ultratv.tv.nativeapp.data.stalker.StalkerClient.VodSplit, val moviesDropped: Boolean = false)
+
+    private suspend fun stalkerVod(p: ProviderEntity, categoryId: String, needMovies: Boolean = true): com.ultratv.tv.nativeapp.data.stalker.StalkerClient.VodSplit {
         val key = "${p.id}:$categoryId"
-        stalkerVodCache[key]?.let { (at, v) -> if (System.currentTimeMillis() - at < STALKER_VOD_CACHE_MS) return v }
+        stalkerVodCache[key]?.let { c -> if (System.currentTimeMillis() - c.at < STALKER_VOD_CACHE_MS && !(needMovies && c.moviesDropped)) return c.split }
         // Catégorie du module `type=series` (identifiant préfixé) : séries seulement, demandées à ce module.
         val v = if (categoryId.startsWith(com.ultratv.tv.nativeapp.data.stalker.StalkerClient.SERIES_PREFIX))
             com.ultratv.tv.nativeapp.data.stalker.StalkerClient.VodSplit(emptyList(), fetchWithBackoff { stalker.seriesOfCategory(p, categoryId) })
         else stalker.vodOfCategory(p, categoryId)   // chaque page a déjà ses nouvelles tentatives (StalkerClient.pageWithRetry)
-        stalkerVodCache[key] = System.currentTimeMillis() to v
+        stalkerVodCache[key] = StalkerVodCached(System.currentTimeMillis(), v)
         return v
+    }
+
+    /**
+     * Films d'une catégorie VOD Stalker. La copie gardée pour la partie « Séries » est allégée de ces films (déjà écrits en
+     * base) : pas deux listes complètes en mémoire. Une relecture qui voudrait les films ([stalkerVod] `needMovies`) la refait.
+     */
+    private suspend fun stalkerMoviesOf(p: ProviderEntity, categoryId: String): List<com.ultratv.tv.nativeapp.data.db.MovieEntity> {
+        val v = stalkerVod(p, categoryId)
+        stalkerVodCache["${p.id}:$categoryId"] = StalkerVodCached(System.currentTimeMillis(), com.ultratv.tv.nativeapp.data.stalker.StalkerClient.VodSplit(emptyList(), v.series), moviesDropped = true)
+        return v.movies
     }
 
     /**
@@ -1104,33 +1128,52 @@ class ProviderRepository @Inject constructor(
      */
     private val STALKER_VOD_CACHE_MS = 3 * 3_600_000L
 
-    /** Progression de la partie en cours (fraction 0..1, éléments lus) pendant la lecture des catégories Stalker. */
-    private val stalkerProgress = java.util.concurrent.ConcurrentHashMap<Long, (Float, Int) -> Unit>()
-
     /** Pause avant la seconde lecture des catégories sautées (portail surchargé) ; réduite dans les tests. */
     @Volatile internal var stalkerRetryPauseMs = 2_000L
 
     /**
-     * Toutes les catégories VOD ACTIVES de [kind] (déjà fusionnées et écrites par le moteur), 3 à la fois. Une catégorie
-     * en échec (erreur, délai, réponse vide) est journalisée et sautée ; son contenu précédent est gardé (voir [PartSpec.keepCats]).
+     * Films ou séries d'un portail Stalker, écrits CATÉGORIE PAR CATÉGORIE au fil de la lecture (ils apparaissent
+     * progressivement, rien n'est accumulé en mémoire au-delà des catégories en cours). Les catégories sont lues en
+     * parallèle (la borne globale de requêtes de page est celle du client, voir StalkerClient.pageConcurrency). Une catégorie
+     * en échec (erreur, délai, réponse vide) est relue une fois après une pause, puis journalisée et sautée : son contenu
+     * précédent n'est pas touché. Les titres disparus d'une catégorie lue (et absents de toutes les autres) ne sont supprimés
+     * qu'en fin de partie, APRÈS la garde anti-effacement. Retourne le nombre de titres reçus.
      */
-    private suspend fun <T> stalkerVodAll(p: ProviderEntity, kind: String, pick: (com.ultratv.tv.nativeapp.data.stalker.StalkerClient.VodSplit) -> List<T>): List<T> {
-        val ids = categoryDao.forProviderKind(p.id, kind).filter { it.enabled }.map { it.remoteId }
-        val gate = kotlinx.coroutines.sync.Semaphore(3)
+    private suspend fun <T : Any> stalkerProgressive(
+        p: ProviderEntity, spec: PartSpec<T>, inc: IncrementalTable<T>, ids: List<String>, langByCat: Map<String, String>,
+        itemsBefore: Int, progress: (Float, Int) -> Unit,
+    ): Int {
+        val kind = spec.kind
+        val gate = kotlinx.coroutines.sync.Semaphore(stalker.pageConcurrency)
         val failures = java.util.concurrent.ConcurrentHashMap<String, Exception>()
+        val emptyCats = java.util.concurrent.ConcurrentLinkedQueue<String>()
         val done = java.util.concurrent.atomic.AtomicInteger()
         val items = java.util.concurrent.atomic.AtomicInteger()
+        val responded = java.util.concurrent.atomic.AtomicInteger()
         val total = ids.size.coerceAtLeast(1)
-        // La progression avance à chaque catégorie lue (avant : figée sur la valeur de fin du Direct pendant toute la
-        // lecture des films, une heure sur un gros portail — « bloquée vers 23 % »). 90 % pour la lecture, le reste à l'écriture.
-        fun tick(n: Int) { stalkerProgress[p.id]?.invoke(done.incrementAndGet().toFloat() / total * 0.9f, items.addAndGet(n)) }
-        val byId = java.util.concurrent.ConcurrentHashMap<String, List<T>>()
+        val written = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+        val stale = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+        fun tick(n: Int) { progress(done.incrementAndGet().toFloat() / total, items.addAndGet(n)) }
+        suspend fun write(id: String, got: List<T>) {
+            if (got.isEmpty()) { emptyCats += id; return }
+            val rows = got.map { spec.withLang(it, langByCat[id].orEmpty()) }
+            db.withTransaction {
+                val sdb = db.openHelper.writableDatabase
+                val old = inc.idsInCategory(sdb, p.id, id)
+                val pass = inc.beginProgressive(sdb, p.id)
+                try { rows.chunked(1_000).forEach { pass.write(it) } } finally { pass.close() }
+                val now = rows.mapTo(HashSet()) { inc.idOf(it) }
+                written += now
+                old.filterTo(stale) { it !in now }
+            }
+            responded.incrementAndGet()
+        }
         kotlinx.coroutines.coroutineScope {
             ids.map { id ->
                 async {
                     gate.withPermit {
                         try {
-                            val got = pick(stalkerVod(p, id)); byId[id] = got; tick(got.size)
+                            val got = spec.fetchOne(p, id); write(id, got); tick(got.size)
                         } catch (c: kotlinx.coroutines.CancellationException) {
                             throw c
                         } catch (e: Exception) {
@@ -1140,9 +1183,8 @@ class ProviderRepository @Inject constructor(
                 }
             }.forEach { it.await() }
         }
-        // Seconde lecture des catégories sautées, UNE à la fois après une pause : un portail lent ou surchargé (3 catégories
-        // × 3 pages en parallèle) répond souvent à la relecture. Avant, films et séries n'arrivaient qu'à une 2e synchro.
-        // Bornée : au plus [STALKER_RETRY_MAX] catégories, arrêt après 3 nouveaux échecs de suite (portail en panne).
+        // Seconde lecture des catégories sautées, UNE à la fois après une pause : un portail lent ou surchargé répond souvent à la
+        // relecture. Bornée : au plus [STALKER_RETRY_MAX] catégories, arrêt après 3 nouveaux échecs de suite (portail en panne).
         val toRetry = ids.filter { failures.containsKey(it) }.take(STALKER_RETRY_MAX)
         if (toRetry.isNotEmpty()) {
             kotlinx.coroutines.delay(stalkerRetryPauseMs)
@@ -1151,7 +1193,8 @@ class ProviderRepository @Inject constructor(
             for (id in toRetry) {
                 if (streak >= 3) break
                 try {
-                    byId[id] = pick(stalkerVod(p, id)); failures.remove(id); recovered++; streak = 0
+                    val got = spec.fetchOne(p, id); write(id, got); items.addAndGet(got.size)
+                    failures.remove(id); recovered++; streak = 0
                 } catch (c: kotlinx.coroutines.CancellationException) {
                     throw c
                 } catch (e: Exception) {
@@ -1163,9 +1206,15 @@ class ProviderRepository @Inject constructor(
         ids.filter { failures.containsKey(it) }.forEach { id ->
             stalkerSkip(p.id, kind, id, com.ultratv.tv.nativeapp.data.stalker.StalkerSyncLog.STEP_LIST, stalkerType(kind, id), failures[id])
         }
-        val out = ids.flatMap { byId[it].orEmpty() }
-        com.ultratv.tv.nativeapp.RemoteLog.info("StalkerSync", com.ultratv.tv.nativeapp.data.stalker.StalkerSyncLog.summary(if (kind == "MOVIE") "vod" else "series", ids.size - failures.size, failures.size, out.size))
-        return out
+        val received = items.get()
+        com.ultratv.tv.nativeapp.RemoteLog.info("StalkerSync", com.ultratv.tv.nativeapp.data.stalker.StalkerSyncLog.summary(if (kind == "MOVIE") "vod" else "series", ids.size - failures.size, failures.size, received))
+        // Garde anti-effacement et catégories vides (voir emptyThenGuard) AVANT toute suppression.
+        emptyThenGuard(p, spec, itemsBefore, received, emptyCats.toList(), responded.get())
+        // Fin de synchro réussie : titres disparus (un titre passé dans une autre catégorie est dans `written`, donc gardé).
+        val gone = stale.filter { it !in written }
+        if (gone.isNotEmpty()) db.withTransaction { inc.deleteIds(db.openHelper.writableDatabase, p.id, gone) }
+        // Catégories sautées : jamais lues, donc jamais touchées ; la copie des séries gardée pour la partie suivante reste en cache.
+        return received
     }
 
     /** Catégories relues au plus pendant la seconde lecture d'une partie Stalker. */
@@ -1188,7 +1237,7 @@ class ProviderRepository @Inject constructor(
         if (module.isNotEmpty()) return module
         val all = stalker.vodCategories(p, "SERIES")
         val now = System.currentTimeMillis()
-        val read = all.associate { c -> c.remoteId to stalkerVodCache["${p.id}:${c.remoteId}"]?.takeIf { now - it.first < STALKER_VOD_CACHE_MS }?.second }
+        val read = all.associate { c -> c.remoteId to stalkerVodCache["${p.id}:${c.remoteId}"]?.takeIf { now - it.at < STALKER_VOD_CACHE_MS }?.split }
         if (read.values.all { it == null }) return all
         // Catégories lues : gardées seulement si elles contiennent des séries ; jamais lues (désactivées côté films) : gardées.
         return all.filter { c -> read[c.remoteId]?.series?.isNotEmpty() ?: true }
@@ -1351,6 +1400,11 @@ class ProviderRepository @Inject constructor(
         // Catégories qui ont renvoyé au moins un élément (règle des catégories vides, voir CatalogGuard.mayEmptyCategories).
         val responded = java.util.concurrent.atomic.AtomicInteger(0)
         val tier = adaptive.state.value.device.tier
+
+        // Portail Stalker (films, séries) : lecture et écriture catégorie par catégorie, toutes les catégories actives.
+        val stalkerInc = spec.incremental
+        if (p.kind == "STALKER" && spec.kind != "LIVE" && stalkerInc != null)
+            return stalkerProgressive(p, spec, stalkerInc, enabledIds, langByCat, itemsBefore, progress)
 
         if (strategy == SyncStrategy.PER_CATEGORY) {
             // Vérifie au PREMIER appel que le serveur respecte `category_id` (sinon repli sur la requête globale).
