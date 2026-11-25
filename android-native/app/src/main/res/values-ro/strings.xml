@@ -1905,4 +1905,13 @@
     <string name="mlib_err_notfound">Nu s-a găsit nimic la adresa lui „%1$s” (%2$s). Verificați-o pe site.</string>
     <string name="mlib_err_tls">„%1$s” (%2$s): conexiunea securizată a eșuat (certificat). Încercați adresa http.</string>
     <string name="mlib_err_retry">O nouă încercare în %1$d min.</string>
+    <string name="dg_ch_numbering_label">Numerotarea canalelor</string>
+    <string name="dg_ch_numbering_auto">Automată</string>
+    <string name="dg_ch_numbering_source">Numerele sursei</string>
+    <string name="dg_ch_numbering_continuous">Continuă (1, 2, 3…)</string>
+    <string name="dg_ch_sort_label">Sortarea canalelor</string>
+    <string name="dg_ch_sort_source">Ordinea sursei</string>
+    <string name="dg_ch_sort_number">După număr</string>
+    <string name="dg_ch_sort_az">A → Z</string>
+    <string name="dg_ch_sort_recent">Cele văzute recent primele</string>
 </resources>

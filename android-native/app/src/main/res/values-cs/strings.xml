@@ -1894,4 +1894,13 @@
     <string name="mlib_err_notfound">Na adrese „%1$s“ (%2$s) se nic nenašlo. Zkontrolujte ji na webu.</string>
     <string name="mlib_err_tls">„%1$s“ (%2$s): zabezpečené připojení selhalo (certifikát). Zkuste adresu http.</string>
     <string name="mlib_err_retry">Další pokus za %1$d min.</string>
+    <string name="dg_ch_numbering_label">Číslování kanálů</string>
+    <string name="dg_ch_numbering_auto">Automatické</string>
+    <string name="dg_ch_numbering_source">Čísla ze zdroje</string>
+    <string name="dg_ch_numbering_continuous">Průběžné (1, 2, 3…)</string>
+    <string name="dg_ch_sort_label">Řazení kanálů</string>
+    <string name="dg_ch_sort_source">Pořadí ze zdroje</string>
+    <string name="dg_ch_sort_number">Podle čísla</string>
+    <string name="dg_ch_sort_az">A → Z</string>
+    <string name="dg_ch_sort_recent">Naposledy sledované první</string>
 </resources>

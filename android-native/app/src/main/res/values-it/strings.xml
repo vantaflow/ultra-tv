@@ -1,3 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="dg_ch_numbering_label">Numerazione dei canali</string>
+    <string name="dg_ch_numbering_auto">Automatica</string>
+    <string name="dg_ch_numbering_source">Numeri della sorgente</string>
+    <string name="dg_ch_numbering_continuous">Continua (1, 2, 3…)</string>
+    <string name="dg_ch_sort_label">Ordinamento dei canali</string>
+    <string name="dg_ch_sort_source">Ordine della sorgente</string>
+    <string name="dg_ch_sort_number">Per numero</string>
+    <string name="dg_ch_sort_az">A → Z</string>
+    <string name="dg_ch_sort_recent">Visti di recente per primi</string>
 </resources>

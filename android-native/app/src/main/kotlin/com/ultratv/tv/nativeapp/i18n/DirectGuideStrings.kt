@@ -57,6 +57,21 @@ val DesignStrings.guideAllChannels get() = tx(R.string.dg_guide_all_channels)
 // Guide : chaîne sans aucun programme le jour affiché (ligne compacte).
 val DesignStrings.guideNoProgrammeDay get() = tx(R.string.dg_guide_no_programme_day)
 
+// Numérotation et tri des chaînes du Direct (Réglages › Affichage).
+val DesignStrings.channelNumberingLabel get() = tx(R.string.dg_ch_numbering_label)
+fun DesignStrings.channelNumberingName(m: com.ultratv.tv.nativeapp.data.repo.ChannelNumberMode) = when (m) {
+    com.ultratv.tv.nativeapp.data.repo.ChannelNumberMode.AUTO -> tx(R.string.dg_ch_numbering_auto)
+    com.ultratv.tv.nativeapp.data.repo.ChannelNumberMode.SOURCE -> tx(R.string.dg_ch_numbering_source)
+    com.ultratv.tv.nativeapp.data.repo.ChannelNumberMode.CONTINUOUS -> tx(R.string.dg_ch_numbering_continuous)
+}
+val DesignStrings.channelSortLabel get() = tx(R.string.dg_ch_sort_label)
+fun DesignStrings.channelSortName(s: com.ultratv.tv.nativeapp.data.repo.ChannelSort) = when (s) {
+    com.ultratv.tv.nativeapp.data.repo.ChannelSort.SOURCE -> tx(R.string.dg_ch_sort_source)
+    com.ultratv.tv.nativeapp.data.repo.ChannelSort.NUMBER -> tx(R.string.dg_ch_sort_number)
+    com.ultratv.tv.nativeapp.data.repo.ChannelSort.AZ -> tx(R.string.dg_ch_sort_az)
+    com.ultratv.tv.nativeapp.data.repo.ChannelSort.RECENT -> tx(R.string.dg_ch_sort_recent)
+}
+
 // Lisibilité du Guide : logos des chaînes et largeur de la colonne des noms (Réglages › Affichage).
 val DesignStrings.channelLogos get() = tx(R.string.dg_channel_logos)
 val DesignStrings.guideNameWidthLabel get() = tx(R.string.dg_guide_name_width_label)

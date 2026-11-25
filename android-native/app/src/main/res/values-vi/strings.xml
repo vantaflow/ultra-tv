@@ -1867,4 +1867,13 @@
     <string name="mlib_err_notfound">Không tìm thấy gì tại địa chỉ của “%1$s” (%2$s). Hãy kiểm tra trên trang web.</string>
     <string name="mlib_err_tls">“%1$s” (%2$s): kết nối bảo mật thất bại (chứng chỉ). Hãy thử địa chỉ http.</string>
     <string name="mlib_err_retry">Thử lại sau %1$d phút.</string>
+    <string name="dg_ch_numbering_label">Đánh số kênh</string>
+    <string name="dg_ch_numbering_auto">Tự động</string>
+    <string name="dg_ch_numbering_source">Số của nguồn</string>
+    <string name="dg_ch_numbering_continuous">Liên tục (1, 2, 3…)</string>
+    <string name="dg_ch_sort_label">Sắp xếp kênh</string>
+    <string name="dg_ch_sort_source">Thứ tự của nguồn</string>
+    <string name="dg_ch_sort_number">Theo số</string>
+    <string name="dg_ch_sort_az">A → Z</string>
+    <string name="dg_ch_sort_recent">Kênh xem gần đây trước</string>
 </resources>

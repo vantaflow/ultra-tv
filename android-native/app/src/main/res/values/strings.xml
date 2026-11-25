@@ -2060,4 +2060,13 @@
     <string name="replay_empty_body">Your provider does not offer replay.</string>
     <string name="replay_hidden_body">The channels with replay are hidden for this profile.</string>
     <string name="replay_no_source">Add a source to watch replay.</string>
+    <string name="dg_ch_numbering_label">Channel numbering</string>
+    <string name="dg_ch_numbering_auto">Automatic</string>
+    <string name="dg_ch_numbering_source">Source numbers</string>
+    <string name="dg_ch_numbering_continuous">Continuous (1, 2, 3…)</string>
+    <string name="dg_ch_sort_label">Channel sort</string>
+    <string name="dg_ch_sort_source">Source order</string>
+    <string name="dg_ch_sort_number">By number</string>
+    <string name="dg_ch_sort_az">A → Z</string>
+    <string name="dg_ch_sort_recent">Recently watched first</string>
 </resources>

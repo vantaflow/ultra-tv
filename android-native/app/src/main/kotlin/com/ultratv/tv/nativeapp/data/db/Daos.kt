@@ -485,6 +485,48 @@ interface ChannelDao {
     """)
     fun pagedFavorites(pid: Long, useLang: Int, langs: List<String>, profileId: Long): androidx.paging.PagingSource<Int, ChannelEntity>
 
+    // ── Tri choisi par le profil (ChannelSort ≠ source) : variantes triées, sans séparateurs (un en-tête de section n'a plus de sens trié) ──
+
+    @Query("SELECT c.* FROM channel c ${ChSort.JOIN} WHERE c.providerId = :pid AND c.categoryId = :cat AND c.junk = 0 AND c.isSeparator = 0 AND ${Hid.C} AND (:useLang = 0 OR c.lang IN (:langs)) ORDER BY ${ChSort.ORDER}")
+    fun pagedForCategorySorted(pid: Long, cat: String, useLang: Int, langs: List<String>, profileId: Long, sort: Int, srcNum: Int): androidx.paging.PagingSource<Int, ChannelEntity>
+
+    @Query("""
+        SELECT c.* FROM channel c
+        JOIN favorite f ON f.profileId = :profileId AND f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
+        ${ChSort.JOIN}
+        WHERE c.providerId = :pid AND c.isSeparator = 0 AND ${Hid.C} AND (:useLang = 0 OR c.lang IN (:langs)) ORDER BY ${ChSort.ORDER}
+    """)
+    fun pagedFavoritesSorted(pid: Long, useLang: Int, langs: List<String>, profileId: Long, sort: Int, srcNum: Int): androidx.paging.PagingSource<Int, ChannelEntity>
+
+    /** « Tout » trié : catégories dans leur ordre (rang), tri choisi DANS chaque catégorie. */
+    @Query("SELECT c.* FROM channel c ${ChSort.JOIN} WHERE c.providerId = :pid AND c.junk = 0 AND c.isSeparator = 0 AND ${Hid.C} AND (:useHidden = 0 OR c.categoryId IS NULL OR c.categoryId NOT IN (:hidden)) AND (:useLang = 0 OR c.lang IN (:langs)) ORDER BY c.catRank, ${ChSort.ORDER}")
+    fun pagedAllSorted(pid: Long, useHidden: Int, hidden: List<String>, useLang: Int, langs: List<String>, profileId: Long, sort: Int, srcNum: Int): androidx.paging.PagingSource<Int, ChannelEntity>
+
+    /** Une catégorie triée (file de zapping, tiroir du lecteur, Guide). */
+    @Query("SELECT c.* FROM channel c ${ChSort.JOIN} WHERE c.providerId = :pid AND c.categoryId = :cat AND c.junk = 0 AND c.isSeparator = 0 AND ${Hid.C} ORDER BY ${ChSort.ORDER}")
+    suspend fun categorySorted(pid: Long, cat: String, profileId: Long, sort: Int, srcNum: Int): List<ChannelEntity>
+
+    /** Favoris triés (file de zapping, tiroir du lecteur, Guide). */
+    @Query("""
+        SELECT c.* FROM channel c
+        JOIN favorite f ON f.profileId = :profileId AND f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
+        ${ChSort.JOIN}
+        WHERE c.providerId = :pid AND c.isSeparator = 0 AND ${Hid.C} ORDER BY ${ChSort.ORDER}
+    """)
+    suspend fun favoritesSorted(pid: Long, profileId: Long, sort: Int, srcNum: Int): List<ChannelEntity>
+
+    /** Identifiants de « Tout » triés (même ordre que [pagedAllSorted], sans filtre) : la fenêtre de zapping se prend autour de la chaîne courante. */
+    @Query("SELECT c.id FROM channel c ${ChSort.JOIN} WHERE c.providerId = :pid AND c.junk = 0 AND c.isSeparator = 0 AND ${Hid.C} ORDER BY c.catRank, ${ChSort.ORDER}")
+    suspend fun allSortedIds(pid: Long, profileId: Long, sort: Int, srcNum: Int): List<Long>
+
+    /** Chaîne portant ce numéro de la SOURCE (mode « numéros de la source »), la première dans l'ordre des catégories. */
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND num = :num AND junk = 0 AND isSeparator = 0 AND ${Hid.T} ORDER BY catRank, id LIMIT 1")
+    suspend fun bySourceNumber(pid: Long, num: Int): ChannelEntity?
+
+    /** Chaîne de seq global [seq] dans la catégorie (saisie d'un numéro en numérotation continue). */
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND categoryId IS :cat AND seq = :seq AND junk = 0 AND isSeparator = 0 AND ${Hid.T} LIMIT 1")
+    suspend fun byCategorySeq(pid: Long, cat: String?, seq: Int): ChannelEntity?
+
     /** Compteurs par catégorie (colonne de gauche du Direct), servis par l'index couvrant. */
     @Query("SELECT categoryId AS categoryId, SUM(CASE WHEN isSeparator = 0 THEN 1 ELSE 0 END) AS n, SUM(isSeparator) AS sections FROM channel WHERE providerId = :pid AND junk = 0 GROUP BY categoryId")
     fun observeCategoryCountsAll(pid: Long): Flow<List<CategoryCount>>

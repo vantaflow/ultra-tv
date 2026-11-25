@@ -40,6 +40,7 @@ class ZapViewModel @Inject constructor(
     private val recents: RecentChannelsStore,
     private val guard: com.ultratv.tv.nativeapp.data.parental.ParentalGuard,
     private val numbering: com.ultratv.tv.nativeapp.data.repo.ProfileNumbering,
+    private val channelOrder: com.ultratv.tv.nativeapp.data.repo.ChannelOrderRepository,
 ) : ViewModel() {
     private val entry = NumberEntry()
     private val _preview = MutableStateFlow<NumberPreview?>(null)
@@ -86,15 +87,32 @@ class ZapViewModel @Inject constructor(
         _preview.value = null
         if (n == null) return
         // Numéro saisi : la file ne bouge qu'après l'accord du code parental (chaîne verrouillée).
-        val ch = queue.peekNumber(n, numbering.current) ?: return
-        gated(ch) { queue.moveTo(ch) }
+        val ch = queue.peekNumber(n, numbering.current)
+        if (ch != null) { gated(ch) { queue.moveTo(ch) }; return }
+        // Hors de la liste en cours (autre catégorie) : numéros de la source / numérotation continue, qui traversent les catégories.
+        val far = lookupAcrossCategories(n) ?: return
+        val window = far.categoryId?.let { runCatching { channelOrder.categoryWindow(far.providerId, it, far, 401) }.getOrNull() }.orEmpty().ifEmpty { listOf(far) }
+        gated(far) { queue.set(window, far) }
+    }
+
+    /** Chaîne qui porte le numéro [n] dans une AUTRE catégorie que la liste en cours, selon la numérotation du profil (rien en mode automatique : numéros propres à chaque catégorie). */
+    private suspend fun lookupAcrossCategories(n: Int): ChannelEntity? {
+        val pid = playback.current.value?.providerId ?: return null
+        val num = numbering.current
+        return when (num.mode) {
+            com.ultratv.tv.nativeapp.data.repo.ChannelNumberMode.SOURCE -> channelDao.bySourceNumber(pid, n)
+            com.ultratv.tv.nativeapp.data.repo.ChannelNumberMode.CONTINUOUS -> num.locateContinuous(pid, n)?.let { (cat, inCat) ->
+                num.seqOf(pid, cat, inCat)?.let { channelDao.byCategorySeq(pid, cat, it) }
+            }
+            com.ultratv.tv.nativeapp.data.repo.ChannelNumberMode.AUTO -> null
+        }
     }
 
     private fun refreshPreview() {
         val digits = entry.text
         val n = entry.value
         viewModelScope.launch {
-            val ch = n?.let { queue.peekNumber(it, numbering.current) }
+            val ch = n?.let { queue.peekNumber(it, numbering.current) ?: lookupAcrossCategories(it) }
             _preview.value = NumberPreview(digits, ch?.title, ch?.let { nowTitle(it) })
         }
     }

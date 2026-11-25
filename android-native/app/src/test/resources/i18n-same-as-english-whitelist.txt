@@ -161,3 +161,5 @@ fr|ds_settings_level_expert
 fr|replay_nav
 fr|replay_minutes
 es|replay_minutes
+fr|dg_ch_sort_az
+es|dg_ch_sort_az

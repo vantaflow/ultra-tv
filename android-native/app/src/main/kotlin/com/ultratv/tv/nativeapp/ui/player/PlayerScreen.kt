@@ -488,6 +488,7 @@ class PlayerViewModel @Inject constructor(
                 // Fenêtre centrée sur la chaîne en cours (comme le zapping depuis « Tout » dans le Direct).
                 val c = channelDao.byRemoteId(pid, cur.remoteId)
                 when {
+                    channelOrder.sortNow().active -> channelOrder.allWindow(pid, c, 401)
                     c != null && c.catRank > 0 -> com.ultratv.tv.nativeapp.data.repo.LiveAllPagingSource.window(channelDao, c)
                     c != null -> {
                         // Repli (ordre pas encore précalculé) : même ordre, calculé par jointure.

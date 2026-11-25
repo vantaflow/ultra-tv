@@ -1867,4 +1867,13 @@
     <string name="mlib_err_notfound">ไม่พบสิ่งใดที่ที่อยู่ของ “%1$s” (%2$s) ตรวจสอบบนเว็บไซต์</string>
     <string name="mlib_err_tls">“%1$s” (%2$s): การเชื่อมต่อที่ปลอดภัยล้มเหลว (ใบรับรอง) ลองใช้ที่อยู่ http</string>
     <string name="mlib_err_retry">ลองใหม่ในอีก %1$d นาที</string>
+    <string name="dg_ch_numbering_label">การเรียงเลขช่อง</string>
+    <string name="dg_ch_numbering_auto">อัตโนมัติ</string>
+    <string name="dg_ch_numbering_source">เลขช่องจากแหล่งที่มา</string>
+    <string name="dg_ch_numbering_continuous">ต่อเนื่อง (1, 2, 3…)</string>
+    <string name="dg_ch_sort_label">การเรียงลำดับช่อง</string>
+    <string name="dg_ch_sort_source">ลำดับตามแหล่งที่มา</string>
+    <string name="dg_ch_sort_number">ตามหมายเลข</string>
+    <string name="dg_ch_sort_az">A → Z</string>
+    <string name="dg_ch_sort_recent">ช่องที่ดูล่าสุดก่อน</string>
 </resources>

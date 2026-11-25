@@ -5,6 +5,10 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.foundation.focusGroup
 import com.ultratv.tv.nativeapp.i18n.locale
 import com.ultratv.tv.nativeapp.i18n.channelLogos
+import com.ultratv.tv.nativeapp.i18n.channelNumberingLabel
+import com.ultratv.tv.nativeapp.i18n.channelNumberingName
+import com.ultratv.tv.nativeapp.i18n.channelSortLabel
+import com.ultratv.tv.nativeapp.i18n.channelSortName
 import com.ultratv.tv.nativeapp.i18n.sportSectionHint
 import com.ultratv.tv.nativeapp.i18n.sportSectionLabel
 import com.ultratv.tv.nativeapp.i18n.kindStalker
@@ -876,6 +880,8 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
             PrefRow(D.shortcutsTitle, tabs.map { com.ultratv.tv.nativeapp.ui.mobile.bottomTabLabel(it) }.joinToString(" · ")) { choice = "shortcuts" }
         }
         SwitchPrefRow(D.channelNumbers, p.showChannelNumbers) { app.setShowChannelNumbers(it) }
+        PrefRow(D.channelNumberingLabel, D.channelNumberingName(com.ultratv.tv.nativeapp.data.repo.ChannelNumberMode.parse(p.channelNumbering))) { choice = "chnum" }
+        PrefRow(D.channelSortLabel, D.channelSortName(com.ultratv.tv.nativeapp.data.repo.ChannelSort.parse(p.channelSort))) { choice = "chsort" }
         SwitchPrefRow(D.channelLogos, p.showChannelLogos) { app.setShowChannelLogos(it) }
         SwitchPrefRow(D.sportSectionLabel, p.sportSection, hint = D.sportSectionHint) { app.setSportSection(it) }
         // TV seulement : chaînes publiées sur l'écran d'accueil Android TV / Google TV.
@@ -910,6 +916,8 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
     when (choice) {
         "theme" -> ChoiceDialog(D.theme, AppTheme.entries.map { it to themeLabel(D, it) }, p.theme, { app.setTheme(it); choice = "" }, { choice = "" })
         "lang" -> ChoiceDialog(D.language, AppLang.entries.map { it.code to D.langName(it) }, p.language, { app.setLanguage(it); choice = "" }, { choice = "" })
+        "chnum" -> ChoiceDialog(D.channelNumberingLabel, com.ultratv.tv.nativeapp.data.repo.ChannelNumberMode.entries.map { it to D.channelNumberingName(it) }, com.ultratv.tv.nativeapp.data.repo.ChannelNumberMode.parse(p.channelNumbering), { app.setChannelNumbering(it.key); choice = "" }, { choice = "" })
+        "chsort" -> ChoiceDialog(D.channelSortLabel, com.ultratv.tv.nativeapp.data.repo.ChannelSort.entries.map { it to D.channelSortName(it) }, com.ultratv.tv.nativeapp.data.repo.ChannelSort.parse(p.channelSort), { app.setChannelSort(it.key); choice = "" }, { choice = "" })
         "open" -> ChoiceDialog(D.openOn, com.ultratv.tv.nativeapp.nav.StartScreen.entries.map { it to D.startScreenName(it) }, com.ultratv.tv.nativeapp.nav.StartScreen.parse(p.startScreen, p.autoPlayLastOnLaunch), { app.setStartScreen(it.key); choice = "" }, { choice = "" })
         "accent" -> AccentDialog(AccentChoice.parse(p.accent), { app.setAccent(it.key); choice = "" }, { choice = "" })
         "anim" -> ChoiceDialog(D.animations, com.ultratv.tv.nativeapp.ui.design.AnimationLevel.entries.map { it to D.animationName(it) }, com.ultratv.tv.nativeapp.ui.design.AnimationLevel.parse(p.animations), { app.setAnimations(it.key); choice = "" }, { choice = "" })

@@ -16,6 +16,10 @@ data class ProfilePrefs(
     val showChannelLogos: Boolean? = null,
     /** Largeur de la colonne des noms du Guide (clé de GuideNameWidth). */
     val guideNameWidth: String? = null,
+    /** Numérotation des chaînes (clé de ChannelNumberMode) ; null = automatique. */
+    val channelNumbering: String? = null,
+    /** Tri des chaînes du Direct (clé de ChannelSort) ; null = ordre de la source. */
+    val channelSort: String? = null,
     val hideAdultCategories: Boolean? = null,
     val resumePlayback: Boolean? = null,
     val autoPlayNextEpisode: Boolean? = null,
@@ -50,6 +54,8 @@ data class ProfilePrefs(
         showChannelNumbers = showChannelNumbers ?: base.showChannelNumbers,
         showChannelLogos = showChannelLogos ?: base.showChannelLogos,
         guideNameWidth = guideNameWidth ?: base.guideNameWidth,
+        channelNumbering = channelNumbering ?: base.channelNumbering,
+        channelSort = channelSort ?: base.channelSort,
         hideAdultCategories = if (isKids) true else hideAdultCategories ?: base.hideAdultCategories,
         resumePlayback = resumePlayback ?: base.resumePlayback,
         autoPlayNextEpisode = autoPlayNextEpisode ?: base.autoPlayNextEpisode,
@@ -67,6 +73,8 @@ data class ProfilePrefs(
         const val CHANNEL_NUMBERS = "channel_numbers"
         const val CHANNEL_LOGOS = "channel_logos"
         const val GUIDE_NAME_WIDTH = "guide_name_width"
+        const val CHANNEL_NUMBERING = "channel_numbering"
+        const val CHANNEL_SORT = "channel_sort"
         const val HIDE_ADULT = "hide_adult"
         const val RESUME = "resume"
         const val AUTOPLAY_NEXT = "autoplay_next"
@@ -90,6 +98,8 @@ data class ProfilePrefs(
             showChannelNumbers = m[CHANNEL_NUMBERS]?.toBooleanStrictOrNull(),
             showChannelLogos = m[CHANNEL_LOGOS]?.toBooleanStrictOrNull(),
             guideNameWidth = m[GUIDE_NAME_WIDTH]?.takeIf { it.isNotEmpty() },
+            channelNumbering = m[CHANNEL_NUMBERING]?.takeIf { it.isNotEmpty() },
+            channelSort = m[CHANNEL_SORT]?.takeIf { it.isNotEmpty() },
             hideAdultCategories = m[HIDE_ADULT]?.toBooleanStrictOrNull(),
             resumePlayback = m[RESUME]?.toBooleanStrictOrNull(),
             autoPlayNextEpisode = m[AUTOPLAY_NEXT]?.toBooleanStrictOrNull(),
