@@ -122,6 +122,8 @@ data class AutoSettings(
     val readTimeoutMs: Int,
     /** Box faible (voir [DeviceClassifier.weakUi]) : décodage d'images en tâche de fond, un seul à la fois. */
     val weakUi: Boolean = false,
+    /** Requêtes de page simultanées d'un portail Stalker (borne globale) : 4 (LOW ou réseau faible), 5 (MID), 6 (HIGH). */
+    val stalkerPageConcurrency: Int = 4,
     /**
      * Interface allégée : box LOW ou de la classe « 2 Go » ([DeviceClassifier.smallRam]). Pilote ce qui est purement visuel
      * ou facultatif (fonds flous, fondus, animation d'ouverture, aperçu vidéo du Direct en « Auto »), jamais la lecture.
@@ -172,6 +174,7 @@ object AutoTuner {
             connectTimeoutMs = ((ttfbMs ?: 1_500) * 4).coerceIn(5_000, 20_000),
             readTimeoutMs = if (quality <= NetQuality.FAIR) 30_000 else 20_000,
             weakUi = weak,
+            stalkerPageConcurrency = if (tier == Tier.LOW || quality <= NetQuality.FAIR) 4 else if (tier == Tier.MID) 5 else 6,
             lightUi = tier == Tier.LOW || DeviceClassifier.smallRam(i),
         )
     }

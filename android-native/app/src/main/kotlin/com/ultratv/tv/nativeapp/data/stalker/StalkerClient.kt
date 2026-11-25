@@ -400,17 +400,19 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
 
     /**
      * Toutes les pages d'une liste `get_ordered_list`, lecture BORNÉE. La page 1 donne `total_items` et `max_page_items` ;
-     * les pages annoncées sont lues par fenêtres de [PAGE_PARALLELISM] en parallèle. Arrêt dès qu'une page revient vide ou
-     * ne contient que des éléments déjà vus (portail qui ignore `p` et renvoie toujours la même page : avant, ses 3 572
-     * « pages » annoncées étaient toutes demandées), ce qui coupe aussi un `total_items` gonflé. Total trop petit : tant
-     * que la dernière page est pleine, les suivantes sont lues une à une. Portail sans `total_items` : pages lues une à
-     * une jusqu'à une page vide ou déjà vue. Plafonds : [MAX_PAGES] pages et [listBudgetMs] de temps (au-delà :
-     * [StalkerListTooLongException], la catégorie est sautée et garde son contenu). Chaque page a ses propres nouvelles
-     * tentatives ([pageWithRetry]) ; une page toujours en échec fait échouer la liste.
+     * les pages annoncées sont ensuite lues en POOL GLISSANT : au plus [pageConcurrency] requêtes de page en vol pour TOUT
+     * le client (toutes catégories confondues, voir [pageGate]), une page lente ne retient donc que sa propre place. Les
+     * pages sont consommées dans l'ordre. Arrêt dès qu'une page revient vide ou ne contient que des éléments déjà vus
+     * (portail qui ignore `p` et renvoie toujours la même page), ce qui coupe aussi un `total_items` gonflé ; les pages
+     * déjà lancées sont alors annulées. Total trop petit : tant que la dernière page est pleine, les suivantes sont lues
+     * une à une. Portail sans `total_items` : pages lues une à une jusqu'à une page vide ou déjà vue. Plafonds :
+     * [MAX_PAGES] pages et [listBudgetMs] de temps (au-delà : [StalkerListTooLongException], la catégorie est sautée et
+     * garde son contenu). Chaque page a ses propres nouvelles tentatives ([pageWithRetry]) ; une page toujours en échec
+     * fait échouer la liste.
      */
     internal suspend fun pagedItems(a: Account, params: List<Pair<String, String>>): List<JMap> = withContext(ListCalls) {
         val deadline = System.currentTimeMillis() + listBudgetMs
-        val first = pageWithRetry(a, params + ("p" to "1")) ?: return@withContext emptyList()
+        val first = gatedPage(a, params + ("p" to "1")) ?: return@withContext emptyList()
         if (first.items.isEmpty()) return@withContext emptyList()
         val idOf = { o: JMap -> o.s("id") ?: o.hashCode().toString() }
         val out = LinkedHashMap<String, JMap>()
@@ -418,30 +420,60 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
         val perPage = maxOf(first.perPage, first.items.size, 1)
         val announced = if (first.totalKnown) first.pages.coerceIn(1, MAX_PAGES) else 1
         var lastFull = first.items.size >= perPage
-        var n = 2
-        while (n <= MAX_PAGES) {
-            val inAnnounced = n <= announced
-            // Au-delà des pages annoncées (total connu) : seulement si la dernière page était pleine (total trop petit).
-            if (!inAnnounced && first.totalKnown && !lastFull) break
+        val type = params.firstOrNull { it.first == "type" }?.second ?: "-"
+        fun checkTime(n: Int) {
             if (System.currentTimeMillis() > deadline) {
-                com.ultratv.tv.nativeapp.RemoteLog.info("StalkerSync", StalkerSyncLog.tooLong(params.firstOrNull { it.first == "type" }?.second ?: "-", n - 1))
+                com.ultratv.tv.nativeapp.RemoteLog.info("StalkerSync", StalkerSyncLog.tooLong(type, n - 1))
                 throw StalkerListTooLongException(n - 1)
             }
-            val last = if (inAnnounced) minOf(announced, n + PAGE_PARALLELISM - 1) else n
-            val window = if (last == n) listOf(pageWithRetry(a, params + ("p" to n.toString()))?.items.orEmpty())
-                else coroutineScope { (n..last).map { k -> async { pageWithRetry(a, params + ("p" to k.toString()))?.items.orEmpty() } }.awaitAll() }
-            var end = false
-            for (items in window) {
-                // Page vide, ou déjà vue en entier : fin de la liste (les pages suivantes de la fenêtre n'apportent rien).
-                if (items.isEmpty() || items.all { idOf(it) in out }) { end = true; break }
-                items.forEach { out.putIfAbsent(idOf(it), it) }
-                lastFull = items.size >= perPage
+        }
+        // Page vide, ou déjà vue en entier : fin de la liste.
+        fun consume(items: List<JMap>): Boolean {
+            if (items.isEmpty() || items.all { idOf(it) in out }) return true
+            items.forEach { out.putIfAbsent(idOf(it), it) }
+            lastFull = items.size >= perPage
+            return false
+        }
+        coroutineScope {
+            // Pages d'avance (lancées, pas encore consommées) : au plus 3 fois la borne ; une page lente en tête ne bloque pas les autres.
+            val ahead = pageConcurrency * 3
+            val pending = ArrayDeque<kotlinx.coroutines.Deferred<List<JMap>>>()
+            var next = 2
+            try {
+                while (true) {
+                    while (next <= announced && pending.size < ahead) {
+                        checkTime(next)
+                        val k = next++
+                        pending.addLast(async { gatedPage(a, params + ("p" to k.toString()))?.items.orEmpty() })
+                    }
+                    if (pending.isEmpty()) {
+                        // Au-delà des pages annoncées (total connu) : seulement si la dernière page était pleine (total trop petit).
+                        if (next > MAX_PAGES || (first.totalKnown && !lastFull)) break
+                        checkTime(next)
+                        if (consume(gatedPage(a, params + ("p" to (next++).toString()))?.items.orEmpty())) break
+                        continue
+                    }
+                    if (consume(pending.removeFirst().await())) break
+                }
+            } finally {
+                pending.forEach { it.cancel() }
             }
-            if (end) break
-            n = last + 1
         }
         out.values.toList()
     }
+
+    /** Requêtes de page simultanées pour tout le client ; remplacé par [pageConcurrency] (réglage adaptatif de l'appareil). */
+    @Volatile private var pageGate = kotlinx.coroutines.sync.Semaphore(DEFAULT_PAGE_CONCURRENCY)
+
+    /** Borne globale de requêtes de page en parallèle (4 à 6 selon le palier de l'appareil, voir AutoTuner). */
+    @Volatile var pageConcurrency: Int = DEFAULT_PAGE_CONCURRENCY
+        set(v) {
+            val n = v.coerceIn(1, 16)
+            if (n != field) { field = n; pageGate = kotlinx.coroutines.sync.Semaphore(n) }
+        }
+
+    private suspend fun gatedPage(a: Account, params: List<Pair<String, String>>): StalkerPage? =
+        pageGate.let { g -> g.acquire(); try { pageWithRetry(a, params) } finally { g.release() } }
 
     /** Temps maximal de lecture d'UNE liste paginée (catégorie) ; réduit dans les tests. */
     @Volatile internal var listBudgetMs = 20 * 60_000L
@@ -675,7 +707,8 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
 
     companion object {
         internal const val MAX_PAGES = 20_000
-        private const val PAGE_PARALLELISM = 3
+        /** Valeur par défaut de [pageConcurrency] (le réglage adaptatif la fixe à 4-6). */
+        internal const val DEFAULT_PAGE_CONCURRENCY = 4
         internal const val PAGE_ATTEMPTS = 3
         /** Préfixe des catégories et séries venues du module `type=series` (les identifiants du module VOD peuvent coïncider). */
         const val SERIES_PREFIX = "s:"
