@@ -89,6 +89,8 @@ object StartupNav {
     val liveCategory = MutableStateFlow<String?>(null)
     /** Écran d'ouverture déjà décidé : avant, l'accueil affiché au démarrage aurait écrasé le « Dernier écran » mémorisé. */
     val startupDecided = MutableStateFlow(false)
+    /** Premier écran (« Qui regarde ? », assistant ou accueil) affiché : la synchro de démarrage attend ce signal (plafond 20 s). */
+    val firstScreenShown = MutableStateFlow(false)
     /** Débogage uniquement : rubrique de Réglages à ouvrir. */
     val debugRub = MutableStateFlow<Int?>(null)
     /** Demande d'appairage cloud depuis un autre écran (accueil vide) : Réglages › Sources la consomme. */
@@ -428,9 +430,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // Appli déjà remplie : synchro cloud, catalogue, rappels… attendent que l'accueil soit affiché (3 s) au lieu
-            // de concurrencer son premier rendu sur un CPU modeste. Première installation : rien n'est retardé.
-            if (providerRepo.get().observeProviders().first().any { it.lastLiveSyncAt > 0 }) kotlinx.coroutines.delay(3_000)
+            // Synchro cloud, catalogue, rappels… attendent que le premier écran soit affiché (plafond 20 s) : leurs écritures
+            // longues retardaient la première émission des flux Room du premier écran sur les box lentes.
+            val shownInTime = com.ultratv.tv.nativeapp.ui.startup.StartupSyncGate.awaitFirstScreen(StartupNav.firstScreenShown)
+            if (!shownInTime) RemoteLog.warn("startup", "synchro de démarrage lancée sans premier écran (plafond ${com.ultratv.tv.nativeapp.ui.startup.StartupSyncGate.CAP_MS} ms)")
+            // Marge après l'affichage : laisse l'accueil faire son premier rendu.
+            if (shownInTime) kotlinx.coroutines.delay(1_500)
 
             // (Re-)apply the background sync schedule from the stored prefs
             // every time the app starts so a re-install / OS restart picks up
@@ -508,6 +513,13 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
             val showOnboarding by onboarding.show.collectAsState()
             val profileGate: com.ultratv.tv.nativeapp.ui.profile.ProfileGateViewModel = hiltViewModel()
             val askProfile by profileGate.needsSelection.collectAsState()
+            // Premier écran affiché : journal si lent, et feu vert à la synchro de démarrage.
+            androidx.compose.runtime.LaunchedEffect(askProfile != null && showOnboarding != null) {
+                if (askProfile != null && showOnboarding != null) {
+                    com.ultratv.tv.nativeapp.ui.startup.StartupTraceLog.firstScreen()
+                    StartupNav.firstScreenShown.value = true
+                }
+            }
             when {
                 askProfile == null -> com.ultratv.tv.nativeapp.ui.startup.StartupGateWait { StartupLoading() }
                 askProfile == true && showOnboarding == false -> com.ultratv.tv.nativeapp.ui.profile.WhoIsWatchingScreen()

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -26,6 +27,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ultratv.tv.nativeapp.MainActivity
 import com.ultratv.tv.nativeapp.RemoteLog
+import com.ultratv.tv.nativeapp.data.config.DeviceTokenStore
 import com.ultratv.tv.nativeapp.data.db.ENSURE_DEFAULT_PROFILE_SQL
 import com.ultratv.tv.nativeapp.data.db.UltraDb
 import com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus
@@ -41,6 +43,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -53,7 +56,7 @@ import javax.inject.Inject
  */
 object StartupWatchdog {
     const val LOADING_AFTER_MS = 3_000L
-    const val ERROR_AFTER_MS = 12_000L
+    const val ERROR_AFTER_MS = 30_000L
 
     enum class Phase { BLANK, LOADING, ERROR }
 
@@ -63,13 +66,25 @@ object StartupWatchdog {
         else -> Phase.BLANK
     }
 
-    class Words(val title: String, val body: String, val retry: String, val reset: String)
+    class Words(
+        val title: String, val body: String, val retry: String, val reset: String,
+        val confirmPaired: String, val confirmUnpaired: String, val confirmYes: String, val cancel: String,
+    )
 
     /** Textes de l'écran d'erreur selon la langue (code ISO) ; anglais par défaut. */
     fun text(lang: String): Words = when (lang.lowercase().take(2)) {
-        "fr" -> Words("Le démarrage est bloqué", "Les données locales ne répondent pas. Réessayez ; sinon réinitialisez-les, votre configuration reviendra depuis le cloud.", "Réessayer", "Réinitialiser les données locales")
-        "es" -> Words("El inicio está bloqueado", "Los datos locales no responden. Inténtelo de nuevo; si no, restablézcalos y su configuración volverá desde la nube.", "Reintentar", "Restablecer los datos locales")
-        else -> Words("Startup is stuck", "Local data is not responding. Try again; otherwise reset it and your configuration will come back from the cloud.", "Retry", "Reset local data")
+        "fr" -> Words("Le démarrage est bloqué", "Les données locales ne répondent pas. Réessayez ; sinon réinitialisez-les, votre configuration reviendra depuis le cloud.", "Réessayer", "Réinitialiser les données locales",
+            "Effacer les données locales ? Vos sources et réglages reviendront depuis le cloud.",
+            "Effacer les données locales ? Cet appareil n'est pas relié au cloud : vos sources, favoris et réglages seront perdus définitivement.",
+            "Oui, tout effacer", "Annuler")
+        "es" -> Words("El inicio está bloqueado", "Los datos locales no responden. Inténtelo de nuevo; si no, restablézcalos y su configuración volverá desde la nube.", "Reintentar", "Restablecer los datos locales",
+            "¿Borrar los datos locales? Sus fuentes y ajustes volverán desde la nube.",
+            "¿Borrar los datos locales? Este dispositivo no está vinculado a la nube: se perderán para siempre sus fuentes, favoritos y ajustes.",
+            "Sí, borrar todo", "Cancelar")
+        else -> Words("Startup is stuck", "Local data is not responding. Try again; otherwise reset it and your configuration will come back from the cloud.", "Retry", "Reset local data",
+            "Erase local data? Your sources and settings will come back from the cloud.",
+            "Erase local data? This device is not linked to the cloud: your sources, favorites and settings will be lost for good.",
+            "Yes, erase everything", "Cancel")
     }
 }
 
@@ -87,7 +102,15 @@ fun <T> Flow<T>.catchWithFallback(name: String, fallback: T, log: (String) -> Un
 class StartupRecoveryViewModel @Inject constructor(
     @ApplicationContext private val ctx: Context,
     private val db: UltraDb,
+    private val tokens: DeviceTokenStore,
 ) : ViewModel() {
+
+    /** Appareil relié au cloud (jeton présent) ; faux tant que non lu, donc l'avertissement le plus fort par défaut. */
+    val paired = MutableStateFlow(false)
+
+    init {
+        viewModelScope.launch { paired.value = withContext(Dispatchers.IO) { runCatching { tokens.token() != null }.getOrDefault(false) } }
+    }
 
     /** Réessayer : repose le profil par défaut s'il manque, puis relance le processus (flux et ViewModels neufs). */
     fun retry() {
@@ -146,16 +169,26 @@ fun StartupGateWait(loading: @Composable () -> Unit) {
 @Composable
 private fun StartupErrorScreen(vm: StartupRecoveryViewModel = hiltViewModel()) {
     val t = remember { StartupWatchdog.text(java.util.Locale.getDefault().language) }
-    androidx.compose.runtime.LaunchedEffect(Unit) { RemoteLog.error("startup", "premier écran sans réponse après ${StartupWatchdog.ERROR_AFTER_MS} ms : écran d'erreur affiché") }
+    val paired by vm.paired.collectAsState()
+    var step by remember { mutableStateOf(ResetConfirmation.Step.IDLE) }
+    androidx.compose.runtime.LaunchedEffect(Unit) { StartupTraceLog.logError() }
     Box(Modifier.fillMaxSize().background(Ux.Bg), contentAlignment = Alignment.Center) {
         Column(Modifier.widthIn(max = 900.design), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(28.design)) {
-            Text(t.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, textAlign = TextAlign.Center)
-            Text(t.body, color = Ux.Text2, fontFamily = Manrope, fontSize = 26.spx, textAlign = TextAlign.Center)
             val r = remember { FocusRequester() }
             var focused by remember { mutableStateOf(false) }
             RequestInitialFocus(r, hasFocus = { focused })
-            PillButton(t.retry, vm::retry, bg = Ux.Cta, weight = FontWeight.Bold, modifier = Modifier.focusRequester(r).onFocusChanged { focused = it.isFocused })
-            PillButton(t.reset, vm::reset)
+            if (step == ResetConfirmation.Step.IDLE) {
+                Text(t.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, textAlign = TextAlign.Center)
+                Text(t.body, color = Ux.Text2, fontFamily = Manrope, fontSize = 26.spx, textAlign = TextAlign.Center)
+                PillButton(t.retry, vm::retry, bg = Ux.Cta, weight = FontWeight.Bold, modifier = Modifier.focusRequester(r).onFocusChanged { focused = it.isFocused })
+                PillButton(t.reset, { step = ResetConfirmation.onResetPressed(step) })
+            } else {
+                Text(t.reset, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, textAlign = TextAlign.Center)
+                Text(ResetConfirmation.body(t, paired), color = Ux.Text2, fontFamily = Manrope, fontSize = 26.spx, textAlign = TextAlign.Center)
+                // Le focus par défaut reste sur l'action sûre (Annuler) : un OK réflexe ne détruit rien.
+                PillButton(t.cancel, { step = ResetConfirmation.onCancel(step) }, bg = Ux.Cta, weight = FontWeight.Bold, modifier = Modifier.focusRequester(r).onFocusChanged { focused = it.isFocused })
+                PillButton(t.confirmYes, { if (ResetConfirmation.shouldReset(step)) vm.reset() })
+            }
         }
     }
 }
