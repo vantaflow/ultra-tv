@@ -33,6 +33,21 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 - Dons ponctuels : la carte bancaire est signalée clairement. Le bouton hébergé la propose sous le nom « Checkout » ; une ligne l'indique, et le lien de secours devient « Payer par carte bancaire ou PayPal » (sa page affiche « Carte bancaire »).
 - Dons : lien PayPal.Me (paypal.me/pitivi) en plus, sur `/donate` et dans la section Soutenir du site.
 
+## [1.3.78] — 2026-11-26 (Android)
+
+### Ajouté
+- Recherche : rangée « Acteurs et réalisateurs ». Taper au moins 3 lettres d'un nom (sans tenir compte des accents ni des majuscules) propose les personnes citées dans les distributions de la playlist, et, sur un appareil appairé, celles trouvées sur TMDB qui ont des titres dans la playlist. Elle ouvre la page de la personne. Le profil Enfants et les catégories masquées ou verrouillées sont respectés, sur la page personne aussi.
+- Direct : deux réglages par profil dans Réglages › Affichage, sous « Afficher les numéros ». « Numérotation des chaînes » : Automatique (comme avant), Numéros de la source ou Continue (1, 2, 3… sur les catégories visibles du profil). « Tri des chaînes » : Ordre de la source (comme avant), Par numéro, A → Z ou Dernières regardées en premier. Le numéro choisi s'affiche partout (Direct, Guide, bandeau du lecteur, favoris) et sert à la saisie à la télécommande. Le Guide garde l'ordre de la source ; l'ordre personnel (« Déplacer ») l'emporte sur le tri.
+
+### Modifié
+- Stalker : synchronisation plus rapide. Les pages du portail sont demandées en continu (4 à 6 à la fois selon l'appareil et le réseau) au lieu de paquets de 3, et les films et séries s'affichent catégorie par catégorie pendant la lecture. Une catégorie en échec garde son contenu précédent.
+- Télémétrie : durée de chaque synchronisation (Direct, films, séries) pour mesurer les lenteurs signalées.
+
+### In English
+- Search: new "Actors & directors" row (3+ letters, accent-insensitive), from the playlist's cast lists and TMDB on paired devices; Kids profile and hidden categories respected.
+- Live TV: per-profile channel numbering (automatic, provider numbers, continuous) and sorting (provider order, by number, A→Z, recently watched first) in Settings › Display.
+- Stalker: faster sync, with movies and series appearing category by category while loading.
+
 ## [1.3.77] — 2026-11-24 (Android)
 
 ### Ajouté
