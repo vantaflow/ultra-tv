@@ -1,6 +1,7 @@
 package com.ultratv.tv.nativeapp.ui.profile
 
 import com.ultratv.tv.nativeapp.ui.startup.catchWithFallback
+import com.ultratv.tv.nativeapp.ui.startup.markStartup
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ultratv.tv.nativeapp.data.parental.ParentalStore
@@ -61,6 +62,7 @@ class ProfileViewModel @Inject constructor(
 class ProfileGateViewModel @Inject constructor(repo: ProfileRepository) : ViewModel() {
     // Une exception du flux ne doit jamais laisser un null éternel (écran noir) : journalisée, puis repli « pas de sélection ».
     val needsSelection: StateFlow<Boolean?> = repo.needsSelection
+        .markStartup("needsSelection")
         .catchWithFallback("needsSelection", false)
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 }

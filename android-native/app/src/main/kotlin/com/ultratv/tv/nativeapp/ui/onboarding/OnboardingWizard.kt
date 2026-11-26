@@ -2,6 +2,7 @@ package com.ultratv.tv.nativeapp.ui.onboarding
 
 import com.ultratv.tv.nativeapp.data.repo.atMostEvery
 import com.ultratv.tv.nativeapp.ui.startup.catchWithFallback
+import com.ultratv.tv.nativeapp.ui.startup.markStartup
 import com.ultratv.tv.nativeapp.ui.common.responsiveWidth
 import com.ultratv.tv.nativeapp.ui.common.launchOrToast
 import androidx.activity.compose.BackHandler
@@ -124,9 +125,10 @@ class OnboardingViewModel @Inject constructor(
      * `null` tant que DataStore et Room n'ont pas répondu : ni l'assistant ni l'application ne
      * sont alors affichés (pas de clignotement, pas d'accueil composé derrière l'assistant).
      */
-    val show: StateFlow<Boolean?> = combine(prefs.flow, provider.observeProviders(), started) { p, ps, st ->
+    val show: StateFlow<Boolean?> = combine(prefs.flow.markStartup("prefs"), provider.observeProviders().markStartup("providers"), started) { p, ps, st ->
         shouldShowOnboarding(p.hasSeenOnboarding, ps.size, st)
-    }.catchWithFallback("onboarding.show", false)
+    }.markStartup("onboarding.show")
+        .catchWithFallback("onboarding.show", false)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val summary: StateFlow<SourceSummary?> = provider.observeProviders().flatMapLatest { ps ->
