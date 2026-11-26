@@ -102,7 +102,9 @@ class StartupRecoveryViewModel @Inject constructor(
     fun reset() {
         viewModelScope.launch {
             RemoteLog.warn("startup", "réinitialisation des données locales demandée depuis l'écran d'erreur")
+            RemoteLog.flushNow()
             withContext(Dispatchers.IO) {
+                delay(800) // laisse partir le journal ci-dessus : la file en mémoire est perdue à l'arrêt du processus
                 runCatching { db.close() }
                 runCatching { ctx.deleteDatabase(DB_NAME) }
                     .onFailure { RemoteLog.error("startup", "reset : suppression impossible : ${it.javaClass.simpleName} ${it.message}") }
@@ -111,10 +113,16 @@ class StartupRecoveryViewModel @Inject constructor(
         }
     }
 
-    private suspend fun restart() {
+    /**
+     * Relance dans un processus neuf. Pas de délai entre l'ouverture de l'activité et l'arrêt du processus : avec
+     * CLEAR_TASK, l'activité actuelle est détruite, son ViewModel aussi, et un `delay` dans viewModelScope était annulé
+     * avant l'arrêt. Le processus survivait alors avec la base fermée (singleton Hilt) : « Database is closed » plus tard,
+     * puis de nouveau l'écran « démarrage bloqué ». startActivity est un appel synchrone au système : la relance est
+     * enregistrée quand il rend la main, le système la fait dans un nouveau processus.
+     */
+    private fun restart() {
         val intent = Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
         runCatching { ctx.startActivity(intent) }
-        delay(300)
         android.os.Process.killProcess(android.os.Process.myPid())
     }
 
