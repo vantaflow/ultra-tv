@@ -949,7 +949,7 @@ private val TIME_ZONES = listOf("", "GMT", "Africa/Casablanca", "Europe/London",
 
 /** Libellé avec le décalage ACTUEL (heure d'été comprise) : « Europe/Paris (GMT+2) ». */
 internal fun timeZoneLabel(D: DesignStrings, id: String): String {
-    val tz = if (id.isBlank()) java.util.TimeZone.getDefault() else java.util.TimeZone.getTimeZone(id)
+    val tz = com.ultratv.tv.nativeapp.ui.common.EpgClock.effectiveZone(if (id.isBlank()) java.util.TimeZone.getDefault() else java.util.TimeZone.getTimeZone(id))
     val off = tz.getOffset(System.currentTimeMillis()) / 60_000
     val gmt = if (off == 0) "GMT" else "GMT" + (if (off > 0) "+" else "−") + (kotlin.math.abs(off) / 60) + (if (off % 60 != 0) ":%02d".format(java.util.Locale.ROOT, kotlin.math.abs(off) % 60) else "")
     val name = when (id) { "" -> D.tzSystem; "GMT" -> return "GMT"; else -> id.substringAfter('/').replace('_', ' ') }

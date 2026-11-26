@@ -41,11 +41,25 @@ object EpgClock {
     @Volatile private var zoneCache: Pair<String, java.util.TimeZone>? = null
     private fun zone(): java.util.TimeZone {
         val id = zoneId
-        zoneCache?.let { (k, z) -> if (k == id) return z }
-        val z = id.takeIf { it.isNotBlank() }?.let { java.util.TimeZone.getTimeZone(it) } ?: java.util.TimeZone.getDefault()
-        zoneCache = id to z
+        val sys = java.util.TimeZone.getDefault().id
+        val key = "$id|$sys"
+        zoneCache?.let { (k, z) -> if (k == key) return z }
+        val z = effectiveZone(id.takeIf { it.isNotBlank() }?.let { java.util.TimeZone.getTimeZone(it) } ?: java.util.TimeZone.getDefault())
+        zoneCache = key to z
         return z
     }
+
+    /** Retour définitif du Maroc à l'heure GMT (décret 2.26.530) : dimanche 20 septembre 2026 à 2 h (heure locale), soit 1 h UTC. */
+    const val MOROCCO_GMT_FROM_MS = 1_789_866_000_000L
+
+    /**
+     * Fuseau réellement en vigueur. Les bases de fuseaux des box (Android, souvent jamais mises à jour) mettent encore
+     * Africa/Casablanca (et El_Aaiun) à GMT+1 : passé le 20 septembre 2026, on les traite comme GMT, sinon l'horloge et le
+     * guide ont une heure d'avance au Maroc. Une base déjà à jour (décalage nul) est laissée telle quelle.
+     */
+    fun effectiveZone(tz: java.util.TimeZone, nowMs: Long = System.currentTimeMillis()): java.util.TimeZone =
+        if ((tz.id == "Africa/Casablanca" || tz.id == "Africa/El_Aaiun") && nowMs >= MOROCCO_GMT_FROM_MS && tz.getOffset(nowMs) != 0)
+            java.util.TimeZone.getTimeZone("GMT") else tz
 
     fun apply(ms: Long): Long = ms + offsetMinutes * 60_000L
 

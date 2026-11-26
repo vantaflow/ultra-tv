@@ -33,6 +33,23 @@ Chaque version Android peut finir par une sous-section `### In English` : quelqu
 - Dons ponctuels : la carte bancaire est signalée clairement. Le bouton hébergé la propose sous le nom « Checkout » ; une ligne l'indique, et le lien de secours devient « Payer par carte bancaire ou PayPal » (sa page affiche « Carte bancaire »).
 - Dons : lien PayPal.Me (paypal.me/pitivi) en plus, sur `/donate` et dans la section Soutenir du site.
 
+## [1.3.79] — 2026-11-26 (Android)
+
+### Corrigé
+- Heure du Maroc : le Maroc est revenu à l'heure GMT le 20 septembre 2026, mais beaucoup de box gardent l'ancienne règle (GMT+1). L'horloge, le Guide, le lecteur, les rappels et le Replay avaient une heure d'avance ; l'appli applique maintenant GMT. Une box déjà à jour n'est pas touchée.
+- Démarrage lent sur les box peu puissantes : l'écran « Le démarrage est bloqué » n'apparaît plus qu'après 30 secondes au lieu de 12 (l'appli finissait souvent par s'ouvrir seule), et la synchronisation de démarrage attend que le premier écran soit affiché.
+- « Réinitialiser les données locales » demande une confirmation et, sur un appareil non associé au cloud, prévient que les sources, favoris et réglages seront perdus. Après réinitialisation, l'appli redémarre vraiment (elle pouvait planter ensuite avec « Database is closed »).
+- Box Android 7 : le rappel « appui long pour quitter » ne fait plus planter l'appli.
+
+### Technique
+- Télémétrie : détail du démarrage (élément en retard, durée avant le premier écran).
+
+### In English
+- Morocco time: the app now uses GMT in Morocco (back to GMT since 20 September 2026) even on boxes whose time zone data still says GMT+1; clock, Guide, player, reminders and Replay were one hour ahead.
+- Slow boxes: the "Startup is stuck" screen now waits 30 seconds, and the startup sync waits for the first screen.
+- "Reset local data" asks for confirmation and warns when sources would be lost; the app now restarts properly afterwards.
+- Android 7 boxes: no more crash on the "hold Back to exit" hint.
+
 ## [1.3.78] — 2026-11-26 (Android)
 
 ### Ajouté
