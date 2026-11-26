@@ -185,7 +185,9 @@ class MainActivity : ComponentActivity() {
                 lifecycleScope.launch {
                     val lang = com.ultratv.tv.nativeapp.i18n.AppLang.fromCode(runCatching { prefsStore.get().flow.first().language }.getOrDefault(""))
                     val msg = if (tv) R.string.back_hold_to_exit else R.string.back_again_to_exit
-                    android.widget.Toast.makeText(this@MainActivity, com.ultratv.tv.nativeapp.i18n.I18n.string(lang, msg), android.widget.Toast.LENGTH_SHORT).show()
+                    // Bandeau de l'appli plutôt qu'un Toast système : sur Android 7.1, un Toast affiché alors que l'activité
+                    // se ferme lève BadTokenException hors de notre code (plantage vu sur box rockchip).
+                    com.ultratv.tv.nativeapp.ui.common.Toaster.show(com.ultratv.tv.nativeapp.i18n.I18n.string(lang, msg))
                 }
             }
         })
