@@ -4,7 +4,7 @@ main = "src/index.js"
 # pour les appareils et liens existants.
 workers_dev = true
 # ultratv.dpdns.org : site principal ; tv.weedy.dpdns.org : adresse de l'API des applis (ses pages redirigent vers le site).
-routes = [{ pattern = "tv.weedy.dpdns.org", custom_domain = true }, { pattern = "ultratv.dpdns.org", custom_domain = true }]
+routes = [{ pattern = "tv.weedy.dpdns.org", custom_domain = true }, { pattern = "ultratv.dpdns.org", custom_domain = true }, { pattern = "utv.ipitivi.com", custom_domain = true }]
 compatibility_date = "2025-09-01"
 
 # Fichiers fixes (manifeste, service worker, icônes, polices, jsQR) servis par Workers Static Assets : gratuits et
