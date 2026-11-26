@@ -194,6 +194,13 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
 
     override fun onCreate() {
         super.onCreate()
+        // Maroc revenu à GMT le 20/09/2026, base de fuseaux de la box pas à jour (Casablanca encore à GMT+1) : fuseau par défaut
+        // de l'appli corrigé, pour l'horloge, le guide, le lecteur, les rappels et le replay (voir EpgClock.effectiveZone).
+        runCatching {
+            val sys = java.util.TimeZone.getDefault()
+            val eff = com.ultratv.tv.nativeapp.ui.common.EpgClock.effectiveZone(sys)
+            if (eff.id != sys.id) java.util.TimeZone.setDefault(eff)
+        }
         // Départ de la mesure « démarrage à froid » (jusqu'à la première image affichée sur un écran).
         com.ultratv.tv.nativeapp.perf.PerfTelemetry.markAppCreate()
         // Canal de mise à jour (Stable / Pré-version) : lu avant la première recherche de mise à jour.
