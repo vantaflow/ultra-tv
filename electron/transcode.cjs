@@ -384,6 +384,7 @@ function serveTranscode(req, res, { ffmpeg, target, ss, live = false, audio = 0,
   });
   child.on("close", (code) => {
     if (!started) log("ffmpeg.failed", { host: target.host, code, video: video === "h264" ? "h264" : "copy", ms: Date.now() - t0 });
+    else log("ffmpeg.exit", { host: target.host, code, ss, ms: Date.now() - t0 });
     if (!started && !res.headersSent) { report(code === 0 ? "ETRANSCODE_EMPTY" : "ETRANSCODE"); res.writeHead(502, headers); }
     if (!res.writableEnded) res.end();
   });

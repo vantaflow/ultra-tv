@@ -39,6 +39,15 @@ export function txClock(tx: TxState | null, currentTime: number, duration: numbe
   return { t: tx.offset + (Number.isFinite(currentTime) ? currentTime : 0), d: tx.duration };
 }
 
+/** Marge (s) sous laquelle une fin de conversion est une vraie fin d'épisode. */
+export const TX_END_MARGIN = 30;
+/** Conversion arrêtée loin de la fin connue : le fournisseur a coupé le flux (p. ex. limite d'une connexion quand
+ * l'extraction d'un sous-titre en ouvre une seconde), ce n'est pas la fin de l'épisode. */
+export function txCutShort(tx: TxState | null, currentTime: number): boolean {
+  if (!tx || !(tx.duration > 0)) return false;
+  return txClock(tx, currentTime, NaN).t < tx.duration - TX_END_MARGIN;
+}
+
 /** Nouvelle position bornée à la durée connue (0 = pas de borne). */
 export function clampSeek(target: number, duration: number): number {
   const t = Math.max(0, target);

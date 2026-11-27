@@ -50,7 +50,7 @@ import { sendToDevice } from "@/cloud/handoff";
 import { useUi } from "@/state/ui";
 import { startScrobble, type Scrobbler } from "./trakt";
 import { loadSkips, skipOfferAt, type SkipSegment } from "./skip";
-import { canDecodeHevc, clampSeek, parseTxDiag, parseTxInfo, TX_LABEL, txBaseUrl, txClock, txDiagUrl, txInfoUrl, txSubUrl, txUrl, type TxDiag, type TxInfo, type TxState } from "./transcode";
+import { canDecodeHevc, clampSeek, parseTxDiag, parseTxInfo, TX_LABEL, txBaseUrl, txClock, txCutShort, txDiagUrl, txInfoUrl, txSubUrl, txUrl, type TxDiag, type TxInfo, type TxState } from "./transcode";
 import { classifyFailure, planAudioRepair, planFallback, type Failure } from "./failure";
 import { playLog, urlInfo } from "./playlog";
 import { flattenOverlaps, fmtShiftMs, nudgeShift, parseVtt, shiftCues, type Cue } from "./subtitles";
@@ -151,6 +151,9 @@ export function PlayerHost() {
   const selectSubRef = useRef<((i: number) => void) | null>(null);
   /** Accès tardif à warmBase (startCandidate est défini avant) : aligner les sous-titres sur la base réelle. */
   const warmBaseRef = useRef<(() => void) | null>(null);
+  /** Reprise après une coupure de la conversion (voir txCutShort) : définie après seekTo. */
+  const txCutResumeRef = useRef<(() => void) | null>(null);
+  const txCutRef = useRef({ n: 0, at: 0 });
   const [stats, setStats] = useState<Stats | null>(null);
   const [ui, setUi] = useState(true);
   const [panel, setPanel] = useState<null | "tracks" | "display" | "player" | "stats" | "channels" | "episodes">(null);
@@ -223,7 +226,7 @@ export function PlayerHost() {
     });
     reconRef.current = recon;
     const eng = new PlayerEngine(v, transportSync, {
-      onState: (s) => { setState(s); scrobRef.current?.onState(s, v.currentTime, v.duration); if (s === "playing") { setError(false); setReconnecting(false); { const cc = candRef.current.list[candRef.current.i]; if (cc && cc.label !== TX_LABEL) goodUrlRef.current = cc.url; } if (startAtRef.current) { playLog("play.firstFrame", { ms: Math.round(performance.now() - startAtRef.current), width: v.videoWidth, height: v.videoHeight, duration: Number.isFinite(v.duration) ? Math.round(v.duration) : null }); startAtRef.current = 0; } } recon.onState(s, liveRef.current); },
+      onState: (s) => { if (s === "ended" && txCutShort(txRef.current, v.currentTime)) { txCutResumeRef.current?.(); return; } setState(s); scrobRef.current?.onState(s, v.currentTime, v.duration); if (s === "playing") { setError(false); setReconnecting(false); { const cc = candRef.current.list[candRef.current.i]; if (cc && cc.label !== TX_LABEL) goodUrlRef.current = cc.url; } if (startAtRef.current) { playLog("play.firstFrame", { ms: Math.round(performance.now() - startAtRef.current), width: v.videoWidth, height: v.videoHeight, duration: Number.isFinite(v.duration) ? Math.round(v.duration) : null }); startAtRef.current = 0; } } recon.onState(s, liveRef.current); },
       onError: (_code, status) => {
         { const cc = candRef.current.list[candRef.current.i]; playLog("play.error", { code: _code, status: status ?? null, format: cc?.format, label: cc?.label, index: candRef.current.i, of: candRef.current.list.length, ...(cc ? urlInfo(cc.url) : {}) }); }
         if (status) statusRef.current = status;
@@ -1113,6 +1116,22 @@ export function PlayerHost() {
     }
     if (Number.isFinite(v.duration)) v.currentTime = Math.max(0, Math.min(v.duration, sec));
   }, [startCandidate, applySubs, selectSub, warmBase]);
+  /** Flux converti coupé avant la fin : la conversion repart de la position atteinte au lieu de passer à l'épisode
+   * suivant. Au-delà de 3 coupures en 2 minutes, la lecture s'arrête en erreur (pas d'enchaînement non plus). */
+  const resumeAfterCut = useCallback(() => {
+    const v = videoRef.current;
+    const tx = txRef.current;
+    if (!v || !tx) return;
+    const pos = txClock(tx, v.currentTime, v.duration).t;
+    const now = Date.now();
+    const c = txCutRef.current;
+    if (now - c.at > 120_000) c.n = 0;
+    c.n += 1; c.at = now;
+    playLog("play.txCut", { at: Math.round(pos), duration: Math.round(tx.duration), n: c.n });
+    if (c.n > 3) { setState("error"); setError(true); return; }
+    seekTo(pos);
+  }, [seekTo]);
+  useEffect(() => { txCutResumeRef.current = resumeAfterCut; });
   /** Liste des pistes, demandée au proxy à l'ouverture du panneau (une connexion brève au fournisseur, pas pendant la lecture normale). */
   useEffect(() => {
     const base = bridge()?.proxyBase;
