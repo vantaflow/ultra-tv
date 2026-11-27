@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampSeek, parseTxInfo, txClock, txInfoUrl, txSubUrl, txUrl } from "./transcode";
+import { clampSeek, parseTxInfo, txClock, txCutShort, txInfoUrl, txSubUrl, txUrl } from "./transcode";
 
 describe("conversion audio (bureau)", () => {
   it("URL /tx avec la position", () => {
@@ -32,5 +32,19 @@ describe("conversion audio (bureau)", () => {
     expect(clampSeek(-5, 100)).toBe(0);
     expect(clampSeek(500, 100)).toBe(99);
     expect(clampSeek(500, 0)).toBe(500);
+  });
+});
+
+describe("coupure de la conversion (#295)", () => {
+  const tx = { orig: "http://x/1.mkv", offset: 29, duration: 3549 };
+  it("une fin loin de la durée connue est une coupure, pas la fin de l'épisode", () => {
+    expect(txCutShort(tx, 49)).toBe(true);
+  });
+  it("une fin dans les 30 dernières secondes est une vraie fin", () => {
+    expect(txCutShort(tx, 3549 - 29 - 10)).toBe(false);
+  });
+  it("sans conversion ou sans durée connue : rien à reprendre", () => {
+    expect(txCutShort(null, 10)).toBe(false);
+    expect(txCutShort({ ...tx, duration: 0 }, 10)).toBe(false);
   });
 });
